@@ -1,0 +1,8 @@
+each b in buses
+    button.bus-button.d-flex.btn.btn-outline-primary(data-id=b.id data-license-plate=b.licensePlate)
+        .col-4
+            p.text-center.m-0 #{b.licensePlate}
+        .col-4
+            p.text-center.m-0 #{b.busModelStr}
+        .col-4
+            p.text-center.m-0 #{b.phoneNumber}

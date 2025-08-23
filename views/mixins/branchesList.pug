@@ -1,0 +1,6 @@
+each b in branches
+    button.branch-button.d-flex.btn.btn-outline-primary(data-id=b.id data-title=b.title)
+        .col-6
+            p.text-center.m-0 #{b.title}
+        .col-6
+            p.text-center.m-0 #{b.placeStr}

@@ -1,0 +1,72 @@
+- for(let i = 0; i < seats.length; i++){
+    .ticket-row(class=gender[i])
+        .seat-number
+            p.mb-0 #{seats[i]}
+            input(type="hidden" value=seats[i])
+        .gender
+            input.male(id="male_"+i name="gender_"+i type="radio" value="m" checked=gender[i]=="m"?true:false)
+            label.male.gender-input-label(for="male_"+i) ERKEK
+            input.female(id="female_"+i name="gender_"+i type="radio" value="f" checked=gender[i]=="f"?true:false)
+            label.female.gender-input-label(for="female_"+i) KADIN
+        .nationality
+            label.form-label Uyruk
+            select.form-select.form-select-sm(value=ticket?ticket[i].nationality:"")
+                option(value="tr") Türkiye 
+                option(value="usa") Amerika 
+                option(value="sr") Suriye 
+        .identity
+            label.form-label Kimlik/Pasaport No
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].idNumber:"")
+        .name
+            label.form-label İsim
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].name:"")
+        .surname
+            label.form-label Soyisim
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].surname:"")
+        .type
+            label.form-label Yolcu Türü
+            select.form-select.form-select-sm(value=ticket?ticket[i].customerType:"")
+                option(value="adult") Yetişkin 
+                option(value="child") Çocuk 
+                option(value="student") Öğrenci 
+                option(value="disabled") Engelli 
+                option(value="retired") Emekli
+        .category
+            label.form-label Kategori
+            select.form-select.form-select-sm(value=ticket?ticket[i].customerCategory:"")
+                option(value="normal") Normal
+                option(value="member") Abone
+                option(value="guest") Misafir
+        .price
+            label.form-label Fiyat
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].price:"")
+-}
+.ticket-info    
+    .up-row
+        .phone
+            label.form-label Telefon Numarası
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].phoneNumber:"") 
+        .reservation-expire
+            label.form-label Rezervasyon Opsiyonu
+            input.form-control.form-control-sm(type="text" name="") 
+        .take-on
+            label.form-label Biniş Yeri
+            input.form-control.form-control-sm(type="text" name="") 
+        .take-off
+            label.form-label İniş Yeri
+            input.form-control.form-control-sm(type="text" name="") 
+        .payment
+            label.form-label Ödeme
+            select.form-select.form-select-sm
+                option(value="cash") Nakit 
+                option(value="card") K. Kartı 
+        .sum-price
+            label.form-label Toplam Fiyat
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].price*seats.length:"") 
+        .pnr
+            label.form-label PNR
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"") 
+    .row
+        .description
+            label.form-label Açıklama
+            input.form-control.form-control-sm(type="text" name="") 

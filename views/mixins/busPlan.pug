@@ -1,0 +1,55 @@
+.d-flex.justify-content-center
+    b.m-0
+        | #{trip.fromPlaceString.toUpperCase()}
+        i.fa-solid.fa-route.mx-2
+        | #{trip.toPlaceString.toUpperCase()}
+p.text-center #{route.routeCode}
+.d-flex.justify-content-between.mb-3
+    if captain
+        b #{captain.name} #{captain.surname}
+        b #{captain.phoneNumber}
+.seats
+    - let seatNumber = 0
+    - let seatIndex = 0
+    - for(let i = 0; i < 6; i++)
+        .seat-row
+            -for(let j = 0; j < 4; j++){
+            -   if(busModel.planBinary[seatIndex] == 0){
+                -if((seatIndex+1)%4==0){
+                    .seat.none
+                        |0
+                -}
+                -else{
+                    .seat.hidden
+                        |0
+                -}
+            -}
+            -   else{
+            -       seatNumber++
+                .seat(class=`${tickets[seatNumber]?tickets[seatNumber].gender:""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber}` 
+                    data-seat-number=seatNumber 
+                    data-group-id=tickets[seatNumber]?tickets[seatNumber].ticketGroupId:"" 
+                    data-pnr=tickets[seatNumber]?tickets[seatNumber].pnr:"" 
+                    data-gender=tickets[seatNumber]?tickets[seatNumber].gender:""  
+                    data-from=tickets[seatNumber]?tickets[seatNumber].from:"" 
+                    data-to=tickets[seatNumber]?tickets[seatNumber].to:"" 
+                    data-name=tickets[seatNumber]?tickets[seatNumber].name+" "+tickets[seatNumber].surname:"" 
+                    data-phone=tickets[seatNumber]?tickets[seatNumber].phoneNumber:"" 
+                    data-price=tickets[seatNumber]?tickets[seatNumber].price:"" 
+                    data-created-at=tickets[seatNumber]?tickets[seatNumber].createdAt:"" 
+                    data-trip-id=trip.id)
+
+                    p.seat-number #{seatNumber}
+                    p.from #{tickets[seatNumber]?tickets[seatNumber].from:""}
+                    .seat-content
+                        p.web #{tickets[seatNumber]?tickets[seatNumber].status == "web"?"WEB":"":""}
+                        p.price #{tickets[seatNumber]?tickets[seatNumber].price+"₺":""}
+                    p.to #{tickets[seatNumber]?tickets[seatNumber].to:""}
+            -}
+            -   seatIndex++;
+            -}
+input#fromId(type="hidden" value=fromId)
+input#toId(type="hidden" value=toId)
+input#tripDate(type="hidden" value=tripDate)
+input#tripTime(type="hidden" value=tripTime)
+input#tripId(type="hidden" value=tripId)

@@ -1,0 +1,29 @@
+each t in transactions
+    button.transactions-button.d-flex.btn(class=t.type=="income"?"btn-success":"btn-danger")
+        .col-2
+            p.text-center.m-0 #{new Date(t.createdAt).toLocaleDateString()} #{new Date(t.createdAt).toLocaleTimeString()}
+        .col-2
+            if t.category == "cash_sale"
+                p.text-center.m-0 Nakit bilet satış
+            else if t.category == "card_sale"
+                p.text-center.m-0 K. Kartı bilet satış
+            else if t.category == "cash_refund"
+                p.text-center.m-0 K. Kartı bilet iade
+            else if t.category == "card_refund"
+                p.text-center.m-0 Nakit bilet iade
+            else if t.category == "payed_to_bus"
+                p.text-center.m-0 Otobüse ödenen
+            else if t.category == "income"
+                p.text-center.m-0 Gelir
+            else if t.category == "expense"
+                p.text-center.m-0 Gider
+            else if t.category == "transfer_in"
+                p.text-center.m-0 Devir alındı
+        .col-4
+            p.text-center.m-0 #{t.description}
+        .col-2
+            p.text-center.m-0 
+                if t.ticketId 
+                    |KN: #{t.seatNumber} PNR: #{t.pnr}
+        .col-2
+            p.text-center.m-0 #{t.type=="income"?"+":"-"}#{t.amount}

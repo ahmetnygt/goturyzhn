@@ -1,0 +1,14 @@
+each t in trips
+    button.trip-button.d-flex.btn.btn-outline-primary(data-id=t.id data-time=t.time)
+        .col-2
+            p.text-center.m-0 #{t.time}
+        .col-2
+            p.text-center.m-0 #{t.fromPlaceString}
+        .col-2
+            p.text-center.m-0 #{t.toPlaceString}
+        .col-2
+            p.text-center.m-0 #{t.licensePlate}
+        .col-1
+            p.text-center.m-0 #{t.routeCode}
+        .col-3
+            p.text-center.m-0 #{t.routeTitle}

@@ -1,0 +1,73 @@
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet' href='/stylesheets/style.css')
+    link(rel='stylesheet' href='/stylesheets/erpscreen.css')
+    link(rel='stylesheet' href='/flatpickr/dist/flatpickr.min.css')
+    link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css')
+    link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css')
+  body
+    nav.navbar.navbar-expand-lg.bg-body-tertiary
+      .container-fluid
+        a.navbar-brand(href="#") 
+          img.d-inline-block.align-text-top(src="/images/gotur_vip_logo.jpg" alt="Logo" width="100" height="25")
+        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
+          span.navbar-toggler-icon
+        #navbarSupportedContent.collapse.navbar-collapse
+          ul.navbar-nav.me-auto.mb-2.mb-lg-0
+            li.nav-item.dropdown
+              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                | Bilet
+              ul.dropdown-menu
+                li
+                  a.dropdown-item.ticket-search(href="#") Bilet Ara
+            li.nav-item.dropdown
+              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                | Kasa
+              ul.dropdown-menu
+                li
+                  a.dropdown-item.register-nav(href="#") Kasam
+                li
+                  a.dropdown-item.add-income-nav(href="#") Gelir Ekle
+                li
+                  a.dropdown-item.add-expense-nav(href="#") Gider Ekle
+            li.nav-item.dropdown
+              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                | Abonelik
+              ul.dropdown-menu
+                li
+                  a.dropdown-item.ticket-search(href="#") -
+            li.nav-item.dropdown
+              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                | Yönetim
+              ul.dropdown-menu
+                li
+                  a.dropdown-item.branch-settings-nav(href="#") Şubeler
+                li
+                  a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
+                li
+                  a.dropdown-item.bus-nav(href="#") Otobüsler
+                li
+                  a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
+                li
+                  a.dropdown-item.captain-nav(href="#") Kaptan Şoförler
+                li
+                  a.dropdown-item.route-nav(href="#") Hatlar
+                li
+                  a.dropdown-item.trip-nav(href="#") Seferler
+            li.nav-item
+              a.nav-link(href="#") Link
+        if user
+          button.btn.btn-outline-success(type="submit") #{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
+    div(style="padding:1rem 1rem 0rem 1rem!important;")
+      block content
+
+    script(src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js")
+    script(src="https://code.jquery.com/jquery-3.7.1.min.js")
+    script(src="/flatpickr/dist/flatpickr.min.js")
+    script(src="/flatpickr/dist/l10n/tr.js")
+    script(src="/scripts/erp.js")
+    block scripts

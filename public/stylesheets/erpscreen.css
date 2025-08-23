@@ -1,0 +1,906 @@
+html,
+body {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    background-color: rgb(217, 218, 219) !important;
+}
+
+#calendar {
+    display: none;
+}
+
+.blackout {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background-color: rgba(0, 0, 0, 50%);
+    z-index: 10;
+    display: none;
+}
+
+.suggest-wrap {
+    position: relative
+}
+
+.autosuggest {
+    position: absolute;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #ddd;
+    width: 100%;
+    max-height: 220px;
+    overflow: auto;
+    border-radius: 6px
+}
+
+.autosuggest li {
+    list-style: none;
+    padding: 8px 10px;
+    cursor: pointer
+}
+
+.autosuggest li:hover,
+.autosuggest li.active {
+    background: #f2f2f2
+}
+
+.passanger-table {
+    overflow: auto;
+    width: 100%;
+    height: 55vh;
+    border-radius: 5px;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    background-color: white;
+}
+
+.passanger-table table {
+    table-layout: auto;
+    width: 100%;
+}
+
+.passanger-table table th,
+.passanger-table table td {
+    white-space: nowrap;
+}
+
+.ticket-search-pop-up {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-height: 50vh;
+    width: 80vw;
+    overflow: hidden;
+    display: none;
+}
+
+.ticket-search-pop-up .inputs {
+    padding: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.ticket-search-pop-up .inputs div {
+    width: 24% !important;
+}
+
+.add-transaction {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    display: none;
+    overflow: hidden;
+}
+
+.transaction-transfer {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    display: none;
+    overflow: hidden;
+}
+
+.register {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: .6rem;
+    z-index: 100;
+    background-color: white;
+    width: 80vw;
+    max-height: 80vh;
+    display: none;
+    overflow: hidden;
+}
+
+.register-data-input {
+    width: 24% !important;
+}
+
+.transaction-list {
+    overflow-y: scroll;
+    height: 31vh;
+}
+
+div.ticket-search-close,
+div.bus-plans-close,
+div.branch-close,
+div.users-close,
+div.bus-close,
+div.route-close,
+div.trip-close,
+div.register-close,
+div.add-transaction-close,
+div.transaction-transfer-close {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+}
+
+.bus {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 30vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.bus-settings {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.bus-settings input[type="text"] {
+    width: 5vw;
+}
+
+.bus-info {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.route {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 40vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.route-settings {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.route-settings input[type="text"] {
+    width: 5vw;
+}
+
+.route-info {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.route-stop-duration {
+    display: none;
+}
+
+.duration-input {
+    background-color: transparent;
+    border: none;
+    text-align: center;
+}
+
+.duration-input:focus,
+.duration-input:focus-visible {
+    border-bottom: 1px solid #2660ff !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.trip {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 60vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.trip-settings {
+    flex: 0 0 auto;
+    width: 50%;
+    padding: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.trip-settings-calendar {
+    width: 10rem !important;
+}
+
+.trip-settings input[type="text"] {
+    width: 5vw;
+}
+
+.trip-info {
+    flex: 0 0 auto;
+    width: 50%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+
+.branch {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 20vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.branch-settings {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.branch-settings input[type="text"] {
+    width: 5vw;
+}
+
+.branch-info {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.users {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 40vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.user-settings {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.user-settings input[type="text"] {
+    width: 5vw;
+}
+
+.user-info {
+    flex: 0 0 auto;
+    width: 33.33333333%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-right: 1px solid #dee2e6;
+    display: none;
+}
+
+.bus-plans {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-height: 50vh;
+    width: 55vw;
+    overflow: hidden;
+    display: none;
+}
+
+.bus-plan-create {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    max-width: 8rem;
+}
+
+.bus-plan-create-input {
+    height: 1.5rem;
+    width: 1.75rem;
+    border: solid 2px #2660ff;
+    text-align: center;
+}
+
+.bus-plan-create-input.taken {
+    background-color: #2660ff;
+    color: #80a0fa;
+    border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+}
+
+.bus-plan-create-input.doors {
+    border: solid 2px #696969;
+    background-color: #696969;
+    color: #3d3d3d;
+}
+
+.bus-plan-create-input.captain {
+    border: solid 2px #ff7300;
+    background-color: #ff7300;
+    color: #ffd2ad;
+    border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+}
+
+.bus-plan-create-input.reverse {
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.gtr-header {
+    background-color: #2660ff;
+    color: white;
+    text-align: center;
+    padding: .5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.ticket-cancel-refund-open {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    overflow: hidden;
+    display: none;
+}
+
+div.ticket-cancel-refund-open-close {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+}
+
+.tickets_ {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.ticket-cancel-box {
+    border: 1px solid #ccc;
+    padding: 8px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    font-size: 13px;
+    position: relative;
+    cursor: pointer;
+}
+
+.ticket-cancel-box:active {
+    transform: scale(.9);
+}
+
+.ticket-cancel-check {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    display: none;
+    font-size: 1.5rem;
+}
+
+.ticket-cancel-box.m .ticket-cancel-check {
+    color: #216396;
+}
+
+.ticket-cancel-box.f .ticket-cancel-check {
+    color: #920256;
+}
+
+.ticket-cancel-box.m {
+    background-color: #216396;
+}
+
+.ticket-cancel-box.m.selected {
+    background-color: #1a5079;
+    transform: scale(.95);
+}
+
+.ticket-cancel-box.f {
+    background-color: #920256;
+}
+
+.ticket-cancel-box.f.selected {
+    background-color: #6b023f;
+    transform: scale(.95);
+}
+
+.ticket-cancel-box p {
+    margin-bottom: .5rem;
+    color: white;
+}
+
+.moving {
+    position: absolute;
+    bottom: 50%;
+    left: 20%;
+    background-color: white;
+    z-index: 100;
+    padding: 1rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    border-radius: 5px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+div.moving-close {
+    position: absolute;
+    top: 0;
+    right: .5rem;
+    cursor: pointer;
+}
+
+.add-trip-note {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    flex-direction: column;
+    gap: .5rem;
+    padding: 1.25rem 1.5rem 1rem 1.5rem;
+    display: none;
+}
+
+.trip-note-close {
+    position: absolute;
+    top: 0;
+    right: .5rem;
+    cursor: pointer;
+}
+
+.notes-stops {
+    height: 30vh;
+    display: flex;
+    gap: 1rem;
+}
+
+.note {
+    margin: 0;
+    border-radius: 5px;
+    background-color: #216396;
+    color: white;
+    padding: 0 .5rem;
+    margin: 0 .5rem;
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* .tripRows {
+    width: 100%;
+    overflow: auto;
+} */
+
+.tripRow {
+    border-radius: 5px;
+    background-color: white;
+    display: flex;
+    padding: 0 .2rem;
+    margin-bottom: .5rem;
+    width: fit-content;
+    cursor: pointer;
+}
+
+.tripRow:hover {
+    background-color: #f0f0f0;
+}
+
+.tripRow:active {
+    background-color: #e0e0e0;
+}
+
+.tripRow div {
+    border-right: 1px solid #7d7d7d;
+}
+
+.tripRow div:last-child {
+    border-right: none;
+}
+
+.tripRow div p {
+    margin: .3rem .3rem;
+    user-select: none;
+}
+
+.passenger-info-popup {
+    border: 1px solid #ccc;
+    padding: 8px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    font-size: 13px;
+    pointer-events: none;
+    position: absolute;
+    z-index: 10;
+    display: none;
+}
+
+.passenger-info-popup.m {
+    background-color: #216396;
+}
+
+.passenger-info-popup.f {
+    background-color: #920256;
+}
+
+.passenger-info-popup p {
+    margin-bottom: .5rem;
+    color: white;
+}
+
+.ticket-info-pop-up {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    width: 80vw;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    overflow: hidden;
+    display: none;
+}
+
+.ticket-close {
+    position: absolute;
+    top: .5rem;
+    right: 1rem;
+    color: white;
+    cursor: pointer;
+}
+
+.ticket-header {
+    width: 100%;
+    background-color: #2660ff;
+    color: white;
+    text-align: center;
+    padding: .5rem 0;
+}
+
+.ticket-header--date {
+    position: absolute;
+    left: 1rem;
+}
+
+.ticket-rows {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .5rem 0;
+}
+
+.ticket-rows input,
+.ticket-rows select {
+    border-color: #202020;
+}
+
+.ticket-row {
+    padding: .5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ticket-row.m {
+    background-color: #21639650;
+}
+
+.ticket-row.f {
+    background-color: #92025650;
+}
+
+.ticket-row .seat-number {
+    font-weight: bold;
+    margin: 0;
+    font-size: 2rem;
+    opacity: 35%;
+    user-select: none;
+}
+
+.ticket-row .gender {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+
+.ticket-row .gender input {
+    display: none;
+}
+
+.gender-input-label {
+    color: black;
+    border: 1px solid;
+    padding: .2rem;
+    border-radius: .3rem;
+}
+
+.gender input[type="radio"]:checked+label.male {
+    background-color: #21639650;
+    border-color: #216396;
+    color: #216396;
+}
+
+.gender input[type="radio"]:checked+label.female {
+    background-color: #92025650;
+    border-color: #920256;
+    color: #920256;
+}
+
+.ticket-info {
+    padding: .5rem 1rem;
+}
+
+.ticket-info .up-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.seats {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.seat-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.seat {
+    background-color: white;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    width: 7rem;
+    height: 3.5rem;
+    border-radius: .5rem;
+    padding: 0.1rem .25rem;
+    position: relative;
+    cursor: pointer;
+    box-sizing: border-box;
+    border: 2px solid rgb(0 0 0 / 0%);
+}
+
+.seat.selected {
+    border-color: green !important;
+}
+
+.seat .seat-number {
+    font-weight: bold;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    font-size: 1.75rem;
+    opacity: 15%;
+    cursor: pointer;
+    user-select: none;
+}
+
+.seat .seat-content {
+    display: flex;
+    justify-content: space-between;
+    height: 33.3%;
+}
+
+.seat p.to,
+.seat p.from {
+    height: 33.3%;
+}
+
+.seat p.to,
+.seat p.from,
+.seat p.web,
+.seat .price {
+    cursor: pointer;
+    user-select: none;
+    font-size: .75rem;
+    margin: 0;
+}
+
+.seat.m {
+    background-color: rgb(41, 134, 204);
+    border-color: #216396;
+    box-shadow: 0 0.5rem 1rem rgb(41 134 204 / 50%) !important;
+    color: white !important;
+}
+
+.seat.m.reservation {
+    background-color: rgb(41 134 204 / 30%);
+    border-color: #2164974d;
+    color: #216396 !important;
+}
+
+.seat.f {
+    background-color: rgb(201, 0, 118);
+    border-color: #920256;
+    box-shadow: 0 0.5rem 1rem rgb(201 0 118 / 50%) !important;
+    color: white !important;
+}
+
+.seat.f.reservation {
+    background-color: rgb(201, 0, 118, 30%);
+    border-color: #9202564d;
+    color: #920256 !important;
+}
+
+.seat.web {
+    border-color: #4CAF50;
+    box-shadow: 0 0.5rem 1rem #8BC34A !important;
+    border-width: .2rem;
+}
+
+.seat.hidden {
+    visibility: hidden;
+}
+
+.seat.none {
+    display: none;
+}
+
+.ticket-ops-pop-up,
+.taken-ticket-ops-pop-up {
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
+    border-radius: .3rem;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    display: none;
+}
+
+.ticket-op,
+.taken-ticket-op {
+    background-color: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: .5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.ticket-op:hover,
+.ticket-op-button:hover {
+    background-color: #f0f0f0
+}
+
+.ticket-op:active,
+.ticket-op-button:active {
+    background-color: #e0e0e0
+}
+
+.ticket-op p {
+    margin: 0 .5rem 0 0;
+}
+
+.ticket-op-buttons {
+    display: none;
+    flex-direction: column;
+    gap: .25rem;
+    padding: 0;
+    position: absolute;
+    left: 105%;
+    top: 0;
+}
+
+.ticket-op-button {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
+    font-size: .85rem
+}

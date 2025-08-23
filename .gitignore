@@ -1,0 +1,56 @@
+# Node.js dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Debug log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.test
+.env.production
+.env.local
+
+# Build outputs
+/dist
+/build
+/out
+/.next
+/.nuxt
+/.vuepress/dist
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Logs
+logs
+*.log
+*.gz
+
+# Coverage and test reports
+coverage
+*.lcov
+.jest
+
+# PM2 / process manager logs
+pids
+*.pid
+*.seed
+
+# Optional cache
+.cache
+.npm
+.eslintcache
+.stylelintcache

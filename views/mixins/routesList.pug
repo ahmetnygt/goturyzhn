@@ -1,0 +1,10 @@
+each r in routes
+    button.route-button.d-flex.btn.btn-outline-primary(data-id=r.id data-title=r.title)
+        .col-2
+            p.text-center.m-0 #{r.routeCode}
+        .col-4
+            p.text-center.m-0 #{r.title}
+        .col-3
+            p.text-center.m-0 #{r.fromTitle}
+        .col-3
+            p.text-center.m-0 #{r.toTitle}
