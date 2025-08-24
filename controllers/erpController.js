@@ -661,6 +661,11 @@ exports.postSavePrices = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz veri" });
         }
 
+        const toNullIfNotPositive = val => {
+            const num = Number(val);
+            return Number.isFinite(num) && num > 0 ? num : null;
+        };
+
         for (const price of prices) {
             const {
                 id,
@@ -684,14 +689,14 @@ exports.postSavePrices = async (req, res, next) => {
                 {
                     fromPlaceId,
                     toPlaceId,
-                    price1,
-                    price2,
-                    price3,
-                    webPrice,
-                    singleSeatPrice1,
-                    singleSeatPrice2,
-                    singleSeatPrice3,
-                    singleSeatWebPrice,
+                    price1: toNullIfNotPositive(price1),
+                    price2: toNullIfNotPositive(price2),
+                    price3: toNullIfNotPositive(price3),
+                    webPrice: toNullIfNotPositive(webPrice),
+                    singleSeatPrice1: toNullIfNotPositive(singleSeatPrice1),
+                    singleSeatPrice2: toNullIfNotPositive(singleSeatPrice2),
+                    singleSeatPrice3: toNullIfNotPositive(singleSeatPrice3),
+                    singleSeatWebPrice: toNullIfNotPositive(singleSeatWebPrice),
                     seatLimit,
                     hourLimit,
                     validFrom,

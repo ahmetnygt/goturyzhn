@@ -272,6 +272,17 @@ input.price-button-input {
     gap: 5px;
 }
 
+.price-button-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none;
+}
+
+.price-button-select::-ms-expand {
+    display: none;
+}
+
 .route-settings {
     flex: 0 0 auto;
     width: 33.33333333%;
