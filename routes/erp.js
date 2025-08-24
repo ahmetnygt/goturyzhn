@@ -6,7 +6,7 @@ const auth = require("../middlewares/authentication")
 const erpController = require("../controllers/erpController")
 
 // Tüm POST/PUT/DELETE işlemleri için global middleware
-router.use(autoLogMiddleware);
+// router.use(autoLogMiddleware);
 
 router.get('/', auth, erpController.getErp);
 
