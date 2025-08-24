@@ -1563,6 +1563,27 @@ $(".users-close").on("click", e => {
     $(".users").css("display", "none")
 })
 
+$(".customer-nav").on("click", async e => {
+    await $.ajax({
+        url: "erp/get-customers-list",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            $(".customer-list-nodes").html(response)
+            $(".blackout").css("display", "block")
+            $(".customers").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
+$(".customers-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".customers").css("display", "none")
+})
+
 $(".add-user").on("click", e => {
     $("#isUserActive").prop("checked", true)
     $(".user-name").val("")
