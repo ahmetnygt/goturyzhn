@@ -1567,11 +1567,52 @@ $(".customer-nav").on("click", async e => {
     await $.ajax({
         url: "erp/get-customers-list",
         type: "GET",
-        data: {},
+        data: { blacklist: false },
         success: function (response) {
             $(".customer-list-nodes").html(response)
+            $(".blacklist-reason-header").hide()
             $(".blackout").css("display", "block")
             $(".customers").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
+$(".customer-search-btn").on("click", async e => {
+    const idNumber = $(".customer-search-idNumber").val();
+    const name = $(".customer-search-name").val();
+    const surname = $(".customer-search-surname").val();
+    const phone = $(".customer-search-phone").val();
+
+    await $.ajax({
+        url: "erp/get-customers-list",
+        type: "GET",
+        data: { idNumber, name, surname, phone, blacklist: false },
+        success: function (response) {
+            $(".customer-list-nodes").html(response)
+            $(".blacklist-reason-header").hide()
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
+$(".customer-blacklist-btn").on("click", async e => {
+    const idNumber = $(".customer-search-idNumber").val();
+    const name = $(".customer-search-name").val();
+    const surname = $(".customer-search-surname").val();
+    const phone = $(".customer-search-phone").val();
+
+    await $.ajax({
+        url: "erp/get-customers-list",
+        type: "GET",
+        data: { idNumber, name, surname, phone, blacklist: true },
+        success: function (response) {
+            $(".customer-list-nodes").html(response)
+            $(".blacklist-reason-header").show()
         },
         error: function (xhr, status, error) {
             console.log(error);

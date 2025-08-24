@@ -605,16 +605,35 @@ block content
             span MÜŞTERİLER
         .customers-close
             i.fa-solid.fa-x
+        .customers-search.p-3.d-flex.gap-2
+            .input-group
+                span.input-group-text Kimlik No
+                input.customer-search-idNumber.form-control(type="text")
+            .input-group
+                span.input-group-text İsim
+                input.customer-search-name.form-control(type="text")
+            .input-group
+                span.input-group-text Soyisim
+                input.customer-search-surname.form-control(type="text")
+            .input-group
+                span.input-group-text Telefon
+                input.customer-search-phone.form-control(type="text")
+            button.btn.btn-outline-primary.customer-search-btn ARA
+            button.btn.btn-outline-primary.customer-blacklist-btn KARA LİSTEYİ GETİR
         .customer-list.p-3
             .d-flex.mb-2
-                .col-3
+                .col-2
                     p.text-center.m-0 TC
-                .col-3
-                    p.text-center.m-0 Ad Soyad
-                .col-3
+                .col-2
+                    p.text-center.m-0 Ad
+                .col-2
+                    p.text-center.m-0 Soyad
+                .col-2
                     p.text-center.m-0 Telefon
-                .col-3
+                .col-2
                     p.text-center.m-0 Abonelik
+                .col-2.blacklist-reason-header(style="display:none")
+                    p.text-center.m-0 Sebep
             .customer-list-nodes.d-flex.flex-column.gap-3
 
     .blackout
