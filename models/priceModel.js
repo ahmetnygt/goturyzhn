@@ -29,7 +29,7 @@ const Price = sequelize.define("price", {
         allowNull: true
     },
     hourLimit: {
-        type: Sequelize.DATE,
+        type: Sequelize.INTEGER,
         allowNull: true
     },
     price1: {
