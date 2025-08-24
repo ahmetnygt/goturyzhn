@@ -946,6 +946,21 @@ exports.postAddMember = async (req, res, next) => {
     }
 }
 
+exports.postCustomerBlacklist = async (req, res, next) => {
+    try {
+        const { id, description } = req.body;
+        const customer = await Customer.findByPk(id);
+        if (!customer) return res.status(404).json({ success: false });
+        customer.isBlackList = true;
+        customer.blackListDescription = description;
+        await customer.save();
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Customer blacklist error:", err);
+        res.status(500).json({ success: false });
+    }
+};
+
 exports.getUser = async (req, res, next) => {
     const id = req.query.id
     const username = req.query.username

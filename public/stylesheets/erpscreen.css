@@ -908,10 +908,3 @@ div.moving-close {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
     font-size: .85rem
 }
-.customers input {
-    width: 10rem;
-}
-
-.customers button {
-    white-space: nowrap;
-}
