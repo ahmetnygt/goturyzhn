@@ -260,6 +260,18 @@ div.transaction-transfer-close {
     overflow: auto;
 }
 
+input.price-button-input {
+    border: none;
+    background-color: #3386ff;
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid;
+}
+
+.price-button-inputs{
+    gap: 5px;
+}
+
 .route-settings {
     flex: 0 0 auto;
     width: 33.33333333%;
@@ -398,7 +410,8 @@ div.transaction-transfer-close {
     display: none;
 }
 
-.members,.customers{
+.members,
+.customers {
     width: 80vw;
 }
 

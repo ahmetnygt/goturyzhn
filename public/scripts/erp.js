@@ -1392,6 +1392,20 @@ $(".price-close").on("click", e => {
     $(".blackout").css("display", "none")
 })
 
+$(document).on("click", ".price-list-nodes .d-flex.btn", function () {
+    const row = $(this);
+    if (row.hasClass("price-button-inputs")) return;
+    row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
+    row.children(".col").each(function () {
+        const p = $(this).find("p");
+        if (p.length) {
+            const value = p.text().trim();
+            p.replaceWith(`<input class="price-button-input" type="text" value="${value}">`);
+        }
+    });
+});
+
+
 $(".trip-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".trip").css("display", "none")
