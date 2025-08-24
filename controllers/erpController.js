@@ -19,6 +19,7 @@ const Branch = require("../models/branchModel")
 const CashRegister = require("../models/cashRegisterModel")
 const Transaction = require("../models/transactionModel")
 const SystemLog = require("../models/systemLogModel")
+const Price = require("../models/priceModel")
 
 let places;
 Place.findAll().then(p => { places = p }).catch(err => console.log(err))
