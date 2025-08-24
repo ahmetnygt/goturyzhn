@@ -1620,6 +1620,37 @@ $(".customer-blacklist-btn").on("click", async e => {
     })
 })
 
+$(document).on("click", ".customer-blacklist-open", function (e) {
+    const id = $(this).data("id");
+    $(".customer-blacklist-pop-up").data("id", id);
+    $(".customer-blacklist-description").val("");
+    $(".blackout").css("display", "block");
+    $(".customer-blacklist-pop-up").css("display", "block");
+});
+
+$(".customer-blacklist-close").on("click", e => {
+    $(".blackout").css("display", "none");
+    $(".customer-blacklist-pop-up").css("display", "none");
+});
+
+$(".customer-blacklist-add").on("click", async e => {
+    const id = $(".customer-blacklist-pop-up").data("id");
+    const description = $(".customer-blacklist-description").val();
+    await $.ajax({
+        url: "erp/post-customer-blacklist",
+        type: "POST",
+        data: { id, description },
+        success: function () {
+            $(".customer-blacklist-pop-up").css("display", "none");
+            $(".blackout").css("display", "none");
+            $(".customer-search-btn").click();
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+});
+
 $(".customers-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".customers").css("display", "none")

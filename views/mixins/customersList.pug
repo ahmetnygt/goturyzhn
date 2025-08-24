@@ -1,16 +1,19 @@
 each c in customers
     - const btnClass = c.isBlackList ? 'btn-outline-danger' : 'btn-outline-primary'
-    button.d-flex.btn(class=btnClass)
-        .col-2
-            p.text-center.m-0 #{c.idNumber}
-        .col-2
-            p.text-center.m-0 #{c.name}
-        .col-2
-            p.text-center.m-0 #{c.surname}
-        .col-2
-            p.text-center.m-0 #{c.phoneNumber}
-        .col-2
-            p.text-center.m-0 #{c.customerCategory == 'member' ? 'Abone' : ''}
-        if blacklist
+    .btn-group.w-100
+        button.d-flex.btn.flex-grow-1(class=btnClass)
             .col-2
-                p.text-center.m-0 #{c.blackListDescription}
+                p.text-center.m-0 #{c.idNumber}
+            .col-2
+                p.text-center.m-0 #{c.name}
+            .col-2
+                p.text-center.m-0 #{c.surname}
+            .col-2
+                p.text-center.m-0 #{c.phoneNumber}
+            .col-2
+                p.text-center.m-0 #{c.customerCategory == 'member' ? 'Abone' : ''}
+            if blacklist
+                .col-2
+                    p.text-center.m-0 #{c.blackListDescription}
+        button.btn.btn-outline-danger.customer-blacklist-open(data-id=c.id)
+            i.fa-solid.fa-user-slash
