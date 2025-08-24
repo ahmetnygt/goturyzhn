@@ -1,27 +1,27 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Trip = sequelize.define("trip", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
     routeId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     busModelId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     busId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     captainId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     date: {
@@ -39,6 +39,6 @@ const Trip = sequelize.define("trip", {
     busPlanString: {
         type: Sequelize.STRING
     }
-})
+});
 
-module.exports = Trip
+module.exports = Trip;

@@ -1,6 +1,6 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Ticket = sequelize.define("ticket", {
     id: {
@@ -9,20 +9,20 @@ const Ticket = sequelize.define("ticket", {
         autoIncrement: true,
     },
     tripId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     ticketGroupId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false,
         defaultValue: 0
     },
     customerId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     seatNo: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     price: {
@@ -66,11 +66,11 @@ const Ticket = sequelize.define("ticket", {
         allowNull: false
     },
     fromRouteStopId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     toRouteStopId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     },
     pnr: {
@@ -81,6 +81,6 @@ const Ticket = sequelize.define("ticket", {
         type: Sequelize.ENUM("cash", "card"),
         allowNull: false
     }
-})
+});
 
-module.exports = Ticket
+module.exports = Ticket;

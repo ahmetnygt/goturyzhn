@@ -1,10 +1,10 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Place = sequelize.define("place", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         allowNull: false
     },
@@ -13,9 +13,9 @@ const Place = sequelize.define("place", {
         allowNull: false
     },
     provinceId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     }
-})
+});
 
-module.exports = Place
+module.exports = Place;
