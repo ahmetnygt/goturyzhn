@@ -1,10 +1,10 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const BusModel = sequelize.define("busmodel", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
@@ -25,9 +25,9 @@ const BusModel = sequelize.define("busmodel", {
         allowNull: false
     },
     maxPassenger: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     }
-})
+});
 
-module.exports = BusModel
+module.exports = BusModel;

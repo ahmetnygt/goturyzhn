@@ -1,21 +1,21 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const TripNote = sequelize.define("tripnote", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
     tripId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     noteText:{
         type:Sequelize.TEXT,
         allowNull: false
     }
-})
+});
 
-module.exports = TripNote
+module.exports = TripNote;

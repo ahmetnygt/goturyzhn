@@ -1,19 +1,19 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Bus = sequelize.define("bus", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
     busModelId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     captainId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     licensePlate: {
@@ -28,6 +28,6 @@ const Bus = sequelize.define("bus", {
         type: Sequelize.STRING,
         allowNull: false
     }
-})
+});
 
-module.exports = Bus
+module.exports = Bus;
