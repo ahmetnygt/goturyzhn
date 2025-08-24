@@ -1,5 +1,4 @@
-script(type="application/json" id="price-places-data")
-    !{JSON.stringify(places)}
+p#price-places-data #{JSON.stringify(places)}
 each p in prices
     .d-flex.btn.btn-outline-primary(data-id=p.id)
         .col
