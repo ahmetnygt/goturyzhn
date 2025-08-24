@@ -146,6 +146,7 @@ div.bus-plans-close,
 div.branch-close,
 div.users-close,
 div.customers-close,
+div.members-close,
 div.bus-close,
 div.route-close,
 div.trip-close,
@@ -335,7 +336,8 @@ div.transaction-transfer-close {
 }
 
 .users,
-.customers {
+.customers,
+.members {
     position: absolute;
     left: 50%;
     top: 50%;
