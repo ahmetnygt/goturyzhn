@@ -63,6 +63,7 @@ router.post('/post-save-user', erpController.postSaveUser);
 
 router.get('/get-customers-list', erpController.getCustomersList);
 router.get('/get-members-list', erpController.getMembersList);
+router.post('/post-add-member', erpController.postAddMember);
 
 router.get('/get-transactions-list', erpController.getTransactions);
 router.get('/get-transaction-data', erpController.getTransactionData);

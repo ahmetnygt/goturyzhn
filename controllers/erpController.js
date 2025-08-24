@@ -904,6 +904,39 @@ exports.getMembersList = async (req, res, next) => {
     res.render("mixins/membersList", { members })
 }
 
+exports.postAddMember = async (req, res, next) => {
+    try {
+        const { idNumber, name, surname, phone } = req.body;
+        const idNum = Number(idNumber);
+
+        let customer = await Customer.findOne({ where: { idNumber: idNum } });
+
+        if (customer) {
+            customer.name = name.toLocaleUpperCase("tr-TR");
+            customer.surname = surname.toLocaleUpperCase("tr-TR");
+            customer.phoneNumber = phone;
+            customer.customerCategory = 'member';
+            await customer.save();
+        } else {
+            customer = await Customer.create({
+                idNumber: idNum,
+                name: name.toLocaleUpperCase("tr-TR"),
+                surname: surname.toLocaleUpperCase("tr-TR"),
+                phoneNumber: phone,
+                gender: 'm',
+                nationality: 'TR',
+                customerType: 'adult',
+                customerCategory: 'member'
+            });
+        }
+
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Member add error:", err);
+        res.status(500).json({ success: false });
+    }
+}
+
 exports.getUser = async (req, res, next) => {
     const id = req.query.id
     const username = req.query.username

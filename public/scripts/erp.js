@@ -1623,6 +1623,43 @@ function filterMembers() {
 
 $(".member-search-idNumber, .member-search-name, .member-search-surname, .member-search-phone").on("input", filterMembers)
 
+$(".member-search-btn").on("click", filterMembers)
+
+$(".member-add-btn").on("click", async e => {
+    const idNumber = $(".member-search-idNumber").val()
+    const name = $(".member-search-name").val()
+    const surname = $(".member-search-surname").val()
+    const phone = $(".member-search-phone").val()
+
+    await $.ajax({
+        url: "erp/post-add-member",
+        type: "POST",
+        data: {
+            idNumber: idNumber,
+            name: name,
+            surname: surname,
+            phone: phone
+        },
+        success: async function (response) {
+            await $.ajax({
+                url: "erp/get-members-list",
+                type: "GET",
+                data: {},
+                success: function (resp) {
+                    $(".member-list-nodes").html(resp)
+                    filterMembers()
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
 $(".add-user").on("click", e => {
     $("#isUserActive").prop("checked", true)
     $(".user-name").val("")
