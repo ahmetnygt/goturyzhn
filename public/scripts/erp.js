@@ -1372,14 +1372,19 @@ $(".trip-nav").on("click", async e => {
     })
 })
 
+let pricePlaces = [];
+
 $(".price-nav").on("click", async e => {
     await $.ajax({
         url: "erp/get-prices-list",
         type: "GET",
         success: function (response) {
-            $(".price-list-nodes").html(response)
-            $(".prices").css("display", "block")
-            $(".blackout").css("display", "block")
+            $(".price-list-nodes").html(response);
+            const placesData = $("#price-places-data").text();
+            pricePlaces = placesData ? JSON.parse(placesData) : [];
+            $("#price-places-data").remove();
+            $(".prices").css("display", "block");
+            $(".blackout").css("display", "block");
         },
         error: function (xhr, status, error) {
             console.log(error)
@@ -1396,11 +1401,66 @@ $(document).on("click", ".price-list-nodes .d-flex.btn", function () {
     const row = $(this);
     if (row.hasClass("price-button-inputs")) return;
     row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
-    row.children(".col").each(function () {
+    row.children(".col").each(function (index) {
         const p = $(this).find("p");
-        if (p.length) {
-            const value = p.text().trim();
-            p.replaceWith(`<input class="price-button-input" type="text" value="${value}">`);
+        if (!p.length) return;
+        const value = p.data("value") ?? p.text().trim();
+        if (index === 0 || index === 1) {
+            let select = '<select class="price-button-select form-select">';
+            pricePlaces.forEach(pl => {
+                select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
+            });
+            select += '</select>';
+            p.replaceWith(select);
+        } else {
+            let cls = "price-button-input";
+            if (index === 11) cls += " hour-limit";
+            if (index === 12 || index === 13) cls += " date-picker";
+            p.replaceWith(`<input class="${cls}" type="text" value="${value ?? ''}">`);
+        }
+    });
+    flatpickr(row.find(".date-picker").toArray(), { dateFormat: "Y-m-d" });
+    flatpickr(row.find(".hour-limit").toArray(), { enableTime: true, noCalendar: true, dateFormat: "H:i" });
+});
+
+$(".price-save").on("click", async function () {
+    const data = [];
+    $(".price-list-nodes .price-button-inputs").each(function () {
+        const row = $(this);
+        const selects = row.find("select");
+        const inputs = row.find("input");
+        const obj = {
+            id: row.data("id"),
+            fromPlaceId: selects.eq(0).val(),
+            toPlaceId: selects.eq(1).val(),
+            price1: inputs.eq(0).val(),
+            price2: inputs.eq(1).val(),
+            price3: inputs.eq(2).val(),
+            webPrice: inputs.eq(3).val(),
+            singleSeatPrice1: inputs.eq(4).val(),
+            singleSeatPrice2: inputs.eq(5).val(),
+            singleSeatPrice3: inputs.eq(6).val(),
+            singleSeatWebPrice: inputs.eq(7).val(),
+            seatLimit: inputs.eq(8).val(),
+            hourLimit: inputs.eq(9).val() ? `1970-01-01T${inputs.eq(9).val()}` : null,
+            validFrom: inputs.eq(10).val() ? `${inputs.eq(10).val()}T00:00` : null,
+            validUntil: inputs.eq(11).val() ? `${inputs.eq(11).val()}T00:00` : null
+        };
+        data.push(obj);
+    });
+
+    if (!data.length) return;
+
+    await $.ajax({
+        url: "erp/post-save-prices",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ prices: data }),
+        success: function () {
+            $(".price-nav").click();
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
         }
     });
 });
