@@ -14,11 +14,11 @@ async function loadTrip(date, time) {
         data: { date: date, time: time },
         success: async function (response) {
             await $.ajax({
-                url: "erp/get-passangers-table",
+                url: "erp/get-passengers-table",
                 type: "GET",
                 data: { date: date, time: time },
                 success: function (response) {
-                    $(".passanger-table").html(response)
+                    $(".passenger-table").html(response)
                 },
                 error: function (xhr, status, error) {
                     console.log(error);
