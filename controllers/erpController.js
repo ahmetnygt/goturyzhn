@@ -639,13 +639,73 @@ exports.getPricesList = async (req, res, next) => {
         placeMap[pl.id] = pl.title;
     }
 
-    const formatted = prices.map(p => ({
-        ...p.toJSON(),
-        fromTitle: placeMap[p.fromPlaceId] || p.fromPlaceId,
-        toTitle: placeMap[p.toPlaceId] || p.toPlaceId
-    }));
+    const formatted = prices.map(p => {
+        const obj = p.toJSON();
+        return {
+            ...obj,
+            fromTitle: placeMap[p.fromPlaceId] || p.fromPlaceId,
+            toTitle: placeMap[p.toPlaceId] || p.toPlaceId,
+            validFrom: obj.validFrom ? obj.validFrom.split('T')[0] : "",
+            validUntil: obj.validUntil ? obj.validUntil.split('T')[0] : "",
+            hourLimit: obj.hourLimit ? obj.hourLimit.split('T')[1].substring(0,5) : ""
+        };
+    });
 
-    res.render("mixins/pricesList", { prices: formatted });
+    res.render("mixins/pricesList", { prices: formatted, places });
+}
+
+exports.postSavePrices = async (req, res, next) => {
+    try {
+        const { prices } = req.body;
+        if (!Array.isArray(prices)) {
+            return res.status(400).json({ message: "Geçersiz veri" });
+        }
+
+        for (const price of prices) {
+            const {
+                id,
+                fromPlaceId,
+                toPlaceId,
+                price1,
+                price2,
+                price3,
+                webPrice,
+                singleSeatPrice1,
+                singleSeatPrice2,
+                singleSeatPrice3,
+                singleSeatWebPrice,
+                seatLimit,
+                hourLimit,
+                validFrom,
+                validUntil
+            } = price;
+
+            await Price.update(
+                {
+                    fromPlaceId,
+                    toPlaceId,
+                    price1,
+                    price2,
+                    price3,
+                    webPrice,
+                    singleSeatPrice1,
+                    singleSeatPrice2,
+                    singleSeatPrice3,
+                    singleSeatWebPrice,
+                    seatLimit,
+                    hourLimit,
+                    validFrom,
+                    validUntil
+                },
+                { where: { id } }
+            );
+        }
+
+        res.json({ message: "Kaydedildi" });
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
 }
 
 exports.getBus = async (req, res, next) => {

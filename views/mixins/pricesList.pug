@@ -1,9 +1,11 @@
+script(type="application/json" id="price-places-data")
+    !{JSON.stringify(places)}
 each p in prices
-    .d-flex.btn.btn-outline-primary
+    .d-flex.btn.btn-outline-primary(data-id=p.id)
         .col
-            p.text-center.m-0 #{p.fromTitle}
+            p.text-center.m-0(data-value=p.fromPlaceId) #{p.fromTitle}
         .col
-            p.text-center.m-0 #{p.toTitle}
+            p.text-center.m-0(data-value=p.toPlaceId) #{p.toTitle}
         .col
             p.text-center.m-0 #{p.price1}
         .col
@@ -23,8 +25,8 @@ each p in prices
         .col
             p.text-center.m-0 #{p.seatLimit}
         .col
-            p.text-center.m-0 #{p.hourLimit}
+            p.text-center.m-0(data-value=p.hourLimit) #{p.hourLimit}
         .col
-            p.text-center.m-0 #{p.validFrom}
+            p.text-center.m-0(data-value=p.validFrom) #{p.validFrom}
         .col
-            p.text-center.m-0 #{p.validUntil}
+            p.text-center.m-0(data-value=p.validUntil) #{p.validUntil}
