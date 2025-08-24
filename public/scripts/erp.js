@@ -1378,7 +1378,7 @@ $(".price-nav").on("click", async e => {
         type: "GET",
         success: function (response) {
             $(".price-list-nodes").html(response)
-            $(".price").css("display", "block")
+            $(".prices").css("display", "block")
             $(".blackout").css("display", "block")
         },
         error: function (xhr, status, error) {
@@ -1388,7 +1388,7 @@ $(".price-nav").on("click", async e => {
 })
 
 $(".price-close").on("click", e => {
-    $(".price").css("display", "none")
+    $(".prices").css("display", "none")
     $(".blackout").css("display", "none")
 })
 

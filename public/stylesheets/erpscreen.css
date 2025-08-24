@@ -241,7 +241,7 @@ div.transaction-transfer-close {
     display: none;
 }
 
-.price {
+.prices {
     position: absolute;
     left: 50%;
     top: 50%;
