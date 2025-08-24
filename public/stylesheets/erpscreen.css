@@ -23,6 +23,32 @@ body {
     display: none;
 }
 
+.ticker {
+    width: 100%;
+    background: #b3b3b3;
+    color: black;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-top: 1rem
+}
+
+.ticker p {
+    display: inline-block;
+    padding-left: 100%;
+    animation: ticker-scroll 20s linear infinite;
+    margin: 0;
+}
+
+@keyframes ticker-scroll {
+    0% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
 .suggest-wrap {
     position: relative
 }
@@ -52,7 +78,7 @@ body {
 .passenger-table {
     overflow: auto;
     width: 100%;
-    height: 55vh;
+    height: 50vh;
     border-radius: 5px;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     background-color: white;
@@ -350,6 +376,32 @@ div.transaction-transfer-close {
     min-height: 40vh;
     overflow: hidden;
     display: none;
+}
+
+.members,.customers{
+    width: 80vw;
+}
+
+.customers input,
+.members input {
+    width: 8rem !important;
+}
+
+.customers button {
+    white-space: nowrap;
+}
+
+.customer-blacklist-pop-up {
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
+    border-radius: .3rem;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    display: none;
+    width: 20rem;
 }
 
 .user-settings {

@@ -1589,7 +1589,7 @@ $(".customer-search-btn").on("click", async e => {
     await $.ajax({
         url: "erp/get-customers-list",
         type: "GET",
-        data: { idNumber, name, surname, phone, blacklist: false },
+        data: { idNumber, name, surname, phone, blacklist: 0 },
         success: function (response) {
             $(".customer-list-nodes").html(response)
             $(".blacklist-reason-header").hide()
@@ -1609,7 +1609,7 @@ $(".customer-blacklist-btn").on("click", async e => {
     await $.ajax({
         url: "erp/get-customers-list",
         type: "GET",
-        data: { idNumber, name, surname, phone, blacklist: true },
+        data: { idNumber, name, surname, phone, blacklist: 1 },
         success: function (response) {
             $(".customer-list-nodes").html(response)
             $(".blacklist-reason-header").show()
