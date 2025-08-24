@@ -1410,7 +1410,7 @@ $(document).on("click", ".price-list-nodes .d-flex.btn", function () {
         if (!p.length) return;
         const value = p.data("value") ?? p.text().trim();
         if (index === 0 || index === 1) {
-            let select = '<select class="price-button-select form-select">';
+            let select = '<select class="price-button-select">';
             pricePlaces.forEach(pl => {
                 select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
             });

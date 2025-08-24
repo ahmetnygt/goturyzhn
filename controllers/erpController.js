@@ -647,7 +647,7 @@ exports.getPricesList = async (req, res, next) => {
             toTitle: placeMap[p.toPlaceId] || p.toPlaceId,
             validFrom: obj.validFrom ? obj.validFrom.split('T')[0] : "",
             validUntil: obj.validUntil ? obj.validUntil.split('T')[0] : "",
-            hourLimit: obj.hourLimit ? obj.hourLimit.split('T')[1].substring(0,5) : ""
+            hourLimit: obj.hourLimit ? obj.hourLimit : ""
         };
     });
 
@@ -697,7 +697,7 @@ exports.postSavePrices = async (req, res, next) => {
                     singleSeatPrice2: toNullIfNotPositive(singleSeatPrice2),
                     singleSeatPrice3: toNullIfNotPositive(singleSeatPrice3),
                     singleSeatWebPrice: toNullIfNotPositive(singleSeatWebPrice),
-                    seatLimit,
+                    seatLimit: toNullIfNotPositive(seatLimit),
                     hourLimit,
                     validFrom,
                     validUntil

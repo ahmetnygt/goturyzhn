@@ -260,15 +260,18 @@ div.transaction-transfer-close {
     overflow: auto;
 }
 
-input.price-button-input {
+input.price-button-input,
+select.price-button-select {
     border: none;
     background-color: #3386ff;
     width: 100%;
+    height: 100%;
     text-align: center;
     border-bottom: 1px solid;
+    color: white;
 }
 
-.price-button-inputs{
+.price-button-inputs {
     gap: 5px;
 }
 
