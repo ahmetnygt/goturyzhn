@@ -568,6 +568,36 @@ block content
                             input.form-control(type="text")
 
 
+    .members
+        .gtr-header
+            span ABONELER
+        .members-close
+            i.fa-solid.fa-x
+        .members-search.p-3
+            .input-group
+                span.input-group-text Kimlik No
+                input.member-search-idNumber.form-control(type="text")
+            .input-group
+                span.input-group-text İsim
+                input.member-search-name.form-control(type="text")
+            .input-group
+                span.input-group-text Soyisim
+                input.member-search-surname.form-control(type="text")
+            .input-group
+                span.input-group-text Telefon
+                input.member-search-phone.form-control(type="text")
+        .member-list.p-3
+            .d-flex.mb-2
+                .col-3
+                    p.text-center.m-0 TC
+                .col-3
+                    p.text-center.m-0 Ad
+                .col-3
+                    p.text-center.m-0 Soyad
+                .col-3
+                    p.text-center.m-0 Telefon
+            .member-list-nodes.d-flex.flex-column.gap-3
+
     .customers
         .gtr-header
             span MÜŞTERİLER

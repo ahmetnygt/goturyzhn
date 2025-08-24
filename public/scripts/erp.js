@@ -1584,6 +1584,45 @@ $(".customers-close").on("click", e => {
     $(".customers").css("display", "none")
 })
 
+$(".member-nav").on("click", async e => {
+    await $.ajax({
+        url: "erp/get-members-list",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            $(".member-list-nodes").html(response)
+            $(".blackout").css("display", "block")
+            $(".members").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
+$(".members-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".members").css("display", "none")
+})
+
+function filterMembers() {
+    const id = $(".member-search-idNumber").val().toLowerCase()
+    const name = $(".member-search-name").val().toLowerCase()
+    const surname = $(".member-search-surname").val().toLowerCase()
+    const phone = $(".member-search-phone").val().toLowerCase()
+
+    $(".member-row").each(function () {
+        const row = $(this)
+        const match = row.data("id").toLowerCase().includes(id) &&
+            row.data("name").toLowerCase().includes(name) &&
+            row.data("surname").toLowerCase().includes(surname) &&
+            row.data("phone").toLowerCase().includes(phone)
+        row.toggle(match)
+    })
+}
+
+$(".member-search-idNumber, .member-search-name, .member-search-surname, .member-search-phone").on("input", filterMembers)
+
 $(".add-user").on("click", e => {
     $("#isUserActive").prop("checked", true)
     $(".user-name").val("")
