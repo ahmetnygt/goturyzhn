@@ -1372,6 +1372,26 @@ $(".trip-nav").on("click", async e => {
     })
 })
 
+$(".price-nav").on("click", async e => {
+    await $.ajax({
+        url: "erp/get-prices-list",
+        type: "GET",
+        success: function (response) {
+            $(".price-list-nodes").html(response)
+            $(".price").css("display", "block")
+            $(".blackout").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+})
+
+$(".price-close").on("click", e => {
+    $(".price").css("display", "none")
+    $(".blackout").css("display", "none")
+})
+
 $(".trip-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".trip").css("display", "none")

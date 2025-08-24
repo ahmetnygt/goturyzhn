@@ -43,6 +43,8 @@ router.get('/get-buses-list', erpController.getBusesList);
 router.get('/get-bus', erpController.getBus);
 router.post('/post-save-bus', erpController.postSaveBus);
 
+router.get('/get-prices-list', erpController.getPricesList);
+
 router.get('/get-routes-list', erpController.getRoutesList);
 router.get('/get-route', erpController.getRoute);
 router.get('/get-route-stop', erpController.getRouteStop);
