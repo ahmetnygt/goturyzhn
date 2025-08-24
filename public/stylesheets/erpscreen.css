@@ -176,6 +176,7 @@ div.members-close,
 div.bus-close,
 div.route-close,
 div.trip-close,
+div.price-close,
 div.register-close,
 div.add-transaction-close,
 div.transaction-transfer-close {
@@ -238,6 +239,25 @@ div.transaction-transfer-close {
     min-height: 40vh;
     overflow: hidden;
     display: none;
+}
+
+.price {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 80vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.price-list {
+    overflow: auto;
 }
 
 .route-settings {

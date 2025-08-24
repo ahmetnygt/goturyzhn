@@ -630,6 +630,24 @@ exports.getBusesList = async (req, res, next) => {
     res.render("mixins/busesList", { buses })
 }
 
+exports.getPricesList = async (req, res, next) => {
+    const prices = await Price.findAll();
+    const places = await Place.findAll();
+
+    const placeMap = {};
+    for (const pl of places) {
+        placeMap[pl.id] = pl.title;
+    }
+
+    const formatted = prices.map(p => ({
+        ...p.toJSON(),
+        fromTitle: placeMap[p.fromPlaceId] || p.fromPlaceId,
+        toTitle: placeMap[p.toPlaceId] || p.toPlaceId
+    }));
+
+    res.render("mixins/pricesList", { prices: formatted });
+}
+
 exports.getBus = async (req, res, next) => {
     const id = req.query.id
     const licensePlate = req.query.licensePlate
