@@ -1,10 +1,10 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Captain = sequelize.define("captain", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
@@ -32,6 +32,6 @@ const Captain = sequelize.define("captain", {
         type: Sequelize.STRING,
         allowNull: false
     },
-})
+});
 
-module.exports = Captain
+module.exports = Captain;

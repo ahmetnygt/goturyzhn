@@ -1,19 +1,19 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const FirmUser = sequelize.define("firmuser", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
     firmId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     branchId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     password: {
@@ -32,6 +32,6 @@ const FirmUser = sequelize.define("firmuser", {
         type: Sequelize.STRING,
         allowNull: true
     },
-})
+});
 
-module.exports = FirmUser
+module.exports = FirmUser;

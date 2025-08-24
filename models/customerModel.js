@@ -4,12 +4,12 @@ const sequelize = require("../utilities/database");
 
 const Customer = sequelize.define("customer", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
     idNumber: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     name: {
@@ -52,4 +52,5 @@ const Customer = sequelize.define("customer", {
 });
 
 module.exports = Customer;
+
 

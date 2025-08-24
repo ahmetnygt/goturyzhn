@@ -1,10 +1,10 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Branch = sequelize.define("branch", {
     id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         primaryKey: true,
         autoIncrement: true,
     },
@@ -13,7 +13,7 @@ const Branch = sequelize.define("branch", {
         allowNull: false
     },
     placeId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: false
     },
     isActive: {
@@ -27,9 +27,9 @@ const Branch = sequelize.define("branch", {
         defaultValue: 0
     },
     mainBranchId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.BIGINT,
         allowNull: true
     }
-})
+});
 
-module.exports = Branch
+module.exports = Branch;
