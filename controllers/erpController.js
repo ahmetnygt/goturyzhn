@@ -186,7 +186,7 @@ exports.postTripNotes = async (req, res, next) => {
         const noteText = req.body.text;
 
         const trip = await Trip.findOne({
-            where: { tripId: tripId, date: tripDate, time: tripTime }
+            where: { id: tripId, date: tripDate, time: tripTime }
         });
 
         if (!trip) {
