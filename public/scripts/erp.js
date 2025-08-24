@@ -1393,8 +1393,12 @@ $(".price-nav").on("click", async e => {
 })
 
 $(".price-close").on("click", e => {
-    $(".prices").css("display", "none")
-    $(".blackout").css("display", "none")
+    if ($(".price-list-nodes .price-button-inputs").length) {
+        const confirmClose = confirm("Kaydedilmemiş değişiklikler var. Kapatmak istediğinize emin misiniz?");
+        if (!confirmClose) return;
+    }
+    $(".prices").css("display", "none");
+    $(".blackout").css("display", "none");
 })
 
 $(document).on("click", ".price-list-nodes .d-flex.btn", function () {
@@ -1429,18 +1433,22 @@ $(".price-save").on("click", async function () {
         const row = $(this);
         const selects = row.find("select");
         const inputs = row.find("input");
+        const toNullIfNotPositive = val => {
+            const num = Number(val);
+            return Number.isFinite(num) && num > 0 ? num : null;
+        };
         const obj = {
             id: row.data("id"),
             fromPlaceId: selects.eq(0).val(),
             toPlaceId: selects.eq(1).val(),
-            price1: inputs.eq(0).val(),
-            price2: inputs.eq(1).val(),
-            price3: inputs.eq(2).val(),
-            webPrice: inputs.eq(3).val(),
-            singleSeatPrice1: inputs.eq(4).val(),
-            singleSeatPrice2: inputs.eq(5).val(),
-            singleSeatPrice3: inputs.eq(6).val(),
-            singleSeatWebPrice: inputs.eq(7).val(),
+            price1: toNullIfNotPositive(inputs.eq(0).val()),
+            price2: toNullIfNotPositive(inputs.eq(1).val()),
+            price3: toNullIfNotPositive(inputs.eq(2).val()),
+            webPrice: toNullIfNotPositive(inputs.eq(3).val()),
+            singleSeatPrice1: toNullIfNotPositive(inputs.eq(4).val()),
+            singleSeatPrice2: toNullIfNotPositive(inputs.eq(5).val()),
+            singleSeatPrice3: toNullIfNotPositive(inputs.eq(6).val()),
+            singleSeatWebPrice: toNullIfNotPositive(inputs.eq(7).val()),
             seatLimit: inputs.eq(8).val(),
             hourLimit: inputs.eq(9).val() ? `1970-01-01T${inputs.eq(9).val()}` : null,
             validFrom: inputs.eq(10).val() ? `${inputs.eq(10).val()}T00:00` : null,
