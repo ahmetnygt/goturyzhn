@@ -634,6 +634,7 @@ block content
                     p.text-center.m-0 Abonelik
                 .col-2.blacklist-reason-header(style="display:none")
                     p.text-center.m-0 Sebep
+                .col-1
             .customer-list-nodes.d-flex.flex-column.gap-3
 
     .blackout
@@ -651,6 +652,12 @@ block content
             p TRANSFER ET
         .taken-ticket-op(data-action="")
             p KOLTUK GEÇMİŞİ
+
+    .customer-blacklist-pop-up.p-3
+        textarea.customer-blacklist-description.form-control(placeholder="Sebep")
+        .d-flex.justify-content-end.gap-2.mt-2
+            button.btn.btn-secondary.customer-blacklist-close KAPAT
+            button.btn.btn-primary.customer-blacklist-add EKLE
 
     .row
         .col-4
