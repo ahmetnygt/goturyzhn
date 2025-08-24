@@ -1,0 +1,10 @@
+each c in customers
+    button.d-flex.btn.btn-outline-primary
+        .col-3
+            p.text-center.m-0 #{c.idNumber}
+        .col-3
+            p.text-center.m-0 #{c.name} #{c.surname}
+        .col-3
+            p.text-center.m-0 #{c.phoneNumber}
+        .col-3
+            p.text-center.m-0 #{c.customerCategory == 'member' ? 'Abone' : ''}

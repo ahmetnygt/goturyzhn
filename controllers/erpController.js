@@ -894,6 +894,11 @@ exports.getUsersList = async (req, res, next) => {
     res.render("mixins/usersList", { users })
 }
 
+exports.getCustomersList = async (req, res, next) => {
+    const customers = await Customer.findAll()
+    res.render("mixins/customersList", { customers })
+}
+
 exports.getUser = async (req, res, next) => {
     const id = req.query.id
     const username = req.query.username

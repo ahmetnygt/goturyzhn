@@ -61,6 +61,8 @@ router.get('/get-user', erpController.getUser);
 router.get('/get-users-by-branch', erpController.getUsersByBranch);
 router.post('/post-save-user', erpController.postSaveUser);
 
+router.get('/get-customers-list', erpController.getCustomersList);
+
 router.get('/get-transactions-list', erpController.getTransactions);
 router.get('/get-transaction-data', erpController.getTransactionData);
 router.post('/post-add-transaction', erpController.postAddTransaction);
