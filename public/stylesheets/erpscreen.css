@@ -908,16 +908,3 @@ div.moving-close {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
     font-size: .85rem
 }
-
-.customer-blacklist-pop-up {
-    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
-    border-radius: .3rem;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 100;
-    background-color: white;
-    display: none;
-    width: 20rem;
-}
