@@ -1,6 +1,6 @@
-const Sequelize = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = require("../utilities/database")
+const sequelize = require("../utilities/database");
 
 const Customer = sequelize.define("customer", {
     id: {
@@ -40,6 +40,16 @@ const Customer = sequelize.define("customer", {
         type: Sequelize.ENUM("normal", "member"),
         allowNull: false
     },
-})
+    isBlackList: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
+    blackListDescription: {
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+});
 
-module.exports = Customer
+module.exports = Customer;
+
