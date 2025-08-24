@@ -18,7 +18,7 @@ router.get('/get-trips-of-day', erpController.getTripsOfDay);
 router.get('/get-day-trips-list', erpController.getDayTripsList);
 
 router.get('/get-trip', erpController.getTrip);
-router.get('/get-passangers-table', erpController.getTripTable);
+router.get('/get-passengers-table', erpController.getTripTable);
 
 router.get('/get-trip-notes', erpController.getTripNotes);
 router.post('/post-trip-notes', erpController.postTripNotes);

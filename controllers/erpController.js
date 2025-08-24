@@ -164,7 +164,7 @@ exports.getTripTable = async (req, res, next) => {
         newTicketArray.push(ticket)
     }
 
-    res.render("mixins/passangersTable", { tickets: newTicketArray })
+    res.render("mixins/passengersTable", { tickets: newTicketArray })
 }
 
 exports.getTripNotes = async (req, res, next) => {
@@ -566,7 +566,7 @@ exports.getSearchTable = async (req, res, next) => {
 
         newTicketArray.push(ticket)
     }
-    res.render("mixins/passangersTable", { tickets: newTicketArray })
+    res.render("mixins/passengersTable", { tickets: newTicketArray })
 }
 
 exports.getBusPlanPanel = async (req, res, next) => {
