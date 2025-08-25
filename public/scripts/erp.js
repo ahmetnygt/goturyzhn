@@ -1374,6 +1374,23 @@ $(".trip-nav").on("click", async e => {
 
 let pricePlaces = [];
 
+const resetPriceAddInputs = () => {
+    const popup = $(".price-add-popup");
+    popup.find("input").val("");
+    popup.find("select").val("");
+};
+
+const populatePriceAddPlaces = () => {
+    const fromSelect = $(".price-add-popup .price-add-from");
+    const toSelect = $(".price-add-popup .price-add-to");
+    fromSelect.empty().append('<option value="" selected></option>');
+    toSelect.empty().append('<option value="" selected></option>');
+    pricePlaces.forEach(pl => {
+        fromSelect.append(`<option value="${pl.id}">${pl.title}</option>`);
+        toSelect.append(`<option value="${pl.id}">${pl.title}</option>`);
+    });
+};
+
 $(".price-nav").on("click", async e => {
     await $.ajax({
         url: "erp/get-prices-list",
@@ -1472,6 +1489,63 @@ $(".price-save").on("click", async function () {
         }
     });
 });
+
+
+$(".add-price").on("click", () => {
+    populatePriceAddPlaces();
+    resetPriceAddInputs();
+    flatpickr($(".price-add-popup .date-picker").toArray(), { dateFormat: "Y-m-d" });
+    $(".price-add-popup").css("display", "block");
+});
+
+$(".price-add-close").on("click", () => {
+    $(".price-add-popup").css("display", "none");
+});
+
+const savePriceAdd = async closeAfterSave => {
+    const popup = $(".price-add-popup");
+    const toNullIfNotPositive = val => {
+        const num = Number(val);
+        return Number.isFinite(num) && num > 0 ? num : null;
+    };
+    const data = {
+        fromPlaceId: popup.find(".price-add-from").val(),
+        toPlaceId: popup.find(".price-add-to").val(),
+        price1: toNullIfNotPositive(popup.find(".price-add-price1").val()),
+        price2: toNullIfNotPositive(popup.find(".price-add-price2").val()),
+        price3: toNullIfNotPositive(popup.find(".price-add-price3").val()),
+        webPrice: toNullIfNotPositive(popup.find(".price-add-webPrice").val()),
+        singleSeatPrice1: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice1").val()),
+        singleSeatPrice2: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice2").val()),
+        singleSeatPrice3: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice3").val()),
+        singleSeatWebPrice: toNullIfNotPositive(popup.find(".price-add-singleSeatWebPrice").val()),
+        seatLimit: popup.find(".price-add-seatLimit").val(),
+        hourLimit: popup.find(".price-add-hourLimit").val(),
+        validFrom: popup.find(".price-add-validFrom").val(),
+        validUntil: popup.find(".price-add-validUntil").val()
+    };
+
+    await $.ajax({
+        url: "erp/post-add-price",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(data),
+        success: function () {
+            $(".price-nav").click();
+            if (closeAfterSave) {
+                popup.css("display", "none");
+            } else {
+                resetPriceAddInputs();
+            }
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+};
+
+$(".price-add-save").on("click", () => savePriceAdd(true));
+$(".price-add-save-continue").on("click", () => savePriceAdd(false));
 
 
 $(".trip-close").on("click", e => {

@@ -713,6 +713,54 @@ exports.postSavePrices = async (req, res, next) => {
     }
 }
 
+exports.postAddPrice = async (req, res, next) => {
+    try {
+        const {
+            fromPlaceId,
+            toPlaceId,
+            price1,
+            price2,
+            price3,
+            webPrice,
+            singleSeatPrice1,
+            singleSeatPrice2,
+            singleSeatPrice3,
+            singleSeatWebPrice,
+            seatLimit,
+            hourLimit,
+            validFrom,
+            validUntil
+        } = req.body;
+
+        const toNullIfNotPositive = val => {
+            const num = Number(val);
+            return Number.isFinite(num) && num > 0 ? num : null;
+        };
+
+        await Price.create({
+            fromPlaceId,
+            toPlaceId,
+            price1: toNullIfNotPositive(price1),
+            price2: toNullIfNotPositive(price2),
+            price3: toNullIfNotPositive(price3),
+            webPrice: toNullIfNotPositive(webPrice),
+            singleSeatPrice1: toNullIfNotPositive(singleSeatPrice1),
+            singleSeatPrice2: toNullIfNotPositive(singleSeatPrice2),
+            singleSeatPrice3: toNullIfNotPositive(singleSeatPrice3),
+            singleSeatWebPrice: toNullIfNotPositive(singleSeatWebPrice),
+            seatLimit,
+            hourLimit: Number.isFinite(Number(hourLimit)) ? Number(hourLimit) : null,
+            validFrom: validFrom ? `${validFrom}T00:00` : null,
+            validUntil: validUntil ? `${validUntil}T00:00` : null
+        });
+
+        res.json({ message: "Kaydedildi" });
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+}
+
 exports.getBus = async (req, res, next) => {
     const id = req.query.id
     const licensePlate = req.query.licensePlate
