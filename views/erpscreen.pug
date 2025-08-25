@@ -401,50 +401,35 @@ block content
         .price-add-close
             i.fa-solid.fa-x
         .p-3.d-flex.flex-column.gap-3
-            .input-group
-                span.input-group-text Nereden
-                select.price-add-from.form-select()
-                    option(value="" selected)
-            .input-group
-                span.input-group-text Nereye
-                select.price-add-to.form-select()
-                    option(value="" selected)
-            .input-group
-                span.input-group-text Fiyat1
-                input.price-add-price1.form-control(type="text")
-            .input-group
-                span.input-group-text Fiyat2
-                input.price-add-price2.form-control(type="text")
-            .input-group
-                span.input-group-text Fiyat3
-                input.price-add-price3.form-control(type="text")
-            .input-group
-                span.input-group-text Webfiyat
-                input.price-add-webPrice.form-control(type="text")
-            .input-group
-                span.input-group-text Tekli1
-                input.price-add-singleSeatPrice1.form-control(type="text")
-            .input-group
-                span.input-group-text Tekli2
-                input.price-add-singleSeatPrice2.form-control(type="text")
-            .input-group
-                span.input-group-text Tekli3
-                input.price-add-singleSeatPrice3.form-control(type="text")
-            .input-group
-                span.input-group-text Webtekli
-                input.price-add-singleSeatWebPrice.form-control(type="text")
-            .input-group
-                span.input-group-text Koltuklimit
-                input.price-add-seatLimit.form-control(type="text")
-            .input-group
-                span.input-group-text Saatlimit
-                input.price-add-hourLimit.form-control(type="number")
-            .input-group
-                span.input-group-text Nezamandan
-                input.price-add-validFrom.form-control.date-picker(type="text")
-            .input-group
-                span.input-group-text Nezamana
-                input.price-add-validUntil.form-control.date-picker(type="text")
+            .d-flex.btn.btn-outline-primary.price-add-row
+                .col
+                    p.text-center.m-0(data-value="") Nereden
+                .col
+                    p.text-center.m-0(data-value="") Nereye
+                .col
+                    p.text-center.m-0(data-value="") Fiyat1
+                .col
+                    p.text-center.m-0(data-value="") Fiyat2
+                .col
+                    p.text-center.m-0(data-value="") Fiyat3
+                .col
+                    p.text-center.m-0(data-value="") Webfiyat
+                .col
+                    p.text-center.m-0(data-value="") Tekli1
+                .col
+                    p.text-center.m-0(data-value="") Tekli2
+                .col
+                    p.text-center.m-0(data-value="") Tekli3
+                .col
+                    p.text-center.m-0(data-value="") Webtekli
+                .col
+                    p.text-center.m-0(data-value="") Koltuklimit
+                .col
+                    p.text-center.m-0(data-value="") Saatlimit
+                .col
+                    p.text-center.m-0(data-value="") Nezamandan
+                .col
+                    p.text-center.m-0(data-value="") Nezamana
         .p-3.d-flex.gap-3.justify-content-end
             button.btn.btn-outline-primary.price-add-save KAYDET
             button.btn.btn-outline-primary.price-add-save-continue KAYDET VE DEVAM ET

@@ -1374,20 +1374,27 @@ $(".trip-nav").on("click", async e => {
 
 let pricePlaces = [];
 
-const resetPriceAddInputs = () => {
-    const popup = $(".price-add-popup");
-    popup.find("input").val("");
-    popup.find("select").val("");
-};
-
-const populatePriceAddPlaces = () => {
-    const fromSelect = $(".price-add-popup .price-add-from");
-    const toSelect = $(".price-add-popup .price-add-to");
-    fromSelect.empty().append('<option value="" selected></option>');
-    toSelect.empty().append('<option value="" selected></option>');
-    pricePlaces.forEach(pl => {
-        fromSelect.append(`<option value="${pl.id}">${pl.title}</option>`);
-        toSelect.append(`<option value="${pl.id}">${pl.title}</option>`);
+const resetPriceAddRow = () => {
+    const row = $(".price-add-row");
+    const labels = [
+        "Nereden",
+        "Nereye",
+        "Fiyat1",
+        "Fiyat2",
+        "Fiyat3",
+        "Webfiyat",
+        "Tekli1",
+        "Tekli2",
+        "Tekli3",
+        "Webtekli",
+        "Koltuklimit",
+        "Saatlimit",
+        "Nezamandan",
+        "Nezamana"
+    ];
+    row.removeClass("btn-primary price-button-inputs").addClass("btn-outline-primary");
+    row.children(".col").each((i, el) => {
+        $(el).html(`<p class="text-center m-0" data-value="">${labels[i]}</p>`);
     });
 };
 
@@ -1418,7 +1425,7 @@ $(".price-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(document).on("click", ".price-list-nodes .d-flex.btn", function () {
+$(document).on("click", ".price-list-nodes .d-flex.btn, .price-add-row", function () {
     const row = $(this);
     if (row.hasClass("price-button-inputs")) return;
     row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
@@ -1492,9 +1499,7 @@ $(".price-save").on("click", async function () {
 
 
 $(".add-price").on("click", () => {
-    populatePriceAddPlaces();
-    resetPriceAddInputs();
-    flatpickr($(".price-add-popup .date-picker").toArray(), { dateFormat: "Y-m-d" });
+    resetPriceAddRow();
     $(".price-add-popup").css("display", "block");
 });
 
@@ -1504,25 +1509,29 @@ $(".price-add-close").on("click", () => {
 
 const savePriceAdd = async closeAfterSave => {
     const popup = $(".price-add-popup");
+    const row = popup.find(".price-add-row");
+    if (!row.hasClass("price-button-inputs")) row.click();
+    const selects = row.find("select");
+    const inputs = row.find("input");
     const toNullIfNotPositive = val => {
         const num = Number(val);
         return Number.isFinite(num) && num > 0 ? num : null;
     };
     const data = {
-        fromPlaceId: popup.find(".price-add-from").val(),
-        toPlaceId: popup.find(".price-add-to").val(),
-        price1: toNullIfNotPositive(popup.find(".price-add-price1").val()),
-        price2: toNullIfNotPositive(popup.find(".price-add-price2").val()),
-        price3: toNullIfNotPositive(popup.find(".price-add-price3").val()),
-        webPrice: toNullIfNotPositive(popup.find(".price-add-webPrice").val()),
-        singleSeatPrice1: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice1").val()),
-        singleSeatPrice2: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice2").val()),
-        singleSeatPrice3: toNullIfNotPositive(popup.find(".price-add-singleSeatPrice3").val()),
-        singleSeatWebPrice: toNullIfNotPositive(popup.find(".price-add-singleSeatWebPrice").val()),
-        seatLimit: popup.find(".price-add-seatLimit").val(),
-        hourLimit: popup.find(".price-add-hourLimit").val(),
-        validFrom: popup.find(".price-add-validFrom").val(),
-        validUntil: popup.find(".price-add-validUntil").val()
+        fromPlaceId: selects.eq(0).val(),
+        toPlaceId: selects.eq(1).val(),
+        price1: toNullIfNotPositive(inputs.eq(0).val()),
+        price2: toNullIfNotPositive(inputs.eq(1).val()),
+        price3: toNullIfNotPositive(inputs.eq(2).val()),
+        webPrice: toNullIfNotPositive(inputs.eq(3).val()),
+        singleSeatPrice1: toNullIfNotPositive(inputs.eq(4).val()),
+        singleSeatPrice2: toNullIfNotPositive(inputs.eq(5).val()),
+        singleSeatPrice3: toNullIfNotPositive(inputs.eq(6).val()),
+        singleSeatWebPrice: toNullIfNotPositive(inputs.eq(7).val()),
+        seatLimit: inputs.eq(8).val(),
+        hourLimit: inputs.eq(9).val(),
+        validFrom: inputs.eq(10).val(),
+        validUntil: inputs.eq(11).val()
     };
 
     await $.ajax({
@@ -1534,9 +1543,8 @@ const savePriceAdd = async closeAfterSave => {
             $(".price-nav").click();
             if (closeAfterSave) {
                 popup.css("display", "none");
-            } else {
-                resetPriceAddInputs();
             }
+            resetPriceAddRow();
         },
         error: function (xhr, status, error) {
             console.log(error);
