@@ -3,25 +3,29 @@
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
-            button.ticket-op-button(type="button" data-gender="m" data-action="sell" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
+            if rs
+                button.ticket-op-button(type="button" data-gender="m" data-action="sell" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
 .ticket-op
     p ERKEK REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
-            button.ticket-op-button(type="button" data-gender="m" data-action="reservation" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
+            if rs
+                button.ticket-op-button(type="button" data-gender="m" data-action="reservation" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
 .ticket-op
     p KADIN SATIŞ
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
-            button.ticket-op-button(type="button" data-gender="f" data-action="sell" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
+            if rs
+                button.ticket-op-button(type="button" data-gender="f" data-action="sell" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
 .ticket-op
     p KADIN REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
-            button.ticket-op-button(type="button" data-gender="f" data-action="reservation" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
+            if rs
+                button.ticket-op-button(type="button" data-gender="f" data-action="reservation" data-route-stop=rs.title data-place-id=rs.placeId) #{rs.title}
 .ticket-op
     p DİĞER İŞLEMLER
     i.fa-solid.fa-caret-right

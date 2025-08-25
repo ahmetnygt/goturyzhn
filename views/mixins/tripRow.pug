@@ -1,5 +1,5 @@
 each t in trips
-    .tripRow(data-time=t.time data-date=t.date data-tripid=t.id)
+    .tripRow(class=t.id==tripId?"selected":"" data-time=t.time data-date=t.date data-tripid=t.id)
         div 
             p #{t.dateString}
         div 

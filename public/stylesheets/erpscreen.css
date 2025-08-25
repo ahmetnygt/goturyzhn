@@ -2,6 +2,7 @@ html,
 body {
     height: 100%;
     width: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -699,6 +700,12 @@ div.moving-close {
     cursor: pointer;
 }
 
+.tripRow.selected {
+    background-color: #2660ff;
+    color: white;
+}
+
+
 .tripRow:hover {
     background-color: #f0f0f0;
 }
@@ -709,6 +716,10 @@ div.moving-close {
 
 .tripRow div {
     border-right: 1px solid #7d7d7d;
+}
+
+.tripRow.selected div {
+    border-color: white;
 }
 
 .tripRow div:last-child {
@@ -939,6 +950,20 @@ div.moving-close {
 .seat.m.reservation {
     background-color: rgb(41 134 204 / 30%);
     border-color: #2164974d;
+    color: #216396 !important;
+}
+
+.seat.before {
+    filter: grayscale(1);
+}
+
+.seat.f.ahead {
+    background-color: transparent;
+    color: #920256 !important;
+}
+
+.seat.m.ahead {
+    background-color: transparent;
     color: #216396 !important;
 }
 

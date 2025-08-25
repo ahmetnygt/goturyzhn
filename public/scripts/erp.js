@@ -2,12 +2,13 @@ let selectedSeats = []
 let selectedTakenSeats = []
 let currentTripDate;
 let currentTripTime;
+let currentTripId;
+let currentPlace = "17000";
+let currentPlaceStr = "ÇANAKKALE";
 let fromId;
 let toId;
 let fromStr;
 let toStr;
-let currentTripId;
-let currentPlace = "17000";
 
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
@@ -34,7 +35,7 @@ async function loadTrip(date, time, tripId) {
             await $.ajax({
                 url: "erp/get-ticketops-popup",
                 type: "GET",
-                data: { date: date, time: time, tripId },
+                data: { date: date, time: time, tripId, placeId: currentPlace },
                 success: function (response) {
                     $(".ticket-ops-pop-up").html(response)
                 },
@@ -117,12 +118,18 @@ async function loadTrip(date, time, tripId) {
                 const button = e.currentTarget
                 const action = e.currentTarget.dataset.action
                 const seat = currentSeat[0].dataset.seatNumber
+                const fromId = currentPlace
+                const toId = button.dataset.placeId
+
                 $(".ticket-ops-pop-up").hide()
                 await $.ajax({
                     url: "erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: currentPlace, toId: button.dataset.placeId },
+                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: fromId, toId: toId },
                     success: function (response) {
+                        $(".ticket-info-pop-up_from").html(currentPlaceStr.toLocaleUpperCase())
+                        $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
+
                         $(".ticket-row").remove()
                         $(".ticket-info").remove()
                         $(".ticket-button-action").attr("data-action", action)
@@ -268,7 +275,7 @@ async function loadTripsList(dateStr) {
     await $.ajax({
         url: "erp/get-day-trips-list",
         type: "GET",
-        data: { date: dateStr, placeId: currentPlace },
+        data: { date: dateStr, placeId: currentPlace, tripId: currentTripId },
         success: function (response) {
             $(".tripRows").html(response)
             $(".tripRow").on("click", async e => {
@@ -384,25 +391,26 @@ $(document).on("click", () => {
 });
 
 $("#currentPlace").on("change", async (e) => {
-    await $.ajax({
+    const $sel = $(e.currentTarget);
+    currentPlace = $sel.val();                               // seçilen value
+    currentPlaceStr = $sel.find("option:selected").text().trim(); // seçilen option'un text'i
+
+    const response = await $.ajax({
         url: "erp/get-day-trips-list",
         type: "GET",
-        data: { date: currentTripDate, placeId: e.currentTarget.value },
-        success: function (response) {
-            $(".tripRows").html(response)
-            currentPlace = e.currentTarget.value
-            $(".tripRow").on("click", async e => {
-                const date = e.currentTarget.dataset.date
-                const time = e.currentTarget.dataset.time
-                const tripId = e.currentTarget.dataset.tripid
-                loadTrip(date, time, tripId)
-            })
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
+        data: { date: currentTripDate, placeId: currentPlace }
     });
-})
+
+    $(".tripRows").html(response);
+
+    $(".tripRow").on("click", async e => {
+        const date = e.currentTarget.dataset.date;
+        const time = e.currentTarget.dataset.time;
+        const tripId = e.currentTarget.dataset.tripid;
+        loadTrip(date, time, tripId);
+    });
+});
+
 
 // Bilet kesim ekranındaki onaylama tuşu
 $(".ticket-button-action").on("click", async e => {

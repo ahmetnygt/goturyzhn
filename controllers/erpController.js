@@ -104,6 +104,7 @@ exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
         const placeId = req.query.placeId;
+        const tripId = req.query.tripId
 
         if (!date) {
             return res.status(400).json({ error: "Tarih bilgisi eksik." });
@@ -118,7 +119,7 @@ exports.getDayTripsList = async (req, res, next) => {
         const routeStopsByPlace = await RouteStop.findAll({ where: { placeId: placeId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
-        const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } } });
+        var trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } } });
 
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
@@ -127,13 +128,18 @@ exports.getDayTripsList = async (req, res, next) => {
             const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId } })
             const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
 
-            for (let j = 0; j < routeStops.length; j++) {
-                const rs = routeStops[j];
+            if (routeStopOrder == routeStops.length - 1) {
+                trips = trips.filter(trip => trip !== t)
+            }
+            else {
+                for (let j = 0; j < routeStops.length; j++) {
+                    const rs = routeStops[j];
 
-                t.modifiedTime = addTime(t.modifiedTime, rs.duration)
+                    t.modifiedTime = addTime(t.modifiedTime, rs.duration)
 
-                if (rs.order == routeStopOrder)
-                    break
+                    if (rs.order == routeStopOrder)
+                        break
+                }
             }
         }
 
@@ -151,7 +157,7 @@ exports.getDayTripsList = async (req, res, next) => {
         });
 
         // res.json(tripArray);
-        res.render("mixins/tripRow", { trips: tripArray })
+        res.render("mixins/tripRow", { trips: tripArray, tripId })
     } catch (err) {
         console.error("getDayTripsList error:", err);
         res.status(500).json({ error: "Sunucu hatası." });
@@ -171,10 +177,30 @@ exports.getTrip = async (req, res, next) => {
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
 
+        const currentPlaceOrder = routeStops.find(rs => rs.placeId == place).order
+
+        console.log(place)
+
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         let newTicketArray = []
         for (let i = 0; i < tickets.length; i++) {
             const ticket = tickets[i];
+            const ticketPlaceOrder = routeStops.find(rs => rs.placeId == ticket.fromRouteStopId).order
+
+            // console.log(ticketPlaceOrder)
+            // console.log(currentPlaceOrder)
+
+            if (ticketPlaceOrder == currentPlaceOrder) {
+                ticket.placeOrder = "even"
+            }
+            else if (ticketPlaceOrder > currentPlaceOrder) {
+                ticket.placeOrder = "ahead"
+                ticket.createdAt = null
+            }
+            else if (ticketPlaceOrder < currentPlaceOrder) {
+                ticket.placeOrder = "before"
+            }
+
             ticket.from = await places.find(p => p.id == ticket.fromRouteStopId).title
             ticket.to = await places.find(p => p.id == ticket.toRouteStopId).title
 
@@ -278,19 +304,27 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
     const tripId = req.query.tripId
+    const placeId = req.query.placeId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+
 
     let routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
     let places = await Place.findAll()
 
+    const placeOrder = routeStops.find(rs => rs.placeId == placeId).order
+
     let newRouteStopsArray = []
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
-        rs.title = places.find(p => p.id == rs.placeId).title
+        if (placeOrder < rs.order) {
+            rs.title = places.find(p => p.id == rs.placeId).title
 
-        newRouteStopsArray[rs.order] = rs
+            newRouteStopsArray[rs.order] = rs
+        }
     }
+
+    console.log(newRouteStopsArray)
 
     res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray })
 }
