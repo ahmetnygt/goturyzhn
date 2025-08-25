@@ -96,7 +96,7 @@ async function loadTrip(date, time) {
                 await $.ajax({
                     url: "erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats },
+                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId, toId: button.dataset.placeId },
                     success: function (response) {
                         $(".ticket-row").remove()
                         $(".ticket-info").remove()
