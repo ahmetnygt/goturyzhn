@@ -122,6 +122,7 @@ exports.getDayTripsList = async (req, res, next) => {
 
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
+            t.modifiedTime = t.time
 
             const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId } })
             const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
@@ -129,7 +130,7 @@ exports.getDayTripsList = async (req, res, next) => {
             for (let j = 0; j < routeStops.length; j++) {
                 const rs = routeStops[j];
 
-                t.time = addTime(t.time, rs.duration)
+                t.modifiedTime = addTime(t.modifiedTime, rs.duration)
 
                 if (rs.order == routeStopOrder)
                     break
@@ -139,7 +140,7 @@ exports.getDayTripsList = async (req, res, next) => {
 
         const tripArray = trips.map(trip => {
             const tripDate = new Date(trip.date);
-            const [hours, minutes] = trip.time.split(":");
+            const [hours, minutes] = trip.modifiedTime.split(":");
             const pad = (num) => String(num).padStart(2, "0");
 
             return {
@@ -179,8 +180,10 @@ exports.getTrip = async (req, res, next) => {
 
             newTicketArray[ticket.seatNo] = ticket
         }
+        const fromStr = places.find(p => p.id == place).title
+        const toStr = places.find(p => p.id == routeStops[routeStops.length - 1].placeId).title
 
-        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: routeStops[0].placeId, toId: routeStops[routeStops.length - 1].placeId })
+        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: place, toId: routeStops[routeStops.length - 1].placeId, fromStr, toStr })
     }
     else {
         res.status(404).json({ error: "Sefer bulunamadı." })
@@ -210,12 +213,9 @@ exports.getTripTable = async (req, res, next) => {
 }
 
 exports.getTripNotes = async (req, res, next) => {
-    const tripDate = req.query.date
-    const tripTime = req.query.time
+    const tripId = req.query.tripId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
-
-    const notes = await TripNote.findAll({ where: { tripId: trip.id } })
+    const notes = await TripNote.findAll({ where: { tripId: tripId } })
 
     res.render("mixins/tripNotes", { notes: notes })
 }
@@ -259,8 +259,14 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
+        let rsTime = trip.time
+        for (let j = 0; j < routeStops.length; j++) {
+            const rs_ = routeStops[j];
+            rsTime = addTime(rsTime, rs_.duration)
+            if (rs_.order == rs.order)
+                break
+        }
 
-        const rsTime = addTime(trip.time, rs.duration)
         rs.timeStamp = rsTime.endsWith(":00") ? rsTime.slice(0, -3) : rsTime
         rs.placeStr = places.find(p => p.id == rs.placeId).title
     }
@@ -271,8 +277,9 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
+    const tripId = req.query.tripId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
+    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
 
     let routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
     let places = await Place.findAll()
@@ -365,7 +372,7 @@ exports.getTicketRow = async (req, res, next) => {
         const gender = seats.map(s => req.query.gender)
         const price = await Price.findOne({ where: { fromPlaceId: fromId, toPlaceId: toId } })
 
-        res.render("mixins/ticketRow", { gender, seats, price })
+        res.render("mixins/ticketRow", { gender, seats, price: price ? price : 0 })
     }
 
 }

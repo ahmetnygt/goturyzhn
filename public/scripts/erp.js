@@ -4,6 +4,8 @@ let currentTripDate;
 let currentTripTime;
 let fromId;
 let toId;
+let fromStr;
+let toStr;
 let currentTripId;
 let currentPlace = "17000";
 
@@ -12,12 +14,15 @@ async function loadTrip(date, time, tripId) {
     await $.ajax({
         url: "erp/get-trip",
         type: "GET",
-        data: { date: date, time: time },
+        data: { date: date, time: time, placeId: currentPlace },
         success: async function (response) {
+            console.log(date)
+            console.log(time)
+            console.log(tripId)
             await $.ajax({
                 url: "erp/get-passengers-table",
                 type: "GET",
-                data: { date: date, time: time },
+                data: { date: date, time: time, tripId },
                 success: function (response) {
                     $(".passenger-table").html(response)
                 },
@@ -29,7 +34,7 @@ async function loadTrip(date, time, tripId) {
             await $.ajax({
                 url: "erp/get-ticketops-popup",
                 type: "GET",
-                data: { date: date, time: time },
+                data: { date: date, time: time, tripId },
                 success: function (response) {
                     $(".ticket-ops-pop-up").html(response)
                 },
@@ -41,7 +46,7 @@ async function loadTrip(date, time, tripId) {
             await $.ajax({
                 url: "erp/get-trip-notes",
                 type: "GET",
-                data: { date: date, time: time },
+                data: { date: date, time: time, tripId },
                 success: function (response) {
                     $(".trip-notes").html(response)
                 },
@@ -53,7 +58,7 @@ async function loadTrip(date, time, tripId) {
             await $.ajax({
                 url: "erp/get-route-stops-time-list",
                 type: "GET",
-                data: { date: date, time: time, tripId: 1 },
+                data: { date: date, time: time, tripId: tripId },
                 success: function (response) {
                     $(".stops-times").html(response)
                 },
@@ -70,6 +75,8 @@ async function loadTrip(date, time, tripId) {
 
             fromId = $("#fromId").val()
             toId = $("#toId").val()
+            fromStr = $("#fromStr").val()
+            toStr = $("#toStr").val()
 
             $("#tickets").remove()
             $("#tripDate").remove()
@@ -77,6 +84,11 @@ async function loadTrip(date, time, tripId) {
             $("#tripId").remove()
             $("#fromId").remove()
             $("#toId").remove()
+            $("#fromStr").remove()
+            $("#toStr").remove()
+
+            $(".ticket-info-pop-up_from").html(fromStr.toUpperCase())
+            $(".ticket-info-pop-up_to").html(toStr.toUpperCase())
 
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
@@ -109,7 +121,7 @@ async function loadTrip(date, time, tripId) {
                 await $.ajax({
                     url: "erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId, toId: button.dataset.placeId },
+                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: currentPlace, toId: button.dataset.placeId },
                     success: function (response) {
                         $(".ticket-row").remove()
                         $(".ticket-info").remove()
@@ -247,7 +259,7 @@ async function loadTrip(date, time, tripId) {
 
 // Site ilk açıldığında bugünün seferini yükler
 $(document).ready(function () {
-    loadTrip('2025-05-12', '12:30:00')
+    loadTrip('2025-05-12', '12:30:00', 1)
     loadTripsList("2025-05-12")
 })
 
@@ -262,8 +274,10 @@ async function loadTripsList(dateStr) {
             $(".tripRow").on("click", async e => {
                 const date = e.currentTarget.dataset.date
                 const time = e.currentTarget.dataset.time
+                const tripId = e.currentTarget.dataset.tripid
+                console.log(tripId)
 
-                loadTrip(date, time)
+                loadTrip(date, time, tripId)
             })
         },
         error: function (xhr, status, error) {
@@ -376,11 +390,12 @@ $("#currentPlace").on("change", async (e) => {
         data: { date: currentTripDate, placeId: e.currentTarget.value },
         success: function (response) {
             $(".tripRows").html(response)
+            currentPlace = e.currentTarget.value
             $(".tripRow").on("click", async e => {
                 const date = e.currentTarget.dataset.date
                 const time = e.currentTarget.dataset.time
-
-                // loadTrip(date, time)
+                const tripId = e.currentTarget.dataset.tripid
+                loadTrip(date, time, tripId)
             })
         },
         error: function (xhr, status, error) {
@@ -420,7 +435,7 @@ $(".ticket-button-action").on("click", async e => {
         await $.ajax({
             url: "erp/post-tickets",
             type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId, toId, status: "completed" },
+            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId, status: "completed" },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime)
@@ -459,7 +474,7 @@ $(".ticket-button-action").on("click", async e => {
         await $.ajax({
             url: "erp/post-edit-ticket",
             type: "POST",
-            data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId, toId },
+            data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime)
@@ -497,7 +512,7 @@ $(".ticket-button-action").on("click", async e => {
         await $.ajax({
             url: "erp/post-tickets",
             type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId, toId, status: "reservation" },
+            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId, status: "reservation" },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime)
