@@ -124,6 +124,7 @@ exports.getDayTripsList = async (req, res, next) => {
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
             t.modifiedTime = t.time
+            console.log(t.modifiedTime)
 
             const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId } })
             const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
@@ -142,7 +143,6 @@ exports.getDayTripsList = async (req, res, next) => {
                 }
             }
         }
-
 
         const tripArray = trips.map(trip => {
             const tripDate = new Date(trip.date);

@@ -446,7 +446,7 @@ $(".ticket-button-action").on("click", async e => {
             data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId, status: "completed" },
             success: async function (response) {
                 ticketClose()
-                loadTrip(currentTripDate, currentTripTime)
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -485,7 +485,7 @@ $(".ticket-button-action").on("click", async e => {
             data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId },
             success: async function (response) {
                 ticketClose()
-                loadTrip(currentTripDate, currentTripTime)
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -523,7 +523,7 @@ $(".ticket-button-action").on("click", async e => {
             data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentPlace, toId, status: "reservation" },
             success: async function (response) {
                 ticketClose()
-                loadTrip(currentTripDate, currentTripTime)
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -546,7 +546,7 @@ $(".ticket-button-action").on("click", async e => {
                     cancelingSeatPNR = null
                     selectedTakenSeats = []
                     $(".cancel-action-button").html(`BİLET SEÇİN`)
-                    loadTrip(currentTripDate, currentTripTime)
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
                 }
@@ -569,7 +569,7 @@ $(".ticket-button-action").on("click", async e => {
                     cancelingSeatPNR = null
                     selectedTakenSeats = []
                     $(".cancel-action-button").html(`BİLET SEÇİN`)
-                    loadTrip(currentTripDate, currentTripTime)
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
                 }
@@ -732,7 +732,7 @@ $(".taken-ticket-op").on("click", async e => {
         });
     }
     else if (action == "move") {
-        movingSeatPNR = $(`.seat.seat-${selectedTakenSeat}`).data("pnr")
+        movingSeatPNR = $(`.seat.seat-${selectedTakenSeats[0]}`).data("pnr")
         isMovingActive = true
         $(".taken-ticket-ops-pop-up").hide()
         $(".moving").css("display", "flex")
@@ -750,7 +750,7 @@ $(".moving-confirm").on("click", async e => {
             moveToTripId = null
             movingSeatPNR = null
             $(".moving").css("display", "none");
-            loadTrip(currentTripDate, currentTripTime)
+            loadTrip(currentTripDate, currentTripTime, currentTripId)
         },
         error: function (xhr, status, error) {
             console.log(error);
