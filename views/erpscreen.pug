@@ -430,7 +430,7 @@ block content
                     p.text-center.m-0 Nezamandan
                 .col
                     p.text-center.m-0 Nezamana
-            .d-flex.btn.btn-primary.price-button-inputs
+            .d-flex.btn.btn-primary.price-button-inputs.price-add-row
                 .col
                     select.price-button-select
                 .col
@@ -454,11 +454,11 @@ block content
                 .col
                     input.price-button-input(type="text" value="")
                 .col
-                    input.price-button-input(type="text" value="")
+                    input.price-button-input.hour-limit(type="number" value="")
                 .col
-                    input.price-button-input(type="text" value="")
+                    input.price-button-input.date-picker(type="text" value="")
                 .col
-                    input.price-button-input(type="text" value="")
+                    input.price-button-input.date-picker(type="text" value="")
         .p-3.d-flex.gap-3.justify-content-end
             button.btn.btn-outline-primary.price-add-save KAYDET
             button.btn.btn-outline-primary.price-add-save-continue KAYDET VE DEVAM ET
