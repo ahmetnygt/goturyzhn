@@ -1418,13 +1418,13 @@ $(document).on("click", ".price-list-nodes .d-flex.btn", function () {
             p.replaceWith(select);
         } else {
             let cls = "price-button-input";
-            if (index === 11) cls += " hour-limit";
+            let type = "text";
+            if (index === 11) { cls += " hour-limit"; type = "number"; }
             if (index === 12 || index === 13) cls += " date-picker";
-            p.replaceWith(`<input class="${cls}" type="text" value="${value ?? ''}">`);
+            p.replaceWith(`<input class="${cls}" type="${type}" value="${value ?? ''}">`);
         }
     });
     flatpickr(row.find(".date-picker").toArray(), { dateFormat: "Y-m-d" });
-    flatpickr(row.find(".hour-limit").toArray(), { enableTime: true, noCalendar: true, dateFormat: "H:i" });
 });
 
 $(".price-save").on("click", async function () {
@@ -1450,7 +1450,7 @@ $(".price-save").on("click", async function () {
             singleSeatPrice3: toNullIfNotPositive(inputs.eq(6).val()),
             singleSeatWebPrice: toNullIfNotPositive(inputs.eq(7).val()),
             seatLimit: inputs.eq(8).val(),
-            hourLimit: inputs.eq(9).val() ? `1970-01-01T${inputs.eq(9).val()}` : null,
+            hourLimit: inputs.eq(9).val() ? Number(inputs.eq(9).val()) : null,
             validFrom: inputs.eq(10).val() ? `${inputs.eq(10).val()}T00:00` : null,
             validUntil: inputs.eq(11).val() ? `${inputs.eq(11).val()}T00:00` : null
         };
