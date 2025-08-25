@@ -179,7 +179,8 @@ div.trip-close,
 div.price-close,
 div.register-close,
 div.add-transaction-close,
-div.transaction-transfer-close {
+div.transaction-transfer-close,
+div.price-add-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -742,6 +743,20 @@ div.moving-close {
 .passenger-info-popup p {
     margin-bottom: .5rem;
     color: white;
+}
+
+.price-add-popup {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 110;
+    width: 40vw;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    overflow: hidden;
+    display: none;
 }
 
 .ticket-info-pop-up {

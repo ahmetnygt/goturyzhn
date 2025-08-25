@@ -359,6 +359,10 @@ block content
             i.fa-solid.fa-x
         .d-flex
             .price-list.col-12.p-3.border-end.h-100
+                .text-end
+                    button.btn.mb-2.add-price
+                        i.fa-solid.fa-plus.me-2
+                        | EKLE
                 .d-flex.mb-2
                     .col
                         p.text-center.m-0 Nereden
@@ -391,6 +395,59 @@ block content
                 .price-list-nodes.d-flex.flex-column.gap-3
         .p-3.d-flex.justify-content-end
             button.btn.btn-outline-primary.price-save KAYDET
+        .price-add-popup
+            .gtr-header
+                span FİYAT EKLE
+            .price-add-close
+                i.fa-solid.fa-x
+            .p-3.d-flex.flex-column.gap-3
+                .input-group
+                    span.input-group-text Nereden
+                    select.price-add-from.form-select()
+                        option(value="" selected)
+                .input-group
+                    span.input-group-text Nereye
+                    select.price-add-to.form-select()
+                        option(value="" selected)
+                .input-group
+                    span.input-group-text Fiyat1
+                    input.price-add-price1.form-control(type="text")
+                .input-group
+                    span.input-group-text Fiyat2
+                    input.price-add-price2.form-control(type="text")
+                .input-group
+                    span.input-group-text Fiyat3
+                    input.price-add-price3.form-control(type="text")
+                .input-group
+                    span.input-group-text Webfiyat
+                    input.price-add-webPrice.form-control(type="text")
+                .input-group
+                    span.input-group-text Tekli1
+                    input.price-add-singleSeatPrice1.form-control(type="text")
+                .input-group
+                    span.input-group-text Tekli2
+                    input.price-add-singleSeatPrice2.form-control(type="text")
+                .input-group
+                    span.input-group-text Tekli3
+                    input.price-add-singleSeatPrice3.form-control(type="text")
+                .input-group
+                    span.input-group-text Webtekli
+                    input.price-add-singleSeatWebPrice.form-control(type="text")
+                .input-group
+                    span.input-group-text Koltuklimit
+                    input.price-add-seatLimit.form-control(type="text")
+                .input-group
+                    span.input-group-text Saatlimit
+                    input.price-add-hourLimit.form-control(type="number")
+                .input-group
+                    span.input-group-text Nezamandan
+                    input.price-add-validFrom.form-control.date-picker(type="text")
+                .input-group
+                    span.input-group-text Nezamana
+                    input.price-add-validUntil.form-control.date-picker(type="text")
+            .p-3.d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.price-add-save KAYDET
+                button.btn.btn-outline-primary.price-add-save-continue KAYDET VE DEVAM ET
 
     .ticket-cancel-refund-open
         .ticket-cancel-refund-open-close
