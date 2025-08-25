@@ -791,6 +791,6 @@ block content
         .col-3.right-panel
             input#calendar(type="hidden" name="")
             select#currentPlace.form-select.form-select-sm
-                //- each rs in routeStops
-                //-     option(value=rs.id) #{rs.title}
+                each p in places
+                    option(value=p.id) #{p.title}
             .tripRows 

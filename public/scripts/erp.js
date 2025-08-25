@@ -5,6 +5,7 @@ let currentTripTime;
 let fromId;
 let toId;
 let currentTripId;
+let currentPlace = "17000";
 
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
@@ -255,7 +256,7 @@ async function loadTripsList(dateStr) {
     await $.ajax({
         url: "erp/get-day-trips-list",
         type: "GET",
-        data: { date: dateStr },
+        data: { date: dateStr, placeId: currentPlace },
         success: function (response) {
             $(".tripRows").html(response)
             $(".tripRow").on("click", async e => {
@@ -367,6 +368,26 @@ $(".ticket-op").on("click", e => {
 $(document).on("click", () => {
     $(".ticket-op ul").css("display", "none");
 });
+
+$("#currentPlace").on("change", async (e) => {
+    await $.ajax({
+        url: "erp/get-day-trips-list",
+        type: "GET",
+        data: { date: currentTripDate, placeId: e.currentTarget.value },
+        success: function (response) {
+            $(".tripRows").html(response)
+            $(".tripRow").on("click", async e => {
+                const date = e.currentTarget.dataset.date
+                const time = e.currentTarget.dataset.time
+
+                // loadTrip(date, time)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+})
 
 // Bilet kesim ekranındaki onaylama tuşu
 $(".ticket-button-action").on("click", async e => {

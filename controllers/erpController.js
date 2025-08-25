@@ -81,9 +81,29 @@ async function getDaysTripsFormatted(date) {
     return { date: ddmm, time: trip.time, title: `${routeStops[0].placeId} -> ${routeStops[routeStops.length - 1].placeId}`, busModel: busModel.title }
 }
 
+function addTime(baseTime, addTime) {
+    // "12:30:00" ve "01:00:00" gibi stringleri alır
+    const [h1, m1, s1] = baseTime.split(":").map(Number);
+    const [h2, m2, s2] = addTime.split(":").map(Number);
+
+    // toplam saniye
+    let totalSeconds = (h1 * 3600 + m1 * 60 + s1) + (h2 * 3600 + m2 * 60 + s2);
+
+    // 24 saati geçerse mod 24 yap
+    totalSeconds = totalSeconds % (24 * 3600);
+
+    // geri formatla
+    const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+    const mm = String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, "0");
+    const ss = String(totalSeconds % 60).padStart(2, "0");
+
+    return `${hh}:${mm}:${ss}`;
+}
+
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
+        const placeId = req.query.placeId;
 
         if (!date) {
             return res.status(400).json({ error: "Tarih bilgisi eksik." });
@@ -95,7 +115,27 @@ exports.getDayTripsList = async (req, res, next) => {
             return res.status(400).json({ error: "Geçersiz tarih formatı." });
         }
 
-        const trips = await Trip.findAll({ where: { date: date } });
+        const routeStopsByPlace = await RouteStop.findAll({ where: { placeId: placeId } })
+        const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
+
+        const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } } });
+
+        for (let i = 0; i < trips.length; i++) {
+            const t = trips[i];
+
+            const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId } })
+            const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+
+            for (let j = 0; j < routeStops.length; j++) {
+                const rs = routeStops[j];
+
+                t.time = addTime(t.time, rs.duration)
+
+                if (rs.order == routeStopOrder)
+                    break
+            }
+        }
+
 
         const tripArray = trips.map(trip => {
             const tripDate = new Date(trip.date);
@@ -120,6 +160,7 @@ exports.getDayTripsList = async (req, res, next) => {
 exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
+    const place = req.query.placeId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
 
@@ -206,26 +247,6 @@ exports.postTripNotes = async (req, res, next) => {
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
-
-function addTime(baseTime, addTime) {
-    // "12:30:00" ve "01:00:00" gibi stringleri alır
-    const [h1, m1, s1] = baseTime.split(":").map(Number);
-    const [h2, m2, s2] = addTime.split(":").map(Number);
-
-    // toplam saniye
-    let totalSeconds = (h1 * 3600 + m1 * 60 + s1) + (h2 * 3600 + m2 * 60 + s2);
-
-    // 24 saati geçerse mod 24 yap
-    totalSeconds = totalSeconds % (24 * 3600);
-
-    // geri formatla
-    const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-    const mm = String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, "0");
-    const ss = String(totalSeconds % 60).padStart(2, "0");
-
-    return `${hh}:${mm}:${ss}`;
-}
-
 
 exports.getRouteStopsTimeList = async (req, res, next) => {
     const date = req.query.date
