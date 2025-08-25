@@ -1376,26 +1376,16 @@ let pricePlaces = [];
 
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
-    const labels = [
-        "Nereden",
-        "Nereye",
-        "Fiyat1",
-        "Fiyat2",
-        "Fiyat3",
-        "Webfiyat",
-        "Tekli1",
-        "Tekli2",
-        "Tekli3",
-        "Webtekli",
-        "Koltuklimit",
-        "Saatlimit",
-        "Nezamandan",
-        "Nezamana"
-    ];
-    row.removeClass("btn-primary price-button-inputs").addClass("btn-outline-primary");
-    row.children(".col").each((i, el) => {
-        $(el).html(`<p class="text-center m-0" data-value="">${labels[i]}</p>`);
+    const selects = row.find("select");
+    selects.each(function () {
+        let options = '<option value="">Seçiniz</option>';
+        pricePlaces.forEach(pl => {
+            options += `<option value=\"${pl.id}\">${pl.title}</option>`;
+        });
+        $(this).html(options);
     });
+    row.find("input").val("");
+    flatpickr(row.find(".date-picker").toArray(), { dateFormat: "Y-m-d" });
 };
 
 $(".price-nav").on("click", async e => {
