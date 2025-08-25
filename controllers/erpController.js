@@ -207,6 +207,46 @@ exports.postTripNotes = async (req, res, next) => {
     }
 };
 
+function addTime(baseTime, addTime) {
+    // "12:30:00" ve "01:00:00" gibi stringleri alır
+    const [h1, m1, s1] = baseTime.split(":").map(Number);
+    const [h2, m2, s2] = addTime.split(":").map(Number);
+
+    // toplam saniye
+    let totalSeconds = (h1 * 3600 + m1 * 60 + s1) + (h2 * 3600 + m2 * 60 + s2);
+
+    // 24 saati geçerse mod 24 yap
+    totalSeconds = totalSeconds % (24 * 3600);
+
+    // geri formatla
+    const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+    const mm = String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, "0");
+    const ss = String(totalSeconds % 60).padStart(2, "0");
+
+    return `${hh}:${mm}:${ss}`;
+}
+
+
+exports.getRouteStopsTimeList = async (req, res, next) => {
+    const date = req.query.date
+    const time = req.query.time
+    const tripId = req.query.tripId
+
+    const trip = await Trip.findOne({ where: { id: tripId, date: date, time: time } })
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
+    const places = await Place.findAll()
+
+    for (let i = 0; i < routeStops.length; i++) {
+        const rs = routeStops[i];
+
+        const rsTime = addTime(trip.time, rs.duration)
+        rs.timeStamp = rsTime.endsWith(":00") ? rsTime.slice(0, -3) : rsTime
+        rs.placeStr = places.find(p => p.id == rs.placeId).title
+    }
+
+    res.render('mixins/routeStopsTimeList', { routeStops });
+}
+
 exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
@@ -648,9 +688,9 @@ exports.getPricesList = async (req, res, next) => {
             ...obj,
             fromTitle: placeMap[p.fromPlaceId] || p.fromPlaceId,
             toTitle: placeMap[p.toPlaceId] || p.toPlaceId,
-            validFrom: obj.validFrom ? obj.validFrom.split('T')[0] : "",
-            validUntil: obj.validUntil ? obj.validUntil.split('T')[0] : "",
-            hourLimit: obj.hourLimit ?? ""
+            validFrom: obj.validFrom ? new Date(obj.validFrom).toLocaleDateString() : "",
+            validUntil: obj.validUntil ? new Date(obj.validUntil).toLocaleDateString() : "",
+            hourLimit: obj.hourLimit ? obj.hourLimit : ""
         };
     });
 
@@ -700,7 +740,7 @@ exports.postSavePrices = async (req, res, next) => {
                     singleSeatPrice2: toNullIfNotPositive(singleSeatPrice2),
                     singleSeatPrice3: toNullIfNotPositive(singleSeatPrice3),
                     singleSeatWebPrice: toNullIfNotPositive(singleSeatWebPrice),
-                    seatLimit,
+                    seatLimit: toNullIfNotPositive(seatLimit),
                     hourLimit: Number.isFinite(Number(hourLimit)) ? Number(hourLimit) : null,
                     validFrom,
                     validUntil
@@ -751,7 +791,7 @@ exports.postAddPrice = async (req, res, next) => {
             singleSeatPrice2: toNullIfNotPositive(singleSeatPrice2),
             singleSeatPrice3: toNullIfNotPositive(singleSeatPrice3),
             singleSeatWebPrice: toNullIfNotPositive(singleSeatWebPrice),
-            seatLimit,
+            seatLimit: toNullIfNotPositive(seatLimit),
             hourLimit: Number.isFinite(Number(hourLimit)) ? Number(hourLimit) : null,
             validFrom: validFrom ? `${validFrom}T00:00` : null,
             validUntil: validUntil ? `${validUntil}T00:00` : null

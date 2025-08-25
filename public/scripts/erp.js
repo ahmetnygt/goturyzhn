@@ -7,7 +7,7 @@ let toId;
 let currentTripId;
 
 // Seferi yükler
-async function loadTrip(date, time) {
+async function loadTrip(date, time, tripId) {
     await $.ajax({
         url: "erp/get-trip",
         type: "GET",
@@ -43,6 +43,18 @@ async function loadTrip(date, time) {
                 data: { date: date, time: time },
                 success: function (response) {
                     $(".trip-notes").html(response)
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            })
+
+            await $.ajax({
+                url: "erp/get-route-stops-time-list",
+                type: "GET",
+                data: { date: date, time: time, tripId: 1 },
+                success: function (response) {
+                    $(".stops-times").html(response)
                 },
                 error: function (xhr, status, error) {
                     console.log(error);
