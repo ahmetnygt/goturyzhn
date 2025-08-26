@@ -175,13 +175,22 @@ async function loadTrip(date, time, tripId) {
 
                     const rect = this.getBoundingClientRect();
                     const left = rect.right + window.scrollX + 10;
-                    const top = rect.top + window.scrollY + 25;
+                    let top = rect.top + window.scrollY + 25;
 
                     $popup.css({
                         left: left + "px",
                         top: top + "px",
                         display: "block"
                     });
+
+                    const popupHeight = $popup.outerHeight();
+                    const viewportBottom = window.scrollY + window.innerHeight;
+
+                    if (top + popupHeight > viewportBottom) {
+                        top = rect.top + window.scrollY - popupHeight - 10;
+                        if (top < 0) top = 0;
+                        $popup.css("top", top + "px");
+                    }
                 }
 
                 else {
