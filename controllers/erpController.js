@@ -119,20 +119,21 @@ exports.getDayTripsList = async (req, res, next) => {
         const routeStopsByPlace = await RouteStop.findAll({ where: { placeId: placeId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
-        var trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } } });
+        const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
+        var newTrips = []
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
             t.modifiedTime = t.time
+            console.log(t.id)
             console.log(t.modifiedTime)
 
-            const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId } })
+            const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
             const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
 
-            if (routeStopOrder == routeStops.length - 1) {
-                trips = trips.filter(trip => trip !== t)
-            }
-            else {
+            if (routeStopOrder !== routeStops.length - 1) {
+                newTrips.push(t)
+
                 for (let j = 0; j < routeStops.length; j++) {
                     const rs = routeStops[j];
 
@@ -144,7 +145,7 @@ exports.getDayTripsList = async (req, res, next) => {
             }
         }
 
-        const tripArray = trips.map(trip => {
+        const tripArray = newTrips.map(trip => {
             const tripDate = new Date(trip.date);
             const [hours, minutes] = trip.modifiedTime.split(":");
             const pad = (num) => String(num).padStart(2, "0");
