@@ -182,7 +182,8 @@ div.register-close,
 div.add-transaction-close,
 div.transaction-transfer-close,
 div.price-add-close,
-div.moving-close {
+div.moving-close,
+div.stops-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -240,6 +241,21 @@ div.moving-close {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     min-width: 40vw;
     min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.stops {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-height: 50vh;
+    width: 55vw;
     overflow: hidden;
     display: none;
 }

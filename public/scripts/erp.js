@@ -1343,6 +1343,16 @@ $(".save-bus").on("click", async e => {
     })
 })
 
+$(".stops-nav").on("click", async e => {
+    $(".stops").css("display", "block")
+    $(".blackout").css("display", "block")
+})
+
+$(".stops-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".stops").css("display", "none")
+})
+
 let editingRouteId = null
 let routeStops = []
 $(".route-nav").on("click", async e => {

@@ -237,6 +237,25 @@ block content
                         .col-auto
                             input.form-control(type="text")
 
+    .stops
+        .stops-close
+            i.fa-solid.fa-x
+        .gtr-header
+            span DURAKLAR
+        .d-flex
+            .col-6.p-3
+                .text-end
+                    button.btn.mb-2.add-stop
+                        i.fa-solid.fa-plus.me-2
+                        | EKLE
+                .d-flex
+                    .col-6
+                        p.text-center.mb-0 Plan Adı
+                    .col-6
+                        p.text-center.mb-0 Açıklama
+                .d-flex.flex-column.gap-3.p-2
+            .col-6.d-flex.gap-3.p-3.align-items-start.stop-panel
+
     .route
         .gtr-header
             span HATLAR
@@ -395,6 +414,7 @@ block content
                 .price-list-nodes.d-flex.flex-column.gap-3
         .p-3.d-flex.justify-content-end
             button.btn.btn-outline-primary.price-save KAYDET
+
     .price-add-popup
         .gtr-header
             span FİYAT EKLE

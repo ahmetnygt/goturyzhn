@@ -12,6 +12,10 @@ const Stop = sequelize.define("stop", {
         type: Sequelize.STRING,
         allowNull: false
     },
+    webTitle: {
+        type: Sequelize.STRING,
+        allowNull: false
+    },
     placeId: {
         type: Sequelize.BIGINT,
         allowNull: false
@@ -19,6 +23,11 @@ const Stop = sequelize.define("stop", {
     UETDS_code: {
         type: Sequelize.BIGINT,
         allowNull: true
+    },
+    isServiceArea: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
     },
     isActive: {
         type: Sequelize.BOOLEAN,
