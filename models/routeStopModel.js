@@ -12,7 +12,7 @@ const RouteStop = sequelize.define("routestop", {
         type: Sequelize.BIGINT,
         allowNull: false
     },
-    placeId: {
+    stopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },

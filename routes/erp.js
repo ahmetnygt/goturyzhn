@@ -13,8 +13,6 @@ router.get('/', auth, erpController.getErp);
 router.get('/login', erpController.getErpLogin);
 router.post('/login', erpController.postErpLogin);
 
-router.get('/get-trips-of-day', erpController.getTripsOfDay);
-
 router.get('/get-day-trips-list', erpController.getDayTripsList);
 
 router.get('/get-trip', erpController.getTrip);

@@ -20,11 +20,11 @@ const Route = sequelize.define("route", {
         type: Sequelize.STRING,
         allowNull: false
     },
-    fromPlaceId: {
+    fromStopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },
-    toPlaceId: {
+    toStopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },

@@ -104,7 +104,7 @@ function addTime(baseTime, addTime) {
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
-        const placeId = req.query.placeId;
+        const stopId = req.query.stopId;
         const tripId = req.query.tripId
 
         if (!date) {
@@ -117,7 +117,7 @@ exports.getDayTripsList = async (req, res, next) => {
             return res.status(400).json({ error: "Geçersiz tarih formatı." });
         }
 
-        const routeStopsByPlace = await RouteStop.findAll({ where: { placeId: placeId } })
+        const routeStopsByPlace = await RouteStop.findAll({ where: { stopId: stopId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
         const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
@@ -130,7 +130,7 @@ exports.getDayTripsList = async (req, res, next) => {
             console.log(t.modifiedTime)
 
             const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
-            const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+            const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
             if (routeStopOrder !== routeStops.length - 1) {
                 newTrips.push(t)
@@ -169,7 +169,7 @@ exports.getDayTripsList = async (req, res, next) => {
 exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
-    const place = req.query.placeId
+    const stopId = req.query.stopId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
 
@@ -177,10 +177,11 @@ exports.getTrip = async (req, res, next) => {
         const captain = await Captain.findOne({ where: { id: trip.captainId } })
         const route = await Route.findOne({ where: { id: trip.routeId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
 
-        const currentPlaceOrder = routeStops.find(rs => rs.placeId == place).order
-        const routeStopOrder = routeStops.find(rs => rs.placeId == place).order
+        const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+        const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         trip.modifiedTime = trip.time
 
@@ -206,31 +207,31 @@ exports.getTrip = async (req, res, next) => {
         let newTicketArray = []
         for (let i = 0; i < tickets.length; i++) {
             const ticket = tickets[i];
-            const ticketPlaceOrder = routeStops.find(rs => rs.placeId == ticket.fromRouteStopId).order
+            const ticketPlaceOrder = routeStops.find(rs => rs.stopId == ticket.fromRouteStopId).order
 
             // console.log(ticketPlaceOrder)
             // console.log(currentPlaceOrder)
 
-            if (ticketPlaceOrder == currentPlaceOrder) {
-                ticket.placeOrder = "even"
+            if (ticketPlaceOrder == currentStopOrder) {
+                ticket.stopOrder = "even"
             }
-            else if (ticketPlaceOrder > currentPlaceOrder) {
-                ticket.placeOrder = "ahead"
+            else if (ticketPlaceOrder > currentStopOrder) {
+                ticket.stopOrder = "ahead"
                 ticket.createdAt = null
             }
-            else if (ticketPlaceOrder < currentPlaceOrder) {
-                ticket.placeOrder = "before"
+            else if (ticketPlaceOrder < currentStopOrder) {
+                ticket.stopOrder = "before"
             }
 
-            ticket.from = await places.find(p => p.id == ticket.fromRouteStopId).title
-            ticket.to = await places.find(p => p.id == ticket.toRouteStopId).title
+            ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
+            ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
 
             newTicketArray[ticket.seatNo] = ticket
         }
-        const fromStr = places.find(p => p.id == place).title
-        const toStr = places.find(p => p.id == routeStops[routeStops.length - 1].placeId).title
+        const fromStr = stops.find(s => s.id == stopId).title
+        const toStr = stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title
 
-        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: place, toId: routeStops[routeStops.length - 1].placeId, fromStr, toStr })
+        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr })
     }
     else {
         res.status(404).json({ error: "Sefer bulunamadı." })
@@ -243,15 +244,15 @@ exports.getTripTable = async (req, res, next) => {
     const tripTime = req.query.time
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
-
-    let places = await Place.findAll()
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
     const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.in]: ["completed", "web", "reservation"] } }, order: [["seatNo", "ASC"]] })
     let newTicketArray = []
     for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i];
-        ticket.from = places.find(p => p.id == ticket.fromRouteStopId).title
-        ticket.to = places.find(p => p.id == ticket.toRouteStopId).title
+        ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
+        ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
 
         newTicketArray.push(ticket)
     }
@@ -301,8 +302,8 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
     const tripId = req.query.tripId
 
     const trip = await Trip.findOne({ where: { id: tripId, date: date, time: time } })
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
-    const places = await Place.findAll()
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
@@ -315,7 +316,7 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
         }
 
         rs.timeStamp = rsTime.endsWith(":00") ? rsTime.slice(0, -3) : rsTime
-        rs.placeStr = places.find(p => p.id == rs.placeId).title
+        rs.stopStr = stops.find(s => s.id == rs.stopId).title
     }
 
     res.render('mixins/routeStopsTimeList', { routeStops });
@@ -325,21 +326,21 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
     const tripId = req.query.tripId
-    const placeId = req.query.placeId
+    const stopId = req.query.stopId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
 
 
-    let routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
-    let places = await Place.findAll()
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
-    const placeOrder = routeStops.find(rs => rs.placeId == placeId).order
+    const placeOrder = routeStops.find(rs => rs.stopId == stopId).order
 
     let newRouteStopsArray = []
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
         if (placeOrder < rs.order) {
-            rs.title = places.find(p => p.id == rs.placeId).title
+            rs.title = stops.find(s => s.id == rs.stopId).title
 
             newRouteStopsArray[rs.order] = rs
         }
@@ -359,9 +360,10 @@ exports.getErp = async (req, res, next) => {
     let branches = await Branch.findAll()
     let user = await FirmUser.findOne({ where: { id: req.session.user.id } })
     let places = await Place.findAll()
+    let stops = await Stop.findAll()
     let buses = await Bus.findAll()
 
-    res.render('erpscreen', { title: 'ERP', busModel, buses, captain, routes, user, firm, places, branches });
+    res.render('erpscreen', { title: 'ERP', busModel, buses, captain, routes, user, firm, places, stops, branches });
 }
 
 exports.getErpLogin = async (req, res, next) => {
@@ -400,12 +402,6 @@ exports.postErpLogin = async (req, res, next) => {
     }
 };
 
-exports.getTripsOfDay = async (req, res, next) => {
-    const date = req.query.date
-    const dayTrip = await getDaysTripsFormatted(date)
-    res.json(dayTrip)
-}
-
 exports.getTicketRow = async (req, res, next) => {
     const isTaken = req.query.isTaken
     if (isTaken) {
@@ -440,6 +436,8 @@ exports.postTickets = async (req, res, next) => {
         const status = req.body.status;
 
         const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } });
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
@@ -507,8 +505,8 @@ exports.postTickets = async (req, res, next) => {
             }
 
             if (ticket.status == "completed") {
-                ticket.fromStr = (places.find(p => p.id == ticket.fromRouteStopId))?.title || "";
-                ticket.toStr = (places.find(p => p.id == ticket.toRouteStopId))?.title || "";
+                ticket.fromStr = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
+                ticket.toStr = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
                 const transaction = new Transaction({
                     userId: req.session.user.id,
@@ -589,13 +587,15 @@ exports.getCancelOpenTicket = async (req, res, next) => {
     const seats = req.query.seats
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
     const foundTickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
     let tickets = []
 
     for (const e of foundTickets) {
         if (e.tripId == trip.id) {
-            e.from = (await places.find(p => p.id == e.fromRouteStopId)).title;
-            e.to = (await places.find(p => p.id == e.toRouteStopId)).title;
+            e.from = (stops.find(s => s.id == e.fromRouteStopId)).title;
+            e.to = (stops.find(s => s.id == e.toRouteStopId)).title;
             tickets.push(e);
         }
     }
@@ -663,6 +663,7 @@ exports.getMoveTicket = async (req, res, next) => {
     const tickets = await Ticket.findAll({ where: { pnr, tripId }, order: [["seatNo", "ASC"]] })
     const trip = await Trip.findOne({ where: { id: tickets[0].tripId } })
 
+
     trip.modifiedTime = trip.time
 
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
@@ -685,12 +686,12 @@ exports.getMoveTicket = async (req, res, next) => {
     trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
     trip.timeString = `${hours}.${minutes}`
 
-    const places = await Place.findAll()
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
     for (let i = 0; i < tickets.length; i++) {
         const t = tickets[i];
 
-        t.fromPlaceString = places.find(p => p.id == t.fromRouteStopId).title
-        t.toPlaceString = places.find(p => p.id == t.toRouteStopId).title
+        t.fromPlaceString = stops.find(s => s.id == t.fromRouteStopId).title
+        t.toPlaceString = stops.find(s => s.id == t.toRouteStopId).title
     }
 
     res.render("mixins/moveTicket", { trip, tickets })
@@ -704,15 +705,15 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         const placeId = req.query.placeId
 
         const trip = await Trip.findOne({ where: { date, time, id: tripId } })
-        const places = await Place.findAll()
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
         const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
 
         let newRouteStopsArray = []
         for (let i = 0; i < routeStops.length; i++) {
             const rs = routeStops[i];
             if (rs.order > routeStopOrder) {
-                rs.setDataValue("placeStr", places.find(p => p.id == rs.placeId)?.title || "");
+                rs.setDataValue("placeStr", stops.find(s => s.id == rs.placeId)?.title || "");
                 newRouteStopsArray.push(rs)
                 console.log(rs.placeStr)
             }
@@ -770,11 +771,14 @@ exports.getSearchTable = async (req, res, next) => {
     }
 
     const tickets = await Ticket.findAll({ where: where, order: [["seatNo", "ASC"]] })
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+
     let newTicketArray = []
     for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i];
-        ticket.from = places.find(p => p.id == ticket.fromRouteStopId).title
-        ticket.to = places.find(p => p.id == ticket.toRouteStopId).title
+        ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
+        ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
 
         newTicketArray.push(ticket)
     }
@@ -782,10 +786,6 @@ exports.getSearchTable = async (req, res, next) => {
 }
 
 exports.getBusPlanPanel = async (req, res, next) => {
-    const id = req.query.id
-
-    console.log("----------------------------------------  " + id)
-
     let busModel = null
 
     if (id) {
@@ -843,26 +843,26 @@ exports.getBusesList = async (req, res, next) => {
 
 exports.getPricesList = async (req, res, next) => {
     const prices = await Price.findAll();
-    const places = await Place.findAll();
+    const stops = await Stop.findAll();
 
-    const placeMap = {};
-    for (const pl of places) {
-        placeMap[pl.id] = pl.title;
+    const stopMap = {};
+    for (const s of stops) {
+        stopMap[s.id] = s.title;
     }
 
     const formatted = prices.map(p => {
         const obj = p.toJSON();
         return {
             ...obj,
-            fromTitle: placeMap[p.fromPlaceId] || p.fromPlaceId,
-            toTitle: placeMap[p.toPlaceId] || p.toPlaceId,
+            fromTitle: stopMap[p.fromStopId] || p.fromStopId,
+            toTitle: stopMap[p.toStopId] || p.toStopId,
             validFrom: obj.validFrom ? new Date(obj.validFrom).toLocaleDateString() : "",
             validUntil: obj.validUntil ? new Date(obj.validUntil).toLocaleDateString() : "",
             hourLimit: obj.hourLimit ? obj.hourLimit : ""
         };
     });
 
-    res.render("mixins/pricesList", { prices: formatted, places });
+    res.render("mixins/pricesList", { prices: formatted, stops });
 }
 
 exports.postSavePrices = async (req, res, next) => {
@@ -880,8 +880,8 @@ exports.postSavePrices = async (req, res, next) => {
         for (const price of prices) {
             const {
                 id,
-                fromPlaceId,
-                toPlaceId,
+                fromStopId,
+                toStopId,
                 price1,
                 price2,
                 price3,
@@ -898,8 +898,8 @@ exports.postSavePrices = async (req, res, next) => {
 
             await Price.update(
                 {
-                    fromPlaceId,
-                    toPlaceId,
+                    fromStopId,
+                    toStopId,
                     price1: toNullIfNotPositive(price1),
                     price2: toNullIfNotPositive(price2),
                     price3: toNullIfNotPositive(price3),
@@ -927,8 +927,8 @@ exports.postSavePrices = async (req, res, next) => {
 exports.postAddPrice = async (req, res, next) => {
     try {
         const {
-            fromPlaceId,
-            toPlaceId,
+            fromStopId,
+            toStopId,
             price1,
             price2,
             price3,
@@ -949,8 +949,8 @@ exports.postAddPrice = async (req, res, next) => {
         };
 
         await Price.create({
-            fromPlaceId,
-            toPlaceId,
+            fromStopId,
+            toStopId,
             price1: toNullIfNotPositive(price1),
             price2: toNullIfNotPositive(price2),
             price3: toNullIfNotPositive(price3),
@@ -1038,7 +1038,7 @@ exports.postSaveStop = async (req, res, next) => {
             {
                 id,
                 title,
-                webTitle,
+                webTitle: webTitle ? webTitle : title,
                 placeId,
                 UETDS_code,
                 isServiceArea: isServiceArea === 'true' || isServiceArea === true,
@@ -1060,11 +1060,12 @@ exports.postSaveStop = async (req, res, next) => {
 
 exports.getRoutesList = async (req, res, next) => {
     const routes = await Route.findAll()
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [routes.flatMap(route => [route.fromStopId, route.toStopId])] } } })
 
     for (let i = 0; i < routes.length; i++) {
         const r = routes[i];
-        r.fromTitle = await places.find(p => p.id == r.fromPlaceId).title;
-        r.toTitle = await places.find(p => p.id == r.toPlaceId).title;
+        r.fromTitle = stops.find(p => p.id == r.fromStopId).title;
+        r.toTitle = stops.find(p => p.id == r.toStopId).title;
     }
 
     res.render("mixins/routesList", { routes })
@@ -1080,14 +1081,15 @@ exports.getRoute = async (req, res, next) => {
 }
 
 exports.getRouteStop = async (req, res, next) => {
-    const { placeId, duration, isFirst } = req.query
+    const { stopId, duration, isFirst } = req.query
 
     let routeStop = {};
 
     routeStop.isFirst = isFirst
     routeStop.duration = duration
-    routeStop.placeId = placeId
-    routeStop.place = await places.find(p => p.id == placeId).title
+    routeStop.stopId = stopId
+    const stop = await Stop.findOne({ where: { id: stopId } })
+    routeStop.stop = stop.title
 
     res.render("mixins/routeStop", { routeStop })
 }
@@ -1096,11 +1098,12 @@ exports.getRouteStopsList = async (req, res, next) => {
     const { id } = req.query
 
     const routeStops = await RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]] });
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const routeStop = routeStops[i];
         routeStop.isFirst = routeStop.order == 0
-        routeStop.place = await places.find(p => p.id == routeStop.placeId).title
+        routeStop.stop = stops.find(s => s.id == routeStop.stopId).title
     }
 
     res.render("mixins/routeStopsList", { routeStops })
@@ -1122,8 +1125,8 @@ exports.postSaveRoute = async (req, res, next) => {
                 routeCode,
                 description: routeDescription,
                 title: routeTitle,
-                fromPlaceId: routeFrom,
-                toPlaceId: routeTo,
+                fromStopId: routeFrom,
+                toStopId: routeTo,
             },
             { returning: true }
         );
@@ -1133,7 +1136,7 @@ exports.postSaveRoute = async (req, res, next) => {
 
             await RouteStop.create({
                 routeId: route.id,
-                placeId: rs.placeId,
+                stopId: rs.stopId,
                 order: i,
                 duration: rs.duration
             })
@@ -1175,16 +1178,19 @@ exports.postSaveTrip = async (req, res, next) => {
             return res.status(404).json({ error: "Hat bulunamadı" });
         }
 
+        const routeStops = await RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+
         const start = new Date(firstDate);
         const end = new Date(lastDate);
 
         const diffTime = end.getTime() - start.getTime();
         let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // gün farkı + dahil
 
-        const fromPlace = places.find(p => p.id == route.fromPlaceId);
-        const toPlace = places.find(p => p.id == route.toPlaceId);
+        const fromStop = stops.find(s => s.id == route.fromStopId);
+        const toStop = stops.find(s => s.id == route.toStopId);
 
-        if (!fromPlace || !toPlace) {
+        if (!fromStop || !toStop) {
             return res.status(400).json({ error: "Yer bilgisi bulunamadı" });
         }
 
@@ -1200,8 +1206,8 @@ exports.postSaveTrip = async (req, res, next) => {
                 busId: busId,
                 date: tripDate.toISOString().split("T")[0], // YYYY-MM-DD
                 time: departureTime,
-                fromPlaceString: fromPlace.title,
-                toPlaceString: toPlace.title
+                fromPlaceString: fromStop.title,
+                toPlaceString: toStop.title
             });
         }
 
@@ -1217,10 +1223,11 @@ exports.postSaveTrip = async (req, res, next) => {
 
 exports.getBranchesList = async (req, res, next) => {
     const branches = await Branch.findAll()
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(branches.map(b => b.stopId))] } } })
 
     for (let i = 0; i < branches.length; i++) {
         const b = branches[i];
-        b.placeStr = await places.find(p => p.id == b.placeId).title;
+        b.placeStr = stops.find(s => s.id == b.stopId).title;
     }
 
     if (req.query.onlyData) {
@@ -1246,13 +1253,13 @@ exports.postSaveBranch = async (req, res, next) => {
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, isActive, isMainBranch, title, place, mainBranch } = data;
+        const { id, isActive, isMainBranch, title, stop, mainBranch } = data;
 
         const [branch, created] = await Branch.upsert(
             {
                 id,
                 title,
-                placeId: place,
+                stopId: stop,
                 mainBranchId: mainBranch,
                 isMainBranch,
                 isActive,

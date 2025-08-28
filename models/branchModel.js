@@ -12,7 +12,7 @@ const Branch = sequelize.define("branch", {
         type: Sequelize.STRING,
         allowNull: false
     },
-    placeId: {
+    stopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },

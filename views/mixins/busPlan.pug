@@ -26,7 +26,7 @@ p.text-center #{route.routeCode}
             -}
             -   else{
             -       seatNumber++
-                .seat(class=`${tickets[seatNumber]?tickets[seatNumber].gender:""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber} ${tickets[seatNumber]?tickets[seatNumber].placeOrder:""}` 
+                .seat(class=`${tickets[seatNumber]?tickets[seatNumber].gender:""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber} ${tickets[seatNumber]?tickets[seatNumber].stopOrder:""}` 
                     data-seat-number=seatNumber 
                     data-group-id=tickets[seatNumber]?tickets[seatNumber].ticketGroupId:"" 
                     data-pnr=tickets[seatNumber]?tickets[seatNumber].pnr:"" 

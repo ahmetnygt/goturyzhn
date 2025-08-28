@@ -824,7 +824,7 @@ block content
 
         .col-3.right-panel
             input#calendar(type="hidden" name="")
-            select#currentPlace.form-select.form-select-sm
-                each p in places
-                    option(value=p.id) #{p.title}
+            select#currentStop.form-select.form-select-sm
+                each s in stops
+                    option(value=s.id) #{s.title}
             .tripRows 

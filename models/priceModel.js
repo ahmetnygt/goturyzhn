@@ -8,11 +8,11 @@ const Price = sequelize.define("price", {
         primaryKey: true,
         autoIncrement: true,
     },
-    fromPlaceId: {
+    fromStopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },
-    toPlaceId: {
+    toStopId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },
