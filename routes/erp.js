@@ -33,7 +33,9 @@ router.post('/post-edit-ticket', erpController.postEditTicket)
 router.get('/get-cancel-open-ticket', erpController.getCancelOpenTicket)
 router.post('/post-cancel-ticket', erpController.postCancelTicket)
 router.post('/post-open-ticket', erpController.postOpenTicket)
-router.post('/post-move-ticket', erpController.postMoveTicket)
+router.get('/get-move-ticket', erpController.getMoveTicket)
+router.get('/get-route-stops-list-moving', erpController.getRouteStopsListMoving)
+router.post('/post-move-tickets', erpController.postMoveTickets)
 
 router.get('/get-search-table', erpController.getSearchTable);
 

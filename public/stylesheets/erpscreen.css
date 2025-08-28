@@ -181,7 +181,8 @@ div.price-close,
 div.register-close,
 div.add-transaction-close,
 div.transaction-transfer-close,
-div.price-add-close {
+div.price-add-close,
+div.moving-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -627,20 +628,37 @@ div.ticket-cancel-refund-open-close {
     left: 20%;
     background-color: white;
     z-index: 100;
-    padding: 1rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
-    border-radius: 5px;
+    border-radius: .6rem;
+    width: 20vw;
+    overflow: hidden;
     display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
 }
 
-div.moving-close {
-    position: absolute;
-    top: 0;
-    right: .5rem;
-    cursor: pointer;
+.moving-ticket-button.selected {
+    transform: scale(.95);
+}
+
+.moving .move-to {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.moving .tickets {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    padding: 1rem;
+}
+
+.moving select {
+    border: none;
+    border-bottom: 3px solid #2660ff;
+    background-color: #d9dadb;
+    border-radius: 5px 5px 0 0;
+    text-align: center;
 }
 
 .add-trip-note {

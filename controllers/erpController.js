@@ -8,6 +8,7 @@ const Captain = require("../models/captainModel")
 const Place = require("../models/placeModel")
 const Route = require("../models/routeModel")
 const RouteStop = require("../models/routeStopModel");
+const Stop = require("../models/stopModel")
 const Trip = require('../models/tripModel');
 const Ticket = require('../models/ticketModel');
 const Customer = require('../models/customerModel');
@@ -175,12 +176,31 @@ exports.getTrip = async (req, res, next) => {
     if (trip) {
         const captain = await Captain.findOne({ where: { id: trip.captainId } })
         const route = await Route.findOne({ where: { id: trip.routeId } })
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
 
         const currentPlaceOrder = routeStops.find(rs => rs.placeId == place).order
+        const routeStopOrder = routeStops.find(rs => rs.placeId == place).order
 
-        console.log(place)
+        trip.modifiedTime = trip.time
+
+        if (routeStopOrder !== routeStops.length - 1) {
+            for (let j = 0; j < routeStops.length; j++) {
+                const rs = routeStops[j];
+
+                trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
+
+                if (rs.order == routeStopOrder)
+                    break
+            }
+        }
+
+        const tripDate = new Date(trip.date);
+        const [hours, minutes] = trip.modifiedTime.split(":");
+        const pad = (num) => String(num).padStart(2, "0");
+        trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
+        trip.timeString = `${hours}.${minutes}`
+
 
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         let newTicketArray = []
@@ -635,18 +655,103 @@ exports.postOpenTicket = async (req, res, next) => {
     }
 }
 
-exports.postMoveTicket = async (req, res, next) => {
+exports.getMoveTicket = async (req, res, next) => {
+    const pnr = req.query.pnr
+    const tripId = req.query.tripId
+    const placeId = req.query.placeId
+
+    const tickets = await Ticket.findAll({ where: { pnr, tripId }, order: [["seatNo", "ASC"]] })
+    const trip = await Trip.findOne({ where: { id: tickets[0].tripId } })
+
+    trip.modifiedTime = trip.time
+
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+
+    if (routeStopOrder !== routeStops.length - 1) {
+        for (let j = 0; j < routeStops.length; j++) {
+            const rs = routeStops[j];
+
+            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
+
+            if (rs.order == routeStopOrder)
+                break
+        }
+    }
+
+    const tripDate = new Date(trip.date);
+    const [hours, minutes] = trip.modifiedTime.split(":");
+    const pad = (num) => String(num).padStart(2, "0");
+    trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
+    trip.timeString = `${hours}.${minutes}`
+
+    const places = await Place.findAll()
+    for (let i = 0; i < tickets.length; i++) {
+        const t = tickets[i];
+
+        t.fromPlaceString = places.find(p => p.id == t.fromRouteStopId).title
+        t.toPlaceString = places.find(p => p.id == t.toRouteStopId).title
+    }
+
+    res.render("mixins/moveTicket", { trip, tickets })
+};
+
+exports.getRouteStopsListMoving = async (req, res, next) => {
+    try {
+        const date = req.query.date
+        const time = req.query.time
+        const tripId = req.query.tripId
+        const placeId = req.query.placeId
+
+        const trip = await Trip.findOne({ where: { date, time, id: tripId } })
+        const places = await Place.findAll()
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+
+        let newRouteStopsArray = []
+        for (let i = 0; i < routeStops.length; i++) {
+            const rs = routeStops[i];
+            if (rs.order > routeStopOrder) {
+                rs.setDataValue("placeStr", places.find(p => p.id == rs.placeId)?.title || "");
+                newRouteStopsArray.push(rs)
+                console.log(rs.placeStr)
+            }
+        }
+        res.json(newRouteStopsArray)
+    } catch (err) {
+        console.error("Kayıt hatası:", err);
+        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+    }
+}
+
+exports.postMoveTickets = async (req, res, next) => {
     try {
         const pnr = req.body.pnr
-        const newSeat = req.body.newSeat
+        const oldSeats = JSON.parse(req.body.oldSeats)
+        const newSeats = JSON.parse(req.body.newSeats)
         const newTrip = req.body.newTrip
+        const fromId = req.body.fromId
+        const toId = req.body.toId
 
-        const ticket = await Ticket.findOne({ where: { pnr: pnr } })
+        console.log(pnr,
+            oldSeats,
+            newSeats,
+            newTrip,
+            fromId,
+            toId,)
 
-        ticket.seatNo = newSeat
-        ticket.tripId = newTrip
+        const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
 
-        await ticket.save()
+        for (let i = 0; i < tickets.length; i++) {
+            const t = tickets[i];
+
+            t.seatNo = newSeats[i]
+            t.tripId = newTrip
+            t.fromRouteStopId = fromId
+            t.toRouteStopId = toId
+
+            await t.save()
+        }
 
         res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
     } catch (err) {

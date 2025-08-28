@@ -2,6 +2,7 @@ let selectedSeats = []
 let selectedTakenSeats = []
 let currentTripDate;
 let currentTripTime;
+let currentTripPlaceTime;
 let currentTripId;
 let currentPlace = "17000";
 let currentPlaceStr = "ÇANAKKALE";
@@ -72,6 +73,7 @@ async function loadTrip(date, time, tripId) {
 
             currentTripDate = $("#tripDate").val()
             currentTripTime = $("#tripTime").val()
+            currentTripPlaceTime = $("#tripPlaceTime").val()
             currentTripId = $("#tripId").val()
 
             fromId = $("#fromId").val()
@@ -82,6 +84,7 @@ async function loadTrip(date, time, tripId) {
             $("#tickets").remove()
             $("#tripDate").remove()
             $("#tripTime").remove()
+            $("#tripPlaceTime").remove()
             $("#tripId").remove()
             $("#fromId").remove()
             $("#toId").remove()
@@ -90,6 +93,33 @@ async function loadTrip(date, time, tripId) {
 
             $(".ticket-info-pop-up_from").html(fromStr.toUpperCase())
             $(".ticket-info-pop-up_to").html(toStr.toUpperCase())
+
+            if (isMovingActive) {
+
+                await $.ajax({
+                    url: "erp/get-route-stops-list-moving",
+                    type: "GET",
+                    data: { date: date, time: time, tripId: tripId, placeId: currentPlace },
+                    success: function (response) {
+                        console.log(response)
+                        let arr = []
+                        const opt = $("<option>").html("").val("")
+                        arr.push(opt)
+                        for (let i = 0; i < response.length; i++) {
+                            const rs = response[i];
+                            const opt = $("<option>").html(rs.placeStr).val(rs.placeId)
+                            arr.push(opt)
+                        }
+                        $(".move-to-trip-place-select").html(arr)
+                        $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
+                        $(".move-to-trip-place").html(`${currentPlaceStr}`)
+                        $(".move-to").css("display", "flex")
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            }
 
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
@@ -158,34 +188,84 @@ async function loadTrip(date, time, tripId) {
                 });
             })
 
-            $(".seat").on("click", function (e) {
+            // Tek handler: önce eskileri kaldır, sonra bağla
+            $(".seat").off("click.seat").on("click.seat", function (e) {
                 e.stopPropagation();
 
-                if (!isMovingActive) {
-                    const $seat = $(this);
-                    const $popup = e.currentTarget.dataset.createdAt ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
+                const $seat = $(this);
+                const rect = this.getBoundingClientRect();
+                const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
+                const isTaken = Boolean(createdAt); // dolu koltuk mu?
 
-                    if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
-                        $popup.hide();
-                        currentSeat = null;
+                // ---- Taşıma modu ----
+                if (isMovingActive) {
+                    // DOLU koltuklarda (grup) davranış
+                    if (isTaken) {
+                        if (selectedTakenSeats.length > 0) {
+                            // varsa temizle
+                            selectedTakenSeats = [];
+                            $(".seat").removeClass("selected");
+                        } else {
+                            // grupça seç
+                            const seatNumbers = [];
+                            $(".seat").each((i, el) => {
+                                if (el.dataset.groupId == groupId) {
+                                    seatNumbers.push(el.dataset.seatNumber);
+                                    el.classList.add("selected");
+                                }
+                            });
+                            selectedTakenSeats = seatNumbers;
+                        }
                         return;
                     }
 
+                    // BOŞ koltuklarda hedef seçim
+                    const already = selectedSeats.includes(seatNumber);
+                    const targetCount = movingSelectedSeats.length;
+
+                    if (already) {
+                        // seçimi kaldır
+                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                        $seat.removeClass("selected");
+                        return;
+                    }
+
+                    if (selectedSeats.length >= targetCount) {
+                        alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
+                        return;
+                    }
+
+                    selectedSeats.push(seatNumber);
+                    $seat.addClass("selected");
+
+                    // İlgili buton metnini güncelle (mevcut mantığını korudum)
+                    const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
+                    if ($btn.length) {
+                        $btn.html($btn.html() + ` => ${seatNumber}`);
+                    }
+
+                    return; // taşıma modunda popup yok
+                }
+
+                // ---- Normal mod (popup + seçim) ----
+                const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
+
+                // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
+                if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
+                    $popup.hide();
+                    currentSeat = null;
+                } else {
                     currentSeat = $seat;
 
-                    const rect = this.getBoundingClientRect();
-                    const left = rect.right + window.scrollX + 10;
+                    // Popup pozisyonu
+                    let left = rect.right + window.scrollX + 10;
                     let top = rect.top + window.scrollY + 25;
 
-                    $popup.css({
-                        left: left + "px",
-                        top: top + "px",
-                        display: "block"
-                    });
+                    $popup.css({ left: left + "px", top: top + "px", display: "block" });
 
+                    // Aşağı taşarsa yukarı al
                     const popupHeight = $popup.outerHeight();
                     const viewportBottom = window.scrollY + window.innerHeight;
-
                     if (top + popupHeight > viewportBottom) {
                         top = rect.top + window.scrollY - popupHeight - 10;
                         if (top < 0) top = 0;
@@ -193,47 +273,34 @@ async function loadTrip(date, time, tripId) {
                     }
                 }
 
-                else {
-                    const $seat = $(this);
-                    moveToTripId = $seat.data("tripId")
-                    selectedSeats.push($seat.data("seatNumber"))
-                }
-            });
-
-            $(".seat").on("click", function (e) {
-                e.stopPropagation();
-
-                const seat = e.currentTarget
-                const seatNumber = e.currentTarget.dataset.seatNumber
-
-                if (!seat.dataset.createdAt) {
+                // Seçim davranışı (normal mod)
+                if (!isTaken) {
+                    // boş koltuk toggle
                     if (!selectedSeats.includes(seatNumber)) {
-                        seat.classList.add("selected")
-                        selectedSeats.push(seatNumber)
+                        selectedSeats.push(seatNumber);
+                        $seat.addClass("selected");
+                    } else {
+                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                        $seat.removeClass("selected");
                     }
-                    else {
-                        seat.classList.remove("selected")
-                        selectedSeats = selectedSeats.filter(seat => seat !== seatNumber);
-                    }
-                }
-                else {
+                } else {
+                    // dolu koltuk: grupça seç/kaldır
                     if (selectedTakenSeats.length > 0) {
-                        selectedTakenSeats = []
-                        $(".seat").removeClass("selected")
-                    }
-                    else {
-                        let seatNumbers = []
-                        const groupId = e.currentTarget.dataset.groupId
-                        $(".seat").each((i, e) => {
-                            if (e.dataset.groupId == groupId) {
-                                seatNumbers.push(e.dataset.seatNumber)
-                                e.classList.add("selected")
+                        selectedTakenSeats = [];
+                        $(".seat").removeClass("selected");
+                    } else {
+                        const seatNumbers = [];
+                        $(".seat").each((i, el) => {
+                            if (el.dataset.groupId == groupId) {
+                                seatNumbers.push(el.dataset.seatNumber);
+                                el.classList.add("selected");
                             }
-                        })
-                        selectedTakenSeats = seatNumbers
+                        });
+                        selectedTakenSeats = seatNumbers;
                     }
                 }
             });
+
 
             $(".seat").on("mouseenter", function (e) {
                 const data = e.currentTarget.dataset
@@ -407,7 +474,7 @@ $("#currentPlace").on("change", async (e) => {
     const response = await $.ajax({
         url: "erp/get-day-trips-list",
         type: "GET",
-        data: { date: currentTripDate, placeId: currentPlace }
+        data: { date: calendar.val(), placeId: currentPlace }
     });
 
     $(".tripRows").html(response);
@@ -592,7 +659,7 @@ let cancelingSeatPNR = null
 
 let isMovingActive = false
 let movingSeatPNR = null
-let moveToTripId = null
+let movingSelectedSeats = []
 
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
@@ -660,7 +727,7 @@ $(".taken-ticket-op").on("click", async e => {
                         e.currentTarget.classList.remove("selected")
                         selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
                         if (selectedTakenSeats > 0) {
-                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL/İADE ET`)
+                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL / İADE ET`)
                             $(".cancel-action-button").removeClass("disabled")
                         }
                         else {
@@ -672,7 +739,7 @@ $(".taken-ticket-op").on("click", async e => {
                     else {
                         e.currentTarget.classList.add("selected")
                         selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
-                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL/İADE ET`)
+                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL / İADE ET`)
                         $(".cancel-action-button").removeClass("disabled")
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
                     }
@@ -742,22 +809,51 @@ $(".taken-ticket-op").on("click", async e => {
     }
     else if (action == "move") {
         movingSeatPNR = $(`.seat.seat-${selectedTakenSeats[0]}`).data("pnr")
-        isMovingActive = true
-        $(".taken-ticket-ops-pop-up").hide()
-        $(".moving").css("display", "flex")
+        await $.ajax({
+            url: "erp/get-move-ticket",
+            type: "GET",
+            data: { pnr: movingSeatPNR, tripId: currentTripId, placeId: currentPlace },
+            success: async function (response) {
+                $(".moving .info").html(response)
+                isMovingActive = true
+                $(".taken-ticket-ops-pop-up").hide()
+                $(".moving").css("display", "block")
+
+                $(".moving-ticket-button").on("click", e => {
+                    const seatNo = e.currentTarget.dataset.seatNumber
+
+                    if (movingSelectedSeats.includes(seatNo)) {
+                        e.currentTarget.classList.remove("selected")
+                        e.currentTarget.classList.remove("btn-primary")
+                        e.currentTarget.classList.add("btn-outline-primary")
+                        movingSelectedSeats = movingSelectedSeats.filter(s => s !== seatNo)
+                    }
+                    else {
+                        e.currentTarget.classList.add("selected")
+                        e.currentTarget.classList.remove("btn-outline-primary")
+                        e.currentTarget.classList.add("btn-primary")
+                        movingSelectedSeats.push(seatNo)
+                    }
+                })
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
     }
 })
 
 $(".moving-confirm").on("click", async e => {
     await $.ajax({
-        url: "erp/post-move-ticket",
+        url: "erp/post-move-tickets",
         type: "POST",
-        data: { pnr: movingSeatPNR, newSeat: selectedSeats[0], newTrip: moveToTripId },
+        data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: currentPlace, toId: $(".move-to-trip-place-select").val() },
         success: async function (response) {
             selectedSeats = []
+            selectedTakenSeats = []
             isMovingActive = false
-            moveToTripId = null
             movingSeatPNR = null
+            movingSelectedSeats = []
             $(".moving").css("display", "none");
             loadTrip(currentTripDate, currentTripTime, currentTripId)
         },
@@ -1445,7 +1541,7 @@ const resetPriceAddRow = () => {
     selects.each(function () {
         let options = '<option value="">Seçiniz</option>';
         pricePlaces.forEach(pl => {
-            options += `<option value=\"${pl.id}\">${pl.title}</option>`;
+            options += `< option value =\"${pl.id}\">${pl.title}</option>`;
         });
         $(this).html(options);
     });
