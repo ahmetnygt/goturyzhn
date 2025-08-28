@@ -250,11 +250,33 @@ block content
                         | EKLE
                 .d-flex
                     .col-6
-                        p.text-center.mb-0 Plan Adı
+                        p.text-center.mb-0 Durak Adı
                     .col-6
-                        p.text-center.mb-0 Açıklama
-                .d-flex.flex-column.gap-3.p-2
-            .col-6.d-flex.gap-3.p-3.align-items-start.stop-panel
+                        p.text-center.mb-0 Yer
+                .stop-list-nodes.d-flex.flex-column.gap-3.p-2
+            .col-6.flex-column.gap-3.p-3.align-items-start.stop-panel
+                .input-group
+                    span.input-group-text Durak Adı
+                    input.stop-title.form-control(type="text" )
+                .input-group
+                    span.input-group-text Web Adı
+                    input.stop-web-title.form-control(type="text" )
+                .input-group
+                    span.input-group-text Yer
+                    select.stop-place.form-select()
+                        option(value="" selected)
+                        each p in places
+                            option(value=p.id) #{p.title}
+                .input-group
+                    span.input-group-text UETDS Kodu
+                    input.stop-uetds.form-control(type="text" )
+                .form-check.form-switch
+                    input.form-check-input.stop-service(type="checkbox" )
+                    label.form-check-label Hizmet Alanı
+                .form-check.form-switch
+                    input.form-check-input.stop-active(type="checkbox" checked)
+                    label.form-check-label Aktif
+                button.save-stop.btn.btn-outline-primary KAYDET
 
     .route
         .gtr-header

@@ -1012,6 +1012,52 @@ exports.postSaveBus = async (req, res, next) => {
     }
 };
 
+exports.getStopsList = async (req, res, next) => {
+    const stops = await Stop.findAll();
+
+    for (let i = 0; i < stops.length; i++) {
+        const s = stops[i];
+        s.placeTitle = await places.find(p => p.id == s.placeId).title;
+    }
+
+    res.render("mixins/stopsList", { stops });
+};
+
+exports.getStop = async (req, res, next) => {
+    const { id } = req.query;
+    const stop = await Stop.findOne({ where: { id } });
+    res.json(stop);
+};
+
+exports.postSaveStop = async (req, res, next) => {
+    try {
+        const data = convertEmptyFieldsToNull(req.body);
+        const { id, title, webTitle, placeId, UETDS_code, isServiceArea, isActive } = data;
+
+        const [stop, created] = await Stop.upsert(
+            {
+                id,
+                title,
+                webTitle,
+                placeId,
+                UETDS_code,
+                isServiceArea: isServiceArea === 'true' || isServiceArea === true,
+                isActive: isActive === 'true' || isActive === true,
+            },
+            { returning: true }
+        );
+
+        if (created) {
+            return res.json({ message: "Eklendi", stop });
+        } else {
+            return res.json({ message: "Güncellendi", stop });
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getRoutesList = async (req, res, next) => {
     const routes = await Route.findAll()
 

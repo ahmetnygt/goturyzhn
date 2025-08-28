@@ -1343,14 +1343,86 @@ $(".save-bus").on("click", async e => {
     })
 })
 
+let editingStopId = null
 $(".stops-nav").on("click", async e => {
-    $(".stops").css("display", "block")
-    $(".blackout").css("display", "block")
+    await $.ajax({
+        url: "erp/get-stops-list",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            $(".stop-list-nodes").html(response)
+
+            $(".stop-button").on("click", async e => {
+                const id = e.currentTarget.dataset.id
+                editingStopId = id
+                await $.ajax({
+                    url: "erp/get-stop",
+                    type: "GET",
+                    data: { id },
+                    success: function (response) {
+                        $(".stop-title").val(response.title)
+                        $(".stop-web-title").val(response.webTitle)
+                        $(".stop-place").val(response.placeId)
+                        $(".stop-uetds").val(response.UETDS_code)
+                        $(".stop-service").prop("checked", response.isServiceArea)
+                        $(".stop-active").prop("checked", response.isActive)
+                        $(".stop-panel").css("display", "flex")
+                        $(".save-stop").html("KAYDET")
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            })
+
+            $(".blackout").css("display", "block")
+            $(".stops").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
 })
 
 $(".stops-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".stops").css("display", "none")
+    $(".stop-panel").css("display", "none")
+})
+
+$(".add-stop").on("click", e => {
+    $(".stop-title").val("")
+    $(".stop-web-title").val("")
+    $(".stop-place").val("")
+    $(".stop-uetds").val("")
+    $(".stop-service").prop("checked", false)
+    $(".stop-active").prop("checked", true)
+    editingStopId = null
+    $(".stop-panel").css("display", "flex")
+    $(".save-stop").html("EKLE")
+})
+
+$(".save-stop").on("click", async e => {
+    const title = $(".stop-title").val()
+    const webTitle = $(".stop-web-title").val()
+    const placeId = $(".stop-place").val()
+    const UETDS_code = $(".stop-uetds").val()
+    const isServiceArea = $(".stop-service").is(":checked")
+    const isActive = $(".stop-active").is(":checked")
+
+    await $.ajax({
+        url: "erp/post-save-stop",
+        type: "POST",
+        data: { id: editingStopId, title, webTitle, placeId, UETDS_code, isServiceArea, isActive },
+        success: function (response) {
+            $(".stop-panel").css("display", "none")
+            $(".blackout").css("display", "none")
+            $(".stops").css("display", "none")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
 })
 
 let editingRouteId = null
