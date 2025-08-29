@@ -94,6 +94,68 @@ async function loadTrip(date, time, tripId) {
             $(".ticket-info-pop-up_from").html(fromStr.toUpperCase())
             $(".ticket-info-pop-up_to").html(toStr.toUpperCase())
 
+            const tripBusId = $(".trip-bus-license-plate").data("current-bus-id")
+            const tripBusModelId = $(".trip-bus-plan").data("current-bus-model-id")
+
+            try {
+                const [busModels, buses] = await Promise.all([
+                    $.get("erp/get-bus-models-data"),
+                    $.get("erp/get-buses-data")
+                ])
+
+                const planOpts = [$("<option>").val("").html("Koltuk planı seçiniz.").prop("disabled", true).prop("selected", true)]
+                busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)))
+                $(".trip-bus-plan").html(planOpts)
+                if (tripBusModelId) $(".trip-bus-plan").val(tripBusModelId)
+
+                const plateOpts = [$("<option>").val("").html("Plaka seçiniz.").prop("disabled", true).prop("selected", true)]
+                buses.forEach(b => {
+                    const opt = $("<option>")
+                        .val(b.id)
+                        .html(b.licensePlate)
+                        .attr("data-bus-model-id", b.busModelId)
+                        .attr("data-captain-name", b.captain ? `${b.captain.name} ${b.captain.surname}` : "")
+                        .attr("data-captain-phone", b.captain ? b.captain.phoneNumber : "")
+                    plateOpts.push(opt)
+                })
+                $(".trip-bus-license-plate").html(plateOpts)
+                if (tripBusId) $(".trip-bus-license-plate").val(tripBusId)
+            } catch (err) {
+                console.log(err)
+            }
+
+            $(document).off("change", ".trip-bus-license-plate").on("change", ".trip-bus-license-plate", async function () {
+                const busId = $(this).val()
+                const selected = $(this).find("option:selected")
+                const busModelId = selected.data("bus-model-id")
+                const captainName = selected.data("captain-name")
+                const captainPhone = selected.data("captain-phone")
+
+                $(".trip-bus-plan").val(busModelId)
+                $(".captain-name").html(captainName || "")
+                $(".captain-phone").html(captainPhone || "")
+
+                try {
+                    await $.post("erp/post-trip-bus", { tripId: currentTripId, busId: busId })
+                } catch (err) {
+                    console.log(err)
+                }
+            })
+
+            $(document).off("change", ".trip-bus-plan").on("change", ".trip-bus-plan", async function () {
+                const busModelId = $(this).val()
+
+                $(".trip-bus-license-plate").val("")
+                $(".captain-name").html("")
+                $(".captain-phone").html("")
+
+                try {
+                    await $.post("erp/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
+                } catch (err) {
+                    console.log(err)
+                }
+            })
+
             if (isMovingActive) {
 
                 await $.ajax({

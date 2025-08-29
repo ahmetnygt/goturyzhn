@@ -1023,7 +1023,60 @@ exports.getBusModelsData = async (req, res, next) => {
 exports.getBusesData = async (req, res, next) => {
     try {
         const buses = await Bus.findAll();
-        res.json(buses);
+        const captains = await Captain.findAll();
+
+        const captainMap = {};
+        for (const c of captains) {
+            captainMap[c.id] = c;
+        }
+
+        const result = buses.map(b => ({
+            ...b.toJSON(),
+            captain: captainMap[b.captainId] || null
+        }));
+
+        res.json(result);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postTripBus = async (req, res, next) => {
+    try {
+        const { tripId, busId } = req.body;
+
+        const bus = await Bus.findOne({ where: { id: busId } });
+        if (!bus) {
+            return res.status(404).json({ message: "Otobüs bulunamadı" });
+        }
+
+        await Trip.update({
+            busId: bus.id,
+            busModelId: bus.busModelId,
+            captainId: bus.captainId
+        }, { where: { id: tripId } });
+
+        const captain = await Captain.findOne({ where: { id: bus.captainId } });
+
+        res.json({ message: "Güncellendi", busModelId: bus.busModelId, captain });
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postTripBusPlan = async (req, res, next) => {
+    try {
+        const { tripId, busModelId } = req.body;
+
+        await Trip.update({
+            busModelId: busModelId,
+            busId: null,
+            captainId: null
+        }, { where: { id: tripId } });
+
+        res.json({ message: "Güncellendi" });
     } catch (err) {
         console.error("Hata:", err);
         res.status(500).json({ message: err.message });
