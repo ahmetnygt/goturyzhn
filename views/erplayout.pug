@@ -33,6 +33,7 @@ html
                     a.dropdown-item.add-income-nav(href="#") Gelir Ekle
                   li
                     a.dropdown-item.add-expense-nav(href="#") Gider Ekle
+                if permissions.includes('REGISTER_VIEW_OTHERS')
                   li
                     a.dropdown-item.other-register-nav(href="#") Diğer Kasalar
             li.nav-item.dropdown
