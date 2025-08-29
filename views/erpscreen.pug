@@ -359,9 +359,7 @@ block content
                 .input-group
                     span.input-group-text Hat
                     select.trip-route.form-select()
-                        option(value="" selected) 
-                        each r in routes
-                            option(value=r.id) #{r.title}
+                        option(value="" selected)
                 .input-group
                     span.input-group-text İlk Tarih
                     input.trip-first-date.form-control(type="text" )
@@ -374,15 +372,11 @@ block content
                 .input-group
                     span.input-group-text Otobüs Planı
                     select.trip-bus-model.form-select()
-                        option(value="" selected) 
-                        each bm in busModel
-                            option(value=bm.id) #{bm.title}
+                        option(value="" selected)
                 .input-group
                     span.input-group-text Otobüs
                     select.trip-bus.form-select()
-                        option(value="" selected) 
-                        each b in buses
-                            option(value=b.id) #{b.licensePlate}
+                        option(value="" selected)
                 button.save-trip.btn.btn-outline-primary EKLE
             .trip-settings.h-100.col-5
                 button.save-trip.btn.btn-outline-primary KAYDET
