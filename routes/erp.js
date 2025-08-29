@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const autoLogMiddleware = require("../middlewares/autoLogMiddleware");
-const checkPermission = require("../middlewares/permission");
+const checkPermission = require("../middlewares/permissionMiddleware");
 const auth = require("../middlewares/authentication")
 const erpController = require("../controllers/erpController")
 
