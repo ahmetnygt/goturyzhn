@@ -841,6 +841,36 @@ exports.getBusesList = async (req, res, next) => {
     res.render("mixins/busesList", { buses })
 }
 
+exports.getRoutesData = async (req, res, next) => {
+    try {
+        const routes = await Route.findAll();
+        res.json(routes);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getBusModelsData = async (req, res, next) => {
+    try {
+        const busModels = await BusModel.findAll();
+        res.json(busModels);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getBusesData = async (req, res, next) => {
+    try {
+        const buses = await Bus.findAll();
+        res.json(buses);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getPricesList = async (req, res, next) => {
     const prices = await Price.findAll();
     const stops = await Stop.findAll();
