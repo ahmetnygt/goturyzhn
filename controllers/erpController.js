@@ -24,9 +24,6 @@ const Price = require("../models/priceModel")
 const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 
-let places;
-Place.findAll().then(p => { places = p }).catch(err => console.log(err))
-
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -1034,6 +1031,7 @@ exports.getBusesData = async (req, res, next) => {
 
 exports.getStopsList = async (req, res, next) => {
     const stops = await Stop.findAll();
+    const places = await Place.findAll()
 
     for (let i = 0; i < stops.length; i++) {
         const s = stops[i];
