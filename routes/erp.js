@@ -4,6 +4,7 @@ const router = express.Router();
 const autoLogMiddleware = require("../middlewares/autoLogMiddleware");
 const auth = require("../middlewares/authentication")
 const erpController = require("../controllers/erpController")
+const checkPermission = require("../middlewares/permissionMiddleware")
 
 // Tüm POST/PUT/DELETE işlemleri için global middleware
 // router.use(autoLogMiddleware);
@@ -80,8 +81,8 @@ router.get('/get-members-list', erpController.getMembersList);
 router.post('/post-add-member', erpController.postAddMember);
 router.post('/post-customer-blacklist', erpController.postCustomerBlacklist);
 
-router.get('/get-transactions-list', erpController.getTransactions);
-router.get('/get-transaction-data', erpController.getTransactionData);
-router.post('/post-add-transaction', erpController.postAddTransaction);
+router.get('/get-transactions-list', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactions);
+router.get('/get-transaction-data', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactionData);
+router.post('/post-add-transaction', auth, checkPermission('ADD_TRANSACTION'), erpController.postAddTransaction);
 
 module.exports = router;
