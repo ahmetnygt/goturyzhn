@@ -1631,15 +1631,15 @@ $(".trip-nav").on("click", async e => {
     })
 })
 
-let pricePlaces = [];
+let priceStops = [];
 
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
     const selects = row.find("select");
     selects.each(function () {
         let options = '<option value="">Seçiniz</option>';
-        pricePlaces.forEach(pl => {
-            options += `< option value =\"${pl.id}\">${pl.title}</option>`;
+        priceStops.forEach(pl => {
+            options += `<option value="${pl.id}">${pl.title}</option>`;
         });
         $(this).html(options);
     });
@@ -1653,9 +1653,9 @@ $(".price-nav").on("click", async e => {
         type: "GET",
         success: function (response) {
             $(".price-list-nodes").html(response);
-            const placesData = $("#price-places-data").text();
-            pricePlaces = placesData ? JSON.parse(placesData) : [];
-            $("#price-places-data").remove();
+            const stopsData = $("#price-stops-data").text();
+            priceStops = stopsData ? JSON.parse(stopsData) : [];
+            $("#price-stops-data").remove();
             $(".prices").css("display", "block");
             $(".blackout").css("display", "block");
         },
@@ -1684,7 +1684,7 @@ $(document).on("click", ".price-list-nodes .d-flex.btn, .price-add-row", functio
         const value = p.data("value") ?? p.text().trim();
         if (index === 0 || index === 1) {
             let select = '<select class="price-button-select">';
-            pricePlaces.forEach(pl => {
+            priceStops.forEach(pl => {
                 select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
             });
             select += '</select>';
@@ -1712,8 +1712,8 @@ $(".price-save").on("click", async function () {
         };
         const obj = {
             id: row.data("id"),
-            fromPlaceId: selects.eq(0).val(),
-            toPlaceId: selects.eq(1).val(),
+            fromStopId: selects.eq(0).val(),
+            toStopId: selects.eq(1).val(),
             price1: toNullIfNotPositive(inputs.eq(0).val()),
             price2: toNullIfNotPositive(inputs.eq(1).val()),
             price3: toNullIfNotPositive(inputs.eq(2).val()),
@@ -1767,8 +1767,8 @@ const savePriceAdd = async closeAfterSave => {
         return Number.isFinite(num) && num > 0 ? num : null;
     };
     const data = {
-        fromPlaceId: selects.eq(0).val(),
-        toPlaceId: selects.eq(1).val(),
+        fromStopId: selects.eq(0).val(),
+        toStopId: selects.eq(1).val(),
         price1: toNullIfNotPositive(inputs.eq(0).val()),
         price2: toNullIfNotPositive(inputs.eq(1).val()),
         price3: toNullIfNotPositive(inputs.eq(2).val()),
