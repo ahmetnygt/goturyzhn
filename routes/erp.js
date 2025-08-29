@@ -5,7 +5,6 @@ const autoLogMiddleware = require("../middlewares/autoLogMiddleware");
 const checkPermission = require("../middlewares/permission");
 const auth = require("../middlewares/authentication")
 const erpController = require("../controllers/erpController")
-const checkPermission = require("../middlewares/permissionMiddleware")
 
 // Tüm POST/PUT/DELETE işlemleri için global middleware
 // router.use(autoLogMiddleware);

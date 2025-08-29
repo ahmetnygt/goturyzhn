@@ -1074,13 +1074,13 @@ $(".add-transaction-button").on("click", async e => {
                             },
                             error: function (xhr, status, error) {
                                 const message = xhr.responseJSON?.message || error;
-                                console.log(message);
+                                alert(message);
                             }
                         })
                     },
                     error: function (xhr, status, error) {
                         const message = xhr.responseJSON?.message || error;
-                        console.log(message);
+                        alert(message);
                     }
                 })
             }
