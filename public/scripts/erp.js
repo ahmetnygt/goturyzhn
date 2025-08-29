@@ -953,11 +953,12 @@ $(".register-nav").on("click", async e => {
                     const cashRefund = Number(response.cashRefund) || 0;
                     const cardRefund = Number(response.cardRefund) || 0;
                     const transferIn = Number(response.transferIn) || 0;
+                    const transferOut = Number(response.transferOut) || 0;
                     const payedToBus = Number(response.payedToBus) || 0;
                     const otherIn = Number(response.otherIn) || 0;
                     const otherOut = Number(response.otherOut) || 0;
                     const inSum = cashSales + cardSales + transferIn + otherIn
-                    const outSum = cashRefund + cardRefund + payedToBus + otherOut
+                    const outSum = cashRefund + cardRefund + payedToBus + transferOut + otherOut
                     const balance = inSum - outSum
                     console.log(response)
                     console.log(inSum)
@@ -975,7 +976,7 @@ $(".register-nav").on("click", async e => {
                     $(".card-refund").val(cardRefund)
                     $(".refund-summary").val(cardRefund + cashRefund)
                     $(".payed-to-bus").val(payedToBus)
-                    $(".other-expense").val(otherOut)
+                    $(".other-expense").val(otherOut + transferOut)
                     $(".blackout").css("display", "block")
                     $(".register").css("display", "block")
                     isRegisterShown = true

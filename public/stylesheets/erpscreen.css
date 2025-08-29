@@ -969,6 +969,11 @@ div.ticket-cancel-refund-open-close {
     margin-bottom: 1rem;
 }
 
+.trip-bus-license-plate,
+.trip-bus-plan {
+    width: 8rem !important;
+}
+
 .seats {
     display: flex;
     flex-direction: column;

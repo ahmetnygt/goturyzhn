@@ -1524,6 +1524,7 @@ exports.getTransactionData = async (req, res, next) => {
         let cashRefund = 0;
         let cardRefund = 0;
         let transferIn = 0;
+        let transferOut = 0;
         let payedToBus = 0;
         let otherIn = 0;
         let otherOut = 0;
@@ -1555,6 +1556,9 @@ exports.getTransactionData = async (req, res, next) => {
                 case "transfer_in":
                     transferIn += amount;
                     break;
+                case "transfer_out":
+                    transferOut += amount;
+                    break;
             }
         }
 
@@ -1564,6 +1568,7 @@ exports.getTransactionData = async (req, res, next) => {
             cashRefund,
             cardRefund,
             transferIn,
+            transferOut,
             payedToBus,
             otherIn,
             otherOut
@@ -1680,6 +1685,7 @@ exports.getPendingPayments = async (req, res, next) => {
 
 exports.getPendingCollections = async (req, res, next) => {
     try {
+        console.log(req.session.user.id)
         const payments = await Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.payerId))] } } });
         const result = payments.map(p => ({
@@ -1699,11 +1705,45 @@ exports.postConfirmPayment = async (req, res, next) => {
     try {
         const { id } = req.body;
         const payment = await Payment.findOne({ where: { id } });
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [payment.payerId, payment.receiverId] } } })
+
         if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
         if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
         if (payment.initiatorId === req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
         payment.status = "approved";
         await payment.save();
+
+        await Transaction.create({
+            userId: users.find(u => u.id == payment.receiverId).id,
+            type: "income",
+            category: "transfer_in",
+            amount: Number(payment.amount),
+            description: `${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
+        })
+
+        await Transaction.create({
+            userId: users.find(u => u.id == payment.payerId).id,
+            type: "expense",
+            category: "transfer_out",
+            amount: Number(payment.amount),
+            description: `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`,
+        })
+
+        await CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
+            if (cr) {
+                cr.cash_balance = Number(cr.cash_balance) + Number(payment.amount);
+                await cr.save();
+            }
+        })
+
+        await CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
+            if (cr) {
+                cr.cash_balance = Number(cr.cash_balance) - Number(payment.amount);
+                await cr.save();
+            }
+        })
+
+
         res.json({ success: true });
     } catch (err) {
         console.error("Confirm payment error:", err);
