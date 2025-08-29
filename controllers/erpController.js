@@ -421,7 +421,7 @@ exports.getTicketRow = async (req, res, next) => {
         const toId = req.query.toId
         const seats = req.query.seats
         const gender = seats.map(s => req.query.gender)
-        const price = await Price.findOne({ where: { fromPlaceId: fromId, toPlaceId: toId } })
+        const price = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } })
 
         res.render("mixins/ticketRow", { gender, seats, price: price ? price : 0 })
     }
