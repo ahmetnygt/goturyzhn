@@ -177,7 +177,7 @@ exports.getTrip = async (req, res, next) => {
         const captain = await Captain.findOne({ where: { id: trip.captainId } })
         const route = await Route.findOne({ where: { id: trip.routeId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
 
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
@@ -245,7 +245,7 @@ exports.getTripTable = async (req, res, next) => {
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.in]: ["completed", "web", "reservation"] } }, order: [["seatNo", "ASC"]] })
     let newTicketArray = []
@@ -303,7 +303,7 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 
     const trip = await Trip.findOne({ where: { id: tripId, date: date, time: time } })
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
@@ -332,7 +332,7 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 
 
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     const placeOrder = routeStops.find(rs => rs.stopId == stopId).order
 
@@ -437,7 +437,7 @@ exports.postTickets = async (req, res, next) => {
 
         const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } });
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
@@ -588,7 +588,7 @@ exports.getCancelOpenTicket = async (req, res, next) => {
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
     const foundTickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     let tickets = []
 
@@ -686,7 +686,7 @@ exports.getMoveTicket = async (req, res, next) => {
     trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
     trip.timeString = `${hours}.${minutes}`
 
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
     for (let i = 0; i < tickets.length; i++) {
         const t = tickets[i];
 
@@ -706,7 +706,7 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
 
         const trip = await Trip.findOne({ where: { date, time, id: tripId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
 
         let newRouteStopsArray = []
@@ -772,7 +772,7 @@ exports.getSearchTable = async (req, res, next) => {
 
     const tickets = await Ticket.findAll({ where: where, order: [["seatNo", "ASC"]] })
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     let newTicketArray = []
     for (let i = 0; i < tickets.length; i++) {
@@ -840,36 +840,6 @@ exports.getBusesList = async (req, res, next) => {
 
     res.render("mixins/busesList", { buses })
 }
-
-exports.getRoutesData = async (req, res, next) => {
-    try {
-        const routes = await Route.findAll();
-        res.json(routes);
-    } catch (err) {
-        console.error("Hata:", err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.getBusModelsData = async (req, res, next) => {
-    try {
-        const busModels = await BusModel.findAll();
-        res.json(busModels);
-    } catch (err) {
-        console.error("Hata:", err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.getBusesData = async (req, res, next) => {
-    try {
-        const buses = await Bus.findAll();
-        res.json(buses);
-    } catch (err) {
-        console.error("Hata:", err);
-        res.status(500).json({ message: err.message });
-    }
-};
 
 exports.getPricesList = async (req, res, next) => {
     const prices = await Price.findAll();
@@ -1225,7 +1195,7 @@ exports.postSaveTrip = async (req, res, next) => {
         }
 
         const routeStops = await RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         const start = new Date(firstDate);
         const end = new Date(lastDate);
