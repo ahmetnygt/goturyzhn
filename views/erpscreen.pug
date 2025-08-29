@@ -598,19 +598,14 @@ block content
                 .input-group
                     span.input-group-text Bulunduğu Durak
                     select.branch-place.form-select()
-                        option(value="" selected) 
-                        each p in places
-                            option(value=p.id) #{p.title}
+                        option(value="" selected)
                 .form-check
                     input#isMainBranch.form-check-input(type="checkbox" value="")
                     label.form-check-label(for="isMainBranch") Bu bir ana şube mi?
                 .input-group
                     span.input-group-text Ana Şube
                     select.branch-main-branch.form-select
-                        option(value="" selected) 
-                        each b in branches
-                            if b.isMainBranch
-                                option(value=b.id) #{b.title}
+                        option(value="" selected)
                 button.save-branch.btn.btn-outline-primary KAYDET
             .branch-settings.h-100
                 b Falan Filan Ayarları

@@ -1855,6 +1855,34 @@ $(".ticket-cancel-refund-open-close").on("click", e => {
 })
 
 let editingBranchId = null
+
+async function loadBranchOptions() {
+    const stops = await $.ajax({
+        url: "erp/get-stops-list",
+        type: "GET",
+        data: { onlyData: true }
+    });
+
+    const stopOptions = ["<option value=\"\" selected></option>"];
+    for (const s of stops) {
+        stopOptions.push(`<option value="${s.id}">${s.title}</option>`);
+    }
+    $(".branch-place").html(stopOptions);
+
+    const branches = await $.ajax({
+        url: "erp/get-branches-list",
+        type: "GET",
+        data: { onlyData: true }
+    });
+
+    const branchOptions = ["<option value=\"\" selected></option>"];
+    for (const b of branches) {
+        if (b.isMainBranch) {
+            branchOptions.push(`<option value="${b.id}">${b.title}</option>`);
+        }
+    }
+    $(".branch-main-branch").html(branchOptions);
+}
 $(".branch-settings-nav").on("click", async e => {
     await $.ajax({
         url: "erp/get-branches-list",
@@ -1864,6 +1892,7 @@ $(".branch-settings-nav").on("click", async e => {
             $(".branch-list-nodes").html(response)
 
             $(".branch-button").on("click", async e => {
+                await loadBranchOptions();
                 const id = e.currentTarget.dataset.id
                 const title = e.currentTarget.dataset.title
                 editingBranchId = id
@@ -1880,7 +1909,7 @@ $(".branch-settings-nav").on("click", async e => {
                         $(".branch-info").css("display", "flex")
                         $(".branch-settings").css("display", "block")
                         $(".branch-title").val(response.title)
-                        $(".branch-place").val(response.placeId)
+                        $(".branch-place").val(response.stopId)
                         $(".branch-main-branch").val(response.mainBranchId)
                     },
                     error: function (xhr, status, error) {
@@ -1903,7 +1932,8 @@ $(".branch-close").on("click", e => {
     $(".branch").css("display", "none")
 })
 
-$(".add-branch").on("click", e => {
+$(".add-branch").on("click", async e => {
+    await loadBranchOptions();
     $("#isBranchActive").prop('checked', false)
     $("#isMainBranch").prop('checked', false)
     $(".branch-title").val("")

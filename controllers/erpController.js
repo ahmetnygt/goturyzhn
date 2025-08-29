@@ -1020,7 +1020,12 @@ exports.getStopsList = async (req, res, next) => {
         s.placeTitle = await places.find(p => p.id == s.placeId).title;
     }
 
-    res.render("mixins/stopsList", { stops });
+    if (req.query.onlyData) {
+        res.json(stops);
+    }
+    else {
+        res.render("mixins/stopsList", { stops });
+    }
 };
 
 exports.getStop = async (req, res, next) => {
