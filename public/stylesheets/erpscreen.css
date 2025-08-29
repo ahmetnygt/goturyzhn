@@ -936,6 +936,14 @@ div.ticket-cancel-refund-open-close {
     justify-content: space-between;
 }
 
+.trip-info-settings {
+    border-radius: 5px;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    background-color: white;
+    padding: .75rem;
+    margin-bottom: 1rem;
+}
+
 .seats {
     display: flex;
     flex-direction: column;

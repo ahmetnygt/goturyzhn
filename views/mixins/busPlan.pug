@@ -1,13 +1,14 @@
-.d-flex.justify-content-center
-    b.m-0
-        | #{trip.fromPlaceString.toUpperCase()}
-        i.fa-solid.fa-route.mx-2
-        | #{trip.toPlaceString.toUpperCase()}
-p.text-center #{route.routeCode}
-.d-flex.justify-content-between.mb-3
-    if captain
-        b #{captain.name} #{captain.surname}
-        b #{captain.phoneNumber}
+.trip-info-settings
+    p.m-0.text-center
+        b
+            | #{trip.fromPlaceString.toUpperCase()}
+            i.fa-solid.fa-route.mx-2
+            | #{trip.toPlaceString.toUpperCase()}
+    p.text-center #{route.routeCode}
+    .d-flex.justify-content-between.mb-3
+        if captain
+            b #{captain.name} #{captain.surname}
+            b #{captain.phoneNumber}
 .seats
     - let seatNumber = 0
     - let seatIndex = 0
