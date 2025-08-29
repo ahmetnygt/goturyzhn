@@ -353,7 +353,6 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 
 exports.getErp = async (req, res, next) => {
     console.log(req.session.user)
-    let routes = await Route.findAll()
     let busModel = await BusModel.findAll()
     let captain = await Captain.findAll()
     let firm = await Firm.findOne({ where: { id: req.session.user.firmId } })
@@ -361,9 +360,8 @@ exports.getErp = async (req, res, next) => {
     let user = await FirmUser.findOne({ where: { id: req.session.user.id } })
     let places = await Place.findAll()
     let stops = await Stop.findAll()
-    let buses = await Bus.findAll()
 
-    res.render('erpscreen', { title: 'ERP', busModel, buses, captain, routes, user, firm, places, stops, branches });
+    res.render('erpscreen', { title: 'ERP', busModel, captain, user, firm, places, stops, branches });
 }
 
 exports.getErpLogin = async (req, res, next) => {
@@ -1012,6 +1010,26 @@ exports.postSaveBus = async (req, res, next) => {
     }
 };
 
+exports.getBusModelsData = async (req, res, next) => {
+    try {
+        const busModels = await BusModel.findAll();
+        res.json(busModels);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getBusesData = async (req, res, next) => {
+    try {
+        const buses = await Bus.findAll();
+        res.json(buses);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getStopsList = async (req, res, next) => {
     const stops = await Stop.findAll();
 
@@ -1067,6 +1085,16 @@ exports.postSaveStop = async (req, res, next) => {
         } else {
             return res.json({ message: "Güncellendi", stop });
         }
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getRoutesData = async (req, res, next) => {
+    try {
+        const routes = await Route.findAll();
+        res.json(routes);
     } catch (err) {
         console.error("Hata:", err);
         res.status(500).json({ message: err.message });
