@@ -1,4 +1,31 @@
 .trip-info-settings
+    .trip-helper-buttons
+        if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
+            .trip-incomes
+                | ₺
+                .trip-incomes-popup
+                    .input-group
+                        span.input-group-text.col-7 Satış (Drk)
+                        input.form-control.form-control-sm(type="text" readonly value=incomes.currentSoldCount)
+                        input.form-control.form-control-sm(type="text" readonly value=`${incomes.currentSoldAmount}₺`)
+                    .input-group
+                        span.input-group-text.col-7 Satış (Tüm)
+                        input.form-control.form-control-sm(type="text" readonly value=incomes.totalSoldCount)
+                        input.form-control.form-control-sm(type="text" readonly value=`${incomes.totalSoldAmount}₺`)
+                    .input-group
+                        span.input-group-text.col-7 Rezerve (Drk)
+                        input.form-control.form-control-sm(type="text" readonly value=incomes.currentReservedCount)
+                        input.form-control.form-control-sm(type="text" readonly value=`${incomes.currentReservedAmount}₺`)
+                    .input-group
+                        span.input-group-text.col-7 Rezerve (Tüm)
+                        input.form-control.form-control-sm(type="text" readonly value=incomes.totalReservedCount)
+                        input.form-control.form-control-sm(type="text" readonly value=`${incomes.totalReservedAmount}₺`)
+                    .input-group
+                        span.input-group-text.col-7 Toplam
+                        input.form-control.form-control-sm(type="text" readonly value=incomes.grandCount)
+                        input.form-control.form-control-sm(type="text" readonly value=`${incomes.grandAmount}₺`)
+        .trip-options
+            i.fa-solid.fa-ellipsis-vertical
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b
@@ -17,14 +44,6 @@
         else
             input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
             input.trip-bus-plan.form-control-sm.form-control(data-current-bus-model-id=trip.busModelId type="text" readonly)
-    .trip-incomes
-        | ₺
-        .trip-incomes-popup
-            p Satılan (Durak): #{incomes.currentSoldCount} - #{incomes.currentSoldAmount}₺
-            p Satılan (Tümü): #{incomes.totalSoldCount} - #{incomes.totalSoldAmount}₺
-            p Rezerve (Durak): #{incomes.currentReservedCount} - #{incomes.currentReservedAmount}₺
-            p Rezerve (Tümü): #{incomes.totalReservedCount} - #{incomes.totalReservedAmount}₺
-            p Genel Toplam: #{incomes.grandCount} - #{incomes.grandAmount}₺
 .seats
     - let seatNumber = 0
     - let seatIndex = 0

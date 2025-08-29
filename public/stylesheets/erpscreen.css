@@ -989,21 +989,36 @@ div.ticket-cancel-refund-open-close {
     margin-bottom: 1rem;
 }
 
+.trip-helper-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: .25rem;
+}
+
 .trip-incomes {
-    position: absolute;
-    top: 0.2rem;
-    right: 0.3rem;
-    padding: 0.1rem .5rem;
+    width: 1.5rem;
+    border-radius: 4px;
+    background-color: #2660ff;
+    color: white;
+    cursor: -webkit-zoom-in;
+    height: 1.5rem;
+    text-align: center;
+}
+
+.trip-options {
+    width: 1.5rem;
     border-radius: 4px;
     background-color: #4CAF50;
     color: white;
-    cursor: -webkit-zoom-in;
+    cursor: pointer;
+    height: 1.5rem;
+    text-align: center;
 }
 
 .trip-incomes-popup {
     display: none;
     position: absolute;
-    top: 100%;
+    top: 0;
     right: 0;
     margin-top: .2rem;
     background-color: #fff;
@@ -1013,6 +1028,20 @@ div.ticket-cancel-refund-open-close {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     z-index: 10;
     white-space: nowrap;
+    width: 15rem;
+}
+
+.trip-incomes-popup .input-group {
+    margin-bottom: .75rem;
+}
+
+.trip-incomes-popup .input-group input {
+    text-align: center;
+}
+
+.trip-incomes-popup .input-group .input-group-text {
+    background-color: #2660ff;
+    color: white;
 }
 
 .trip-incomes:hover .trip-incomes-popup {
