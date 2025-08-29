@@ -1073,18 +1073,21 @@ $(".add-transaction-button").on("click", async e => {
                                 $(".other-expense").val(otherOut)
                             },
                             error: function (xhr, status, error) {
-                                console.log(error);
+                                const message = xhr.responseJSON?.message || error;
+                                console.log(message);
                             }
                         })
                     },
                     error: function (xhr, status, error) {
-                        console.log(error);
+                        const message = xhr.responseJSON?.message || error;
+                        console.log(message);
                     }
                 })
             }
         },
         error: function (xhr, status, error) {
-            console.log(error);
+            const message = xhr.responseJSON?.message || error;
+            console.log(message);
         }
     })
 })
