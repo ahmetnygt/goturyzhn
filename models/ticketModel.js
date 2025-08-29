@@ -79,7 +79,7 @@ const Ticket = sequelize.define("ticket", {
     },
     payment: {
         type: Sequelize.ENUM("cash", "card"),
-        allowNull: false
+        allowNull: true
     }
 });
 

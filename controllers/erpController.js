@@ -111,14 +111,22 @@ exports.getDayTripsList = async (req, res, next) => {
         const routeStopsByPlace = await RouteStop.findAll({ where: { stopId: stopId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
+        const isPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
         const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
         var newTrips = []
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
+
+            t.isExpired = new Date(`${t.date} ${t.time}`) < new Date()
+
+            if (!isPermission) {
+                if (t.isExpired) {
+                    continue
+                }
+            }
+
             t.modifiedTime = t.time
-            console.log(t.id)
-            console.log(t.modifiedTime)
 
             const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
             const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
@@ -145,11 +153,10 @@ exports.getDayTripsList = async (req, res, next) => {
             return {
                 ...trip.toJSON(),
                 dateString: `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`,
-                timeString: `${hours}.${minutes}`
+                timeString: `${hours}.${minutes}`,
+                isExpired: trip.isExpired
             };
         });
-
-        // res.json(tripArray);
         res.render("mixins/tripRow", { trips: tripArray, tripId })
     } catch (err) {
         console.error("getDayTripsList error:", err);
@@ -1260,9 +1267,9 @@ exports.getTripsList = async (req, res, next) => {
 
     for (let i = 0; i < trips.length; i++) {
         const t = trips[i];
-        t.routeCode = await routes.find(r => r.id == t.routeId).routeCode;
-        t.routeTitle = await routes.find(r => r.id == t.routeId).title;
-        t.licensePlate = await bus.find(b => b.id == t.busId).licensePlate;
+        t.routeCode = await routes.find(r => r.id == t.routeId)?.routeCode;
+        t.routeTitle = await routes.find(r => r.id == t.routeId)?.title;
+        t.licensePlate = await bus.find(b => b.id == t.busId)?.licensePlate;
     }
 
     res.render("mixins/tripsList", { trips })
@@ -1270,7 +1277,7 @@ exports.getTripsList = async (req, res, next) => {
 
 exports.postSaveTrip = async (req, res, next) => {
     try {
-        const { routeId, firstDate, lastDate, departureTime, busModelId, busId } = req.body;
+        const { routeId, firstDate, lastDate, departureTime, busModelId, busId } = convertEmptyFieldsToNull(req.body);
 
         const route = await Route.findOne({ where: { id: routeId } });
         if (!route) {

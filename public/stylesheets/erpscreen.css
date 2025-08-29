@@ -788,6 +788,25 @@ div.ticket-cancel-refund-open-close {
     color: white;
 }
 
+.tripRow.expired {
+    background-color: gray;
+    color: lightgray;
+}
+
+.tripRow.expired:hover {
+    background-color: rgb(97, 97, 97);
+    color: rgb(170, 170, 170);
+}
+
+.tripRow.expired:active {
+    background-color: rgb(75, 75, 75);
+    color: rgb(131, 131, 131);
+}
+
+.tripRow.expired div {
+    border-right: 1px solid white;
+}
+
 
 .tripRow:hover {
     background-color: #f0f0f0;
@@ -962,11 +981,23 @@ div.ticket-cancel-refund-open-close {
 }
 
 .trip-info-settings {
+    position: relative;
     border-radius: 5px;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     background-color: white;
     padding: .75rem;
     margin-bottom: 1rem;
+}
+
+.trip-incomes {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.3rem;
+    padding: 0.1rem .5rem;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: -webkit-zoom-in;
 }
 
 .trip-bus-license-plate,
