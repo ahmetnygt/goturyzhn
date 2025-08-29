@@ -18,7 +18,13 @@
             input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
             input.trip-bus-plan.form-control-sm.form-control(data-current-bus-model-id=trip.busModelId type="text" readonly)
     .trip-incomes
-        |₺
+        | ₺
+        .trip-incomes-popup
+            p Satılan (Durak): #{incomes.currentSoldCount} - #{incomes.currentSoldAmount}₺
+            p Satılan (Tümü): #{incomes.totalSoldCount} - #{incomes.totalSoldAmount}₺
+            p Rezerve (Durak): #{incomes.currentReservedCount} - #{incomes.currentReservedAmount}₺
+            p Rezerve (Tümü): #{incomes.totalReservedCount} - #{incomes.totalReservedAmount}₺
+            p Genel Toplam: #{incomes.grandCount} - #{incomes.grandAmount}₺
 .seats
     - let seatNumber = 0
     - let seatIndex = 0
