@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const autoLogMiddleware = require("../middlewares/autoLogMiddleware");
-const checkPermission = require("../middlewares/permissionMiddleware");
 const auth = require("../middlewares/authentication")
 const erpController = require("../controllers/erpController")
 
@@ -81,9 +80,9 @@ router.get('/get-members-list', erpController.getMembersList);
 router.post('/post-add-member', erpController.postAddMember);
 router.post('/post-customer-blacklist', erpController.postCustomerBlacklist);
 
-router.get('/get-transactions-list', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactions);
-router.get('/get-transaction-data', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactionData);
-router.post('/post-add-transaction', auth, checkPermission('ADD_TRANSACTION'), erpController.postAddTransaction);
+router.get('/get-transactions-list', auth, erpController.getTransactions);
+router.get('/get-transaction-data', auth, erpController.getTransactionData);
+router.post('/post-add-transaction', auth, erpController.postAddTransaction);
 
 
 module.exports = router;

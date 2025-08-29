@@ -28,10 +28,11 @@ html
               ul.dropdown-menu
                 li
                   a.dropdown-item.register-nav(href="#") Kasam
-                li
-                  a.dropdown-item.add-income-nav(href="#") Gelir Ekle
-                li
-                  a.dropdown-item.add-expense-nav(href="#") Gider Ekle
+                if permissions.includes('REGISTER_RECORD_MANAGE')
+                  li
+                    a.dropdown-item.add-income-nav(href="#") Gelir Ekle
+                  li
+                    a.dropdown-item.add-expense-nav(href="#") Gider Ekle
             li.nav-item.dropdown
               a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
                 | Abonelik

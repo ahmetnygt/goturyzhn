@@ -91,14 +91,17 @@ block content
                     span.input-group-text Diğer Gider
                     input.form-control.other-expense(type="text" readonly)
         .p-3.d-flex.gap-3.justify-content-end
-            button.btn.btn-outline-success.btn-sm.add-income-nav
-                i.fa-solid.fa-plus.me-2
-                | Gelir Ekle
-            button.btn.btn-outline-danger.btn-sm.add-expense-nav
-                i.fa-solid.fa-minus.me-2
-                | Gider Ekle
-            button.btn.btn-outline-primary.btn-sm Sıfırla
-            button.btn.btn-outline-primary.btn-sm.transaction-transfer-nav Başka Kullanıcıya Devret
+            if permissions.includes('REGISTER_RECORD_MANAGE')
+                button.btn.btn-outline-success.btn-sm.add-income-nav
+                    i.fa-solid.fa-plus.me-2
+                    | Gelir Ekle
+                button.btn.btn-outline-danger.btn-sm.add-expense-nav
+                    i.fa-solid.fa-minus.me-2
+                    | Gider Ekle
+            if permissions.includes('REGISTER_RESET')
+                button.btn.btn-outline-primary.btn-sm Sıfırla
+            if permissions.includes('REGISTER_TRANSFER')
+                button.btn.btn-outline-primary.btn-sm.transaction-transfer-nav Başka Kullanıcıya Devret
         .p-3
             .d-flex.mb-2
                 .col-2
