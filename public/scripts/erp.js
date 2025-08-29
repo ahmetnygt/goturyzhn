@@ -5,7 +5,7 @@ let currentTripTime;
 let currentTripPlaceTime;
 let currentTripId;
 let currentStop = "1";
-let currentStopStr = "Çanakkale";
+let currentStopStr = "Çanakkale İskele";
 let fromId;
 let toId;
 let fromStr;
@@ -107,7 +107,7 @@ async function loadTrip(date, time, tripId) {
                         arr.push(opt)
                         for (let i = 0; i < response.length; i++) {
                             const rs = response[i];
-                            const opt = $("<option>").html(rs.placeStr).val(rs.stopId)
+                            const opt = $("<option>").html(rs.stopStr).val(rs.stopId)
                             arr.push(opt)
                         }
                         $(".move-to-trip-place-select").html(arr)
@@ -474,7 +474,7 @@ $("#currentStop").on("change", async (e) => {
     const response = await $.ajax({
         url: "erp/get-day-trips-list",
         type: "GET",
-        data: { date: calendar.val(), placeId: currentStop }
+        data: { date: calendar.val(), stopId: currentStop }
     });
 
     $(".tripRows").html(response);
@@ -812,7 +812,7 @@ $(".taken-ticket-op").on("click", async e => {
         await $.ajax({
             url: "erp/get-move-ticket",
             type: "GET",
-            data: { pnr: movingSeatPNR, tripId: currentTripId, placeId: currentStop },
+            data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: currentStop },
             success: async function (response) {
                 $(".moving .info").html(response)
                 isMovingActive = true
@@ -847,7 +847,7 @@ $(".moving-confirm").on("click", async e => {
     await $.ajax({
         url: "erp/post-move-tickets",
         type: "POST",
-        data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: currentStop, toId: $(".move-to-trip-place-select").val() },
+        data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: currentStop, toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId },
         success: async function (response) {
             selectedSeats = []
             selectedTakenSeats = []

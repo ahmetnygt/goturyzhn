@@ -25,9 +25,9 @@ const Price = require("../models/priceModel")
 let places;
 Place.findAll().then(p => { places = p }).catch(err => console.log(err))
 
-async function generatePNR(fromId, toId) {
-    const from = await places.find(p => p.id == fromId).title;
-    const to = await places.find(p => p.id == toId).title;
+async function generatePNR(fromId, toId, stops) {
+    const from = stops.find(s => s.id == fromId)?.title;
+    const to = stops.find(s => s.id == toId)?.title;
     const turkishMap = { "Ç": "C", "Ş": "S", "İ": "I", "Ğ": "G", "Ü": "U", "Ö": "O", "ç": "C", "ş": "S", "ı": "I", "ğ": "G", "ü": "U", "ö": "O" };
 
     const clean = str => str
@@ -71,15 +71,6 @@ function convertEmptyFieldsToNull(obj) {
         }
     }
     return result;
-}
-
-async function getDaysTripsFormatted(date) {
-    let trip = await Trip.findOne({ where: { date: date } })
-    let routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
-    let busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
-    let tripDate = new Date(trip.date)
-    let ddmm = `${tripDate.getDate()}/${tripDate.getMonth() + 1}`
-    return { date: ddmm, time: trip.time, title: `${routeStops[0].placeId} -> ${routeStops[routeStops.length - 1].placeId}`, busModel: busModel.title }
 }
 
 function addTime(baseTime, addTime) {
@@ -449,7 +440,7 @@ exports.postTickets = async (req, res, next) => {
         const ticketGroupId = group.id;
 
         // 2. Tüm biletleri sırayla kaydet
-        const pnr = await generatePNR(req.body.fromId, req.body.toId);
+        const pnr = await generatePNR(req.body.fromId, req.body.toId, stops);
         for (const t of tickets) {
 
             const ticket = new Ticket({
@@ -656,7 +647,7 @@ exports.postOpenTicket = async (req, res, next) => {
 exports.getMoveTicket = async (req, res, next) => {
     const pnr = req.query.pnr
     const tripId = req.query.tripId
-    const placeId = req.query.placeId
+    const stopId = req.query.stopId
 
     const tickets = await Ticket.findAll({ where: { pnr, tripId }, order: [["seatNo", "ASC"]] })
     const trip = await Trip.findOne({ where: { id: tickets[0].tripId } })
@@ -665,7 +656,7 @@ exports.getMoveTicket = async (req, res, next) => {
     trip.modifiedTime = trip.time
 
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+    const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
     if (routeStopOrder !== routeStops.length - 1) {
         for (let j = 0; j < routeStops.length; j++) {
@@ -700,20 +691,20 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         const date = req.query.date
         const time = req.query.time
         const tripId = req.query.tripId
-        const placeId = req.query.placeId
+        const stopId = req.query.stopId
 
         const trip = await Trip.findOne({ where: { date, time, id: tripId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
-        const routeStopOrder = routeStops.find(rs => rs.placeId == placeId).order
+        const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         let newRouteStopsArray = []
         for (let i = 0; i < routeStops.length; i++) {
             const rs = routeStops[i];
             if (rs.order > routeStopOrder) {
-                rs.setDataValue("placeStr", stops.find(s => s.id == rs.placeId)?.title || "");
+                rs.setDataValue("stopStr", stops.find(s => s.id == rs.stopId)?.title || "");
                 newRouteStopsArray.push(rs)
-                console.log(rs.placeStr)
+                console.log(rs.stopStr)
             }
         }
         res.json(newRouteStopsArray)
@@ -731,13 +722,6 @@ exports.postMoveTickets = async (req, res, next) => {
         const newTrip = req.body.newTrip
         const fromId = req.body.fromId
         const toId = req.body.toId
-
-        console.log(pnr,
-            oldSeats,
-            newSeats,
-            newTrip,
-            fromId,
-            toId,)
 
         const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
 
@@ -1225,6 +1209,8 @@ exports.postSaveTrip = async (req, res, next) => {
         const routeStops = await RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
+        const captainId = await Bus.findOne({ where: { id: busId } })?.captainId
+
         const start = new Date(firstDate);
         const end = new Date(lastDate);
 
@@ -1248,6 +1234,7 @@ exports.postSaveTrip = async (req, res, next) => {
                 routeId: routeId,
                 busModelId: busModelId,
                 busId: busId,
+                captainId: captainId,
                 date: tripDate.toISOString().split("T")[0], // YYYY-MM-DD
                 time: departureTime,
                 fromPlaceString: fromStop.title,
