@@ -145,6 +145,20 @@ body {
     overflow: hidden;
 }
 
+.other-register {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    width: 80vw;
+    max-height: 80vh;
+    display: none;
+    overflow: hidden;
+}
+
 .register {
     position: absolute;
     left: 50%;
@@ -181,6 +195,7 @@ div.price-close,
 div.register-close,
 div.add-transaction-close,
 div.transaction-transfer-close,
+div.other-register-close,
 div.price-add-close,
 div.moving-close,
 div.stops-close {

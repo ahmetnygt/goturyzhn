@@ -82,7 +82,9 @@ router.post('/post-customer-blacklist', erpController.postCustomerBlacklist);
 
 router.get('/get-transactions-list', auth, erpController.getTransactions);
 router.get('/get-transaction-data', auth, erpController.getTransactionData);
+router.get('/get-user-register-balance', auth, erpController.getUserRegisterBalance);
 router.post('/post-add-transaction', auth, erpController.postAddTransaction);
+
 
 
 module.exports = router;
