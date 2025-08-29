@@ -19,6 +19,7 @@ const FirmUser = require("../models/firmUserModel")
 const Branch = require("../models/branchModel")
 const CashRegister = require("../models/cashRegisterModel")
 const Transaction = require("../models/transactionModel")
+const Payment = require("../models/paymentModel")
 const SystemLog = require("../models/systemLogModel")
 const Price = require("../models/priceModel")
 const FirmUserPermission = require("../models/firmUserPermissionModel")
@@ -1334,7 +1335,12 @@ exports.getUsersList = async (req, res, next) => {
         u.branchStr = branches.find(b => b.id == u.branchId)?.title;
     }
 
-    res.render("mixins/usersList", { users })
+    if (req.query.onlyData) {
+        res.json(users)
+    }
+    else {
+        res.render("mixins/usersList", { users })
+    }
 }
 
 exports.getCustomersList = async (req, res, next) => {
@@ -1622,3 +1628,85 @@ exports.postAddTransaction = async (req, res, next) => {
 
 //     const registerBalance =
 // }
+
+exports.postRequestPayment = async (req, res, next) => {
+    try {
+        const { userId, amount } = req.body;
+        await Payment.create({
+            initiatorId: req.session.user.id,
+            payerId: userId,
+            receiverId: req.session.user.id,
+            amount
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Request payment error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.postSendPayment = async (req, res, next) => {
+    try {
+        const { userId, amount } = req.body;
+        await Payment.create({
+            initiatorId: req.session.user.id,
+            payerId: req.session.user.id,
+            receiverId: userId,
+            amount
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Send payment error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.getPendingPayments = async (req, res, next) => {
+    try {
+        const payments = await Payment.findAll({ where: { payerId: req.session.user.id, status: "pending" } });
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.receiverId))] } } });
+        const result = payments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            userName: users.find(u => u.id == p.receiverId)?.name || "",
+            canConfirm: p.initiatorId !== req.session.user.id
+        }));
+        res.json(result);
+    } catch (err) {
+        console.error("Pending payments error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getPendingCollections = async (req, res, next) => {
+    try {
+        const payments = await Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.payerId))] } } });
+        const result = payments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            userName: users.find(u => u.id == p.payerId)?.name || "",
+            canConfirm: p.initiatorId !== req.session.user.id
+        }));
+        res.json(result);
+    } catch (err) {
+        console.error("Pending collections error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postConfirmPayment = async (req, res, next) => {
+    try {
+        const { id } = req.body;
+        const payment = await Payment.findOne({ where: { id } });
+        if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
+        if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
+        if (payment.initiatorId === req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
+        payment.status = "approved";
+        await payment.save();
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Confirm payment error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};

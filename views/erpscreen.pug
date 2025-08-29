@@ -42,6 +42,52 @@ block content
                 button.btn.btn-outline-primary.transaction-transfer-button ONAYLA
                 button.btn.btn-outline-primary.transaction-transfer-close KAPAT
 
+    .payment-request
+        .gtr-header
+            span ÖDEME İSTE
+        .payment-request-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select.payment-request-user()
+            .input-group
+                span.input-group-text Tutar
+                input.form-control.payment-request-amount(type="text")
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.payment-request-button ONAYLA
+                button.btn.btn-outline-primary.payment-request-close KAPAT
+
+    .payment-send
+        .gtr-header
+            span ÖDEME YAP
+        .payment-send-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select.payment-send-user()
+            .input-group
+                span.input-group-text Tutar
+                input.form-control.payment-send-amount(type="text")
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.payment-send-button ONAYLA
+                button.btn.btn-outline-primary.payment-send-close KAPAT
+
+    .pending-payments
+        .gtr-header
+            span BEKLEYEN ÖDEMELERİM
+        .pending-payments-close
+            i.fa-solid.fa-x
+        .p-3.pending-payments-list.d-flex.flex-column.gap-2
+
+    .pending-collections
+        .gtr-header
+            span BEKLEYEN TAHSİLATLARIM
+        .pending-collections-close
+            i.fa-solid.fa-x
+        .p-3.pending-collections-list.d-flex.flex-column.gap-2
+
     .register
         .gtr-header
             span KASA
