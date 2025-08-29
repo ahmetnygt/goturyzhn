@@ -378,6 +378,22 @@ exports.postErpLogin = async (req, res, next) => {
         req.session.user = u;
         req.session.isAuthenticated = true;
 
+        const userPerms = await FirmUserPermission.findAll({
+            where: { firmUserId: u.id, allow: true },
+            attributes: ["permissionId"],
+        });
+
+        const permissionIds = userPerms.map(p => p.permissionId);
+        if (permissionIds.length) {
+            const permissionRows = await Permission.findAll({
+                where: { id: { [Op.in]: permissionIds } },
+                attributes: ["code"],
+            });
+            req.session.permissions = permissionRows.map(p => p.code);
+        } else {
+            req.session.permissions = [];
+        }
+
         req.session.save(() => {
             const url = req.session.redirectTo || "/erp";
             delete req.session.redirectTo;
