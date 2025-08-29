@@ -1029,6 +1029,16 @@ exports.getStop = async (req, res, next) => {
     res.json(stop);
 };
 
+exports.getStopsData = async (req, res, next) => {
+    try {
+        const stops = await Stop.findAll();
+        res.json(stops);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.postSaveStop = async (req, res, next) => {
     try {
         const data = convertEmptyFieldsToNull(req.body);

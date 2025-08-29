@@ -310,15 +310,11 @@ block content
                 .input-group
                     span.input-group-text Nereden
                     select.route-from.form-select()
-                        option(value="" selected) 
-                        each p in places
-                            option(value=p.id) #{p.title}
+                        option(value="" selected)
                 .input-group
                     span.input-group-text Nereye
                     select.route-to.form-select()
-                        option(value="" selected) 
-                        each p in places
-                            option(value=p.id) #{p.title}
+                        option(value="" selected)
                 .input-group
                     span.input-group-text Açıklama
                     input.route-description.form-control(type="text" )
@@ -326,9 +322,7 @@ block content
             .route-settings.h-100
                 .input-group.mb-3
                     select.route-stop-place.form-select()
-                        option(value="" selected) 
-                        each p in places
-                            option(value=p.id) #{p.title}
+                        option(value="" selected)
                     input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;")
                     button.add-route-stop-button.btn.btn-outline-primary(type="button") EKLE
                 .route-stops.d-flex.flex-column.gap-3
