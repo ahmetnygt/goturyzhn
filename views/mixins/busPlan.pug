@@ -9,18 +9,22 @@
         b.m-0.captain-name #{captain ? captain.name + " " + captain.surname : ""}
         b.m-0.captain-phone #{captain ? captain.phoneNumber : ""}
     .d-flex.justify-content-between.mb-3
-        select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
-            option(value="" selected disabled) Plaka seçiniz.
-        select.trip-bus-plan.form-select-sm.form-select(data-current-bus-model-id=trip.busModelId)
-            option(value="" selected disabled) Koltuk planı seçiniz.
+        if permissions.includes('REGISTER_VIEW_OTHERS')
+            select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
+                option(value="" selected disabled) Plaka seçiniz.
+            select.trip-bus-plan.form-select-sm.form-select(data-current-bus-model-id=trip.busModelId)
+                option(value="" selected disabled) Koltuk planı seçiniz.
+        else
+            input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
+            input.trip-bus-plan.form-control-sm.form-control(data-current-bus-model-id=trip.busModelId type="text" readonly)
 .seats
     - let seatNumber = 0
     - let seatIndex = 0
-    - for(let i = 0; i < 6; i++)
+    - for(let i = 0; i < 16; i++)
         .seat-row
-            -for(let j = 0; j < 4; j++){
+            -for(let j = 0; j < 5; j++){
             -   if(busModel.planBinary[seatIndex] == 0){
-                -if((seatIndex+1)%4==0){
+                -if((seatIndex+1)%5==0){
                     .seat.none
                         |0
                 -}

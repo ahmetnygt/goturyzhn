@@ -561,7 +561,7 @@ select.price-button-select {
     display: flex;
     gap: 5px;
     flex-wrap: wrap;
-    max-width: 8rem;
+    max-width: 10rem;
 }
 
 .bus-plan-create-input {

@@ -784,6 +784,7 @@ exports.getSearchTable = async (req, res, next) => {
 }
 
 exports.getBusPlanPanel = async (req, res, next) => {
+    let id = req.query.id
     let busModel = null
 
     if (id) {

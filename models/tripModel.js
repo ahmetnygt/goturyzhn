@@ -18,7 +18,7 @@ const Trip = sequelize.define("trip", {
     },
     busId: {
         type: Sequelize.BIGINT,
-        allowNull: false
+        allowNull: true
     },
     captainId: {
         type: Sequelize.BIGINT,

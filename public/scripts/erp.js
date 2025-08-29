@@ -137,6 +137,7 @@ async function loadTrip(date, time, tripId) {
 
                 try {
                     await $.post("erp/post-trip-bus", { tripId: currentTripId, busId: busId })
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
                 } catch (err) {
                     console.log(err)
                 }
@@ -151,6 +152,7 @@ async function loadTrip(date, time, tripId) {
 
                 try {
                     await $.post("erp/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
                 } catch (err) {
                     console.log(err)
                 }
