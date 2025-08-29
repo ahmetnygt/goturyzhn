@@ -24,7 +24,4 @@ const FirmUserPermission = sequelize.define("firmuserpermission", {
     },
 });
 
-FirmUser.belongsToMany(Permission, { through: FirmUserPermission, foreignKey: "firmUserId" });
-Permission.belongsToMany(FirmUser, { through: FirmUserPermission, foreignKey: "permissionId" });
-
 module.exports = FirmUserPermission;

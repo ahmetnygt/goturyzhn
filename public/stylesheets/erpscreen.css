@@ -1088,5 +1088,6 @@ div.ticket-cancel-refund-open-close {
     background-color: white;
     border: 1px solid #dee2e6;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
-    font-size: .85rem
+    font-size: .85rem;
+    width: max-content;
 }
