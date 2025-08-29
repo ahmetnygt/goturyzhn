@@ -997,6 +997,64 @@ $(".register-close").on("click", e => {
     isRegisterShown = false
 })
 
+$(".other-register-nav").on("click", e => {
+    $(".blackout").css("display", "block")
+    $(".other-register").css("display", "block")
+    $(".other-register-user").empty()
+    $(".other-register-balance").val("")
+    $(".other-transaction-list").empty()
+})
+
+$(".other-register-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".other-register").css("display", "none")
+})
+
+$(".other-register-branch").on("change", async e => {
+    const branchId = $(e.target).val()
+    const userSelect = $(".other-register-user")
+    userSelect.empty()
+    $(".other-register-balance").val("")
+    $(".other-transaction-list").empty()
+    if (branchId) {
+        await $.ajax({
+            url: "erp/get-users-by-branch",
+            type: "GET",
+            data: { id: branchId },
+            success: function (response) {
+                userSelect.append(`<option value="">Kullanıcı Seç</option>`)
+                response.forEach(u => {
+                    userSelect.append(`<option value="${u.id}">${u.name}</option>`)
+                })
+            }
+        })
+    }
+})
+
+$(".other-register-user").on("change", async e => {
+    const userId = $(e.target).val()
+    $(".other-register-balance").val("")
+    $(".other-transaction-list").empty()
+    if (userId) {
+        await $.ajax({
+            url: "erp/get-user-register-balance",
+            type: "GET",
+            data: { userId },
+            success: function (response) {
+                $(".other-register-balance").val(response.balance)
+            }
+        })
+        await $.ajax({
+            url: "erp/get-transactions-list",
+            type: "GET",
+            data: { userId },
+            success: function (response) {
+                $(".other-transaction-list").html(response)
+            }
+        })
+    }
+})
+
 let transactionType = null
 $(".add-income-nav").on("click", async e => {
     transactionType = "income"

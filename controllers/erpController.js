@@ -1471,13 +1471,14 @@ exports.postSaveUser = async (req, res, next) => {
 
 exports.getTransactions = async (req, res, next) => {
     try {
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const userId = req.query.userId || req.session.user.id;
+        const register = await CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
         // Tarihe göre yeni → eski
         const transactions = await Transaction.findAll({
             where: {
-                userId: req.session.user.id,
+                userId,
                 createdAt: { [Op.gt]: register.reset_date_time }
             },
             order: [["createdAt", "DESC"]]
@@ -1503,12 +1504,13 @@ exports.getTransactions = async (req, res, next) => {
 
 exports.getTransactionData = async (req, res, next) => {
     try {
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const userId = req.query.userId || req.session.user.id;
+        const register = await CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
         const transactions = await Transaction.findAll({
             where: {
-                userId: req.session.user.id,
+                userId,
                 createdAt: { [Op.gt]: register.reset_date_time }
             }
         });
@@ -1566,6 +1568,20 @@ exports.getTransactionData = async (req, res, next) => {
     } catch (err) {
         console.error("Transaction data error:", err);
         res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.getUserRegisterBalance = async (req, res, next) => {
+    try {
+        const userId = req.query.userId;
+        if (!userId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
+        const register = await CashRegister.findOne({ where: { userId } });
+        if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
+        const balance = (Number(register.cash_balance) || 0) + (Number(register.card_balance) || 0);
+        res.json({ balance });
+    } catch (err) {
+        console.error("User register balance error:", err);
+        res.status(500).json({ message: err.message });
     }
 };
 

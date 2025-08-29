@@ -113,6 +113,39 @@ block content
                     p.text-center.m-0 Tutarı
             .transaction-list.d-flex.flex-column.gap-2
 
+    .other-register
+        .gtr-header
+            span DİĞER KASA
+        .other-register-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .d-flex.gap-2
+                .input-group.register-data-input
+                    span.input-group-text Şube
+                    select.form-select.other-register-branch
+                        option(value="" selected) Şube Seç
+                        each b in branches
+                            option(value=b.id) #{b.title}
+                .input-group.register-data-input
+                    span.input-group-text Kullanıcı
+                    select.form-select.other-register-user
+                .input-group.register-data-input
+                    span.input-group-text Bakiye
+                    input.form-control.other-register-balance(type="text" readonly)
+        .p-3
+            .d-flex.mb-2
+                .col-2
+                    p.text-center.m-0 İşlem Zamanı
+                .col-2
+                    p.text-center.m-0 Tipi
+                .col-4
+                    p.text-center.m-0 Açıklama
+                .col-2
+                    p.text-center.m-0 Bilgi
+                .col-2
+                    p.text-center.m-0 Tutarı
+            .transaction-list.other-transaction-list.d-flex.flex-column.gap-2
+
     .ticket-search-pop-up
         .ticket-search-close
             i.fa-solid.fa-x

@@ -83,6 +83,7 @@ router.post('/post-customer-blacklist', erpController.postCustomerBlacklist);
 
 router.get('/get-transactions-list', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactions);
 router.get('/get-transaction-data', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getTransactionData);
+router.get('/get-user-register-balance', auth, checkPermission('VIEW_TRANSACTIONS'), erpController.getUserRegisterBalance);
 router.post('/post-add-transaction', auth, checkPermission('ADD_TRANSACTION'), erpController.postAddTransaction);
 
 
