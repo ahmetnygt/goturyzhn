@@ -240,9 +240,14 @@ div.stops-close {
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     min-width: 40vw;
-    min-height: 40vh;
+    height: 60vh;
     overflow: hidden;
     display: none;
+}
+
+.route .route-stops {
+    overflow-y: auto;
+    height: 45vh;
 }
 
 .stops {

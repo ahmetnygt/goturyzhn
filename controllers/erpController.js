@@ -1075,7 +1075,8 @@ exports.postSaveStop = async (req, res, next) => {
 
 exports.getRoutesList = async (req, res, next) => {
     const routes = await Route.findAll()
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [routes.flatMap(route => [route.fromStopId, route.toStopId])] } } })
+    const stopIds = routes.flatMap(route => [route.fromStopId, route.toStopId]);
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
 
     for (let i = 0; i < routes.length; i++) {
         const r = routes[i];
@@ -1113,7 +1114,7 @@ exports.getRouteStopsList = async (req, res, next) => {
     const { id } = req.query
 
     const routeStops = await RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]] });
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stoId))] } } })
+    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const routeStop = routeStops[i];
@@ -1299,7 +1300,7 @@ exports.getUsersList = async (req, res, next) => {
 
     for (let i = 0; i < users.length; i++) {
         const u = users[i];
-        u.branchStr = await branches.find(b => b.id == u.branchId).title;
+        u.branchStr = branches.find(b => b.id == u.branchId)?.title;
     }
 
     res.render("mixins/usersList", { users })
