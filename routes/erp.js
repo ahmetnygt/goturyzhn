@@ -47,6 +47,7 @@ router.post('/post-save-bus', erpController.postSaveBus);
 router.get('/get-stops-list', erpController.getStopsList);
 router.get('/get-stop', erpController.getStop);
 router.post('/post-save-stop', erpController.postSaveStop);
+router.get('/get-stops-data', erpController.getStopsData);
 
 router.get('/get-prices-list', erpController.getPricesList);
 router.post('/post-save-prices', erpController.postSavePrices);

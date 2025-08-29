@@ -1428,12 +1428,28 @@ $(".save-stop").on("click", async e => {
 let editingRouteId = null
 let routeStops = []
 $(".route-nav").on("click", async e => {
+    routeStops = []
     await $.ajax({
         url: "erp/get-routes-list",
         type: "GET",
         data: {},
         success: function (response) {
             $(".route-list-nodes").html(response)
+
+            $.ajax({
+                url: "erp/get-stops-data",
+                type: "GET",
+                success: function (stops) {
+                    const opts = ['<option value="" selected></option>']
+                    for (const s of stops) {
+                        opts.push(`<option value="${s.id}">${s.title}</option>`)
+                    }
+                    $(".route-from, .route-to, .route-stop-place").html(opts.join(""))
+                },
+                error: function (xhr, status, error) {
+                    console.log(error)
+                }
+            })
 
             $(".route-button").on("click", async e => {
                 const id = e.currentTarget.dataset.id
@@ -1447,8 +1463,8 @@ $(".route-nav").on("click", async e => {
 
                         $(".route-code").val(response.routeCode)
                         $(".route-title").val(response.title)
-                        $(".route-from").val(response.fromPlaceId)
-                        $(".route-to").val(response.toPlaceId)
+                        $(".route-from").val(response.fromStopId)
+                        $(".route-to").val(response.toStopId)
                         $(".route-description").val(response.description)
 
                         await $.ajax({
@@ -1506,23 +1522,23 @@ $(".add-route").on("click", e => {
 
 
 $(".add-route-stop-button").on("click", async e => {
-    const placeId = $(".route-stop-place").val()
+    const stopId = $(".route-stop-place").val()
     const duration = $(".route-stop-duration").val()
     const isFirst = routeStops.length == 0
 
     await $.ajax({
         url: "erp/get-route-stop",
         type: "GET",
-        data: { placeId, duration, isFirst },
+        data: { stopId, duration, isFirst },
         success: function (response) {
             $(".route-stop-duration").css("display", "block")
             $(".route-stop-place").val("")
             $(".route-stop-duration").val("")
-            routeStops.push({ placeId, duration })
+            routeStops.push({ stopId, duration })
             $(".route-stops").append(response)
             $(".remove-route-stop").on("click", e => {
                 const $stop = $(e.currentTarget).closest(".route-stop");
-                const placeId = $stop.data("placeId");
+                const stopId = $stop.data("stopId");
 
                 if ($stop[0] === $(".route-stop")[0]) {
                     $(".route-stop").eq(1).find("._route-stop-duration").remove();
@@ -1531,7 +1547,7 @@ $(".add-route-stop-button").on("click", async e => {
                 console.log($stop)
                 $stop.remove();
 
-                routeStops = routeStops.filter(r => r.placeId !== placeId);
+                routeStops = routeStops.filter(r => r.stopId !== stopId);
             });
 
         },
