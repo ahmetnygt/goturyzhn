@@ -630,7 +630,7 @@ block content
                 |   22.05.2025 14.10
 
     .ticket-info-pop-up
-        .ticket-close 
+        .ticket-close
             i.fa-solid.fa-x
         .ticket-header
             p.ticket-header--date 12.05.2025 - 12.30
@@ -642,8 +642,25 @@ block content
         .ticket-rows
 
             .ticket-buttons.d-flex.justify-content-center.gap-3
-                button.btn.btn-outline-primary.ticket-button-action(data-action="") 
+                button.btn.btn-outline-primary.ticket-button-action(data-action="")
                 button.btn.btn-outline-primary.ticket-button-cancel İPTAL
+
+    .trip-revenue-pop-up
+        .trip-revenue-close
+            i.fa-solid.fa-x
+        h5.text-center.mb-3 HASILATLAR
+        table.table.table-sm.table-bordered.mb-0
+            thead
+                tr
+                    th Şube
+                    th Durak
+                    th Toplam
+            tbody.trip-revenue-rows
+            tfoot
+                tr
+                    th Toplam
+                    th.trip-revenue-total-current
+                    th.trip-revenue-total-all
 
     .branch
         .gtr-header

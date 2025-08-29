@@ -224,7 +224,35 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
                 $(".taken-ticket-ops-pop-up").hide();
+                $(".trip-options-dropdown").hide();
                 currentSeat = null;
+            });
+
+            $(document).off("click", ".trip-options");
+            $(document).on("click", ".trip-options", function (e) {
+                e.stopPropagation();
+                $(".trip-options-dropdown").hide();
+                $(this).find(".trip-options-dropdown").toggle();
+            });
+
+            $(document).off("click", ".trip-option-revenues");
+            $(document).on("click", ".trip-option-revenues", async function (e) {
+                e.stopPropagation();
+                $(".trip-options-dropdown").hide();
+                try {
+                    const revenues = await $.get("erp/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
+                    const rows = [];
+                    revenues.branches.forEach(b => {
+                        rows.push(`<tr><td>${b.title}</td><td>${b.currentAmount}₺</td><td>${b.totalAmount}₺</td></tr>`);
+                    });
+                    $(".trip-revenue-rows").html(rows.join(""));
+                    $(".trip-revenue-total-current").html(revenues.totals.current + "₺");
+                    $(".trip-revenue-total-all").html(revenues.totals.total + "₺");
+                    $(".trip-revenue-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                }
             });
 
             $(".ticket-op").on("click", e => {
@@ -976,6 +1004,11 @@ $(".ticket-close").on("click", e => {
 })
 $(".ticket-button-cancel").on("click", e => {
     ticketClose();
+})
+
+$(".trip-revenue-close").on("click", e => {
+    $(".trip-revenue-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
 })
 
 $(".add-trip-note-button").on("click", e => {
