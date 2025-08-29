@@ -1810,33 +1810,11 @@ $(".trip-close").on("click", e => {
     $(".trip").css("display", "none")
 })
 
-$(".add-trip").on("click", async e => {
+$(".add-trip").on("click", e => {
     editingTripId = null
     $(".trip").css("width", "90vw")
     $(".trip-list").removeClass("col-12").addClass("col-7")
     $(".trip-info").css("display", "flex")
-
-    try {
-        const [routes, busModels, buses] = await Promise.all([
-            $.get("erp/get-routes-data"),
-            $.get("erp/get-bus-models-data"),
-            $.get("erp/get-buses-data")
-        ])
-
-        const routeSelect = $(".trip-route")
-        routeSelect.empty().append('<option value="" selected></option>')
-        routes.forEach(r => routeSelect.append(`<option value="${r.id}">${r.title}</option>`))
-
-        const modelSelect = $(".trip-bus-model")
-        modelSelect.empty().append('<option value="" selected></option>')
-        busModels.forEach(bm => modelSelect.append(`<option value="${bm.id}">${bm.title}</option>`))
-
-        const busSelect = $(".trip-bus")
-        busSelect.empty().append('<option value="" selected></option>')
-        buses.forEach(b => busSelect.append(`<option value="${b.id}">${b.licensePlate}</option>`))
-    } catch (err) {
-        console.log(err)
-    }
 })
 
 $(".save-trip").on("click", async e => {
