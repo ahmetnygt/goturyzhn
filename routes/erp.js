@@ -40,9 +40,12 @@ router.get('/get-search-table', erpController.getSearchTable);
 router.get('/get-bus-plan-panel', erpController.getBusPlanPanel);
 router.post('/post-save-bus-plan', erpController.postSaveBusPlan);
 
+router.get('/get-bus-models-data', erpController.getBusModelsData);
+
 router.get('/get-buses-list', erpController.getBusesList);
 router.get('/get-bus', erpController.getBus);
 router.post('/post-save-bus', erpController.postSaveBus);
+router.get('/get-buses-data', erpController.getBusesData);
 
 router.get('/get-stops-list', erpController.getStopsList);
 router.get('/get-stop', erpController.getStop);
@@ -53,6 +56,7 @@ router.get('/get-prices-list', erpController.getPricesList);
 router.post('/post-save-prices', erpController.postSavePrices);
 router.post('/post-add-price', erpController.postAddPrice);
 
+router.get('/get-routes-data', erpController.getRoutesData);
 router.get('/get-routes-list', erpController.getRoutesList);
 router.get('/get-route', erpController.getRoute);
 router.get('/get-route-stop', erpController.getRouteStop);
