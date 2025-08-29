@@ -1000,6 +1000,25 @@ div.ticket-cancel-refund-open-close {
     cursor: -webkit-zoom-in;
 }
 
+.trip-incomes-popup {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: .2rem;
+    background-color: #fff;
+    color: #000;
+    padding: .5rem;
+    border-radius: 4px;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.trip-incomes:hover .trip-incomes-popup {
+    display: block;
+}
+
 .trip-bus-license-plate,
 .trip-bus-plan {
     width: 8rem !important;

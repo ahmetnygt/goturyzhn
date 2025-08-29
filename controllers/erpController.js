@@ -203,6 +203,15 @@ exports.getTrip = async (req, res, next) => {
 
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         let newTicketArray = []
+        const soldStatuses = ["completed", "web"]
+        let currentSoldCount = 0
+        let currentSoldAmount = 0
+        let totalSoldCount = 0
+        let totalSoldAmount = 0
+        let currentReservedCount = 0
+        let currentReservedAmount = 0
+        let totalReservedCount = 0
+        let totalReservedAmount = 0
         for (let i = 0; i < tickets.length; i++) {
             const ticket = tickets[i];
             const ticketPlaceOrder = routeStops.find(rs => rs.stopId == ticket.fromRouteStopId).order
@@ -225,11 +234,39 @@ exports.getTrip = async (req, res, next) => {
             ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
 
             newTicketArray[ticket.seatNo] = ticket
+
+            if (soldStatuses.includes(ticket.status)) {
+                totalSoldCount++
+                totalSoldAmount += ticket.price
+                if (ticket.fromRouteStopId == stopId) {
+                    currentSoldCount++
+                    currentSoldAmount += ticket.price
+                }
+            } else if (ticket.status === "reservation") {
+                totalReservedCount++
+                totalReservedAmount += ticket.price
+                if (ticket.fromRouteStopId == stopId) {
+                    currentReservedCount++
+                    currentReservedAmount += ticket.price
+                }
+            }
         }
         const fromStr = stops.find(s => s.id == stopId).title
         const toStr = stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title
+        const incomes = {
+            currentSoldCount,
+            currentSoldAmount,
+            totalSoldCount,
+            totalSoldAmount,
+            currentReservedCount,
+            currentReservedAmount,
+            totalReservedCount,
+            totalReservedAmount,
+            grandCount: totalSoldCount + totalReservedCount,
+            grandAmount: totalSoldAmount + totalReservedAmount
+        }
 
-        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr })
+        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
     }
     else {
         res.status(404).json({ error: "Sefer bulunamadı." })
