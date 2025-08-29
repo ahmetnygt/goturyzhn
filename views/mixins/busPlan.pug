@@ -26,6 +26,9 @@
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.grandAmount}₺`)
         .trip-options
             i.fa-solid.fa-ellipsis-vertical
+            .trip-options-dropdown
+                if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
+                    p.trip-option-revenues Hasılatlar
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b
@@ -73,6 +76,8 @@
                     data-phone=tickets[seatNumber]?tickets[seatNumber].phoneNumber:"" 
                     data-price=tickets[seatNumber]?tickets[seatNumber].price:"" 
                     data-created-at=tickets[seatNumber]?tickets[seatNumber].createdAt:"" 
+                    data-user-name=tickets[seatNumber]?tickets[seatNumber].user:"" 
+                    data-branch=tickets[seatNumber]?tickets[seatNumber].userBranch:"" 
                     data-trip-id=trip.id)
 
                     p.seat-number #{seatNumber}

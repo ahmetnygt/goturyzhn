@@ -200,8 +200,10 @@ exports.getTrip = async (req, res, next) => {
         trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
         trip.timeString = `${hours}.${minutes}`
 
-
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } } })
+
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
         let currentSoldCount = 0
@@ -216,9 +218,6 @@ exports.getTrip = async (req, res, next) => {
             const ticket = tickets[i];
             const ticketPlaceOrder = routeStops.find(rs => rs.stopId == ticket.fromRouteStopId).order
 
-            // console.log(ticketPlaceOrder)
-            // console.log(currentPlaceOrder)
-
             if (ticketPlaceOrder == currentStopOrder) {
                 ticket.stopOrder = "even"
             }
@@ -232,6 +231,8 @@ exports.getTrip = async (req, res, next) => {
 
             ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
             ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
+            ticket.user = users.find(u => u.id == ticket.userId).name
+            ticket.userBranch = branches.find(b => b.id == users.find(u => u.id == ticket.userId).id).title
 
             newTicketArray[ticket.seatNo] = ticket
 
@@ -356,6 +357,59 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 
     res.render('mixins/routeStopsTimeList', { routeStops });
 }
+
+//TODO exports.getTripRevenues = async (req, res, next) => {
+//TODO     try {
+//TODO         const { tripId, stopId } = req.query;
+
+//TODO         const tickets = await Ticket.findAll({
+//TODO             where: {
+//TODO                 tripId,
+//TODO                 status: { [Op.in]: ["completed", "reservation", "web"] }
+//TODO             },
+//TODO             raw: true
+//TODO         });
+
+//TODO         const users = await FirmUser.findAll({ where: { id: [...new Set(tickets.map(t => t.userId))] } })
+
+//TODO         const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } }, raw: true });
+
+//TODO         for (let i = 0; i < tickets.length; i++) {
+//TODO             const ticket = tickets[i];
+            
+//TODO         }
+
+//TODO         const branchTitles = {};
+//TODO         branches.forEach(b => branchTitles[b.id] = b.title);
+
+//TODO         const branchData = {};
+//TODO         tickets.forEach(ticket => {
+//TODO             const branchId = groupBranch[ticket.ticketGroupId];
+//TODO             if (!branchId) return;
+//TODO             if (!branchData[branchId]) {
+//TODO                 branchData[branchId] = {
+//TODO                     title: branchTitles[branchId] || "",
+//TODO                     currentAmount: 0,
+//TODO                     totalAmount: 0
+//TODO                 };
+//TODO             }
+//TODO             const amount = Number(ticket.price);
+//TODO             branchData[branchId].totalAmount += amount;
+//TODO             if (ticket.fromRouteStopId == stopId) {
+//TODO                 branchData[branchId].currentAmount += amount;
+//TODO             }
+//TODO         });
+
+//TODO         const branchesArr = Object.values(branchData);
+//TODO         const totalCurrent = branchesArr.reduce((sum, b) => sum + b.currentAmount, 0);
+//TODO         const totalAmount = branchesArr.reduce((sum, b) => sum + b.totalAmount, 0);
+
+//TODO         res.json({ branches: branchesArr, totals: { current: totalCurrent, total: totalAmount } });
+//TODO     } catch (err) {
+//TODO         console.error("getTripRevenues error:", err);
+//TODO         res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
+//TODO     }
+//TODO };
 
 exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date

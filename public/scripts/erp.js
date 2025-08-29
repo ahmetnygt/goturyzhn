@@ -224,7 +224,35 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
                 $(".taken-ticket-ops-pop-up").hide();
+                $(".trip-options-dropdown").hide();
                 currentSeat = null;
+            });
+
+            $(document).off("click", ".trip-options");
+            $(document).on("click", ".trip-options", function (e) {
+                e.stopPropagation();
+                $(".trip-options-dropdown").hide();
+                $(this).find(".trip-options-dropdown").toggle();
+            });
+
+            $(document).off("click", ".trip-option-revenues");
+            $(document).on("click", ".trip-option-revenues", async function (e) {
+                e.stopPropagation();
+                $(".trip-options-dropdown").hide();
+                try {
+                    const revenues = await $.get("erp/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
+                    const rows = [];
+                    revenues.branches.forEach(b => {
+                        rows.push(`<tr><td>${b.title}</td><td>${b.currentAmount}₺</td><td>${b.totalAmount}₺</td></tr>`);
+                    });
+                    $(".trip-revenue-rows").html(rows.join(""));
+                    $(".trip-revenue-total-current").html(revenues.totals.current + "₺");
+                    $(".trip-revenue-total-all").html(revenues.totals.total + "₺");
+                    $(".trip-revenue-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                }
             });
 
             $(".ticket-op").on("click", e => {
@@ -416,7 +444,9 @@ async function loadTrip(date, time, tripId) {
                     $(".passenger-info-popup .from").html(data.from)
                     $(".passenger-info-popup .to").html(data.to)
                     $(".passenger-info-popup .name").html(data.name)
-                    $(".passenger-info-popup .phone").html(data.phoneNumber)
+                    $(".passenger-info-popup .username").html(data.userName)
+                    $(".passenger-info-popup .userBranch").html(data.branch)
+                    $(".passenger-info-popup .phone").html(data.phone)
                     $(".passenger-info-popup .price").html(data.price)
                     $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "")
                     const date = new Date(data.createdAt)
@@ -969,6 +999,11 @@ $(".moving-close").on("click", e => {
     moveToTripId = null
     movingSeatPNR = null
     $(".moving").css("display", "none");
+})
+
+$(".trip-revenue-close").on("click", e => {
+    $(".trip-revenue-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
 })
 
 $(".ticket-close").on("click", e => {

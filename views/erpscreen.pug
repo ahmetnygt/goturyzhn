@@ -463,6 +463,24 @@ block content
             .trip-settings.h-100.col-5
                 button.save-trip.btn.btn-outline-primary KAYDET
 
+    .trip-revenue-pop-up
+        .gtr-header
+            span SEFER HASILATI
+        .trip-revenue-close
+            i.fa-solid.fa-x
+        table.table.table-sm.table-bordered.mb-0
+            thead
+                tr
+                    th Şube
+                    th Durak
+                    th Toplam
+            tbody.trip-revenue-rows
+            tfoot
+                tr
+                    th Toplam
+                    th.trip-revenue-total-current
+                    th.trip-revenue-total-all
+
     .prices
         .gtr-header
             span FİYATLAR
@@ -600,34 +618,34 @@ block content
     .passenger-info-popup
         p.text-center
             b 
-                span.seat-number 5
+                span.seat-number 
         p.text-center
             b
-                span.from ÇANAKKALE
+                span.from 
                 i.fa-solid.fa-route.mx-2
-                span.to İSTANBUL
-        p   
-            span.name Ahmet Neyiğit 
+                span.to 
+        p.text-center
+            span.name 
             |   / 
-            span.phone 5434832785
+            span.phone 
         p 
             b İşlem Yapan:
-            |   Ahmet / Çanakkale
+            span.username
+            |   /
+            span.userBranch
         p 
             b Ücret:
             span.price   
-                |   500
             |₺
         p 
             b Tahsilat Tipi:
-            span.payment   Nakit
+            span.payment  
         p 
             b PNR:
-            span.pnr   6F54WGDA5
+            span.pnr  
         p 
             b İşlem Zamanı:
             span.createdAt
-                |   22.05.2025 14.10
 
     .ticket-info-pop-up
         .ticket-close 

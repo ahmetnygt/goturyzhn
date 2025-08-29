@@ -12,6 +12,10 @@ const Ticket = sequelize.define("ticket", {
         type: Sequelize.BIGINT,
         allowNull: true
     },
+    userId: {
+        type: Sequelize.BIGINT,
+        allowNull: true
+    },
     ticketGroupId: {
         type: Sequelize.BIGINT,
         allowNull: false,
