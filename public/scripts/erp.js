@@ -2394,3 +2394,145 @@ $(".transaction-transfer-close").on("click", e => {
     $(".transaction-transfer").css("display", "none")
     $(".register").css("z-index", 100)
 })
+
+$(".payment-request-nav").on("click", async e => {
+    const users = await $.ajax({
+        url: "erp/get-users-list",
+        type: "GET",
+        data: { onlyData: true }
+    });
+    let arr = [];
+    const option = $("<option>").val("").prop("selected", true);
+    arr.push(option);
+    for (let i = 0; i < users.length; i++) {
+        const user = users[i];
+        const option = $("<option>").html(user.name).val(user.id);
+        arr.push(option);
+    }
+    $(".payment-request-user").html(arr);
+    $(".blackout").css("display", "block");
+    $(".payment-request").css("display", "block");
+});
+
+$(".payment-request-close").on("click", e => {
+    $(".payment-request").css("display", "none");
+    $(".blackout").css("display", "none");
+});
+
+$(".payment-request-button").on("click", async e => {
+    const userId = $(".payment-request-user").val();
+    const amount = $(".payment-request-amount").val();
+    await $.ajax({
+        url: "erp/post-request-payment",
+        type: "POST",
+        data: { userId, amount },
+        success: function () {
+            $(".payment-request-close").click();
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+});
+
+$(".payment-send-nav").on("click", async e => {
+    const users = await $.ajax({
+        url: "erp/get-users-list",
+        type: "GET",
+        data: { onlyData: true }
+    });
+    let arr = [];
+    const option = $("<option>").val("").prop("selected", true);
+    arr.push(option);
+    for (let i = 0; i < users.length; i++) {
+        const user = users[i];
+        const option = $("<option>").html(user.name).val(user.id);
+        arr.push(option);
+    }
+    $(".payment-send-user").html(arr);
+    $(".blackout").css("display", "block");
+    $(".payment-send").css("display", "block");
+});
+
+$(".payment-send-close").on("click", e => {
+    $(".payment-send").css("display", "none");
+    $(".blackout").css("display", "none");
+});
+
+$(".payment-send-button").on("click", async e => {
+    const userId = $(".payment-send-user").val();
+    const amount = $(".payment-send-amount").val();
+    await $.ajax({
+        url: "erp/post-send-payment",
+        type: "POST",
+        data: { userId, amount },
+        success: function () {
+            $(".payment-send-close").click();
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+});
+
+$(".pending-payments-nav").on("click", async e => {
+    const list = await $.ajax({
+        url: "erp/get-pending-payments",
+        type: "GET"
+    });
+    let arr = [];
+    for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        const row = $("<div>").addClass("d-flex justify-content-between align-items-center gap-2");
+        row.append($("<span>").text(p.userName));
+        row.append($("<span>").text(p.amount));
+        if (p.canConfirm) {
+            const btn = $("<button>").addClass("btn btn-sm btn-outline-primary").html("Onayla").attr("data-id", p.id);
+            btn.on("click", async e2 => {
+                await $.ajax({ url: "erp/post-confirm-payment", type: "POST", data: { id: $(e2.currentTarget).attr("data-id") } });
+                $(e2.currentTarget).parent().remove();
+            });
+            row.append(btn);
+        }
+        arr.push(row);
+    }
+    $(".pending-payments-list").html(arr);
+    $(".blackout").css("display", "block");
+    $(".pending-payments").css("display", "block");
+});
+
+$(".pending-payments-close").on("click", e => {
+    $(".pending-payments").css("display", "none");
+    $(".blackout").css("display", "none");
+});
+
+$(".pending-collections-nav").on("click", async e => {
+    const list = await $.ajax({
+        url: "erp/get-pending-collections",
+        type: "GET"
+    });
+    let arr = [];
+    for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        const row = $("<div>").addClass("d-flex justify-content-between align-items-center gap-2");
+        row.append($("<span>").text(p.userName));
+        row.append($("<span>").text(p.amount));
+        if (p.canConfirm) {
+            const btn = $("<button>").addClass("btn btn-sm btn-outline-primary").html("Onayla").attr("data-id", p.id);
+            btn.on("click", async e2 => {
+                await $.ajax({ url: "erp/post-confirm-payment", type: "POST", data: { id: $(e2.currentTarget).attr("data-id") } });
+                $(e2.currentTarget).parent().remove();
+            });
+            row.append(btn);
+        }
+        arr.push(row);
+    }
+    $(".pending-collections-list").html(arr);
+    $(".blackout").css("display", "block");
+    $(".pending-collections").css("display", "block");
+});
+
+$(".pending-collections-close").on("click", e => {
+    $(".pending-collections").css("display", "none");
+    $(".blackout").css("display", "none");
+});

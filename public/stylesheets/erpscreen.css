@@ -145,6 +145,27 @@ body {
     overflow: hidden;
 }
 
+.payment-request,
+.payment-send,
+.pending-payments,
+.pending-collections {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    display: none;
+    overflow: hidden;
+}
+
+.pending-payments,
+.pending-collections {
+    width: 40vw;
+    max-height: 60vh;
+}
+
 .other-register {
     position: absolute;
     left: 50%;
@@ -196,6 +217,10 @@ div.register-close,
 div.add-transaction-close,
 div.transaction-transfer-close,
 div.other-register-close,
+div.payment-request-close,
+div.payment-send-close,
+div.pending-payments-close,
+div.pending-collections-close,
 div.price-add-close,
 div.moving-close,
 div.stops-close {
