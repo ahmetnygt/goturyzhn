@@ -5,14 +5,13 @@
             | #{trip.fromPlaceString.toUpperCase()}
             i.fa-solid.fa-route.mx-2
             | #{trip.toPlaceString.toUpperCase()}
-    .d-flex.justify-content-between.mb-1
-        if captain
-            b.m-0 #{captain.name} #{captain.surname}
-            b.m-0 #{captain.phoneNumber}
+    .d-flex.justify-content-between.mb-1.captain-info
+        b.m-0.captain-name #{captain ? captain.name + " " + captain.surname : ""}
+        b.m-0.captain-phone #{captain ? captain.phoneNumber : ""}
     .d-flex.justify-content-between.mb-3
-        select.trip-bus-license-plate.form-select-sm.form-select
+        select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
             option(value="" selected disabled) Plaka seçiniz.
-        select.trip-bus-plan.form-select-sm.form-select
+        select.trip-bus-plan.form-select-sm.form-select(data-current-bus-model-id=trip.busModelId)
             option(value="" selected disabled) Koltuk planı seçiniz.
 .seats
     - let seatNumber = 0
