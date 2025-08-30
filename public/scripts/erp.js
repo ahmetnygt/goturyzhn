@@ -1045,6 +1045,7 @@ $(".trip-staff-save").on("click", async e => {
     };
     try {
         await $.post("erp/post-trip-staff", data);
+        await loadTrip(currentTripDate, currentTripTime, currentTripId)
         $("#captainId").val(data.captainId);
         $("#driver2Id").val(data.driver2Id);
         $("#driver3Id").val(data.driver3Id);
