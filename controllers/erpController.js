@@ -1182,6 +1182,23 @@ exports.postTripBusPlan = async (req, res, next) => {
     }
 };
 
+exports.postTripStaff = async (req, res, next) => {
+    try {
+        const { tripId, captainId, driver2Id, driver3Id, assistantId, hostessId } = req.body;
+        await Trip.update({
+            captainId: captainId || null,
+            driver2Id: driver2Id || null,
+            driver3Id: driver3Id || null,
+            assistantId: assistantId || null,
+            hostessId: hostessId || null
+        }, { where: { id: tripId } });
+        res.json({ message: "Güncellendi" });
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getStaffsList = async (req, res, next) => {
     const staff = await Staff.findAll();
     const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
