@@ -14,6 +14,20 @@ let toStr;
 let tripStaffInitial = {};
 let tripStaffList = [];
 
+function getStaffPhone(id) {
+    const staff = tripStaffList.find(s => s.id == id);
+    return staff ? staff.phoneNumber : "";
+}
+
+function updateTripStaffPhones() {
+    const getId = (selector, hidden) => $(selector).is("select") ? $(selector).val() : $(hidden).val();
+    $(".trip-staff-captain-phone").val(getStaffPhone(getId(".trip-staff-captain", "#captainId")));
+    $(".trip-staff-second-phone").val(getStaffPhone(getId(".trip-staff-second", "#driver2Id")));
+    $(".trip-staff-third-phone").val(getStaffPhone(getId(".trip-staff-third", "#driver3Id")));
+    $(".trip-staff-assistant-phone").val(getStaffPhone(getId(".trip-staff-assistant", "#assistantId")));
+    $(".trip-staff-hostess-phone").val(getStaffPhone(getId(".trip-staff-hostess", "#hostessId")));
+}
+
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
     await $.ajax({
@@ -270,6 +284,7 @@ async function loadTrip(date, time, tripId) {
                         $(".trip-staff-third").val($("#driver3Id").val());
                         $(".trip-staff-assistant").val($("#assistantId").val());
                         $(".trip-staff-hostess").val($("#hostessId").val());
+                        updateTripStaffPhones();
                     } else {
                         const getName = id => {
                             const staff = tripStaffList.find(s => s.id == id);
@@ -280,6 +295,7 @@ async function loadTrip(date, time, tripId) {
                         $(".trip-staff-third").val(getName($("#driver3Id").val()));
                         $(".trip-staff-assistant").val(getName($("#assistantId").val()));
                         $(".trip-staff-hostess").val(getName($("#hostessId").val()));
+                        updateTripStaffPhones();
                     }
                     tripStaffInitial = {
                         captainId: $(".trip-staff-captain").val() || "",
@@ -294,6 +310,8 @@ async function loadTrip(date, time, tripId) {
                     console.log(err);
                 }
             });
+
+            $(document).on("change", ".trip-staff-captain, .trip-staff-second, .trip-staff-third, .trip-staff-assistant, .trip-staff-hostess", updateTripStaffPhones);
 
             $(".ticket-op").on("click", e => {
                 e.stopPropagation();
