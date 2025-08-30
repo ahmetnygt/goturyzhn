@@ -780,10 +780,23 @@ div.ticket-cancel-refund-open-close {
     color: white;
     padding: 0 .5rem;
     margin: 0 .5rem;
+    position: relative;
 }
 
 .note-info {
     font-size: .75rem;
+}
+
+.note-icons {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: flex;
+    gap: .25rem;
+}
+
+.note-icons i {
+    cursor: pointer;
 }
 
 .right-panel {

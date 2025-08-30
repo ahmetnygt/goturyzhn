@@ -22,6 +22,8 @@ router.get('/get-route-stops-time-list', erpController.getRouteStopsTimeList);
 
 router.get('/get-trip-notes', erpController.getTripNotes);
 router.post('/post-trip-note', erpController.postTripNote);
+router.post('/post-edit-trip-note', erpController.postEditTripNote);
+router.post('/post-delete-trip-note', erpController.postDeleteTripNote);
 
 router.get('/get-ticketops-popup', erpController.getTicketOpsPopUp);
 
