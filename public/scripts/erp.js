@@ -11,6 +11,9 @@ let toId;
 let fromStr;
 let toStr;
 
+let tripStaffInitial = {};
+let tripStaffList = [];
+
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
     await $.ajax({
@@ -247,10 +250,37 @@ async function loadTrip(date, time, tripId) {
             });
 
             $(document).off("click", ".trip-option-staff");
-            $(document).on("click", ".trip-option-staff", function (e) {
+            $(document).on("click", ".trip-option-staff", async function (e) {
                 e.stopPropagation();
-                $(".trip-staff-pop-up").css("display", "block");
-                $(".blackout").css("display", "block");
+                try {
+                    const staffs = await $.get("erp/get-staffs-list", { onlyData: true });
+                    tripStaffList = staffs;
+                    const drivers = staffs.filter(s => s.duty === "driver");
+                    const assistants = staffs.filter(s => s.duty === "assistant");
+                    const hostesses = staffs.filter(s => s.duty === "hostess");
+                    const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
+                    const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
+                    const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
+                    $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
+                    $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
+                    $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
+                    $(".trip-staff-captain").val($("#captainId").val());
+                    $(".trip-staff-second").val($("#driver2Id").val());
+                    $(".trip-staff-third").val($("#driver3Id").val());
+                    $(".trip-staff-assistant").val($("#assistantId").val());
+                    $(".trip-staff-hostess").val($("#hostessId").val());
+                    tripStaffInitial = {
+                        captainId: $(".trip-staff-captain").val() || "",
+                        driver2Id: $(".trip-staff-second").val() || "",
+                        driver3Id: $(".trip-staff-third").val() || "",
+                        assistantId: $(".trip-staff-assistant").val() || "",
+                        hostessId: $(".trip-staff-hostess").val() || ""
+                    };
+                    $(".trip-staff-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                }
             });
 
             $(".ticket-op").on("click", e => {
@@ -1004,10 +1034,50 @@ $(".trip-revenue-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(".trip-staff-close, .trip-staff-save").on("click", e => {
+$(".trip-staff-save").on("click", async e => {
+    const data = {
+        tripId: currentTripId,
+        captainId: $(".trip-staff-captain").val(),
+        driver2Id: $(".trip-staff-second").val(),
+        driver3Id: $(".trip-staff-third").val(),
+        assistantId: $(".trip-staff-assistant").val(),
+        hostessId: $(".trip-staff-hostess").val()
+    };
+    try {
+        await $.post("erp/post-trip-staff", data);
+        $("#captainId").val(data.captainId);
+        $("#driver2Id").val(data.driver2Id);
+        $("#driver3Id").val(data.driver3Id);
+        $("#assistantId").val(data.assistantId);
+        $("#hostessId").val(data.hostessId);
+        const captain = tripStaffList.find(s => s.id == data.captainId);
+        $(".captain-name").text(captain ? `${captain.name} ${captain.surname}` : "");
+        $(".captain-phone").text(captain ? captain.phoneNumber : "");
+        tripStaffInitial = { ...data };
+        $(".trip-staff-pop-up").css("display", "none");
+        $(".blackout").css("display", "none");
+    } catch (err) {
+        console.log(err);
+    }
+});
+
+$(".trip-staff-close").on("click", e => {
+    const current = {
+        captainId: $(".trip-staff-captain").val() || "",
+        driver2Id: $(".trip-staff-second").val() || "",
+        driver3Id: $(".trip-staff-third").val() || "",
+        assistantId: $(".trip-staff-assistant").val() || "",
+        hostessId: $(".trip-staff-hostess").val() || ""
+    };
+    const changed = Object.keys(tripStaffInitial).some(k => tripStaffInitial[k] !== current[k]);
+    if (changed) {
+        if (!confirm("Değişiklikler kaydedilmedi. Çıkmak istiyor musunuz?")) {
+            return;
+        }
+    }
     $(".trip-staff-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
-})
+});
 
 $(".ticket-close").on("click", e => {
     ticketClose();

@@ -49,6 +49,7 @@ router.post('/post-save-bus', erpController.postSaveBus);
 router.get('/get-buses-data', erpController.getBusesData);
 router.post('/post-trip-bus', erpController.postTripBus);
 router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
+router.post('/post-trip-staff', erpController.postTripStaff);
 
 router.get('/get-staffs-list', erpController.getStaffsList);
 router.get('/get-staff', erpController.getStaff);
@@ -97,7 +98,5 @@ router.post('/post-send-payment', auth, erpController.postSendPayment);
 router.get('/get-pending-payments', auth, erpController.getPendingPayments);
 router.get('/get-pending-collections', auth, erpController.getPendingCollections);
 router.post('/post-confirm-payment', auth, erpController.postConfirmPayment);
-
-
 
 module.exports = router;

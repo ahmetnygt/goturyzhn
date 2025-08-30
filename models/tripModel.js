@@ -24,6 +24,22 @@ const Trip = sequelize.define("trip", {
         type: Sequelize.BIGINT,
         allowNull: true
     },
+    driver2Id: {
+        type: Sequelize.BIGINT,
+        allowNull: true
+    },
+    driver3Id: {
+        type: Sequelize.BIGINT,
+        allowNull: true
+    },
+    assistantId: {
+        type: Sequelize.BIGINT,
+        allowNull: true
+    },
+    hostessId: {
+        type: Sequelize.BIGINT,
+        allowNull: true
+    },
     date: {
         type: Sequelize.DATEONLY
     },
