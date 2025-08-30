@@ -224,6 +224,7 @@ div.pending-collections-close,
 div.price-add-close,
 div.moving-close,
 div.stops-close,
+div.staff-close,
 div.trip-revenue-close,
 div.trip-staff-close {
     position: absolute;
@@ -308,6 +309,25 @@ div.trip-staff-close {
 }
 
 .stop-panel {
+    display: none;
+}
+
+.staff {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-height: 50vh;
+    width: 55vw;
+    overflow: hidden;
+    display: none;
+}
+
+.staff-panel {
     display: none;
 }
 
