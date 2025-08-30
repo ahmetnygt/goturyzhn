@@ -1122,16 +1122,16 @@ exports.getBusModelsData = async (req, res, next) => {
 exports.getBusesData = async (req, res, next) => {
     try {
         const buses = await Bus.findAll();
-        const captains = await Captain.findAll();
+        const staffs = await Staff.findAll();
 
-        const captainMap = {};
-        for (const c of captains) {
-            captainMap[c.id] = c;
+        const staffMap = {};
+        for (const s of staffs) {
+            staffMap[s.id] = s;
         }
 
         const result = buses.map(b => ({
             ...b.toJSON(),
-            captain: captainMap[b.captainId] || null
+            staff: staffMap[b.staffId] || null
         }));
 
         res.json(result);
