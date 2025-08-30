@@ -1025,10 +1025,24 @@ div.ticket-cancel-refund-open-close {
     gap: .25rem;
 }
 
-.trip-incomes {
+.trip-options-button {
     width: 1.5rem;
     border-radius: 4px;
     background-color: #2660ff;
+    color: white;
+    cursor: pointer;
+    height: 1.5rem;
+    text-align: center;
+}
+
+.trip-options-button.dropdown-toggle::after {
+    display: none !important;
+}
+
+.trip-incomes {
+    width: 1.5rem;
+    border-radius: 4px;
+    background-color: #4CAF50;
     color: white;
     cursor: -webkit-zoom-in;
     height: 1.5rem;
