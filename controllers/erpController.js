@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt")
 const { Op } = require('sequelize');
 const BusModel = require("../models/busModelModel")
 const Bus = require("../models/busModel")
-const Captain = require("../models/captainModel")
+const Staff = require("../models/staffModel")
 const Place = require("../models/placeModel")
 const Route = require("../models/routeModel")
 const RouteStop = require("../models/routeStopModel");
@@ -172,7 +172,7 @@ exports.getTrip = async (req, res, next) => {
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
 
     if (trip) {
-        const captain = await Captain.findOne({ where: { id: trip.captainId } })
+        const captain = await Staff.findOne({ where: { id: trip.captainId, duty: "driver" } })
         const route = await Route.findOne({ where: { id: trip.routeId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
@@ -376,7 +376,7 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 
 //TODO         for (let i = 0; i < tickets.length; i++) {
 //TODO             const ticket = tickets[i];
-            
+
 //TODO         }
 
 //TODO         const branchTitles = {};
@@ -443,14 +443,14 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 exports.getErp = async (req, res, next) => {
     console.log(req.session.user)
     let busModel = await BusModel.findAll()
-    let captain = await Captain.findAll()
+    let staff = await Staff.findAll()
     let firm = await Firm.findOne({ where: { id: req.session.user.firmId } })
     let branches = await Branch.findAll()
     let user = await FirmUser.findOne({ where: { id: req.session.user.id } })
     let places = await Place.findAll()
     let stops = await Stop.findAll()
 
-    res.render('erpscreen', { title: 'ERP', busModel, captain, user, firm, places, stops, branches });
+    res.render('erpscreen', { title: 'ERP', busModel, staff, user, firm, places, stops, branches });
 }
 
 exports.getErpLogin = async (req, res, next) => {

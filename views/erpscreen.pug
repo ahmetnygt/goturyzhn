@@ -285,8 +285,6 @@ block content
                     span.input-group-text Kaptan Şoför
                     select.bus-captain.form-select()
                         option(value="" selected) 
-                        each c in captain
-                            option(value=c.id) #{c.name} #{c.surname}
                 .input-group
                     span.input-group-text Araç Telefonu
                     input.bus-phone.form-control(type="text" )
@@ -483,7 +481,7 @@ block content
                     option(value="" selected) Seçilmedi
             .input-group
                 span.input-group-text Muavin
-                select.form-select.trip-staff-attendant
+                select.form-select.trip-staff-assistant
                     option(value="" selected) Seçilmedi
             .input-group
                 span.input-group-text Hostes

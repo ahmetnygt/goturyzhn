@@ -2,7 +2,7 @@ const Sequelize = require("sequelize");
 
 const sequelize = require("../utilities/database");
 
-const Captain = sequelize.define("captain", {
+const Staff = sequelize.define("staff", {
     id: {
         type: Sequelize.BIGINT,
         primaryKey: true,
@@ -12,12 +12,20 @@ const Captain = sequelize.define("captain", {
         type: Sequelize.STRING,
         allowNull: false
     },
+    duty: {
+        type: Sequelize.ENUM("driver","assistant","hostess"),
+        allowNull: false
+    },
     name: {
         type: Sequelize.STRING,
         allowNull: false
     },
     surname: {
         type: Sequelize.STRING,
+        allowNull: false
+    },
+    address: {
+        type: Sequelize.TEXT,
         allowNull: false
     },
     phoneNumber: {
@@ -34,4 +42,4 @@ const Captain = sequelize.define("captain", {
     },
 });
 
-module.exports = Captain;
+module.exports = Staff;
