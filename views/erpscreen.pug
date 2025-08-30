@@ -479,19 +479,22 @@ block content
                         button.btn.mb-2.add-trip
                             i.fa-solid.fa-plus.me-2
                             | EKLE
-                .d-flex.mb-2
-                    .col-2
-                        p.text-center.m-0 Kalkış Saati
-                    .col-2
-                        p.text-center.m-0 Nereden
-                    .col-2
-                        p.text-center.m-0 Nereye
-                    .col-2
-                        p.text-center.m-0 Plaka
-                    .col-1
-                        p.text-center.m-0 Hat Kodu
-                    .col-3
-                        p.text-center.m-0 Hat Adı
+                .d-flex
+                    .d-flex.mb-2(class=`${permissions.includes('TRIP_CANCEL')?"col-11":"col-12"}`)
+                        .col-2
+                            p.text-center.m-0 Kalkış Saati
+                        .col-2
+                            p.text-center.m-0 Nereden
+                        .col-2
+                            p.text-center.m-0 Nereye
+                        .col-2
+                            p.text-center.m-0 Plaka
+                        .col-1
+                            p.text-center.m-0 Hat Kodu
+                        .col-3
+                            p.text-center.m-0 Hat Adı
+                    if permissions.includes('TRIP_CANCEL')
+                        .col-1
                 .trip-list-nodes.d-flex.flex-column.gap-3
 
             .trip-info.h-100.col-5

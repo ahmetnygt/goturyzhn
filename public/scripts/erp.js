@@ -318,6 +318,7 @@ async function loadTrip(date, time, tripId) {
                 try {
                     await $.post("erp/post-trip-active", { tripId: currentTripId, isActive: false });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    loadTripsList(calendar.val())
                 } catch (err) {
                     console.log(err);
                 }
@@ -329,6 +330,7 @@ async function loadTrip(date, time, tripId) {
                 try {
                     await $.post("erp/post-trip-active", { tripId: currentTripId, isActive: true });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    loadTripsList(calendar.val())
                 } catch (err) {
                     console.log(err);
                 }

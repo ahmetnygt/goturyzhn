@@ -504,7 +504,6 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 }
 
 exports.getErp = async (req, res, next) => {
-    console.log(req.session.user)
     let busModel = await BusModel.findAll()
     let staff = await Staff.findAll()
     let firm = await Firm.findOne({ where: { id: req.session.user.firmId } })
@@ -512,6 +511,24 @@ exports.getErp = async (req, res, next) => {
     let user = await FirmUser.findOne({ where: { id: req.session.user.id } })
     let places = await Place.findAll()
     let stops = await Stop.findAll()
+
+    const userPerms = await FirmUserPermission.findAll({
+        where: { firmUserId: req.session.user.id, allow: true },
+        attributes: ["permissionId"],
+    });
+
+    const permissionIds = userPerms.map(p => p.permissionId);
+    if (permissionIds.length) {
+        const permissionRows = await Permission.findAll({
+            where: { id: { [Op.in]: permissionIds } },
+            attributes: ["code"],
+        });
+        req.session.permissions = permissionRows.map(p => p.code);
+    } else {
+        req.session.permissions = [];
+    }
+
+    await req.session.save()
 
     res.render('erpscreen', { title: 'ERP', busModel, staff, user, firm, places, stops, branches });
 }

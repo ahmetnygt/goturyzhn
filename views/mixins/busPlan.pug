@@ -32,10 +32,16 @@
             ul.dropdown-menu
                 li
                     a.dropdown-item.trip-option-staff(href="#") Personeller
+                if trip.isActive
+                    if permissions.includes('TRIP_CANCEL')
+                        li
+                            a.dropdown-item.trip-option-cancel-trip(href="#") Sefer İptal
+                else
+                    if permissions.includes('TRIP_CANCEL')
+                        li
+                            a.dropdown-item.trip-option-active-trip(href="#") Sefer Aktive Et
                 li
-                    a.dropdown-item.trip-option-cancel-trip(href="#") Sefer İptal
-                li
-                    a.dropdown-item.trip-option-active-trip(href="#") Sefer Aktive Et
+                    a.dropdown-item.trip-option-stop-restriction(href="#") Durak Kısıtlama
                 if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
                     li
                         a.dropdown-item.trip-option-revenues(href="#") Hasılatlar
