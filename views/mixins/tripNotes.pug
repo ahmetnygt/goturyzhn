@@ -1,6 +1,9 @@
 .d-flex.flex-column.gap-2
     each n in notes
-        .note 
-            p.m-0 #{n.noteText}
-            p.m-0.note-info #{n.user} 
+        .note(data-id=n.id)
+            .note-icons
+                i.fa-solid.fa-pen.note-edit
+                i.fa-solid.fa-x.note-delete
+            p.m-0.note-text #{n.noteText}
+            p.m-0.note-info #{n.user}
             p.m-0.note-info #{new Date(n.updatedAt).toLocaleDateString()} #{new Date(n.updatedAt).toLocaleTimeString()}

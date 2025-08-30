@@ -4,6 +4,7 @@ let currentTripDate;
 let currentTripTime;
 let currentTripPlaceTime;
 let currentTripId;
+let editingNoteId;
 let currentStop = "1";
 let currentStopStr = "Çanakkale İskele";
 let fromId;
@@ -1118,31 +1119,43 @@ $(".ticket-button-cancel").on("click", e => {
 })
 
 $(".add-trip-note-button").on("click", e => {
+    editingNoteId = null;
+    $(".trip-note-text").val("");
     $(".blackout").css("display", "block")
     $(".add-trip-note").css("display", "flex")
 })
 
 $(".trip-note-close").on("click", e => {
+    editingNoteId = null;
+    $(".trip-note-text").val("");
     $(".blackout").css("display", "none")
     $(".add-trip-note").css("display", "none")
 })
 
-$(".save-trip-note").on("click", async e => {
-    if (currentTripId) {
-        const text = $(".trip-note-text").val()
+$(document).on("click", ".note-edit", e => {
+    const noteEl = $(e.currentTarget).closest(".note");
+    editingNoteId = noteEl.data("id");
+    const text = noteEl.find(".note-text").text();
+    $(".trip-note-text").val(text);
+    $(".blackout").css("display", "block");
+    $(".add-trip-note").css("display", "flex");
+})
+
+$(document).on("click", ".note-delete", async e => {
+    const noteEl = $(e.currentTarget).closest(".note");
+    const noteId = noteEl.data("id");
+    if (confirm("Notu silmek istediğinize emin misiniz?")) {
         await $.ajax({
-            url: "erp/post-trip-note",
+            url: "erp/post-delete-trip-note",
             type: "POST",
-            data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, text },
-            success: async function (response) {
+            data: { id: noteId },
+            success: async function () {
                 await $.ajax({
                     url: "erp/get-trip-notes",
                     type: "GET",
                     data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
                     success: function (response) {
-                        $(".trip-notes").html(response)
-                        $(".blackout").css("display", "none")
-                        $(".add-trip-note").css("display", "none")
+                        $(".trip-notes").html(response);
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -1153,6 +1166,64 @@ $(".save-trip-note").on("click", async e => {
                 console.log(error);
             }
         })
+    }
+})
+
+$(".save-trip-note").on("click", async e => {
+    if (currentTripId) {
+        const text = $(".trip-note-text").val()
+        if (editingNoteId) {
+            await $.ajax({
+                url: "erp/post-edit-trip-note",
+                type: "POST",
+                data: { id: editingNoteId, text },
+                success: async function (response) {
+                    await $.ajax({
+                        url: "erp/get-trip-notes",
+                        type: "GET",
+                        data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+                        success: function (response) {
+                            $(".trip-notes").html(response)
+                            $(".blackout").css("display", "none")
+                            $(".add-trip-note").css("display", "none")
+                            editingNoteId = null;
+                            $(".trip-note-text").val("");
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                        }
+                    })
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            })
+        } else {
+            await $.ajax({
+                url: "erp/post-trip-note",
+                type: "POST",
+                data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, text },
+                success: async function (response) {
+                    await $.ajax({
+                        url: "erp/get-trip-notes",
+                        type: "GET",
+                        data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+                        success: function (response) {
+                            $(".trip-notes").html(response)
+                            $(".blackout").css("display", "none")
+                            $(".add-trip-note").css("display", "none")
+                            $(".trip-note-text").val("");
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(error);
+                        }
+                    })
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            })
+        }
     }
     else {
         alert("Herhangi bir sefer seçmediniz.")

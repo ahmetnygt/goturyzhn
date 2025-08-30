@@ -305,7 +305,7 @@ exports.getTripTable = async (req, res, next) => {
 exports.getTripNotes = async (req, res, next) => {
     const tripId = req.query.tripId
 
-    const notes = await TripNote.findAll({ where: { tripId: tripId } })
+    const notes = await TripNote.findAll({ where: { tripId: tripId, isActive: true } })
 
     const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(notes.map(n => n.userId))] } } })
 
@@ -343,6 +343,52 @@ exports.postTripNote = async (req, res, next) => {
 
     } catch (error) {
         console.error("postTripNotes error:", error);
+        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+exports.postEditTripNote = async (req, res, next) => {
+    try {
+        const noteId = req.body.id;
+        const noteText = req.body.text;
+
+        const note = await TripNote.findOne({ where: { id: noteId } });
+
+        if (!note) {
+            return res.status(404).json({ message: "Note not found" });
+        }
+
+        await note.update({
+            noteText: noteText,
+            userId: req.session.user.id
+        });
+
+        return res.status(200).json({ message: "Note updated successfully" });
+
+    } catch (error) {
+        console.error("postEditTripNote error:", error);
+        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+exports.postDeleteTripNote = async (req, res, next) => {
+    try {
+        const noteId = req.body.id;
+
+        const note = await TripNote.findOne({ where: { id: noteId } });
+
+        if (!note) {
+            return res.status(404).json({ message: "Note not found" });
+        }
+
+        await note.update({
+            isActive: false
+        });
+
+        return res.status(200).json({ message: "Note deleted successfully" });
+
+    } catch (error) {
+        console.error("postDeleteTripNote error:", error);
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
