@@ -1182,6 +1182,46 @@ exports.postTripBusPlan = async (req, res, next) => {
     }
 };
 
+exports.getStaffsList = async (req, res, next) => {
+    const staff = await Staff.findAll();
+    const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
+    staff.forEach(s => { s.dutyStr = dutyMap[s.duty] || s.duty; });
+
+    if (req.query.onlyData) {
+        res.json(staff);
+    }
+    else {
+        res.render("mixins/staffList", { staff });
+    }
+};
+
+exports.getStaff = async (req, res, next) => {
+    const { id } = req.query;
+    const stf = await Staff.findOne({ where: { id } });
+    res.json(stf);
+};
+
+exports.postSaveStaff = async (req, res, next) => {
+    try {
+        const data = convertEmptyFieldsToNull(req.body);
+        const { id, idNumber, duty, name, surname, address, phoneNumber, gender, nationality } = data;
+
+        const [staff, created] = await Staff.upsert(
+            { id, idNumber, duty, name, surname, address, phoneNumber, gender, nationality },
+            { returning: true }
+        );
+
+        if (created) {
+            return res.json({ message: "Eklendi", staff });
+        } else {
+            return res.json({ message: "Güncellendi", staff });
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getStopsList = async (req, res, next) => {
     const stops = await Stop.findAll();
     const places = await Place.findAll()
