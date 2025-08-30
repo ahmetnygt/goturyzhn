@@ -1079,9 +1079,11 @@ div.ticket-cancel-refund-open-close {
 }
 
 .trip-helper-buttons {
+    position: absolute;
     display: flex;
     justify-content: flex-end;
     gap: .25rem;
+    right: .75rem;
 }
 
 .trip-options-button {
