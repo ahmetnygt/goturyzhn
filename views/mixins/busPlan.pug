@@ -1,4 +1,6 @@
 .trip-info-settings
+    if !trip.isActive
+        p.inactiveTripText SEFER İPTAL
     .trip-helper-buttons
         if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
             .trip-incomes

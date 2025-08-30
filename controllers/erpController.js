@@ -313,6 +313,8 @@ exports.getTripNotes = async (req, res, next) => {
         const note = notes[i];
 
         note.user = users.find(u => u.id == note.userId)?.name
+
+        note.isOwn = note.userId == req.session.user.id
     }
 
     res.render("mixins/tripNotes", { notes: notes })

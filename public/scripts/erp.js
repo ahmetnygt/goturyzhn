@@ -1120,6 +1120,8 @@ $(".ticket-button-cancel").on("click", e => {
 
 $(".add-trip-note-button").on("click", e => {
     editingNoteId = null;
+    $(".add-trip-note .gtr-header span").html("SEFERE NOT EKLE")
+    $("button.save-trip-note").html("EKLE")
     $(".trip-note-text").val("");
     $(".blackout").css("display", "block")
     $(".add-trip-note").css("display", "flex")
@@ -1136,6 +1138,8 @@ $(document).on("click", ".note-edit", e => {
     const noteEl = $(e.currentTarget).closest(".note");
     editingNoteId = noteEl.data("id");
     const text = noteEl.find(".note-text").text();
+    $(".add-trip-note .gtr-header span").html("NOTU DÜZENLE")
+    $("button.save-trip-note").html("DÜZENLE")
     $(".trip-note-text").val(text);
     $(".blackout").css("display", "block");
     $(".add-trip-note").css("display", "flex");

@@ -565,6 +565,13 @@ select.price-button-select {
     display: none;
 }
 
+p.inactiveTripText {
+    position: absolute;
+    text-decoration: underline;
+    color: red;
+    font-weight: bold;
+}
+
 .bus-plans {
     position: absolute;
     left: 50%;
@@ -789,14 +796,16 @@ div.ticket-cancel-refund-open-close {
 
 .note-icons {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: .25rem;
+    right: .25rem;
     display: flex;
     gap: .25rem;
 }
 
-.note-icons i {
+.note-icons i,
+.note-icons svg {
     cursor: pointer;
+    font-size: .75rem;
 }
 
 .right-panel {
