@@ -224,21 +224,12 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
                 $(".taken-ticket-ops-pop-up").hide();
-                $(".trip-options-dropdown").hide();
                 currentSeat = null;
-            });
-
-            $(document).off("click", ".trip-options");
-            $(document).on("click", ".trip-options", function (e) {
-                e.stopPropagation();
-                $(".trip-options-dropdown").hide();
-                $(this).find(".trip-options-dropdown").toggle();
             });
 
             $(document).off("click", ".trip-option-revenues");
             $(document).on("click", ".trip-option-revenues", async function (e) {
                 e.stopPropagation();
-                $(".trip-options-dropdown").hide();
                 try {
                     const revenues = await $.get("erp/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
                     const rows = [];
