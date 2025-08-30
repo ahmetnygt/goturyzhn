@@ -1200,7 +1200,10 @@ exports.postTripStaff = async (req, res, next) => {
 };
 
 exports.getStaffsList = async (req, res, next) => {
-    const staff = await Staff.findAll();
+    const staff = await Staff.findAll({
+        attributes: ["id", "name", "surname", "duty", "phoneNumber"],
+        raw: true,
+    });
     const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
     staff.forEach(s => { s.dutyStr = dutyMap[s.duty] || s.duty; });
 
