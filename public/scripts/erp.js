@@ -255,20 +255,32 @@ async function loadTrip(date, time, tripId) {
                 try {
                     const staffs = await $.get("erp/get-staffs-list", { onlyData: true });
                     tripStaffList = staffs;
-                    const drivers = staffs.filter(s => s.duty === "driver");
-                    const assistants = staffs.filter(s => s.duty === "assistant");
-                    const hostesses = staffs.filter(s => s.duty === "hostess");
-                    const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
-                    const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
-                    const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
-                    $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
-                    $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
-                    $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
-                    $(".trip-staff-captain").val($("#captainId").val());
-                    $(".trip-staff-second").val($("#driver2Id").val());
-                    $(".trip-staff-third").val($("#driver3Id").val());
-                    $(".trip-staff-assistant").val($("#assistantId").val());
-                    $(".trip-staff-hostess").val($("#hostessId").val());
+                    if ($(".trip-staff-captain").is("select")) {
+                        const drivers = staffs.filter(s => s.duty === "driver");
+                        const assistants = staffs.filter(s => s.duty === "assistant");
+                        const hostesses = staffs.filter(s => s.duty === "hostess");
+                        const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
+                        const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
+                        const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
+                        $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
+                        $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
+                        $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
+                        $(".trip-staff-captain").val($("#captainId").val());
+                        $(".trip-staff-second").val($("#driver2Id").val());
+                        $(".trip-staff-third").val($("#driver3Id").val());
+                        $(".trip-staff-assistant").val($("#assistantId").val());
+                        $(".trip-staff-hostess").val($("#hostessId").val());
+                    } else {
+                        const getName = id => {
+                            const staff = tripStaffList.find(s => s.id == id);
+                            return staff ? `${staff.name} ${staff.surname}` : "";
+                        };
+                        $(".trip-staff-captain").val(getName($("#captainId").val()));
+                        $(".trip-staff-second").val(getName($("#driver2Id").val()));
+                        $(".trip-staff-third").val(getName($("#driver3Id").val()));
+                        $(".trip-staff-assistant").val(getName($("#assistantId").val()));
+                        $(".trip-staff-hostess").val(getName($("#hostessId").val()));
+                    }
                     tripStaffInitial = {
                         captainId: $(".trip-staff-captain").val() || "",
                         driver2Id: $(".trip-staff-second").val() || "",
