@@ -50,6 +50,10 @@ router.get('/get-buses-data', erpController.getBusesData);
 router.post('/post-trip-bus', erpController.postTripBus);
 router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
 
+router.get('/get-staffs-list', erpController.getStaffsList);
+router.get('/get-staff', erpController.getStaff);
+router.post('/post-save-staff', erpController.postSaveStaff);
+
 router.get('/get-stops-list', erpController.getStopsList);
 router.get('/get-stop', erpController.getStop);
 router.post('/post-save-stop', erpController.postSaveStop);

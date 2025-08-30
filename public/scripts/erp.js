@@ -1543,6 +1543,94 @@ $(".save-bus").on("click", async e => {
     })
 })
 
+let editingStaffId = null
+$(".staff-nav").on("click", async e => {
+    await $.ajax({
+        url: "erp/get-staffs-list",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            $(".staff-list-nodes").html(response)
+
+            $(".staff-button").on("click", async e => {
+                const id = e.currentTarget.dataset.id
+                editingStaffId = id
+                await $.ajax({
+                    url: "erp/get-staff",
+                    type: "GET",
+                    data: { id },
+                    success: function (res) {
+                        $(".staff-id-number").val(res.idNumber)
+                        $(".staff-duty").val(res.duty)
+                        $(".staff-name").val(res.name)
+                        $(".staff-surname").val(res.surname)
+                        $(".staff-address").val(res.address)
+                        $(".staff-phone").val(res.phoneNumber)
+                        $(`input[name='staff-gender'][value='${res.gender}']`).prop("checked", true)
+                        $(".staff-nationality").val(res.nationality)
+                        $(".staff-panel").css("display", "flex")
+                        $(".save-staff").html("KAYDET")
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error)
+                    }
+                })
+            })
+
+            $(".blackout").css("display", "block")
+            $(".staff").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+})
+
+$(".staff-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".staff").css("display", "none")
+    $(".staff-panel").css("display", "none")
+})
+
+$(".add-staff").on("click", e => {
+    $(".staff-id-number").val("")
+    $(".staff-duty").val("")
+    $(".staff-name").val("")
+    $(".staff-surname").val("")
+    $(".staff-address").val("")
+    $(".staff-phone").val("")
+    $("input[name='staff-gender']").prop("checked", false)
+    $(".staff-nationality").val("")
+    editingStaffId = null
+    $(".staff-panel").css("display", "flex")
+    $(".save-staff").html("EKLE")
+})
+
+$(".save-staff").on("click", async e => {
+    const idNumber = $(".staff-id-number").val()
+    const duty = $(".staff-duty").val()
+    const name = $(".staff-name").val()
+    const surname = $(".staff-surname").val()
+    const address = $(".staff-address").val()
+    const phoneNumber = $(".staff-phone").val()
+    const gender = $("input[name='staff-gender']:checked").val()
+    const nationality = $(".staff-nationality").val()
+
+    await $.ajax({
+        url: "erp/post-save-staff",
+        type: "POST",
+        data: { id: editingStaffId, idNumber, duty, name, surname, address, phoneNumber, gender, nationality },
+        success: function (response) {
+            $(".staff-panel").css("display", "none")
+            $(".blackout").css("display", "none")
+            $(".staff").css("display", "none")
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+})
+
 let editingStopId = null
 $(".stops-nav").on("click", async e => {
     await $.ajax({

@@ -300,7 +300,7 @@ block content
                         label.form-check-label(for="flexCheckChecked") Bu bir ayar dostum
                     .d-flex.gap-2
                         .col-auto
-                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da 
+                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da
                         .col-auto
                             input.form-control(type="text")
                 b Zart Zurt Parametreleri
@@ -313,9 +313,68 @@ block content
                         label.form-check-label(for="flexCheckChecked") Bu bir ayar dostum
                     .d-flex.gap-2
                         .col-auto
-                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da 
+                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da
                         .col-auto
                             input.form-control(type="text")
+
+    .staff
+        .staff-close
+            i.fa-solid.fa-x
+        .gtr-header
+            span PERSONELLER
+        .d-flex
+            .col-6.p-3
+                .text-end
+                    button.btn.mb-2.add-staff
+                        i.fa-solid.fa-plus.me-2
+                        | EKLE
+                .d-flex.mb-2
+                    .col-4
+                        p.text-center.mb-0 Kimlik No
+                    .col-4
+                        p.text-center.mb-0 İsim Soyisim
+                    .col-4
+                        p.text-center.mb-0 Görev
+                .staff-list-nodes.d-flex.flex-column.gap-3.p-2
+            .col-6.flex-column.gap-3.p-3.align-items-start.staff-panel
+                .input-group
+                    span.input-group-text Kimlik Numarası
+                    input.staff-id-number.form-control(type="text")
+                .input-group
+                    span.input-group-text Görev
+                    select.staff-duty.form-select()
+                        option(value="" selected)
+                        option(value="driver") Şoför
+                        option(value="assistant") Muavin
+                        option(value="hostess") Hostes
+                .input-group
+                    span.input-group-text İsim
+                    input.staff-name.form-control(type="text")
+                .input-group
+                    span.input-group-text Soyisim
+                    input.staff-surname.form-control(type="text")
+                .input-group
+                    span.input-group-text Adres
+                    textarea.staff-address.form-control()
+                .input-group
+                    span.input-group-text Telefon
+                    input.staff-phone.form-control(type="text")
+                .input-group
+                    span.input-group-text Cinsiyet
+                    .form-check.form-check-inline
+                        input.form-check-input(type="radio" name="staff-gender" value="m")
+                        label.form-check-label Erkek
+                    .form-check.form-check-inline
+                        input.form-check-input(type="radio" name="staff-gender" value="f")
+                        label.form-check-label Kadın
+                .input-group
+                    span.input-group-text Uyruk
+                    select.staff-nationality.form-select()
+                        option(value="" selected)
+                        option(value="tr") Türkiye
+                        option(value="usa") Amerika
+                        option(value="sr") Suriye
+                button.save-staff.btn.btn-outline-primary KAYDET
 
     .stops
         .stops-close

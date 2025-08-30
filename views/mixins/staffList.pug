@@ -1,0 +1,8 @@
+each s in staff
+    button.staff-button.d-flex.btn.btn-outline-primary(data-id=s.id)
+        .col-4
+            p.text-center.m-0 #{s.idNumber}
+        .col-4
+            p.text-center.m-0 #{s.name} #{s.surname}
+        .col-4
+            p.text-center.m-0 #{s.dutyStr}
