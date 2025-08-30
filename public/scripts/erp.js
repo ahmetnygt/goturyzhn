@@ -246,6 +246,13 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            $(document).off("click", ".trip-option-staff");
+            $(document).on("click", ".trip-option-staff", function (e) {
+                e.stopPropagation();
+                $(".trip-staff-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            });
+
             $(".ticket-op").on("click", e => {
                 e.stopPropagation();
 
@@ -994,6 +1001,11 @@ $(".moving-close").on("click", e => {
 
 $(".trip-revenue-close").on("click", e => {
     $(".trip-revenue-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
+})
+
+$(".trip-staff-close, .trip-staff-save").on("click", e => {
+    $(".trip-staff-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
 })
 

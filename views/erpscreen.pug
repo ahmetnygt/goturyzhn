@@ -463,6 +463,36 @@ block content
             .trip-settings.h-100.col-5
                 button.save-trip.btn.btn-outline-primary KAYDET
 
+    .trip-staff-pop-up
+        .gtr-header
+            span PERSONELLER
+        .trip-staff-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Kaptan Şoför
+                select.form-select.trip-staff-captain
+                    option(value="" selected) Seçilmedi
+            .input-group
+                span.input-group-text 2. Şoför
+                select.form-select.trip-staff-second
+                    option(value="" selected) Seçilmedi
+            .input-group
+                span.input-group-text 3. Şoför
+                select.form-select.trip-staff-third
+                    option(value="" selected) Seçilmedi
+            .input-group
+                span.input-group-text Muavin
+                select.form-select.trip-staff-attendant
+                    option(value="" selected) Seçilmedi
+            .input-group
+                span.input-group-text Hostes
+                select.form-select.trip-staff-hostess
+                    option(value="" selected) Seçilmedi
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.trip-staff-save KAYDET
+                button.btn.btn-outline-primary.trip-staff-close İPTAL
+
     .trip-revenue-pop-up
         .gtr-header
             span SEFER HASILATI
