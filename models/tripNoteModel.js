@@ -12,13 +12,18 @@ const TripNote = sequelize.define("tripnote", {
         type: Sequelize.BIGINT,
         allowNull: false
     },
-    userId:{
+    userId: {
         type: Sequelize.BIGINT,
         allowNull: false
     },
-    noteText:{
-        type:Sequelize.TEXT,
+    noteText: {
+        type: Sequelize.TEXT,
         allowNull: false
+    },
+    isActive: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
     }
 });
 
