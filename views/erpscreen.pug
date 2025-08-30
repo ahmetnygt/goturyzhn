@@ -526,29 +526,46 @@ block content
         .trip-staff-close
             i.fa-solid.fa-x
         .d-flex.flex-column.gap-3.p-3
-            .input-group
-                span.input-group-text Kaptan Şoför
-                select.form-select.trip-staff-captain
-                    option(value="" selected) Seçilmedi
-            .input-group
-                span.input-group-text 2. Şoför
-                select.form-select.trip-staff-second
-                    option(value="" selected) Seçilmedi
-            .input-group
-                span.input-group-text 3. Şoför
-                select.form-select.trip-staff-third
-                    option(value="" selected) Seçilmedi
-            .input-group
-                span.input-group-text Muavin
-                select.form-select.trip-staff-assistant
-                    option(value="" selected) Seçilmedi
-            .input-group
-                span.input-group-text Hostes
-                select.form-select.trip-staff-hostess
-                    option(value="" selected) Seçilmedi
-            .d-flex.gap-3.justify-content-end
-                button.btn.btn-outline-primary.trip-staff-save KAYDET
-                button.btn.btn-outline-primary.trip-staff-close İPTAL
+            if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
+                .input-group
+                    span.input-group-text Kaptan Şoför
+                    select.form-select.trip-staff-captain
+                        option(value="" selected) Seçilmedi
+                .input-group
+                    span.input-group-text 2. Şoför
+                    select.form-select.trip-staff-second
+                        option(value="" selected) Seçilmedi
+                .input-group
+                    span.input-group-text 3. Şoför
+                    select.form-select.trip-staff-third
+                        option(value="" selected) Seçilmedi
+                .input-group
+                    span.input-group-text Muavin
+                    select.form-select.trip-staff-assistant
+                        option(value="" selected) Seçilmedi
+                .input-group
+                    span.input-group-text Hostes
+                    select.form-select.trip-staff-hostess
+                        option(value="" selected) Seçilmedi
+                .d-flex.gap-3.justify-content-end
+                    button.btn.btn-outline-primary.trip-staff-save KAYDET
+                    button.btn.btn-outline-primary.trip-staff-close İPTAL
+            else
+                .input-group
+                    span.input-group-text Kaptan Şoför
+                    input.form-control.trip-staff-captain(type="text" readonly)
+                .input-group
+                    span.input-group-text 2. Şoför
+                    input.form-control.trip-staff-second(type="text" readonly)
+                .input-group
+                    span.input-group-text 3. Şoför
+                    input.form-control.trip-staff-third(type="text" readonly)
+                .input-group
+                    span.input-group-text Muavin
+                    input.form-control.trip-staff-assistant(type="text" readonly)
+                .input-group
+                    span.input-group-text Hostes
+                    input.form-control.trip-staff-hostess(type="text" readonly)
 
     .trip-revenue-pop-up
         .gtr-header
