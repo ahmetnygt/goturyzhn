@@ -8,6 +8,7 @@ const Staff = require("../models/staffModel")
 const Place = require("../models/placeModel")
 const Route = require("../models/routeModel")
 const RouteStop = require("../models/routeStopModel");
+const RouteStopRestriction = require("../models/routeStopRestrictionModel");
 const Stop = require("../models/stopModel")
 const Trip = require('../models/tripModel');
 const Ticket = require('../models/ticketModel');
