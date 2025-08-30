@@ -27,6 +27,7 @@ const autoLogMiddleware = async (req, res, next) => {
         "/post-save-route": "route",
         "/post-save-trip": "trip",
         "/post-trip-staff": "trip",
+        "/post-trip-active": "trip",
         "/post-save-branch": "branch",
         "/post-save-user": "user",
         "/post-add-transaction": "transaction"
