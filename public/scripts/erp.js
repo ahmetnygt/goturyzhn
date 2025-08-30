@@ -1127,21 +1127,39 @@ $(".trip-note-close").on("click", e => {
     $(".add-trip-note").css("display", "none")
 })
 
-// $(".save-trip-note").on("click", async e => {
-//     await $.ajax({
-//         url: "erp/get-trip-notes",
-//         type: "GET",
-//         data: { date: date, time: time },
-//         success: function (response) {
-//             $(".trip-notes").html(response)
-//         },
-//         error: function (xhr, status, error) {
-//             console.log(error);
-//         }
-//     })
-//     $(".blackout").css("display", "none")
-//     $(".add-trip-note").css("display", "none")
-// })
+$(".save-trip-note").on("click", async e => {
+    if (currentTripId) {
+        const text = $(".trip-note-text").val()
+        await $.ajax({
+            url: "erp/post-trip-note",
+            type: "POST",
+            data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, text },
+            success: async function (response) {
+                await $.ajax({
+                    url: "erp/get-trip-notes",
+                    type: "GET",
+                    data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+                    success: function (response) {
+                        $(".trip-notes").html(response)
+                        $(".blackout").css("display", "none")
+                        $(".add-trip-note").css("display", "none")
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        })
+    }
+    else {
+        alert("Herhangi bir sefer seçmediniz.")
+        $(".blackout").css("display", "none")
+        $(".add-trip-note").css("display", "none")
+    }
+})
 
 $("a.ticket-search").on("click", e => {
     $(".ticket-search-pop-up").css("display", "block")

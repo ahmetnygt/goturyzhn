@@ -111,7 +111,8 @@ exports.getDayTripsList = async (req, res, next) => {
         const routeStopsByPlace = await RouteStop.findAll({ where: { stopId: stopId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
-        const isPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
+        const isPastPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
+        const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
         const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
         var newTrips = []
@@ -120,8 +121,13 @@ exports.getDayTripsList = async (req, res, next) => {
 
             t.isExpired = new Date(`${t.date} ${t.time}`) < new Date()
 
-            if (!isPermission) {
+            if (!isPastPermission) {
                 if (t.isExpired) {
+                    continue
+                }
+            }
+            if (!isInactivePermission) {
+                if (!t.isActive) {
                     continue
                 }
             }
@@ -301,14 +307,22 @@ exports.getTripNotes = async (req, res, next) => {
 
     const notes = await TripNote.findAll({ where: { tripId: tripId } })
 
+    const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(notes.map(n => n.userId))] } } })
+
+    for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+
+        note.user = users.find(u => u.id == note.userId)?.name
+    }
+
     res.render("mixins/tripNotes", { notes: notes })
 }
 
-exports.postTripNotes = async (req, res, next) => {
+exports.postTripNote = async (req, res, next) => {
     try {
         const tripDate = req.body.date;
         const tripTime = req.body.time;
-        const tripId = req.body.id;
+        const tripId = req.body.tripId;
         const noteText = req.body.text;
 
         const trip = await Trip.findOne({
@@ -321,7 +335,8 @@ exports.postTripNotes = async (req, res, next) => {
 
         await TripNote.create({
             tripId: tripId,
-            noteText: noteText
+            noteText: noteText,
+            userId: req.session.user.id
         });
 
         return res.status(201).json({ message: "Note created successfully" });

@@ -2,13 +2,15 @@ extends erplayout
 
 block content
     .add-trip-note
-        p.fs-4.mb-0 SEFERE NOT EKLE
+        .gtr-header
+            span SEFERE NOT EKLE
         .trip-note-close 
             i.fa-solid.fa-x
-        textarea.form-control
-        button.save-trip-note.btn.btn-outline-primary 
-            | EKLE
-            i.fa-solid.fa-plus
+        .p-3
+            textarea.form-control.trip-note-text.mb-3
+            button.save-trip-note.btn.btn-outline-primary 
+                | EKLE
+                i.fa-solid.fa-plus.ms-2
 
     .add-transaction
         .gtr-header

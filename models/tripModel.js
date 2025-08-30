@@ -46,6 +46,11 @@ const Trip = sequelize.define("trip", {
     time: {
         type: Sequelize.TIME
     },
+    isActive: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    },
     fromPlaceString: {
         type: Sequelize.STRING
     },

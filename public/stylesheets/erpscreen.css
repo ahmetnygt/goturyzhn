@@ -226,7 +226,8 @@ div.moving-close,
 div.stops-close,
 div.staff-close,
 div.trip-revenue-close,
-div.trip-staff-close {
+div.trip-staff-close,
+div.trip-note-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -748,6 +749,11 @@ div.ticket-cancel-refund-open-close {
     text-align: center;
 }
 
+.trip-notes {
+    height: 20vh;
+    overflow-y: auto;
+}
+
 .add-trip-note {
     position: absolute;
     left: 50%;
@@ -757,15 +763,9 @@ div.ticket-cancel-refund-open-close {
     background-color: white;
     flex-direction: column;
     gap: .5rem;
-    padding: 1.25rem 1.5rem 1rem 1.5rem;
     display: none;
-}
-
-.trip-note-close {
-    position: absolute;
-    top: 0;
-    right: .5rem;
-    cursor: pointer;
+    border-radius: .6rem;
+    overflow: hidden;
 }
 
 .notes-stops {
@@ -775,12 +775,15 @@ div.ticket-cancel-refund-open-close {
 }
 
 .note {
-    margin: 0;
     border-radius: 5px;
     background-color: #216396;
     color: white;
     padding: 0 .5rem;
     margin: 0 .5rem;
+}
+
+.note-info {
+    font-size: .75rem;
 }
 
 .right-panel {
@@ -805,9 +808,23 @@ div.ticket-cancel-refund-open-close {
     cursor: pointer;
 }
 
+.tripRow p {
+    white-space: nowrap;
+}
+
 .tripRow.selected {
     background-color: #2660ff;
     color: white;
+}
+
+.tripRow.disabled,
+.tripRow.disabled.expired,
+.tripRow.disabled:hover,
+.tripRow.disabled.expired:hover,
+.tripRow.disabled:active,
+.tripRow.disabled.expired:active {
+    background-color: black;
+    color: darkgray;
 }
 
 .tripRow.expired {

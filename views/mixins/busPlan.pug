@@ -28,11 +28,13 @@
             .trip-options-button.dropdown-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false")
                 i.fa-solid.fa-ellipsis-vertical
             ul.dropdown-menu
+                li
+                    a.dropdown-item.trip-option-staff(href="#") Personeller
+                li
+                    a.dropdown-item.trip-option-cancel-trip(href="#") Sefer İptal
                 if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
                     li
                         a.dropdown-item.trip-option-revenues(href="#") Hasılatlar
-                li
-                    a.dropdown-item.trip-option-staff(href="#") Personeller
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b
