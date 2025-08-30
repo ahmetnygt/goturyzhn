@@ -1262,6 +1262,19 @@ exports.postTripStaff = async (req, res, next) => {
     }
 };
 
+exports.postTripActive = async (req, res, next) => {
+    try {
+        const { tripId, isActive } = req.body;
+        await Trip.update({
+            isActive: isActive === 'true' || isActive === true,
+        }, { where: { id: tripId } });
+        res.json({ message: "Güncellendi" });
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getStaffsList = async (req, res, next) => {
     const staff = await Staff.findAll({
         attributes: ["id", "name", "surname", "duty", "phoneNumber"],

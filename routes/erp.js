@@ -52,6 +52,7 @@ router.get('/get-buses-data', erpController.getBusesData);
 router.post('/post-trip-bus', erpController.postTripBus);
 router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
 router.post('/post-trip-staff', erpController.postTripStaff);
+router.post('/post-trip-active', erpController.postTripActive);
 
 router.get('/get-staffs-list', erpController.getStaffsList);
 router.get('/get-staff', erpController.getStaff);

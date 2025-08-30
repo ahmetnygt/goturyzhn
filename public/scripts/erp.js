@@ -312,6 +312,28 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            $(document).off("click", ".trip-option-cancel-trip");
+            $(document).on("click", ".trip-option-cancel-trip", async function (e) {
+                e.stopPropagation();
+                try {
+                    await $.post("erp/post-trip-active", { tripId: currentTripId, isActive: false });
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
+                } catch (err) {
+                    console.log(err);
+                }
+            });
+
+            $(document).off("click", ".trip-option-active-trip");
+            $(document).on("click", ".trip-option-active-trip", async function (e) {
+                e.stopPropagation();
+                try {
+                    await $.post("erp/post-trip-active", { tripId: currentTripId, isActive: true });
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
+                } catch (err) {
+                    console.log(err);
+                }
+            });
+
             $(document).on("change", ".trip-staff-captain, .trip-staff-second, .trip-staff-third, .trip-staff-assistant, .trip-staff-hostess", updateTripStaffPhones);
 
             $(".ticket-op").on("click", e => {
