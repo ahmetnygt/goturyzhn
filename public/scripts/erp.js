@@ -342,8 +342,6 @@ async function loadTrip(date, time, tripId) {
             $(document).off("click", ".trip-option-stop-restriction");
             $(document).on("click", ".trip-option-stop-restriction", function (e) {
                 e.stopPropagation();
-                $(".trip-stop-restriction-pop-up").css("display", "block");
-                $(".blackout").css("display", "block");
                 $.ajax({
                     url: "erp/get-trip-stop-restriction",
                     type: "GET",
@@ -352,6 +350,8 @@ async function loadTrip(date, time, tripId) {
                         $(".trip-stop-restriction-content").html(response);
                         tripStopRestrictionChanges = {};
                         tripStopRestrictionDirty = false;
+                        $(".trip-stop-restriction-pop-up").css("display", "block");
+                        $(".blackout").css("display", "block");
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -376,6 +376,7 @@ async function loadTrip(date, time, tripId) {
 
             $(document).off("click", ".trip-stop-restriction-save");
             $(document).on("click", ".trip-stop-restriction-save", async function () {
+                console.log("adasdasd")
                 const entries = Object.entries(tripStopRestrictionChanges);
                 try {
                     await Promise.all(entries.map(([key, isAllowed]) => {
