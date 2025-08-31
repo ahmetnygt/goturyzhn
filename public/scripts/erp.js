@@ -15,6 +15,9 @@ let toStr;
 let tripStaffInitial = {};
 let tripStaffList = [];
 
+let tripStopRestrictionChanges = {};
+let tripStopRestrictionDirty = false;
+
 function getStaffPhone(id) {
     const staff = tripStaffList.find(s => s.id == id);
     return staff ? staff.phoneNumber : "";
@@ -347,6 +350,8 @@ async function loadTrip(date, time, tripId) {
                     data: { tripId: currentTripId },
                     success: function (response) {
                         $(".trip-stop-restriction-content").html(response);
+                        tripStopRestrictionChanges = {};
+                        tripStopRestrictionDirty = false;
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -354,12 +359,38 @@ async function loadTrip(date, time, tripId) {
                 });
             });
 
-            $(document).on("change", ".trip-stop-restriction-checkbox", async function () {
+            $(document).off("change", ".trip-stop-restriction-checkbox");
+            $(document).on("change", ".trip-stop-restriction-checkbox", function () {
                 const fromId = this.dataset.from;
                 const toId = this.dataset.to;
+                const key = `${fromId}-${toId}`;
+                const initial = this.dataset.initial === "true";
                 const isAllowed = this.checked;
+                if (isAllowed === initial) {
+                    delete tripStopRestrictionChanges[key];
+                } else {
+                    tripStopRestrictionChanges[key] = isAllowed;
+                }
+                tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
+            });
+
+            $(document).off("click", ".trip-stop-restriction-save");
+            $(document).on("click", ".trip-stop-restriction-save", async function () {
+                const entries = Object.entries(tripStopRestrictionChanges);
                 try {
-                    await $.post("erp/post-trip-stop-restriction", { tripId: currentTripId, fromId, toId, isAllowed });
+                    await Promise.all(entries.map(([key, isAllowed]) => {
+                        const [fromId, toId] = key.split("-");
+                        return $.post("erp/post-trip-stop-restriction", { tripId: currentTripId, fromId, toId, isAllowed });
+                    }));
+                    entries.forEach(([key, isAllowed]) => {
+                        const [fromId, toId] = key.split("-");
+                        const checkbox = document.querySelector(`.trip-stop-restriction-checkbox[data-from='${fromId}'][data-to='${toId}']`);
+                        if (checkbox) {
+                            checkbox.dataset.initial = String(isAllowed);
+                        }
+                    });
+                    tripStopRestrictionChanges = {};
+                    tripStopRestrictionDirty = false;
                 } catch (err) {
                     console.log(err);
                 }
@@ -1118,10 +1149,19 @@ $(".trip-revenue-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(".trip-stop-restriction-close").on("click", e => {
+function closeTripStopRestriction() {
+    if (tripStopRestrictionDirty && !confirm('Kaydedilmemiş değişiklikler var. Kapatmak istiyor musunuz?')) {
+        return;
+    }
     $(".trip-stop-restriction-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
-})
+    tripStopRestrictionChanges = {};
+    tripStopRestrictionDirty = false;
+}
+
+$(document).on("click", ".trip-stop-restriction-close", () => {
+    closeTripStopRestriction();
+});
 
 $(".trip-staff-save").on("click", async e => {
     const data = {
