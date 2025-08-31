@@ -227,6 +227,7 @@ div.stops-close,
 div.staff-close,
 div.trip-revenue-close,
 div.trip-staff-close,
+div.trip-stop-restriction-close,
 div.trip-note-close {
     position: absolute;
     top: .5rem;
@@ -995,6 +996,20 @@ div.ticket-cancel-refund-open-close {
 }
 
 .trip-staff-pop-up {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 110;
+    width: 30rem;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    overflow: hidden;
+    display: none;
+}
+
+.trip-stop-restriction-pop-up {
     position: absolute;
     left: 50%;
     top: 50%;
