@@ -422,6 +422,42 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
     res.render('mixins/routeStopsTimeList', { routeStops });
 }
 
+exports.getTripStopRestriction = async (req, res, next) => {
+    try {
+        const tripId = req.query.tripId;
+        const trip = await Trip.findOne({ where: { id: tripId } });
+        if (!trip) {
+            return res.status(404).send("Trip not found");
+        }
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] });
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: routeStops.map(rs => rs.stopId) } } });
+        const rsData = routeStops.map(rs => ({ id: rs.id, order: rs.order, title: (stops.find(s => s.id == rs.stopId) || {}).title }));
+        const restrictions = await RouteStopRestriction.findAll({ where: { tripId } });
+        res.render("mixins/tripStopRestriction", { routeStops: rsData, restrictions });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send(err);
+    }
+};
+
+exports.postTripStopRestriction = async (req, res, next) => {
+    try {
+        const { tripId, fromId, toId, isAllowed } = req.body;
+        const [restriction, created] = await RouteStopRestriction.findOrCreate({
+            where: { tripId, fromRouteStopId: fromId, toRouteStopId: toId },
+            defaults: { isAllowed }
+        });
+        if (!created) {
+            restriction.isAllowed = isAllowed;
+            await restriction.save();
+        }
+        res.json({ message: "OK" });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 //TODO exports.getTripRevenues = async (req, res, next) => {
 //TODO     try {
 //TODO         const { tripId, stopId } = req.query;
