@@ -1015,11 +1015,12 @@ div.ticket-cancel-refund-open-close {
     top: 50%;
     transform: translate(-50%, -50%);
     z-index: 110;
-    width: 30rem;
+    width: auto;
     background-color: white;
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
-    overflow: hidden;
+    padding: 1rem;
+    overflow: auto;
     display: none;
 }
 
