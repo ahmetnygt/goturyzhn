@@ -19,6 +19,8 @@ router.get('/get-trip', erpController.getTrip);
 router.get('/get-passengers-table', erpController.getTripTable);
 router.get('/get-route-stops-time-list', erpController.getRouteStopsTimeList);
 //todo router.get('/get-trip-revenues', erpController.getTripRevenues);
+router.get('/get-trip-stop-restriction', erpController.getTripStopRestriction);
+router.post('/post-trip-stop-restriction', erpController.postTripStopRestriction);
 
 router.get('/get-trip-notes', erpController.getTripNotes);
 router.post('/post-trip-note', erpController.postTripNote);

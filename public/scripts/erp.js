@@ -341,6 +341,28 @@ async function loadTrip(date, time, tripId) {
                 e.stopPropagation();
                 $(".trip-stop-restriction-pop-up").css("display", "block");
                 $(".blackout").css("display", "block");
+                $.ajax({
+                    url: "erp/get-trip-stop-restriction",
+                    type: "GET",
+                    data: { tripId: currentTripId },
+                    success: function (response) {
+                        $(".trip-stop-restriction-content").html(response);
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+            });
+
+            $(document).on("change", ".trip-stop-restriction-checkbox", async function () {
+                const fromId = this.dataset.from;
+                const toId = this.dataset.to;
+                const isAllowed = this.checked;
+                try {
+                    await $.post("erp/post-trip-stop-restriction", { tripId: currentTripId, fromId, toId, isAllowed });
+                } catch (err) {
+                    console.log(err);
+                }
             });
 
             $(document).on("change", ".trip-staff-captain, .trip-staff-second, .trip-staff-third, .trip-staff-assistant, .trip-staff-hostess", updateTripStaffPhones);
