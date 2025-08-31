@@ -336,6 +336,13 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            $(document).off("click", ".trip-option-stop-restriction");
+            $(document).on("click", ".trip-option-stop-restriction", function (e) {
+                e.stopPropagation();
+                $(".trip-stop-restriction-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            });
+
             $(document).on("change", ".trip-staff-captain, .trip-staff-second, .trip-staff-third, .trip-staff-assistant, .trip-staff-hostess", updateTripStaffPhones);
 
             $(".ticket-op").on("click", e => {
@@ -1086,6 +1093,11 @@ $(".moving-close").on("click", e => {
 
 $(".trip-revenue-close").on("click", e => {
     $(".trip-revenue-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
+})
+
+$(".trip-stop-restriction-close").on("click", e => {
+    $(".trip-stop-restriction-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
 })
 
