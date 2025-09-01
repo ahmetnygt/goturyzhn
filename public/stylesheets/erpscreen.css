@@ -543,6 +543,11 @@ select.price-button-select {
     width: 20rem;
 }
 
+.customer-list-nodes {
+    height: 65vh;
+    overflow-y: auto;
+}
+
 .user-settings {
     flex: 0 0 auto;
     width: 33.33333333%;

@@ -376,7 +376,6 @@ async function loadTrip(date, time, tripId) {
 
             $(document).off("click", ".trip-stop-restriction-save");
             $(document).on("click", ".trip-stop-restriction-save", async function () {
-                console.log("adasdasd")
                 const entries = Object.entries(tripStopRestrictionChanges);
                 try {
                     await Promise.all(entries.map(([key, isAllowed]) => {
