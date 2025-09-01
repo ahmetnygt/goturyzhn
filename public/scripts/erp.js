@@ -377,10 +377,19 @@ async function loadTrip(date, time, tripId) {
             $(document).off("click", ".trip-stop-restriction-save");
             $(document).on("click", ".trip-stop-restriction-save", async function () {
                 const entries = Object.entries(tripStopRestrictionChanges);
+                if (entries.length === 0) {
+                    closeTripStopRestriction();
+                    return;
+                }
                 try {
                     await Promise.all(entries.map(([key, isAllowed]) => {
                         const [fromId, toId] = key.split("-");
-                        return $.post("erp/post-trip-stop-restriction", { tripId: currentTripId, fromId, toId, isAllowed });
+                        return $.post("erp/post-trip-stop-restriction", {
+                            tripId: currentTripId,
+                            fromId,
+                            toId,
+                            isAllowed: isAllowed ? 1 : 0
+                        });
                     }));
                     entries.forEach(([key, isAllowed]) => {
                         const [fromId, toId] = key.split("-");
@@ -391,6 +400,7 @@ async function loadTrip(date, time, tripId) {
                     });
                     tripStopRestrictionChanges = {};
                     tripStopRestrictionDirty = false;
+                    closeTripStopRestriction();
                 } catch (err) {
                     console.log(err);
                 }
