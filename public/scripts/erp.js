@@ -401,6 +401,7 @@ async function loadTrip(date, time, tripId) {
                     tripStopRestrictionChanges = {};
                     tripStopRestrictionDirty = false;
                     closeTripStopRestriction();
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
                 } catch (err) {
                     console.log(err);
                 }
