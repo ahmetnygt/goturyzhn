@@ -425,32 +425,50 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
 exports.getTripStopRestriction = async (req, res, next) => {
     try {
         const tripId = req.query.tripId;
-        const trip = await Trip.findOne({ where: { id: tripId } });
+        if (!tripId) {
+            return res.status(400).json({ error: "Trip ID required" });
+        }
+
+        const trip = await Trip.findByPk(tripId);
         if (!trip) {
             return res.status(404).send("Trip not found");
         }
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] });
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: routeStops.map(rs => rs.stopId) } } });
-        const rsData = routeStops.map(rs => ({ id: rs.id, order: rs.order, title: (stops.find(s => s.id == rs.stopId) || {}).title }));
+
+        const routeStops = await RouteStop.findAll({
+            where: { routeId: trip.routeId },
+            order: [["order", "ASC"]]
+        });
+        const stopIds = routeStops.map(rs => rs.stopId);
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        const stopMap = new Map(stops.map(s => [s.id, s.title]));
+
+        const rsData = routeStops.map(rs => ({
+            id: rs.id,
+            order: rs.order,
+            title: stopMap.get(rs.stopId) || ""
+        }));
+
         const restrictions = await RouteStopRestriction.findAll({ where: { tripId } });
         res.render("mixins/tripStopRestriction", { routeStops: rsData, restrictions });
     } catch (err) {
         console.log(err);
-        res.status(500).send(err);
+        res.status(500).json({ error: err.message });
     }
 };
 
 exports.postTripStopRestriction = async (req, res, next) => {
     try {
         const { tripId, fromId, toId, isAllowed } = req.body;
-        const [restriction, created] = await RouteStopRestriction.findOrCreate({
-            where: { tripId, fromRouteStopId: fromId, toRouteStopId: toId },
-            defaults: { isAllowed }
+
+        const allowed = isAllowed === true || isAllowed === 'true' || isAllowed === 1 || isAllowed === '1';
+
+        await RouteStopRestriction.upsert({
+            tripId,
+            fromRouteStopId: fromId,
+            toRouteStopId: toId,
+            isAllowed: allowed
         });
-        if (!created) {
-            restriction.isAllowed = isAllowed;
-            await restriction.save();
-        }
+
         res.json({ message: "OK" });
     } catch (err) {
         console.log(err);
