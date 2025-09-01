@@ -4,28 +4,40 @@
     ul.ticket-op-buttons
         each rs in routeStops
             if rs
-                button.ticket-op-button(type="button" data-gender="m" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
+                if rs.isRestricted
+                    button.ticket-op-button.restricted(type="button" disabled) #{rs.title}
+                else
+                    button.ticket-op-button(type="button" data-gender="m" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 .ticket-op
     p ERKEK REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
             if rs
-                button.ticket-op-button(type="button" data-gender="m" data-action="reservation" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
+                if rs.isRestricted
+                    button.ticket-op-button.restricted(type="button" disabled) #{rs.title}
+                else
+                    button.ticket-op-button(type="button" data-gender="m" data-action="reservation" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 .ticket-op
     p KADIN SATIŞ
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
             if rs
-                button.ticket-op-button(type="button" data-gender="f" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
+                if rs.isRestricted
+                    button.ticket-op-button.restricted(type="button" disabled) #{rs.title}
+                else
+                    button.ticket-op-button(type="button" data-gender="f" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 .ticket-op
     p KADIN REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
         each rs in routeStops
             if rs
-                button.ticket-op-button(type="button" data-gender="f" data-action="reservation" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
+                if rs.isRestricted
+                    button.ticket-op-button.restricted(type="button" disabled) #{rs.title}
+                else
+                    button.ticket-op-button(type="button" data-gender="f" data-action="reservation" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 .ticket-op
     p DİĞER İŞLEMLER
     i.fa-solid.fa-caret-right

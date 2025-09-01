@@ -228,7 +228,11 @@ async function loadTrip(date, time, tripId) {
                         arr.push(opt)
                         for (let i = 0; i < response.length; i++) {
                             const rs = response[i];
-                            const opt = $("<option>").html(rs.stopStr).val(rs.stopId)
+                            const opt = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId)
+                            if (rs.isRestricted) {
+                                opt.addClass("restricted")
+                                opt.prop("disabled", true)
+                            }
                             arr.push(opt)
                         }
                         $(".move-to-trip-place-select").html(arr)

@@ -540,20 +540,23 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
+    const placeOrder = currentRouteStop.order
 
-    const placeOrder = routeStops.find(rs => rs.stopId == stopId).order
+    const restrictions = await RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
+    const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
 
     let newRouteStopsArray = []
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
         if (placeOrder < rs.order) {
             rs.title = stops.find(s => s.id == rs.stopId).title
+            const allowed = restrictionMap.has(rs.id) ? restrictionMap.get(rs.id) : true
+            rs.isRestricted = !allowed
 
             newRouteStopsArray[rs.order] = rs
         }
     }
-
-    console.log(newRouteStopsArray)
 
     res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray })
 }
@@ -945,15 +948,20 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         const trip = await Trip.findOne({ where: { date, time, id: tripId } })
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
-        const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+        const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
+        const routeStopOrder = currentRouteStop.order
+
+        const restrictions = await RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
+        const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
 
         let newRouteStopsArray = []
         for (let i = 0; i < routeStops.length; i++) {
             const rs = routeStops[i];
             if (rs.order > routeStopOrder) {
                 rs.setDataValue("stopStr", stops.find(s => s.id == rs.stopId)?.title || "");
+                const allowed = restrictionMap.has(rs.id) ? restrictionMap.get(rs.id) : true
+                rs.setDataValue("isRestricted", !allowed)
                 newRouteStopsArray.push(rs)
-                console.log(rs.stopStr)
             }
         }
         res.json(newRouteStopsArray)
