@@ -1713,16 +1713,16 @@ exports.getUsersList = async (req, res, next) => {
 
 exports.getCustomersList = async (req, res, next) => {
     const { idNumber, name, surname, phone, blacklist } = req.query;
-    const where = {};
+    const where = { idNumber, name, surname, phone};
 
     if (idNumber) where.idNumber = Number(idNumber);
     if (name) where.name = { [Op.like]: `%${name.toLocaleUpperCase("tr-TR")}%` };
     if (surname) where.surname = { [Op.like]: `%${surname.toLocaleUpperCase("tr-TR")}%` };
     if (phone) where.phoneNumber = { [Op.like]: `%${phone}%` };
-    if (blacklist === 'true') where.isBlackList = true;
+    if (blacklist == 'true') where.isBlackList = true;
 
-    const customers = await Customer.findAll({ where });
-    res.render("mixins/customersList", { customers, blacklist: blacklist === 'true' });
+    const customers = await Customer.findAll({ where: where });
+    res.render("mixins/customersList", { customers, blacklist: blacklist });
 }
 
 exports.getMembersList = async (req, res, next) => {

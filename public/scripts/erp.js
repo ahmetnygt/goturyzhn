@@ -2669,10 +2669,12 @@ $(".customer-search-btn").on("click", async e => {
     await $.ajax({
         url: "erp/get-customers-list",
         type: "GET",
-        data: { idNumber, name, surname, phone, blacklist: 0 },
+        data: { idNumber, name, surname, phone, blacklist: false },
         success: function (response) {
             $(".customer-list-nodes").html(response)
             $(".blacklist-reason-header").hide()
+            $(".customer-list-name-header").removeClass("col-2").addClass("col-3")
+            $(".customer-list-category-header").removeClass("col-2").addClass("col-3")
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -2689,10 +2691,12 @@ $(".customer-blacklist-btn").on("click", async e => {
     await $.ajax({
         url: "erp/get-customers-list",
         type: "GET",
-        data: { idNumber, name, surname, phone, blacklist: 1 },
+        data: { idNumber, name, surname, phone, blacklist: true },
         success: function (response) {
             $(".customer-list-nodes").html(response)
             $(".blacklist-reason-header").show()
+            $(".customer-list-name-header").removeClass("col-3").addClass("col-2")
+            $(".customer-list-category-header").removeClass("col-3").addClass("col-2")
         },
         error: function (xhr, status, error) {
             console.log(error);

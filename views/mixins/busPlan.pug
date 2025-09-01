@@ -40,8 +40,9 @@
                     if permissions.includes('TRIP_CANCEL')
                         li
                             a.dropdown-item.trip-option-active-trip(href="#") Sefer Aktive Et
-                li
-                    a.dropdown-item.trip-option-stop-restriction(href="#") Durak Kısıtlama
+                if permissions.includes('TRIP_STOP_RESTRICT')
+                    li
+                        a.dropdown-item.trip-option-stop-restriction(href="#") Durak Kısıtlama
                 if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
                     li
                         a.dropdown-item.trip-option-revenues(href="#") Hasılatlar
