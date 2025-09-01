@@ -1340,3 +1340,12 @@ div.ticket-cancel-refund-open-close {
     font-size: .85rem;
     width: max-content;
 }
+
+.ticket-op-button.restricted {
+    color: red;
+    cursor: not-allowed;
+}
+
+.move-to-trip-place-select option.restricted {
+    color: red;
+}
