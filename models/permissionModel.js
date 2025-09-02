@@ -11,7 +11,6 @@ const Permission = sequelize.define("permission", {
     code: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true,
     },
     module: {
         type: Sequelize.STRING,

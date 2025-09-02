@@ -441,10 +441,11 @@ async function loadTrip(date, time, tripId) {
                 await $.ajax({
                     url: "erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: fromId, toId: toId },
+                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
                     success: function (response) {
                         $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase())
                         $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
+
 
                         $(".ticket-row").remove()
                         $(".ticket-info").remove()
@@ -453,6 +454,11 @@ async function loadTrip(date, time, tripId) {
                         $(".ticket-rows").prepend(response)
                         $(".ticket-info-pop-up").css("display", "block")
                         $(".blackout").css("display", "block")
+
+                        flatpickr($(".reservation-expire input.changable"), {
+                            locale: "tr",
+                            enableTime: true
+                        })
 
                         $(document).on("change", ".ticket-row input[type='radio']", function () {
                             const $row = $(this).closest(".ticket-row");
@@ -795,6 +801,7 @@ $(".ticket-button-action").on("click", async e => {
                 nationality: $(ticket).find(".nationality").find("select").val(),
                 type: $(ticket).find(".type").find("select").val(),
                 category: $(ticket).find(".category").find("select").val(),
+                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(ticket).find(".price").find("input").val(),
                 payment: $(".ticket-rows").find(".payment").find("select").val(),
             }
@@ -835,6 +842,7 @@ $(".ticket-button-action").on("click", async e => {
                 nationality: $(e).find(".nationality").find("select").val(),
                 type: $(e).find(".type").find("select").val(),
                 category: $(e).find(".category").find("select").val(),
+                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(e).find(".price").find("input").val(),
                 pnr: $(".pnr").find("input").val(),
             })
@@ -873,6 +881,7 @@ $(".ticket-button-action").on("click", async e => {
                 nationality: $(ticket).find(".nationality").find("select").val(),
                 type: $(ticket).find(".type").find("select").val(),
                 category: $(ticket).find(".category").find("select").val(),
+                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(ticket).find(".price").find("input").val(),
             }
 
@@ -958,8 +967,9 @@ $(".taken-ticket-op").on("click", async e => {
         await $.ajax({
             url: "erp/get-ticket-row",
             type: "GET",
-            data: { isTaken: true, seatNumbers: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
+            data: { isTaken: true, seatNumbers: selectedTakenSeats, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
             success: function (response) {
+
                 $(".ticket-row").remove()
                 $(".ticket-info").remove()
                 $(".ticket-rows").prepend(response)
@@ -968,6 +978,10 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".taken-ticket-ops-pop-up").hide()
 
+                flatpickr($(".reservation-expire input.changable"), {
+                    locale: "tr",
+                    enableTime: true
+                })
                 $(document).on("change", ".ticket-row input[type='radio']", function () {
                     const $row = $(this).closest(".ticket-row");
 

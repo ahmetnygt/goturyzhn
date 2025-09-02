@@ -48,7 +48,13 @@
             input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].phoneNumber:"") 
         .reservation-expire
             label.form-label Rezervasyon Opsiyonu
-            input.form-control.form-control-sm(type="text" name="") 
+            if permissions.includes('UPDATE_RESERVATION_OPTION_TIME')
+                if isOwnBranch ||(!isOwnBranch && permissions.includes('UPDATE_RESERVATION_OPTION_TIME_OTHER_BRANCH'))
+                    input.changable.form-control.form-control-sm(type="text" name="" value=ticket?`${ticket[0].optionTime.getUTCFullYear() + "-" + (ticket[0].optionTime.getUTCMonth() + 1) + "-" + ticket[0].optionTime.getUTCDate()} ${ticket[0].optionTime.getUTCHours() + ":" + ticket[0].optionTime.getUTCMinutes() + ":" + ticket[0].optionTime.getUTCSeconds()}`:`${trip.date} ${trip.modifiedTime}`) 
+                else
+                    input.form-control.form-control-sm(readonly type="text" name="" value=ticket?`${ticket[0].optionTime.getUTCFullYear() + "-" + (ticket[0].optionTime.getUTCMonth() + 1) + "-" + ticket[0].optionTime.getUTCDate()} ${ticket[0].optionTime.getUTCHours() + ":" + ticket[0].optionTime.getUTCMinutes() + ":" + ticket[0].optionTime.getUTCSeconds()}`:`${trip.date} ${trip.modifiedTime}`) 
+            else
+                input.form-control.form-control-sm(readonly type="text" name="" value=ticket?`${ticket[0].optionTime.getUTCFullYear() + "-" + (ticket[0].optionTime.getUTCMonth() + 1) + "-" + ticket[0].optionTime.getUTCDate()} ${ticket[0].optionTime.getUTCHours() + ":" + ticket[0].optionTime.getUTCMinutes() + ":" + ticket[0].optionTime.getUTCSeconds()}`:`${trip.date} ${trip.modifiedTime}`) 
         .take-on
             label.form-label Biniş Yeri
             input.form-control.form-control-sm(type="text" name="") 

@@ -69,6 +69,9 @@ const Ticket = sequelize.define("ticket", {
         type: Sequelize.ENUM("normal", "member", "guest"),
         allowNull: false
     },
+    optionTime: {
+        type: Sequelize.DATE,
+    },
     fromRouteStopId: {
         type: Sequelize.BIGINT,
         allowNull: true

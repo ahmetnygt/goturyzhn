@@ -55,7 +55,7 @@ app.use(function (req, res, next) {
 
 sequelize.authenticate().then(console.log('Connection has been established successfully.')).catch(error => { console.error('Unable to connect to the database:', error) });
 
-sequelize.sync({  }).then().catch(e => console.log(e))
+sequelize.sync({ alter: true }).then().catch(e => console.log(e))
 
 // error handler
 app.use(function (err, req, res, next) {

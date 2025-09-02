@@ -189,6 +189,7 @@ exports.getTrip = async (req, res, next) => {
         const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         trip.modifiedTime = trip.time
+        trip.isExpired = new Date(`${trip.date} ${trip.time}`) < new Date()
 
         if (routeStopOrder !== routeStops.length - 1) {
             for (let j = 0; j < routeStops.length; j++) {
@@ -239,7 +240,7 @@ exports.getTrip = async (req, res, next) => {
             ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
             ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
             ticket.user = users.find(u => u.id == ticket.userId).name
-            ticket.userBranch = branches.find(b => b.id == users.find(u => u.id == ticket.userId).id).title
+            ticket.userBranch = branches.find(b => b.id == users.find(u => u.id == ticket.userId).branchId).title
 
             newTicketArray[ticket.seatNo] = ticket
 
@@ -645,17 +646,38 @@ exports.postErpLogin = async (req, res, next) => {
 
 exports.getTicketRow = async (req, res, next) => {
     const isTaken = req.query.isTaken
+    const tripDate = req.query.date
+    const tripTime = req.query.time
+    const tripId = req.query.tripId
+    const stopId = req.query.stopId
+    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+
+    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } })
+    const isOwnBranch = branch.stopId == stopId
+
+    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+
+    trip.modifiedTime = trip.time
+    if (routeStopOrder !== routeStops.length - 1) {
+        for (let j = 0; j < routeStops.length; j++) {
+            const rs = routeStops[j];
+
+            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
+
+            if (rs.order == routeStopOrder)
+                break
+        }
+    }
+
     if (isTaken) {
         const seatNumbers = req.query.seatNumbers
-        const tripDate = req.query.date
-        const tripTime = req.query.time
-        const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
         const ticket = await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers } } })
 
         const seats = seatNumbers
         const gender = ticket.map(t => t.gender);
 
-        res.render("mixins/ticketRow", { gender, seats, ticket })
+        res.render("mixins/ticketRow", { gender, seats, ticket, trip, isOwnBranch })
     }
     else {
         const fromId = req.query.fromId
@@ -664,7 +686,7 @@ exports.getTicketRow = async (req, res, next) => {
         const gender = seats.map(s => req.query.gender)
         const price = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } })
 
-        res.render("mixins/ticketRow", { gender, seats, price: price ? price : 0 })
+        res.render("mixins/ticketRow", { gender, seats, price: price ? price : 0, trip, isOwnBranch })
     }
 
 }
@@ -709,8 +731,10 @@ exports.postTickets = async (req, res, next) => {
                 phoneNumber: t.phoneNumber,
                 customerType: t.type,
                 customerCategory: t.category,
+                optionTime: t.optionTime,
                 fromRouteStopId: req.body.fromId,
                 toRouteStopId: req.body.toId,
+                userId: req.session.user.id,
                 pnr: pnr,
                 payment: t.payment
             });
@@ -980,6 +1004,26 @@ exports.postMoveTickets = async (req, res, next) => {
         const fromId = req.body.fromId
         const toId = req.body.toId
 
+        const trip = await Trip.findOne({ where: { id: newTrip } })
+
+        trip.modifiedTime = trip.time
+
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const routeStopOrder = routeStops.find(rs => rs.stopId == fromId).order
+
+        if (routeStopOrder !== routeStops.length - 1) {
+            for (let j = 0; j < routeStops.length; j++) {
+                const rs = routeStops[j];
+
+                trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
+
+                if (rs.order == routeStopOrder)
+                    break
+            }
+        }
+
+        console.log(`${trip.date} ${trip.modifiedTime}`)
+
         const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
 
         for (let i = 0; i < tickets.length; i++) {
@@ -989,6 +1033,7 @@ exports.postMoveTickets = async (req, res, next) => {
             t.tripId = newTrip
             t.fromRouteStopId = fromId
             t.toRouteStopId = toId
+            t.optionTime = `${trip.date} ${trip.modifiedTime}`
 
             await t.save()
         }
@@ -1713,16 +1758,17 @@ exports.getUsersList = async (req, res, next) => {
 
 exports.getCustomersList = async (req, res, next) => {
     const { idNumber, name, surname, phone, blacklist } = req.query;
-    const where = { idNumber, name, surname, phone};
+    const where = {};
 
     if (idNumber) where.idNumber = Number(idNumber);
     if (name) where.name = { [Op.like]: `%${name.toLocaleUpperCase("tr-TR")}%` };
     if (surname) where.surname = { [Op.like]: `%${surname.toLocaleUpperCase("tr-TR")}%` };
     if (phone) where.phoneNumber = { [Op.like]: `%${phone}%` };
     if (blacklist == 'true') where.isBlackList = true;
+    else if (blacklist == 'false') where.isBlackList = false;
 
-    const customers = await Customer.findAll({ where: where });
-    res.render("mixins/customersList", { customers, blacklist: blacklist });
+    const customers = await Customer.findAll({ where });
+    res.render("mixins/customersList", { customers, blacklist });
 }
 
 exports.getMembersList = async (req, res, next) => {

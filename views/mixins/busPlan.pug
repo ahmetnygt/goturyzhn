@@ -56,13 +56,15 @@
         b.m-0.captain-name #{captain ? captain.name + " " + captain.surname : ""}
         b.m-0.captain-phone #{captain ? captain.phoneNumber : ""}
     .d-flex.justify-content-between.mb-3
-        if permissions.includes('REGISTER_VIEW_OTHERS')
+        if permissions.includes('TRIP_BUS_ASSIGN')
             select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
                 option(value="" selected disabled) Plaka seçiniz.
+        else
+            input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
+        if permissions.includes('TRIP_SEAT_MODEL_CHANGE')
             select.trip-bus-plan.form-select-sm.form-select(data-current-bus-model-id=trip.busModelId)
                 option(value="" selected disabled) Koltuk planı seçiniz.
         else
-            input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
             input.trip-bus-plan.form-control-sm.form-control(data-current-bus-model-id=trip.busModelId type="text" readonly)
 .seats
     - let seatNumber = 0
