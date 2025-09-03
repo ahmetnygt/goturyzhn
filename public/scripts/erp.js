@@ -37,7 +37,7 @@ async function loadTrip(date, time, tripId) {
     await $.ajax({
         url: "erp/get-trip",
         type: "GET",
-        data: { date: date, time: time, stopId: currentStop },
+        data: { date: date, time: time, stopId: currentStop, tripId: tripId },
         success: async function (response) {
             console.log(date)
             console.log(time)

@@ -174,9 +174,10 @@ exports.getDayTripsList = async (req, res, next) => {
 exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
+    const tripId = req.query.tripId
     const stopId = req.query.stopId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
+    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
 
     if (trip) {
         const captain = await Staff.findOne({ where: { id: trip.captainId, duty: "driver" } })
@@ -294,6 +295,7 @@ exports.getTrip = async (req, res, next) => {
             grandAmount: totalSoldAmount + totalReservedAmount
         }
 
+        // res.json({ trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
         res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
     }
     else {
