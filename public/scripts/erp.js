@@ -1383,6 +1383,34 @@ $(".save-trip-note").on("click", async e => {
     }
 })
 
+$("a.open-ticket-nav").on("click", e => {
+    $(".open-ticket-sale").css("display", "block")
+    $(".blackout").css("display", "block")
+})
+
+$(".open-ticket-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".open-ticket-sale").css("display", "none")
+})
+
+$(".open-ticket-next").on("click", async e => {
+    const fromId = $(".open-ticket-from").val()
+    const toId = $(".open-ticket-to").val()
+    const count = $(".open-ticket-count").val()
+
+    await $.ajax({
+        url: "erp/get-day-trips-list",
+        type: "GET",
+        data: { fromId, toId, count },
+        success: function (response) {
+            $(".open-ticket-results").html(response)
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+})
+
 $("a.ticket-search").on("click", e => {
     $(".ticket-search-pop-up").css("display", "block")
     $(".blackout").css("display", "block")

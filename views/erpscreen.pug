@@ -195,6 +195,32 @@ block content
                     p.text-center.m-0 Tutarı
             .transaction-list.other-transaction-list.d-flex.flex-column.gap-2
 
+    .open-ticket-sale
+        .open-ticket-close
+            i.fa-solid.fa-x
+        .gtr-header
+            span AÇIK BİLET SAT
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Nereden
+                select.form-select.open-ticket-from
+                    option(value="" selected) Seçiniz
+                    each s in stops
+                        option(value=s.id) #{s.title}
+            .input-group
+                span.input-group-text Nereye
+                select.form-select.open-ticket-to
+                    option(value="" selected) Seçiniz
+                    each s in stops
+                        option(value=s.id) #{s.title}
+            .input-group
+                span.input-group-text Kaç Adet
+                input.form-control.open-ticket-count(type="number" min="1" value="1")
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.open-ticket-next İLERİ
+                button.btn.btn-outline-primary.open-ticket-close KAPAT
+        .open-ticket-results.p-3.d-flex.flex-column.gap-2
+
     .ticket-search-pop-up
         .ticket-search-close
             i.fa-solid.fa-x
