@@ -241,6 +241,8 @@ exports.getTrip = async (req, res, next) => {
             ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
             ticket.user = users.find(u => u.id == ticket.userId).name
             ticket.userBranch = branches.find(b => b.id == users.find(u => u.id == ticket.userId).branchId).title
+            ticket.isOwnBranch = users.find(u => u.id == ticket.userId).branchId == req.session.user.branchId
+
 
             newTicketArray[ticket.seatNo] = ticket
 
