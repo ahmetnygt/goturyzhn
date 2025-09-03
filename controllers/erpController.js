@@ -186,18 +186,17 @@ exports.getTrip = async (req, res, next) => {
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
 
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
-        const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         trip.modifiedTime = trip.time
         trip.isExpired = new Date(`${trip.date} ${trip.time}`) < new Date()
 
-        if (routeStopOrder !== routeStops.length - 1) {
+        if (currentStopOrder !== routeStops.length - 1) {
             for (let j = 0; j < routeStops.length; j++) {
                 const rs = routeStops[j];
 
                 trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
 
-                if (rs.order == routeStopOrder)
+                if (rs.order == currentStopOrder)
                     break
             }
         }
@@ -212,6 +211,23 @@ exports.getTrip = async (req, res, next) => {
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
         const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } } })
 
+        const routeStopOrderMap = routeStops.reduce((acc, rs) => {
+            acc[rs.stopId] = rs.order;
+            return acc;
+        }, {});
+        const stopsMap = stops.reduce((acc, s) => {
+            acc[s.id] = s.title;
+            return acc;
+        }, {});
+        const userMap = users.reduce((acc, u) => {
+            acc[u.id] = u;
+            return acc;
+        }, {});
+        const branchMap = branches.reduce((acc, b) => {
+            acc[b.id] = b;
+            return acc;
+        }, {});
+
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
         let currentSoldCount = 0
@@ -223,8 +239,8 @@ exports.getTrip = async (req, res, next) => {
         let totalReservedCount = 0
         let totalReservedAmount = 0
         for (let i = 0; i < tickets.length; i++) {
-            const ticket = tickets[i];
-            const ticketPlaceOrder = routeStops.find(rs => rs.stopId == ticket.fromRouteStopId).order
+            const ticket = tickets[i].get({ plain: true });
+            const ticketPlaceOrder = routeStopOrderMap[ticket.fromRouteStopId];
 
             if (ticketPlaceOrder == currentStopOrder) {
                 ticket.stopOrder = "even"
@@ -237,12 +253,13 @@ exports.getTrip = async (req, res, next) => {
                 ticket.stopOrder = "before"
             }
 
-            ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
-            ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
-            ticket.user = users.find(u => u.id == ticket.userId).name
-            ticket.userBranch = branches.find(b => b.id == users.find(u => u.id == ticket.userId).branchId).title
-            ticket.isOwnBranch = users.find(u => u.id == ticket.userId).branchId == req.session.user.branchId
-
+            const user = userMap[ticket.userId];
+            const branch = branchMap[user.branchId];
+            ticket.from = stopsMap[ticket.fromRouteStopId];
+            ticket.to = stopsMap[ticket.toRouteStopId];
+            ticket.user = user.name;
+            ticket.userBranch = branch.title;
+            ticket.isOwnBranch = user.branchId == req.session.user.branchId;
 
             newTicketArray[ticket.seatNo] = ticket
 
