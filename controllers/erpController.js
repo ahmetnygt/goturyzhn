@@ -260,7 +260,7 @@ exports.getTrip = async (req, res, next) => {
             ticket.to = stopsMap[ticket.toRouteStopId];
             ticket.user = user.name;
             ticket.userBranch = branch.title;
-            ticket.isOwnBranch = user.branchId == req.session.user.branchId;
+            ticket.isOwnBranch = (user.branchId == req.session.user.branchId).toString();
 
             newTicketArray[ticket.seatNo] = ticket
 
