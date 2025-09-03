@@ -260,7 +260,8 @@ exports.getTrip = async (req, res, next) => {
             ticket.to = stopsMap[ticket.toRouteStopId];
             ticket.user = user.name;
             ticket.userBranch = branch.title;
-            ticket.isOwnBranch = (user.branchId == req.session.user.branchId).toString();
+            ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString();
+            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId].stopId).toString()
 
             newTicketArray[ticket.seatNo] = ticket
 
@@ -558,7 +559,9 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const stopId = req.query.stopId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } })
 
+    const isOwnBranchStop = (stopId == branch.stopId).toString()
 
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
@@ -580,7 +583,7 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
         }
     }
 
-    res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray })
+    res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray, isOwnBranchStop })
 }
 
 exports.getErp = async (req, res, next) => {
@@ -665,6 +668,8 @@ exports.postErpLogin = async (req, res, next) => {
     }
 };
 
+exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
+
 exports.getTicketRow = async (req, res, next) => {
     const isTaken = req.query.isTaken
     const tripDate = req.query.date
@@ -695,10 +700,22 @@ exports.getTicketRow = async (req, res, next) => {
         const seatNumbers = req.query.seatNumbers
         const ticket = await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers } } })
 
-        const seats = seatNumbers
-        const gender = ticket.map(t => t.gender);
+        const user = await FirmUser.findOne({ where: { id: ticket[0].userId } })
+        const ticketUserBranch = await Branch.findOne({ where: { id: user.branchId } })
 
-        res.render("mixins/ticketRow", { gender, seats, ticket, trip, isOwnBranch })
+        if (
+            (isOwnBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH"))
+            ||
+            (!isOwnBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH"))
+        ) {
+            res.status(403).json({ message: "Buna yetkiniz yok." })
+        }
+        else {
+            const seats = seatNumbers
+            const gender = ticket.map(t => t.gender);
+
+            res.render("mixins/ticketRow", { gender, seats, ticket, trip, isOwnBranch })
+        }
     }
     else {
         const fromId = req.query.fromId

@@ -35,8 +35,9 @@
             label.form-label Kategori
             select.form-select.form-select-sm(value=ticket?ticket[i].customerCategory:"")
                 option(value="normal") Normal
-                option(value="member") Abone
-                option(value="guest") Misafir
+                if (permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch) 
+                    option(value="member") Abone
+                    option(value="guest") Misafir
         .price
             label.form-label Fiyat
             input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].price:price.price1)

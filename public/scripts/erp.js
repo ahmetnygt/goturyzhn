@@ -18,6 +18,17 @@ let tripStaffList = [];
 let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
+window.permissions = [];
+const hasPermission = code => window.permissions.includes(code);
+
+$(function () {
+    $.get('/erp/permissions')
+        .done(perms => {
+            window.permissions = perms;
+        })
+        .fail(err => console.error(err));
+});
+
 function getStaffPhone(id) {
     const staff = tripStaffList.find(s => s.id == id);
     return staff ? staff.phoneNumber : "";
@@ -577,6 +588,15 @@ async function loadTrip(date, time, tripId) {
                     }
                 } else {
                     // dolu koltuk: grupça seç/kaldır
+                    $(".taken-ticket-op").css("display", "block")
+
+                    if (!hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true
+                        ||
+                        !hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false
+                    ) {
+                        $(".taken-ticket-op[data-action='edit']").css("display", "none")
+                    }
+
                     if (selectedTakenSeats.length > 0) {
                         selectedTakenSeats = [];
                         $(".seat").removeClass("selected");
@@ -997,7 +1017,7 @@ $(".taken-ticket-op").on("click", async e => {
                 $(".seat").removeClass("selected")
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                alert(error);
             }
         });
     }
