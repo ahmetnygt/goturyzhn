@@ -500,58 +500,58 @@ exports.postTripStopRestriction = async (req, res, next) => {
     }
 };
 
-//TODO exports.getTripRevenues = async (req, res, next) => {
-//TODO     try {
-//TODO         const { tripId, stopId } = req.query;
+exports.getTripRevenues = async (req, res, next) => {
+    try {
+        const { tripId, stopId } = req.query;
 
-//TODO         const tickets = await Ticket.findAll({
-//TODO             where: {
-//TODO                 tripId,
-//TODO                 status: { [Op.in]: ["completed", "reservation", "web"] }
-//TODO             },
-//TODO             raw: true
-//TODO         });
+        const tickets = await Ticket.findAll({
+            where: {
+                tripId,
+                status: { [Op.in]: ["completed", "reservation", "web"] }
+            },
+            raw: true
+        });
 
-//TODO         const users = await FirmUser.findAll({ where: { id: [...new Set(tickets.map(t => t.userId))] } })
+        const users = await FirmUser.findAll({ where: { id: [...new Set(tickets.map(t => t.userId))] } })
 
-//TODO         const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } }, raw: true });
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } }, raw: true });
 
-//TODO         for (let i = 0; i < tickets.length; i++) {
-//TODO             const ticket = tickets[i];
+        for (let i = 0; i < tickets.length; i++) {
+            const ticket = tickets[i];
 
-//TODO         }
+        }
 
-//TODO         const branchTitles = {};
-//TODO         branches.forEach(b => branchTitles[b.id] = b.title);
+        const branchTitles = {};
+        branches.forEach(b => branchTitles[b.id] = b.title);
 
-//TODO         const branchData = {};
-//TODO         tickets.forEach(ticket => {
-//TODO             const branchId = groupBranch[ticket.ticketGroupId];
-//TODO             if (!branchId) return;
-//TODO             if (!branchData[branchId]) {
-//TODO                 branchData[branchId] = {
-//TODO                     title: branchTitles[branchId] || "",
-//TODO                     currentAmount: 0,
-//TODO                     totalAmount: 0
-//TODO                 };
-//TODO             }
-//TODO             const amount = Number(ticket.price);
-//TODO             branchData[branchId].totalAmount += amount;
-//TODO             if (ticket.fromRouteStopId == stopId) {
-//TODO                 branchData[branchId].currentAmount += amount;
-//TODO             }
-//TODO         });
+        const branchData = {};
+        tickets.forEach(ticket => {
+            const branchId = groupBranch[ticket.ticketGroupId];
+            if (!branchId) return;
+            if (!branchData[branchId]) {
+                branchData[branchId] = {
+                    title: branchTitles[branchId] || "",
+                    currentAmount: 0,
+                    totalAmount: 0
+                };
+            }
+            const amount = Number(ticket.price);
+            branchData[branchId].totalAmount += amount;
+            if (ticket.fromRouteStopId == stopId) {
+                branchData[branchId].currentAmount += amount;
+            }
+        });
 
-//TODO         const branchesArr = Object.values(branchData);
-//TODO         const totalCurrent = branchesArr.reduce((sum, b) => sum + b.currentAmount, 0);
-//TODO         const totalAmount = branchesArr.reduce((sum, b) => sum + b.totalAmount, 0);
+        const branchesArr = Object.values(branchData);
+        const totalCurrent = branchesArr.reduce((sum, b) => sum + b.currentAmount, 0);
+        const totalAmount = branchesArr.reduce((sum, b) => sum + b.totalAmount, 0);
 
-//TODO         res.json({ branches: branchesArr, totals: { current: totalCurrent, total: totalAmount } });
-//TODO     } catch (err) {
-//TODO         console.error("getTripRevenues error:", err);
-//TODO         res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
-//TODO     }
-//TODO };
+        res.json({ branches: branchesArr, totals: { current: totalCurrent, total: totalAmount } });
+    } catch (err) {
+        console.error("getTripRevenues error:", err);
+        res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
+    }
+};
 
 exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
@@ -728,14 +728,6 @@ exports.getTicketRow = async (req, res, next) => {
 
         const user = await FirmUser.findOne({ where: { id: ticket[0].userId } });
         const ticketUserBranch = user ? await Branch.findOne({ where: { id: user.branchId } }) : null;
-
-        //! if (
-        //!     (isOwnBranch && ticketUserBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH"))
-        //!     ||
-        //!    (!isOwnBranch && ticketUserBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH"))
-        //! ) {
-        //!     return res.status(403).json({ message: "Buna yetkiniz yok." });
-        //! }
 
         const gender = ticket.map((t) => t.gender);
         return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch });
