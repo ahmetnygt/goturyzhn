@@ -262,6 +262,7 @@ exports.getTrip = async (req, res, next) => {
             ticket.userBranch = branch.title;
             ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString();
             ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId].stopId).toString()
+            ticket.tripRefundOptionDate = trip.refundOptionDate
 
             newTicketArray[ticket.seatNo] = ticket
 
@@ -583,7 +584,7 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
         }
     }
 
-    res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray, isOwnBranchStop })
+    res.render("mixins/ticketOpsPopUp", { routeStops: newRouteStopsArray, isOwnBranchStop, reservationOptionDate: trip.reservationOptionDate })
 }
 
 exports.getErp = async (req, res, next) => {
@@ -671,98 +672,147 @@ exports.postErpLogin = async (req, res, next) => {
 exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
 
 exports.getTicketRow = async (req, res, next) => {
-    const isTaken = req.query.isTaken
-    const tripDate = req.query.date
-    const tripTime = req.query.time
-    const tripId = req.query.tripId
-    const stopId = req.query.stopId
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+    const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId } = req.query;
 
-    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } })
-    const isOwnBranch = branch.stopId == stopId
+    // Trip için where koşulunu dinamik kur
+    const tripWhere = {};
+    if (tripDate) tripWhere.date = tripDate;
+    if (tripTime) tripWhere.time = tripTime;
+    if (tripId) tripWhere.id = tripId;
 
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+    const trip = await Trip.findOne({ where: tripWhere });
+    if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
 
-    trip.modifiedTime = trip.time
-    if (routeStopOrder !== routeStops.length - 1) {
+    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } });
+    const isOwnBranch = stopId ? branch.stopId == stopId : false;
+
+    const routeStops = await RouteStop.findAll({
+        where: { routeId: trip.routeId },
+        order: [["order", "ASC"]],
+    });
+
+    const routeStopOrder = stopId
+        ? routeStops.find((rs) => String(rs.stopId) === String(stopId))?.order
+        : null;
+
+    trip.modifiedTime = trip.time;
+    if (routeStopOrder !== null && routeStopOrder !== routeStops.length - 1) {
         for (let j = 0; j < routeStops.length; j++) {
             const rs = routeStops[j];
-
-            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
-
-            if (rs.order == routeStopOrder)
-                break
+            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration);
+            if (rs.order == routeStopOrder) break;
         }
     }
 
+    // --- OPEN CASE ---
+    if (isOpen) {
+        const { fromId, toId, count: seats } = req.query;
+        let price = 0;
+        if (fromId && toId) {
+            const p = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+            price = p ? p : 0;
+        }
+        return res.render("mixins/ticketRow", { gender: "m", seats, price, trip, isOwnBranch });
+    }
+
+    // --- TAKEN CASE ---
     if (isTaken) {
-        const seatNumbers = req.query.seatNumbers
-        const ticket = await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers } } })
+        const { seatNumbers } = req.query;
+        const ticket = seatNumbers
+            ? await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers } } })
+            : [];
 
-        const user = await FirmUser.findOne({ where: { id: ticket[0].userId } })
-        const ticketUserBranch = await Branch.findOne({ where: { id: user.branchId } })
-
-        if (
-            (isOwnBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH"))
-            ||
-            (!isOwnBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH"))
-        ) {
-            res.status(403).json({ message: "Buna yetkiniz yok." })
+        if (!ticket.length) {
+            return res.status(404).json({ message: "Bilet bulunamadı" });
         }
-        else {
-            const seats = seatNumbers
-            const gender = ticket.map(t => t.gender);
 
-            res.render("mixins/ticketRow", { gender, seats, ticket, trip, isOwnBranch })
-        }
-    }
-    else {
-        const fromId = req.query.fromId
-        const toId = req.query.toId
-        const seats = req.query.seats
-        const gender = seats.map(s => req.query.gender)
-        const price = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } })
+        const user = await FirmUser.findOne({ where: { id: ticket[0].userId } });
+        const ticketUserBranch = user ? await Branch.findOne({ where: { id: user.branchId } }) : null;
 
-        res.render("mixins/ticketRow", { gender, seats, price: price ? price : 0, trip, isOwnBranch })
+        //! if (
+        //!     (isOwnBranch && ticketUserBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH"))
+        //!     ||
+        //!    (!isOwnBranch && ticketUserBranch && ticketUserBranch.id !== branch.id && !req.session.permissions.includes("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH"))
+        //! ) {
+        //!     return res.status(403).json({ message: "Buna yetkiniz yok." });
+        //! }
+
+        const gender = ticket.map((t) => t.gender);
+        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch });
     }
 
-}
+    // --- ELSE CASE ---
+    const { fromId, toId, seats, gender: genderParam } = req.query;
+    const gender = seats ? seats.map((s) => genderParam) : [];
+    let price = 0;
+    if (fromId && toId) {
+        const p = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+        price = p ? p : 0;
+    }
+
+    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch });
+};
+
 
 exports.postTickets = async (req, res, next) => {
     try {
-        const tickets = JSON.parse(req.body.tickets);
+        const tickets = Array.isArray(req.body.tickets)
+            ? req.body.tickets
+            : JSON.parse(req.body.tickets || "[]");
+
         const tripDate = req.body.tripDate;
         const tripTime = req.body.tripTime;
+        const tripId = req.body.tripId;
         const status = req.body.status;
+        const fromId = req.body.fromId;
+        const toId = req.body.toId;
 
-        const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } });
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        // --- Trip.where'i dinamik kur ---
+        const tripWhere = {};
+        if (tripDate) tripWhere.date = tripDate;
+        if (tripTime) tripWhere.time = tripTime;
+        if (tripId) tripWhere.id = tripId;
 
+        if (Object.keys(tripWhere).length === 0) {
+            return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
+        }
+
+        const trip = await Trip.findOne({ where: tripWhere });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
-        // 1. TicketGroup oluştur
-        const group = await TicketGroup.create({
-            tripId: trip.id,
+        // --- RouteStops ve Stops (boş dizi korumalı) ---
+        const routeStops = await RouteStop.findAll({
+            where: { routeId: trip.routeId },
+            order: [["order", "ASC"]],
         });
 
+        const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
+        let stops = [];
+        if (stopIds.length) {
+            stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        }
+
+        // --- TicketGroup ---
+        const group = await TicketGroup.create({ tripId: trip.id });
         const ticketGroupId = group.id;
 
-        // 2. Tüm biletleri sırayla kaydet
-        const pnr = await generatePNR(req.body.fromId, req.body.toId, stops);
-        for (const t of tickets) {
+        // --- PNR (sadece fromId & toId varsa) ---
+        const pnr = (fromId && toId) ? await generatePNR(fromId, toId, stops) : null;
 
-            const ticket = new Ticket({
+        // --- Tüm biletleri sırayla kaydet ---
+        for (const t of tickets) {
+            if (!t) continue;
+
+            const ticket = await Ticket.create({
                 seatNo: t.seatNumber,
                 gender: t.gender,
                 nationality: t.nationality,
                 idNumber: t.idNumber,
-                name: t.name.toLocaleUpperCase("tr-TR"),
-                surname: t.surname.toLocaleUpperCase("tr-TR"),
-                price: t.price,
+                name: (t.name || "").toLocaleUpperCase("tr-TR"),
+                surname: (t.surname || "").toLocaleUpperCase("tr-TR"),
+                price: t.price ?? 0,
                 tripId: trip.id,
                 ticketGroupId: ticketGroupId,
                 status: status,
@@ -770,79 +820,173 @@ exports.postTickets = async (req, res, next) => {
                 customerType: t.type,
                 customerCategory: t.category,
                 optionTime: t.optionTime,
-                fromRouteStopId: req.body.fromId,
-                toRouteStopId: req.body.toId,
+                fromRouteStopId: fromId,
+                toRouteStopId: toId,
                 userId: req.session.user.id,
                 pnr: pnr,
                 payment: t.payment
             });
 
-            await ticket.save();
+            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
+            const nameUp = (t.name || "").toLocaleUpperCase("tr-TR");
+            const surnameUp = (t.surname || "").toLocaleUpperCase("tr-TR");
 
-            // CUSTOMER KONTROLÜ (aynı TC veya aynı isim-soyisim varsa ekleme)
-            const existingCustomer = await Customer.findOne({
-                where: {
-                    [Op.or]: [
-                        { idNumber: t.idNumber },
-                        {
-                            name: t.name.toLocaleUpperCase("tr-TR"),
-                            surname: t.surname.toLocaleUpperCase("tr-TR")
-                        }
-                    ]
-                }
-            });
+            const orConds = [];
+            if (t.idNumber) orConds.push({ idNumber: t.idNumber });
+            if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
 
-            if (!existingCustomer) {
-                const customer = new Customer({
-                    idNumber: t.idNumber,
-                    name: t.name.toLocaleUpperCase("tr-TR"),
-                    surname: t.surname.toLocaleUpperCase("tr-TR"),
-                    phoneNumber: t.phoneNumber,
-                    gender: t.gender,
-                    nationality: t.nationality,
-                    customerType: t.type,
-                    customerCategory: t.category
-                });
-
-                await customer.save();
+            let existingCustomer = null;
+            if (orConds.length) {
+                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
             }
 
-            if (ticket.status == "completed") {
-                ticket.fromStr = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
-                ticket.toStr = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+            if (!existingCustomer) {
+                await Customer.create({
+                    idNumber: t.idNumber || null,
+                    name: nameUp || null,
+                    surname: surnameUp || null,
+                    phoneNumber: t.phoneNumber || null,
+                    gender: t.gender || null,
+                    nationality: t.nationality || null,
+                    customerType: t.type || null,
+                    customerCategory: t.category || null
+                });
+            }
 
-                const transaction = new Transaction({
+            if (ticket.status === "completed") {
+                const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
+                const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+
+                await Transaction.create({
                     userId: req.session.user.id,
                     type: "income",
-                    category: ticket.payment == "cash" ? "cash_sale" : "card_sale",
+                    category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
                     amount: ticket.price,
-                    description: `${trip.date} ${trip.time} | ${ticket.fromStr} - ${ticket.toStr}`,
+                    description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
                     ticketId: ticket.id
                 });
 
-                await transaction.save();
-
                 const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
                 if (register) {
-                    if (ticket.payment == "cash") {
-                        register.cash_balance = register.cash_balance + ticket.price;
+                    if (ticket.payment === "cash") {
+                        register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
                     } else {
-                        register.card_balance = register.card_balance + ticket.price;
+                        register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
                     }
                     await register.save();
                 }
             }
 
             res.locals.newRecordId = ticket.id;
-            console.log(`${t.name} Kaydedildi - ${pnr}`);
+            console.log(`${t.name} Kaydedildi - ${pnr || "-"}`);
         }
 
-        res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+        return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+    } catch (err) {
+        console.error("Kayıt hatası:", err);
+        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+    }
+};
+
+exports.postSellOpenTickets = async (req, res, next) => {
+    try {
+        const tickets = JSON.parse(req.body.tickets)
+
+        const status = req.body.status;
+        const fromId = req.body.fromId;
+        const toId = req.body.toId;
+
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [fromId, toId] } } });
+
+        // --- TicketGroup ---
+        const group = await TicketGroup.create({ tripId: null });
+        const ticketGroupId = group.id;
+
+        console.log(req.body.tickets)
+        console.log(tickets)
+        // --- PNR ---
+        const pnr = (fromId && toId) ? await generatePNR(fromId, toId, stops) : null;
+
+        for (const t of tickets) {
+            const ticket = await Ticket.create({
+                seatNo: 0,
+                gender: t.gender,
+                nationality: t.nationality,
+                idNumber: t.idNumber,
+                name: (t.name || "").toLocaleUpperCase("tr-TR"),
+                surname: (t.surname || "").toLocaleUpperCase("tr-TR"),
+                price: t.price ?? 0,
+                tripId: null,
+                ticketGroupId: ticketGroupId,
+                status: status,
+                phoneNumber: t.phoneNumber,
+                customerType: t.type,
+                customerCategory: t.category,
+                optionTime: t.optionTime,
+                fromRouteStopId: fromId,
+                toRouteStopId: toId,
+                userId: req.session.user.id,
+                pnr: pnr,
+                payment: t.payment
+            });
+
+            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
+            const nameUp = (t.name || "").toLocaleUpperCase("tr-TR");
+            const surnameUp = (t.surname || "").toLocaleUpperCase("tr-TR");
+
+            const orConds = [];
+            if (t.idNumber) orConds.push({ idNumber: t.idNumber });
+            if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
+
+            let existingCustomer = null;
+            if (orConds.length) {
+                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+            }
+
+            if (!existingCustomer) {
+                await Customer.create({
+                    idNumber: t.idNumber || null,
+                    name: nameUp || null,
+                    surname: surnameUp || null,
+                    phoneNumber: t.phoneNumber || null,
+                    gender: t.gender || null,
+                    nationality: t.nationality || null,
+                    customerType: t.type || null,
+                    customerCategory: t.category || null
+                });
+            }
+
+
+            const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
+            const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+
+            await Transaction.create({
+                userId: req.session.user.id,
+                type: "income",
+                category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
+                amount: ticket.price,
+                description: `Açık bilet satıldı | ${fromTitle} - ${toTitle}`,
+                ticketId: ticket.id
+            });
+
+            const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+            if (register) {
+                if (ticket.payment === "cash") {
+                    register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
+                } else {
+                    register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
+                }
+                await register.save();
+            }
+            res.locals.newRecordId = ticket.id;
+            console.log(`${t.name} Kaydedildi - ${pnr || "-"}`);
+        }
     } catch (err) {
         console.error("Kayıt hatası:", err);
         res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
-};
+
+}
 
 exports.postEditTicket = async (req, res, next) => {
     try {

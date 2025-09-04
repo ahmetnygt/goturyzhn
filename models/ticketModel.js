@@ -34,7 +34,7 @@ const Ticket = sequelize.define("ticket", {
         allowNull: false
     },
     status: {
-        type: Sequelize.ENUM("web", "completed", "reservation", "canceled", "refund", "open"),
+        type: Sequelize.ENUM("web", "gotur", "completed", "reservation", "canceled", "refund", "open"),
         allowNull: false
     },
     idNumber: {

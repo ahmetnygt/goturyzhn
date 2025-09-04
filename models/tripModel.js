@@ -40,6 +40,15 @@ const Trip = sequelize.define("trip", {
         type: Sequelize.BIGINT,
         allowNull: true
     },
+    reservationOptionDate: {
+        type: Sequelize.DATEONLY
+    },
+    refundOptionDate: {
+        type: Sequelize.DATE
+    },
+    date: {
+        type: Sequelize.DATE
+    },
     date: {
         type: Sequelize.DATEONLY
     },

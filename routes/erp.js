@@ -34,6 +34,7 @@ router.get('/get-ticketops-popup', erpController.getTicketOpsPopUp);
 router.get('/get-ticket-row', erpController.getTicketRow);
 
 router.post('/post-tickets', erpController.postTickets)
+router.post('/post-sell-open-tickets', erpController.postSellOpenTickets)
 router.post('/post-edit-ticket', erpController.postEditTicket)
 router.get('/get-cancel-open-ticket', erpController.getCancelOpenTicket)
 router.post('/post-cancel-ticket', erpController.postCancelTicket)

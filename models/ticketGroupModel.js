@@ -10,7 +10,7 @@ const TicketGroup = sequelize.define("ticketgroup", {
     },
     tripId: {
         type: Sequelize.BIGINT,
-        allowNull: false
+        allowNull: true
     }
 });
 

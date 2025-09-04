@@ -12,11 +12,11 @@
             label.form-label Uyruk
             select.form-select.form-select-sm(value=ticket?ticket[i].nationality:"")
                 option(value="tr") Türkiye 
-                option(value="usa") Amerika 
-                option(value="sr") Suriye 
+                option(value="" disabled=`${!permissions.includes('FOREIGN_PASSENGER_TICKET_SALE')}`) Amerika 
+                option(value="" disabled=`${!permissions.includes('FOREIGN_PASSENGER_TICKET_SALE')}`) Suriye 
         .identity
             label.form-label Kimlik/Pasaport No
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].idNumber:"")
+            input.form-control.form-control-sm(readonly=`${permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ticket?ticket[i].status:"" == "completed"}` type="text" name="" value=ticket?ticket[i].idNumber:"")
         .name
             label.form-label İsim
             input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].name:"")
@@ -40,13 +40,13 @@
                     option(value="guest") Misafir
         .price
             label.form-label Fiyat
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].price:price.price1)
+            input.form-control.form-control-sm(readonly=!permissions.includes('ENTER_FREE_PRICE') type="text" name="" value=ticket?ticket[i].price:price.price1)
 -}
 .ticket-info    
     .up-row
         .phone
             label.form-label Telefon Numarası
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].phoneNumber:"") 
+            input.form-control.form-control-sm(readonly=`${permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ticket?ticket[0].status:"" == "completed"}` type="text" name="" value=ticket?ticket[0].phoneNumber:"") 
         .reservation-expire
             label.form-label Rezervasyon Opsiyonu
             if permissions.includes('UPDATE_RESERVATION_OPTION_TIME')
@@ -69,7 +69,7 @@
                 option(value="card") K. Kartı 
         .sum-price
             label.form-label Toplam Fiyat
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].price*seats.length:"") 
+            input.form-control.form-control-sm(readonly type="text" name="" value=ticket?ticket[0].price*seats.length:"") 
         .pnr
             label.form-label PNR
             input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"") 

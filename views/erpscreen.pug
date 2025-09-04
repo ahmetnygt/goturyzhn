@@ -219,7 +219,6 @@ block content
             .d-flex.gap-3.justify-content-end
                 button.btn.btn-outline-primary.open-ticket-next İLERİ
                 button.btn.btn-outline-primary.open-ticket-close KAPAT
-        .open-ticket-results.p-3.d-flex.flex-column.gap-2
 
     .ticket-search-pop-up
         .ticket-search-close
@@ -1024,10 +1023,14 @@ block content
     .ticket-ops-pop-up
 
     .taken-ticket-ops-pop-up
+        .taken-ticket-op(data-action="complete")
+            span SATIŞA ÇEVİR
         .taken-ticket-op(data-action="edit")
             span DÜZENLE
-        .taken-ticket-op(data-action="cancel/refund")
-            span İADE/İPTAL ET
+        .taken-ticket-op(data-action="refund")
+            span İADE ET
+        .taken-ticket-op(data-action="cancel")
+            span İPTAL ET
         .taken-ticket-op(data-action="open")
             span AÇIĞA AL
         .taken-ticket-op(data-action="move")
