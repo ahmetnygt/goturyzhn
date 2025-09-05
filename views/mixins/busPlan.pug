@@ -1,6 +1,7 @@
 .trip-info-settings
     if !trip.isActive
         p.inactiveTripText SEFER İPTAL
+    button.btn.btn-primary.btn-sm.account-cut Araç Kaldır
     .trip-helper-buttons
         if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
             .trip-incomes
@@ -112,7 +113,6 @@
             -}
             -   seatIndex++;
             -}
-.summary-buttons
 input#fromId(type="hidden" value=fromId)
 input#toId(type="hidden" value=toId)
 input#fromStr(type="hidden" value=fromStr)

@@ -1044,8 +1044,8 @@ block content
             button.btn.btn-secondary.customer-blacklist-close KAPAT
             button.btn.btn-primary.customer-blacklist-add EKLE
 
-    .row
-        .col-4
+    .row(style="height: 89vh;")
+        .col-4.h-100
             .passenger-table.mb-3
             .notes-stops
                 .bg-white.h-100.p-2.w-50
@@ -1059,10 +1059,10 @@ block content
 
             .ticker
                 p GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR 
-        .col-5.d-flex.flex-column.align-items-center.px-3.gap-2
+        .col-5.d-flex.flex-column.align-items-center.px-3.gap-2.h-100
             .busPlan
 
-        .col-3.right-panel
+        .col-3.h-100.right-panel
             input#calendar(type="hidden" name="")
             select#currentStop.form-select.form-select-sm
                 each s in stops

@@ -102,6 +102,17 @@ async function loadTrip(date, time, tripId) {
             })
 
             $(".busPlan").html(response)
+            document.querySelectorAll('.seat-row').forEach(row => {
+                const seats = row.querySelectorAll('.seat');
+
+                if (
+                    Array.from(seats).every(seat =>
+                        seat.classList.contains('hidden') || seat.classList.contains('none')
+                    )
+                ) {
+                    row.remove();
+                }
+            });
 
             currentTripDate = $("#tripDate").val()
             currentTripTime = $("#tripTime").val()

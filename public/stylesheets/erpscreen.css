@@ -9,6 +9,28 @@ body {
     background-color: rgb(217, 218, 219) !important;
 }
 
+*::-webkit-scrollbar {
+    height: 7px;
+    width: 7px;
+}
+
+*::-webkit-scrollbar-track {
+    background-color: #ffffff00;
+}
+
+*::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background-color: #2986cc4d;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: #2474b14d;
+}
+
+*::-webkit-scrollbar-thumb:active {
+    background-color: #1f63974d;
+}
+
 #calendar {
     display: none;
 }
@@ -1112,6 +1134,12 @@ div.ticket-cancel-refund-open-close {
     width: 100%;
 }
 
+.account-cut {
+    position: absolute;
+    gap: .25rem;
+    left: .75rem;
+}
+
 .trip-helper-buttons {
     position: absolute;
     display: flex;
@@ -1190,12 +1218,15 @@ div.ticket-cancel-refund-open-close {
     align-items: center;
     gap: 1rem;
     width: 100%;
+    height: 100%;
 }
 
 .seats {
     display: flex;
     flex-direction: column;
     gap: .5rem;
+    overflow-y: auto;
+    padding: 0rem 1rem;
 }
 
 .seat-row {

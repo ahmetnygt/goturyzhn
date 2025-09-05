@@ -25,6 +25,7 @@ const SystemLog = require("../models/systemLogModel")
 const Price = require("../models/priceModel")
 const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
+const BusAccountCut = require("../models/busAccountCutModel")
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
