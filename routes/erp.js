@@ -29,6 +29,9 @@ router.post('/post-trip-note', erpController.postTripNote);
 router.post('/post-edit-trip-note', erpController.postEditTripNote);
 router.post('/post-delete-trip-note', erpController.postDeleteTripNote);
 
+router.get('/get-bus-account-cut', auth, erpController.getBusAccountCutData);
+router.post('/post-bus-account-cut', auth, erpController.postBusAccountCut);
+
 router.get('/get-ticketops-popup', erpController.getTicketOpsPopUp);
 
 router.get('/get-ticket-row', erpController.getTicketRow);
