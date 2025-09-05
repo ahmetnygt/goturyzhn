@@ -12,6 +12,7 @@ let toId;
 let fromStr;
 let toStr;
 let accountCutData;
+let accountCutId;
 
 let tripStaffInitial = {};
 let tripStaffList = [];
@@ -730,13 +731,16 @@ async function loadTrip(date, time, tripId) {
                 $(".passenger-info-popup").hide();
             });
             $(".account-cut").on("click", async () => {
+                $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", false);
+                $(".account-cut-save").show();
+                $(".account-cut-undo-btn").hide();
+                accountCutId = null;
                 try {
                     accountCutData = await $.ajax({
                         url: "/erp/get-bus-account-cut",
                         type: "GET",
                         data: { tripId: currentTripId, stopId: currentStop }
                     });
-                    console.log(accountCutData)
                     $(".account-cut-total-count").val(accountCutData.totalCount);
                     $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
                     $(".account-comission-percent").val(accountCutData.comissionPercent.toFixed(2));
@@ -751,6 +755,47 @@ async function loadTrip(date, time, tripId) {
                 }
                 $(".account-cut-deductions-popup").css("display", "block");
                 $(".blackout").css("display", "block");
+            });
+
+            $(".account-cut-undo").on("click", async () => {
+                try {
+                    const data = await $.ajax({
+                        url: "/erp/get-bus-account-cut-record",
+                        type: "GET",
+                        data: { tripId: currentTripId, stopId: currentStop }
+                    });
+                    accountCutId = data.id;
+                    $(".account-cut-popup .my-cash").val(Number(data.myCash).toFixed(2));
+                    $(".account-cut-popup .my-card").val(Number(data.myCard).toFixed(2));
+                    $(".account-cut-popup .other-branches").val(Number(data.otherBranches).toFixed(2));
+                    $(".account-cut-popup .all-total").val(Number(data.allTotal).toFixed(2));
+                    $(".account-cut-popup .account-commission").val(Number(data.comissionAmount).toFixed(2));
+                    for (let i = 1; i <= 5; i++) {
+                        $(".account-cut-popup .account-deduction" + i).val(data["deduction" + i]);
+                    }
+                    $(".account-cut-popup .account-tip").val(data.tip);
+                    $(".account-cut-popup .account-description").val(data.description);
+                    $(".account-cut-popup .account-needtopay").val(Number(data.needToPay).toFixed(2));
+                    $(".account-cut-popup .account-payed").val(Number(data.payedAmount).toFixed(2));
+                    $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", true);
+                    $(".account-cut-save").hide();
+                    $(".account-cut-undo-btn").show();
+                    $(".account-cut-popup").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                }
+            });
+
+            $(".account-cut-undo-btn").on("click", async () => {
+                if (!accountCutId) return;
+                try {
+                    await $.ajax({ url: "/erp/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
+                } catch (err) {
+                    console.log(err);
+                }
+                $(".account-cut-popup").css("display", "none");
+                $(".blackout").css("display", "none");
             });
 
             $(".account-cut-deductions-cancel").on("click", () => {

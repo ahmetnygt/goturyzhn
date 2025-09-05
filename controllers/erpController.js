@@ -475,6 +475,47 @@ exports.postBusAccountCut = async (req, res, next) => {
     }
 };
 
+exports.getBusAccountCutRecord = async (req, res, next) => {
+    try {
+        const { tripId, stopId } = req.query;
+        const record = await BusAccountCut.findOne({ where: { tripId, stopId } });
+        if (!record) return res.status(404).json({ message: "Hesap bulunamadı." });
+        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        res.json({
+            id: record.id,
+            myCash: data.myCash,
+            myCard: data.myCard,
+            otherBranches: data.otherBranches,
+            allTotal: data.allTotal,
+            comissionPercent: record.comissionPercent,
+            comissionAmount: record.comissionAmount,
+            deduction1: record.deduction1,
+            deduction2: record.deduction2,
+            deduction3: record.deduction3,
+            deduction4: record.deduction4,
+            deduction5: record.deduction5,
+            tip: record.tip,
+            description: record.description,
+            needToPay: record.needToPayAmount,
+            payedAmount: record.payedAmount
+        });
+    } catch (err) {
+        console.error("getBusAccountCutRecord error:", err);
+        res.status(500).json({ message: "Hesap bilgisi alınamadı." });
+    }
+};
+
+exports.postDeleteBusAccountCut = async (req, res, next) => {
+    try {
+        const { id } = req.body;
+        await BusAccountCut.destroy({ where: { id } });
+        res.json({ message: "OK" });
+    } catch (err) {
+        console.error("postDeleteBusAccountCut error:", err);
+        res.status(500).json({ message: "Hesap geri alınamadı." });
+    }
+};
+
 exports.postEditTripNote = async (req, res, next) => {
     try {
         const noteId = req.body.id;
