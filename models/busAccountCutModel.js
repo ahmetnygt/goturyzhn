@@ -16,6 +16,10 @@ const BusAccountCut = sequelize.define("busaccountcut", {
         type: Sequelize.BIGINT,
         allowNull: false
     },
+    comissionPercent: {
+        type: Sequelize.DECIMAL,
+        allowNull: false
+    },
     comissionAmount: {
         type: Sequelize.DECIMAL,
         allowNull: false
