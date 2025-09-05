@@ -27,6 +27,8 @@ const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 
+const BUS_COMISSION_PERCENT = 10;
+
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -73,6 +75,44 @@ function convertEmptyFieldsToNull(obj) {
         }
     }
     return result;
+}
+
+async function calculateBusAccountData(tripId, stopId, user) {
+    const tickets = await Ticket.findAll({
+        where: {
+            tripId,
+            fromRouteStopId: stopId,
+            status: { [Op.in]: ["completed", "reservation", "web"] }
+        },
+        raw: true
+    });
+
+    const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
+    const users = await FirmUser.findAll({
+        where: { id: { [Op.in]: userIds } },
+        raw: true
+    });
+    const userBranch = {};
+    users.forEach(u => userBranch[u.id] = u.branchId);
+
+    const totalCount = tickets.length;
+    let totalAmount = 0;
+    let myCash = 0, myCard = 0, otherBranches = 0;
+
+    tickets.forEach(t => {
+        const amount = Number(t.price);
+        totalAmount += amount;
+        const branchId = userBranch[t.userId];
+        if (t.userId === user.id) {
+            if (t.payment === "cash") myCash += amount;
+            else if (t.payment === "card") myCard += amount;
+        } else if (branchId !== user.branchId) {
+            otherBranches += amount;
+        }
+    });
+
+    const allTotal = myCash + myCard + otherBranches;
+    return { totalCount, totalAmount, myCash, myCard, otherBranches, allTotal };
 }
 
 function addTime(baseTime, addTime) {
@@ -171,7 +211,6 @@ exports.getDayTripsList = async (req, res, next) => {
         res.status(500).json({ error: "Sunucu hatası." });
     }
 };
-
 exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
@@ -372,6 +411,64 @@ exports.postTripNote = async (req, res, next) => {
     } catch (error) {
         console.error("postTripNotes error:", error);
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+exports.getBusAccountCutData = async (req, res, next) => {
+    try {
+        const { tripId, stopId } = req.query;
+        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
+        const needToPay = data.allTotal - comissionAmount;
+        res.json({
+            ...data,
+            comissionPercent: BUS_COMISSION_PERCENT,
+            comissionAmount,
+            needToPay
+        });
+    } catch (err) {
+        console.error("getBusAccountCutData error:", err);
+        res.status(500).json({ message: "Hesap bilgisi alınamadı." });
+    }
+};
+
+exports.postBusAccountCut = async (req, res, next) => {
+    try {
+        const { tripId, stopId } = req.body;
+        const parse = v => Number(v) || 0;
+        const d1 = parse(req.body.deduction1);
+        const d2 = parse(req.body.deduction2);
+        const d3 = parse(req.body.deduction3);
+        const d4 = parse(req.body.deduction4);
+        const d5 = parse(req.body.deduction5);
+        const tip = parse(req.body.tip);
+        const payedAmount = parse(req.body.payedAmount);
+        const description = req.body.description || "";
+
+        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
+        const needToPay = data.allTotal - comissionAmount - d1 - d2 - d3 - d4 - d5 - tip;
+
+        await BusAccountCut.create({
+            tripId,
+            stopId,
+            comissionPercent: BUS_COMISSION_PERCENT,
+            comissionAmount,
+            deduction1: d1,
+            deduction2: d2,
+            deduction3: d3,
+            deduction4: d4,
+            deduction5: d5,
+            tip,
+            description,
+            needToPayAmount: needToPay,
+            payedAmount
+        });
+
+        res.json({ message: "OK" });
+    } catch (err) {
+        console.error("postBusAccountCut error:", err);
+        res.status(500).json({ message: "Hesap kesilemedi." });
     }
 };
 

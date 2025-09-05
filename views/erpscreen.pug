@@ -88,6 +88,89 @@ block content
             i.fa-solid.fa-x
         .p-3.pending-collections-list.d-flex.flex-column.gap-2
 
+    .account-cut-deductions-popup
+        .gtr-header
+            span ARAÇ KALDIRMA KESİNTİLERİ
+        .p-3.d-flex.flex-column.gap-3
+            .input-group
+                span.input-group-text.col-7 Toplam Kesilen
+                input.form-control.form-control-sm.account-cut-total-count(type="text" readonly)
+                input.form-control.form-control-sm.account-cut-total-amount(type="text" readonly)
+            .input-group
+                span.input-group-text Kesinti 1
+                input.form-control.account-deduction1(type="text")
+            .input-group
+                span.input-group-text Kesinti 2
+                input.form-control.account-deduction2(type="text")
+            .input-group
+                span.input-group-text Kesinti 3
+                input.form-control.account-deduction3(type="text")
+            .input-group
+                span.input-group-text Kesinti 4
+                input.form-control.account-deduction4(type="text")
+            .input-group
+                span.input-group-text Kesinti 5
+                input.form-control.account-deduction5(type="text")
+            .input-group
+                span.input-group-text Bahşiş
+                input.form-control.account-tip(type="text")
+            .d-flex.justify-content-end.gap-2
+                button.btn.btn-outline-secondary.account-cut-deductions-cancel İPTAL
+                button.btn.btn-outline-primary.account-cut-deductions-continue DEVAM ET
+
+    .account-cut-popup
+        .gtr-header
+            span ARAÇ KALDIR
+        .p-3
+            .row.g-3
+                .col
+                    .input-group
+                        span.input-group-text Nakit Satışım
+                        input.form-control.form-control-sm.my-cash(type="text" readonly)
+                    .input-group
+                        span.input-group-text KK Satışım
+                        input.form-control.form-control-sm.my-card(type="text" readonly)
+                    .input-group
+                        span.input-group-text Diğer Şube
+                        input.form-control.form-control-sm.other-branches(type="text" readonly)
+                    .input-group
+                        span.input-group-text Toplam
+                        input.form-control.form-control-sm.all-total(type="text" readonly)
+                .col
+                    .input-group
+                        span.input-group-text Komisyon
+                        input.form-control.form-control-sm.account-commission(type="text" readonly)
+                    .input-group
+                        span.input-group-text Kesinti 1
+                        input.form-control.account-deduction1(type="text")
+                    .input-group
+                        span.input-group-text Kesinti 2
+                        input.form-control.account-deduction2(type="text")
+                    .input-group
+                        span.input-group-text Kesinti 3
+                        input.form-control.account-deduction3(type="text")
+                    .input-group
+                        span.input-group-text Kesinti 4
+                        input.form-control.account-deduction4(type="text")
+                    .input-group
+                        span.input-group-text Kesinti 5
+                        input.form-control.account-deduction5(type="text")
+                    .input-group
+                        span.input-group-text Bahşiş
+                        input.form-control.account-tip(type="text")
+                    .input-group
+                        span.input-group-text Açıklama
+                        textarea.form-control.account-description
+                    .input-group
+                        span.input-group-text Ödenecek
+                        input.form-control.form-control-sm.account-needtopay(type="text" readonly)
+                    .input-group
+                        span.input-group-text Ödenen
+                        input.form-control.form-control-sm.account-payed(type="text")
+            .d-flex.justify-content-end.gap-2.mt-3
+                button.btn.btn-outline-secondary.account-cut-close İPTAL
+                button.btn.btn-outline-primary.account-cut-save KAYDET
+
     .register
         .gtr-header
             span KASA
