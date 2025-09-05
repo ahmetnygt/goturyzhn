@@ -27,8 +27,6 @@ const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 
-const BUS_COMISSION_PERCENT = 10;
-
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -82,7 +80,7 @@ async function calculateBusAccountData(tripId, stopId, user) {
         where: {
             tripId,
             fromRouteStopId: stopId,
-            status: { [Op.in]: ["completed", "reservation", "web"] }
+            status: { [Op.in]: ["completed", "web", "gotur"] }
         },
         raw: true
     });
@@ -225,11 +223,13 @@ exports.getTrip = async (req, res, next) => {
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
+        const accountCut = await BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         trip.modifiedTime = trip.time
         trip.isExpired = new Date(`${trip.date} ${trip.time}`) < new Date()
+        trip.isAccountCut = accountCut ? true : false
 
         if (currentStopOrder !== routeStops.length - 1) {
             for (let j = 0; j < routeStops.length; j++) {
@@ -416,6 +416,8 @@ exports.postTripNote = async (req, res, next) => {
 
 exports.getBusAccountCutData = async (req, res, next) => {
     try {
+        const BUS_COMISSION_PERCENT = 20
+
         const { tripId, stopId } = req.query;
         const data = await calculateBusAccountData(tripId, stopId, req.session.user);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
@@ -436,6 +438,7 @@ exports.postBusAccountCut = async (req, res, next) => {
     try {
         const { tripId, stopId } = req.body;
         const parse = v => Number(v) || 0;
+        const BUS_COMISSION_PERCENT = parse(req.body.comissionPercent);
         const d1 = parse(req.body.deduction1);
         const d2 = parse(req.body.deduction2);
         const d3 = parse(req.body.deduction3);

@@ -729,11 +729,93 @@ async function loadTrip(date, time, tripId) {
             $(".seat").on("mouseleave", function () {
                 $(".passenger-info-popup").hide();
             });
+            $(".account-cut").on("click", async () => {
+                try {
+                    accountCutData = await $.ajax({
+                        url: "/erp/get-bus-account-cut",
+                        type: "GET",
+                        data: { tripId: currentTripId, stopId: currentStop }
+                    });
+                    console.log(accountCutData)
+                    $(".account-cut-total-count").val(accountCutData.totalCount);
+                    $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
+                    $(".account-comission-percent").val(accountCutData.comissionPercent.toFixed(2));
+                    $(".account-cut-popup .my-cash").val(accountCutData.myCash.toFixed(2));
+                    $(".account-cut-popup .my-card").val(accountCutData.myCard.toFixed(2));
+                    $(".account-cut-popup .other-branches").val(accountCutData.otherBranches.toFixed(2));
+                    $(".account-cut-popup .all-total").val(accountCutData.allTotal.toFixed(2));
+                    $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
+                    $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
+                } catch (err) {
+                    console.log(err);
+                }
+                $(".account-cut-deductions-popup").css("display", "block");
+                $(".blackout").css("display", "block");
+            });
+
+            $(".account-cut-deductions-cancel").on("click", () => {
+                $(".account-cut-deductions-popup").css("display", "none");
+                $(".blackout").css("display", "none");
+            });
+
+            $(".account-cut-deductions-continue").on("click", () => {
+                for (let i = 1; i <= 5; i++) {
+                    const val = $(".account-cut-deductions-popup .account-deduction" + i).val();
+                    $(".account-cut-popup .account-deduction" + i).val(val);
+                }
+                const tip = $(".account-cut-deductions-popup .account-tip").val();
+                $(".account-cut-popup .account-tip").val(tip);
+                $(".account-cut-deductions-popup").css("display", "none");
+                $(".account-cut-popup").css("display", "block");
+                updateAccountNeedToPay();
+            });
+
+            $(".account-cut-close").on("click", () => {
+                $(".account-cut-popup").css("display", "none");
+                $(".blackout").css("display", "none");
+            });
+
+            $(".account-cut-save").on("click", async () => {
+                const data = {
+                    tripId: currentTripId,
+                    stopId: currentStop,
+                    comissionPercent: $(".account-comission-percent").val(),
+                    deduction1: $(".account-cut-popup .account-deduction1").val(),
+                    deduction2: $(".account-cut-popup .account-deduction2").val(),
+                    deduction3: $(".account-cut-popup .account-deduction3").val(),
+                    deduction4: $(".account-cut-popup .account-deduction4").val(),
+                    deduction5: $(".account-cut-popup .account-deduction5").val(),
+                    tip: $(".account-cut-popup .account-tip").val(),
+                    description: $(".account-cut-popup .account-description").val(),
+                    payedAmount: $(".account-cut-popup .account-payed").val()
+                };
+                try {
+                    await $.ajax({ url: "/erp/post-bus-account-cut", type: "POST", data });
+                } catch (err) {
+                    console.log(err);
+                }
+                $(".account-cut-popup").css("display", "none");
+                $(".blackout").css("display", "none");
+            });
+
+            function updateAccountNeedToPay() {
+                if (!accountCutData) return;
+                let deductions = 0;
+                for (let i = 1; i <= 5; i++) {
+                    deductions += Number($(".account-cut-popup .account-deduction" + i).val()) || 0;
+                }
+                deductions += Number($(".account-cut-popup .account-tip").val()) || 0;
+                const need = accountCutData.allTotal - accountCutData.comissionAmount - deductions;
+                $(".account-cut-popup .account-needtopay").val(need.toFixed(2));
+            }
+
+            $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip").on("input", updateAccountNeedToPay);
         },
         error: function (xhr, status, error) {
             console.log(error);
         }
     });
+
 }
 
 // Site ilk açıldığında bugünün seferini yükler
@@ -3267,82 +3349,3 @@ $(".pending-collections-close").on("click", e => {
     $(".pending-collections").css("display", "none");
     $(".blackout").css("display", "none");
 });
-
-$(".account-cut").on("click", async () => {
-    try {
-        accountCutData = await $.ajax({
-            url: "/erp/get-bus-account-cut",
-            type: "GET",
-            data: { tripId: currentTripId, stopId: currentStop }
-        });
-        $(".account-cut-total-count").val(accountCutData.totalCount);
-        $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
-        $(".account-cut-popup .my-cash").val(accountCutData.myCash.toFixed(2));
-        $(".account-cut-popup .my-card").val(accountCutData.myCard.toFixed(2));
-        $(".account-cut-popup .other-branches").val(accountCutData.otherBranches.toFixed(2));
-        $(".account-cut-popup .all-total").val(accountCutData.allTotal.toFixed(2));
-        $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
-        $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
-    } catch (err) {
-        console.log(err);
-    }
-    $(".account-cut-deductions-popup").css("display", "block");
-    $(".blackout").css("display", "block");
-});
-
-$(".account-cut-deductions-cancel").on("click", () => {
-    $(".account-cut-deductions-popup").css("display", "none");
-    $(".blackout").css("display", "none");
-});
-
-$(".account-cut-deductions-continue").on("click", () => {
-    for (let i = 1; i <= 5; i++) {
-        const val = $(".account-cut-deductions-popup .account-deduction" + i).val();
-        $(".account-cut-popup .account-deduction" + i).val(val);
-    }
-    const tip = $(".account-cut-deductions-popup .account-tip").val();
-    $(".account-cut-popup .account-tip").val(tip);
-    $(".account-cut-deductions-popup").css("display", "none");
-    $(".account-cut-popup").css("display", "block");
-    updateAccountNeedToPay();
-});
-
-$(".account-cut-close").on("click", () => {
-    $(".account-cut-popup").css("display", "none");
-    $(".blackout").css("display", "none");
-});
-
-$(".account-cut-save").on("click", async () => {
-    const data = {
-        tripId: currentTripId,
-        stopId: currentStop,
-        deduction1: $(".account-cut-popup .account-deduction1").val(),
-        deduction2: $(".account-cut-popup .account-deduction2").val(),
-        deduction3: $(".account-cut-popup .account-deduction3").val(),
-        deduction4: $(".account-cut-popup .account-deduction4").val(),
-        deduction5: $(".account-cut-popup .account-deduction5").val(),
-        tip: $(".account-cut-popup .account-tip").val(),
-        description: $(".account-cut-popup .account-description").val(),
-        payedAmount: $(".account-cut-popup .account-payed").val()
-    };
-    try {
-        await $.ajax({ url: "/erp/post-bus-account-cut", type: "POST", data });
-    } catch (err) {
-        console.log(err);
-    }
-    $(".account-cut-popup").css("display", "none");
-    $(".blackout").css("display", "none");
-});
-
-function updateAccountNeedToPay() {
-    if (!accountCutData) return;
-    let deductions = 0;
-    for (let i = 1; i <= 5; i++) {
-        deductions += Number($(".account-cut-popup .account-deduction" + i).val()) || 0;
-    }
-    deductions += Number($(".account-cut-popup .account-tip").val()) || 0;
-    const need = accountCutData.allTotal - accountCutData.comissionAmount - deductions;
-    $(".account-cut-popup .account-needtopay").val(need.toFixed(2));
-}
-
-$(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip").on("input", updateAccountNeedToPay);

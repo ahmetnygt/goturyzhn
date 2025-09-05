@@ -1,7 +1,10 @@
 .trip-info-settings
     if !trip.isActive
         p.inactiveTripText SEFER İPTAL
-    button.btn.btn-primary.btn-sm.account-cut Araç Kaldır
+    if !trip.isAccountCut
+        button.btn.btn-primary.btn-sm.account-cut Araç Kaldır
+    else
+        button.btn.btn-danger.btn-sm.account-cut-undo Hesap Kesildi
     .trip-helper-buttons
         if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
             .trip-incomes
