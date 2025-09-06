@@ -2143,13 +2143,44 @@ exports.postCustomerBlacklist = async (req, res, next) => {
 };
 
 exports.getUser = async (req, res, next) => {
-    const id = req.query.id
-    const username = req.query.username
+    const id = req.query.id;
+    const username = req.query.username;
 
-    const user = await FirmUser.findOne({ where: { id: id, username: username } })
+    let user = null;
+    if (id) {
+        user = await FirmUser.findByPk(id);
+    } else if (username) {
+        user = await FirmUser.findOne({ where: { username } });
+    }
 
-    res.json(user)
-}
+    const permissions = await Permission.findAll({ attributes: ['id', 'description', 'module'] });
+    const userPerms = id ? await FirmUserPermission.findAll({ where: { firmUserId: id } }) : [];
+
+    const grouped = { register: [], trip: [], sale: [], account: [] };
+    permissions.forEach(p => {
+        const allow = userPerms.some(up => up.permissionId === p.id && up.allow);
+        const item = { id: p.id, description: p.description, allow };
+        switch ((p.module || '').toLowerCase()) {
+            case 'register':
+                grouped.register.push(item);
+                break;
+            case 'trip':
+                grouped.trip.push(item);
+                break;
+            case 'sale':
+                grouped.sale.push(item);
+                break;
+            case 'account':
+            case 'account_cut':
+            case 'accountcut':
+            case 'accountcutting':
+                grouped.account.push(item);
+                break;
+        }
+    });
+
+    res.json({ ...(user ? user.dataValues : {}), permissions: grouped });
+};
 
 exports.getUsersByBranch = async (req, res, next) => {
     const branchId = req.query.id
@@ -2164,7 +2195,7 @@ exports.postSaveUser = async (req, res, next) => {
         console.log("Gelen veri:", req.body);
 
         const data = convertEmptyFieldsToNull(req.body);
-        const { id, isActive, name, username, password, phone, branchId } = data;
+        const { id, isActive, name, username, password, phone, branchId, permissions } = data;
 
         let hashedPassword;
 
@@ -2193,6 +2224,13 @@ exports.postSaveUser = async (req, res, next) => {
             },
             { returning: true }
         );
+
+        const permIds = permissions ? (Array.isArray(permissions) ? permissions : [permissions]).map(Number) : [];
+        await FirmUserPermission.destroy({ where: { firmUserId: user.id } });
+        if (permIds.length) {
+            const rows = permIds.map(p => ({ firmUserId: user.id, permissionId: p, allow: true }));
+            await FirmUserPermission.bulkCreate(rows);
+        }
 
         res.json({
             message: created ? "Eklendi" : "Güncellendi",
