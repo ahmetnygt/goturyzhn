@@ -2915,6 +2915,21 @@ $(".save-branch").on("click", async e => {
 })
 
 let editingUserId = null
+
+function renderPermissions(perms) {
+    const modules = ['register', 'trip', 'sale', 'account'];
+    modules.forEach(m => {
+        const container = $(`.permission-list[data-module="${m}"]`);
+        container.html('');
+        if (perms[m]) {
+            perms[m].forEach(p => {
+                const id = `perm-${p.id}`;
+                container.append(`<div class="form-check"><input class="form-check-input permission-checkbox" type="checkbox" value="${p.id}" id="${id}" ${p.allow ? 'checked' : ''}><label class="form-check-label" for="${id}">${p.description}</label></div>`);
+            });
+        }
+    });
+}
+
 $(".user-settings-nav").on("click", async e => {
     await $.ajax({
         url: "/erp/get-users-list",
@@ -2943,6 +2958,7 @@ $(".user-settings-nav").on("click", async e => {
                         $(".user-password").val("")
                         $(".user-phone").val(response.phoneNumber)
                         $(".user-branches").val(response.branchId)
+                        renderPermissions(response.permissions)
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -3137,7 +3153,7 @@ $(".member-add-btn").on("click", async e => {
     })
 })
 
-$(".add-user").on("click", e => {
+$(".add-user").on("click", async e => {
     $("#isUserActive").prop("checked", true)
     $(".user-name").val("")
     $(".user-username").val("")
@@ -3150,6 +3166,17 @@ $(".add-user").on("click", e => {
     $(".user-info").css("display", "flex")
     $(".user-settings").css("display", "block")
     $(".save-user").html("EKLE")
+    await $.ajax({
+        url: "/erp/get-user",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            renderPermissions(response.permissions)
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
 })
 
 $(".save-user").on("click", async e => {
@@ -3159,11 +3186,12 @@ $(".save-user").on("click", async e => {
     const password = $(".user-password").val()
     const phone = $(".user-phone").val()
     const branchId = $(".user-branches").val()
+    const permissions = $(".permission-checkbox:checked").map((_, el) => $(el).val()).get()
 
     await $.ajax({
         url: "/erp/post-save-user",
         type: "POST",
-        data: { id: editingUserId, isActive, name, username, password, phone, branchId },
+        data: { id: editingUserId, isActive, name, username, password, phone, branchId, permissions },
         success: function (response) {
             $("#isUserActive").prop("checked", true)
             $(".user-name").val("")

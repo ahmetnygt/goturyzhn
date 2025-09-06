@@ -1013,29 +1013,24 @@ block content
                             option(value=b.id) #{b.title}
                 button.save-user.btn.btn-outline-primary KAYDET
             .user-settings.h-100
-                b Falan Filan Ayarları
-                .ms-3.mb-3
-                    .form-check
-                        input#flexCheckChecked.form-check-input(type="checkbox" value="" checked)
-                        label.form-check-label(for="flexCheckChecked") Bu bir ayar dostum
-                    .d-flex.gap-2
-                        .col-auto
-                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da
-                        .col-auto
-                            input.form-control(type="text")
-                b Zart Zurt Parametreleri
-                .ms-3.mb-3
-                    .form-check
-                        input#flexCheckChecked.form-check-input(type="checkbox" value="" checked)
-                        label.form-check-label(for="flexCheckChecked") Bu bir ayar dostum
-                    .form-check
-                        input#flexCheckChecked.form-check-input(type="checkbox" value="" checked)
-                        label.form-check-label(for="flexCheckChecked") Bu bir ayar dostum
-                    .d-flex.gap-2
-                        .col-auto
-                            label.col-form-label(for="inputPassword6") Başka bir ayar bu da
-                        .col-auto
-                            input.form-control(type="text")
+                ul.nav.nav-tabs#permissionTabs(role="tablist")
+                    li.nav-item
+                        a.nav-link.active(data-bs-toggle="tab" href="#kasa") Kasa
+                    li.nav-item
+                        a.nav-link(data-bs-toggle="tab" href="#sefer") Sefer
+                    li.nav-item
+                        a.nav-link(data-bs-toggle="tab" href="#satis") Satış
+                    li.nav-item
+                        a.nav-link(data-bs-toggle="tab" href="#hesap") Hesap Kesim
+                .tab-content.mt-3
+                    .tab-pane.fade.show.active#kasa
+                        .permission-list(data-module="register")
+                    .tab-pane.fade#sefer
+                        .permission-list(data-module="trip")
+                    .tab-pane.fade#satis
+                        .permission-list(data-module="sale")
+                    .tab-pane.fade#hesap
+                        .permission-list(data-module="account")
 
     .members
         .gtr-header
