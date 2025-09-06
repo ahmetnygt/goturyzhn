@@ -20,10 +20,34 @@ let tripStaffList = [];
 let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
+let loadingCount = 0;
+const showLoading = () => {
+    if (loadingCount === 0) $(".loading").css("display", "flex");
+    loadingCount++;
+};
+const hideLoading = () => {
+    loadingCount = Math.max(loadingCount - 1, 0);
+    if (loadingCount === 0) $(".loading").css("display", "none");
+};
+
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+    showLoading();
+    try {
+        return await originalFetch(...args);
+    } finally {
+        hideLoading();
+    }
+};
+
+$(document).ajaxSend(showLoading);
+$(document).ajaxComplete(hideLoading);
+
 window.permissions = [];
 const hasPermission = code => window.permissions.includes(code);
 
 $(function () {
+    hideLoading();
     $.get('/erp/permissions')
         .done(perms => {
             window.permissions = perms;
