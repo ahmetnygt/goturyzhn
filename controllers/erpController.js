@@ -2109,8 +2109,25 @@ exports.getCustomersList = async (req, res, next) => {
 }
 
 exports.getMembersList = async (req, res, next) => {
-    const members = await Customer.findAll({ where: { customerCategory: 'member' } })
-    res.render("mixins/membersList", { members })
+    const { idNumber = "", name = "", surname = "", phone = "" } = req.query;
+
+    const where = { customerCategory: 'member' };
+
+    if (idNumber) {
+        where.idNumber = { [Op.like]: `%${idNumber}%` };
+    }
+    if (name) {
+        where.name = { [Op.like]: `%${name.toLocaleUpperCase("tr-TR")}%` };
+    }
+    if (surname) {
+        where.surname = { [Op.like]: `%${surname.toLocaleUpperCase("tr-TR")}%` };
+    }
+    if (phone) {
+        where.phoneNumber = { [Op.like]: `%${phone}%` };
+    }
+
+    const members = await Customer.findAll({ where });
+    res.render("mixins/membersList", { members });
 }
 
 exports.postAddMember = async (req, res, next) => {
