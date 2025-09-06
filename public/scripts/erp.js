@@ -3467,6 +3467,21 @@ $(".branch-settings-nav").on("click", async e => {
     })
 })
 
+if ($("#isMainBranch").is(":checked")) {
+    $(".is-main-branch-group").hide();
+} else {
+    $(".is-main-branch-group").show();
+}
+
+// Checkbox değiştiğinde kontrol et
+$("#isMainBranch").on("change", function () {
+    if ($(this).is(":checked")) {
+        $(".is-main-branch-group").hide();
+    } else {
+        $(".is-main-branch-group").show();
+    }
+});
+
 $(".branch-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".branch").css("display", "none")
@@ -3538,7 +3553,7 @@ $(".user-settings-nav").on("click", async e => {
     await $.ajax({
         url: "/erp/get-branches-list",
         type: "GET",
-        data: { onlyData: true },
+        data: { onlyData: true, isJustActives: false },
         success: function (branches) {
             branchSelect.append(`<option value="" selected></option>`)
             branches.forEach(b => {
@@ -3750,8 +3765,6 @@ function searchMembers() {
         }
     })
 }
-
-$(".member-search-idNumber, .member-search-name, .member-search-surname, .member-search-phone").on("input", searchMembers)
 
 $(".member-search-btn").on("click", searchMembers)
 

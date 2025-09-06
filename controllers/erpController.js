@@ -2030,7 +2030,12 @@ exports.postSaveTrip = async (req, res, next) => {
 };
 
 exports.getBranchesList = async (req, res, next) => {
-    const branches = await Branch.findAll()
+    let where = {}
+    if (req.query.isJustActives) {
+        where.isActive = true
+    }
+
+    const branches = await Branch.findAll({ where: where })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(branches.map(b => b.stopId))] } } })
 
     for (let i = 0; i < branches.length; i++) {
@@ -2068,8 +2073,8 @@ exports.postSaveBranch = async (req, res, next) => {
                 id,
                 title,
                 stopId: stop,
-                mainBranchId: mainBranch,
                 isMainBranch,
+                mainBranchId: isMainBranch ? null : mainBranch,
                 isActive,
             },
             { returning: true }
@@ -2274,7 +2279,7 @@ exports.postSaveUser = async (req, res, next) => {
         );
 
         const permIds = permissions ? (Array.isArray(permissions) ? permissions : [permissions]).map(Number) : [];
-        await FirmUserPermission.destroy({ where: { firmUserId: user.id } });
+        await FirmUserPermission.destroy({ where: { firmUserId: user.id } }).catch(err => console.log(err))
         if (permIds.length) {
             const rows = permIds.map(p => ({ firmUserId: user.id, permissionId: p, allow: true }));
             await FirmUserPermission.bulkCreate(rows);
