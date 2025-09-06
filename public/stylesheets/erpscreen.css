@@ -1149,7 +1149,7 @@ div.ticket-cancel-refund-open-close {
     width: 100%;
 }
 
-.account-cut {
+.account-cut,.account-cut-undo {
     position: absolute;
     gap: .25rem;
     left: .75rem;

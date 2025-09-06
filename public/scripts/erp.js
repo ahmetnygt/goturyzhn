@@ -750,6 +750,7 @@ async function loadTrip(date, time, tripId) {
                     $(".account-cut-popup .all-total").val(accountCutData.allTotal.toFixed(2));
                     $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
                     $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
+                    $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
                 } catch (err) {
                     console.log(err);
                 }

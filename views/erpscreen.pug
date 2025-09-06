@@ -169,7 +169,10 @@ block content
                         input.form-control.form-control-sm.account-needtopay(type="text" readonly)
                     .input-group
                         span.input-group-text Ödenen
-                        input.form-control.form-control-sm.account-payed(type="text")
+                        if permissions.includes("PAY_DIFFERENT_FROM_BUS_EARNING")
+                            input.form-control.form-control-sm.account-payed(type="text")
+                        else
+                            input.form-control.form-control-sm.account-payed(type="text" readonly)
             .d-flex.justify-content-end.gap-2.mt-3
                 button.btn.btn-outline-secondary.account-cut-close İPTAL
                 button.btn.btn-outline-primary.account-cut-save KAYDET
