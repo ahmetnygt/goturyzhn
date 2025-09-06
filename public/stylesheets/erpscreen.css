@@ -379,6 +379,11 @@ div.open-ticket-close {
     display: none;
 }
 
+.route-list-nodes {
+    height: 40vh;
+    overflow-y: auto;
+}
+
 .route .route-stops {
     overflow-y: auto;
     height: 45vh;
@@ -1083,6 +1088,8 @@ div.ticket-cancel-refund-open-close {
     flex-direction: column;
     gap: .5rem;
     padding: .5rem 0;
+    max-height: 95vh;
+    overflow-y: auto;
 }
 
 .ticket-rows input,

@@ -69,6 +69,52 @@ function updateTripStaffPhones() {
     $(".trip-staff-hostess-phone").val(getStaffPhone(getId(".trip-staff-hostess", "#hostessId")));
 }
 
+function initTimeInput(selector) {
+    const el = document.querySelector(selector);
+    if (!el) return;
+
+    const onlyDigits = s => (s || "").replace(/\D/g, "");
+
+    function formatTime(val) {
+        let digits = onlyDigits(val).slice(0, 4); // max 4 hane
+        if (digits.length >= 3) {
+            return digits.slice(0, 2) + ":" + digits.slice(2);
+        }
+        return digits;
+    }
+
+    function normalizeTime(val) {
+        if (!val.includes(":")) return "";
+        let [hh, mm] = val.split(":").map(v => parseInt(v, 10));
+
+        if (isNaN(hh) || isNaN(mm)) return "";
+
+        // Saat aralığı
+        if (hh < 0) hh = 0;
+        if (hh > 23) hh = 23;
+
+        // Dakika aralığı
+        if (mm < 0) mm = 0;
+        if (mm > 59) mm = 59;
+
+        return `${hh.toString().padStart(2, "0")}:${mm
+            .toString()
+            .padStart(2, "0")}`;
+    }
+
+    // Yazarken formatla
+    el.addEventListener("input", () => {
+        el.value = formatTime(el.value);
+    });
+
+    // Blur’da doğrula/düzelt
+    el.addEventListener("blur", () => {
+        el.value = normalizeTime(el.value);
+    });
+}
+
+initTimeInput(".trip-departure")
+
 function initPhoneInput(selector, mobileOnly = false) {
     const input = document.querySelector(selector);
 
@@ -120,6 +166,7 @@ function initPhoneInput(selector, mobileOnly = false) {
 }
 
 initPhoneInput(".bus-phone")
+initPhoneInput(".user-phone")
 
 function initPlateInput(selector) {
     const el = document.querySelector(selector);
@@ -184,6 +231,69 @@ function initPlateInput(selector) {
 }
 
 initPlateInput(".bus-license-plate")
+
+function initTcknInputs(selector, opts = {}) {
+    const els = document.querySelectorAll(selector);
+    if (!els.length) return;
+
+    const { clearOnInvalid = true, liveMark = true } = opts;
+
+    const onlyDigits = s => (s || "").replace(/\D/g, "");
+
+    function isValidTCKN(d) {
+        if (!/^[1-9]\d{10}$/.test(d)) return false;
+        const ds = d.split("").map(Number);
+
+        const oddSum = ds[0] + ds[2] + ds[4] + ds[6] + ds[8];
+        const evenSum = ds[1] + ds[3] + ds[5] + ds[7];
+        const d10calc = ((oddSum * 7) - evenSum) % 10;
+        if (d10calc !== ds[9]) return false;
+
+        const sum10 = ds.slice(0, 10).reduce((a, b) => a + b, 0);
+        const d11calc = sum10 % 10;
+        if (d11calc !== ds[10]) return false;
+
+        return true;
+    }
+
+    function sanitizeValue(raw) {
+        let d = onlyDigits(raw);
+        if (d.startsWith("0")) d = d.replace(/^0+/, "");
+        return d.slice(0, 11);
+    }
+
+    els.forEach(el => {
+        el.addEventListener("input", () => {
+            const d = sanitizeValue(el.value);
+            el.value = d;
+
+            if (liveMark) {
+                if (d.length === 11 && isValidTCKN(d)) {
+                    el.style.borderColor = "green";
+                } else {
+                    el.style.borderColor = "";
+                }
+            }
+        });
+
+        el.addEventListener("blur", () => {
+            const d = sanitizeValue(el.value);
+            if (!d) { el.value = ""; el.style.borderColor = ""; return; }
+
+            if (isValidTCKN(d)) {
+                el.value = d;
+                if (liveMark) el.style.borderColor = "green";
+            } else {
+                if (clearOnInvalid) {
+                    el.value = "";
+                    el.style.borderColor = "";
+                    alert("Yanlış bir kimlik numarası girdiniz.")
+                }
+            }
+        });
+    });
+}
+
 
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
@@ -296,6 +406,23 @@ async function loadTrip(date, time, tripId) {
                     busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)))
                     $planEl.html(planOpts)
                     if (tripBusModelId) $planEl.val(tripBusModelId)
+                    $(document).off("change", ".trip-bus-plan")
+                    if ($(".trip-bus-plan").is("select")) {
+                        $(document).on("change", ".trip-bus-plan", async function () {
+                            const busModelId = $(this).val()
+
+                            $plateEl.val("")
+                            $(".captain-name").html("")
+                            $(".captain-phone").html("")
+
+                            try {
+                                await $.post("/erp/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
+                                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                            } catch (err) {
+                                console.log(err)
+                            }
+                        })
+                    }
                 } else if ($planEl.is("input")) {
                     const modelTitle = busModels.find(bm => bm.id === tripBusModelId)?.title || ""
                     $planEl.val(modelTitle)
@@ -316,6 +443,33 @@ async function loadTrip(date, time, tripId) {
                     })
                     $plateEl.html(plateOpts)
                     if (tripBusId) $plateEl.val(tripBusId)
+
+                    $(document).off("change", ".trip-bus-license-plate")
+                    if ($(".trip-bus-license-plate").is("select")) {
+                        $(document).on("change", ".trip-bus-license-plate", async function () {
+                            const busId = $(this).val()
+                            const selected = $(this).find("option:selected")
+                            const busModelId = selected.data("bus-model-id")
+                            const busModelTitle = selected.data("bus-model-title")
+                            const captainName = selected.data("captain-name")
+                            const captainPhone = selected.data("captain-phone")
+
+                            if ($planEl.is("select")) {
+                                $planEl.val(busModelId)
+                            } else {
+                                $planEl.val(busModelTitle || "")
+                            }
+                            $(".captain-name").html(captainName || "")
+                            $(".captain-phone").html(captainPhone || "")
+
+                            try {
+                                await $.post("/erp/post-trip-bus", { tripId: currentTripId, busId: busId })
+                                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                            } catch (err) {
+                                console.log(err)
+                            }
+                        })
+                    }
                 } else if ($plateEl.is("input")) {
                     const selectedBus = buses.find(b => b.id === tripBusId)
                     $plateEl.val(selectedBus ? selectedBus.licensePlate : "")
@@ -332,51 +486,6 @@ async function loadTrip(date, time, tripId) {
                 }
             } catch (err) {
                 console.log(err)
-            }
-
-            $(document).off("change", ".trip-bus-license-plate")
-            if ($(".trip-bus-license-plate").is("select")) {
-                $(document).on("change", ".trip-bus-license-plate", async function () {
-                    const busId = $(this).val()
-                    const selected = $(this).find("option:selected")
-                    const busModelId = selected.data("bus-model-id")
-                    const busModelTitle = selected.data("bus-model-title")
-                    const captainName = selected.data("captain-name")
-                    const captainPhone = selected.data("captain-phone")
-
-                    if ($planEl.is("select")) {
-                        $planEl.val(busModelId)
-                    } else {
-                        $planEl.val(busModelTitle || "")
-                    }
-                    $(".captain-name").html(captainName || "")
-                    $(".captain-phone").html(captainPhone || "")
-
-                    try {
-                        await $.post("/erp/post-trip-bus", { tripId: currentTripId, busId: busId })
-                        loadTrip(currentTripDate, currentTripTime, currentTripId)
-                    } catch (err) {
-                        console.log(err)
-                    }
-                })
-            }
-
-            $(document).off("change", ".trip-bus-plan")
-            if ($(".trip-bus-plan").is("select")) {
-                $(document).on("change", ".trip-bus-plan", async function () {
-                    const busModelId = $(this).val()
-
-                    $plateEl.val("")
-                    $(".captain-name").html("")
-                    $(".captain-phone").html("")
-
-                    try {
-                        await $.post("/erp/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
-                        loadTrip(currentTripDate, currentTripTime, currentTripId)
-                    } catch (err) {
-                        console.log(err)
-                    }
-                })
             }
 
             if (isMovingActive) {
@@ -609,13 +718,15 @@ async function loadTrip(date, time, tripId) {
                     success: function (response) {
                         $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase())
                         $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
-
-
                         $(".ticket-row").remove()
                         $(".ticket-info").remove()
                         $(".ticket-button-action").attr("data-action", action)
                         $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET")
                         $(".ticket-rows").prepend(response)
+
+                        initTcknInputs(".identity input")
+                        initPhoneInput(".phone input")
+
                         $(".ticket-info-pop-up").css("display", "block")
                         $(".blackout").css("display", "block")
 
@@ -1390,6 +1501,9 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".taken-ticket-ops-pop-up").hide()
 
+                initTcknInputs(".identity input")
+                initPhoneInput(".phone input")
+
                 flatpickr($(".reservation-expire input.changable"), {
                     locale: "tr",
                     enableTime: true
@@ -1796,6 +1910,8 @@ $(".open-ticket-next").on("click", async e => {
         data: { fromId, toId, count, isOpen: true },
         success: function (response) {
             $(".ticket-rows").prepend(response)
+            initTcknInputs(".identity input")
+            initPhoneInput(".phone input")
             $(".open-ticket-sale").css("display", "none")
             $(".ticket-info-pop-up_from").html($(`.open-ticket-from option[value=${fromId}]`).text().toLocaleUpperCase())
             $(".ticket-info-pop-up_to").html($(`.open-ticket-from option[value=${toId}]`).text().toLocaleUpperCase())
@@ -2634,41 +2750,43 @@ $(".add-route-stop-button").on("click", async e => {
 
                 const timeInput = document.querySelector(".duration-input");
 
-                // Yazarken 2 haneden sonra ":" ekle
-                timeInput.addEventListener("input", () => {
-                    let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
-                    if (val.length >= 3) {
-                        val = val.slice(0, 2) + ":" + val.slice(2, 4);
-                    }
-                    timeInput.value = val;
-                });
+                if (timeInput) {
+                    // Yazarken 2 haneden sonra ":" ekle
+                    timeInput.addEventListener("input", () => {
+                        let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
+                        if (val.length >= 3) {
+                            val = val.slice(0, 2) + ":" + val.slice(2, 4);
+                        }
+                        timeInput.value = val;
+                    });
 
-                // Odak kaybedince kontrol et
-                timeInput.addEventListener("blur", () => {
-                    let value = timeInput.value;
+                    // Odak kaybedince kontrol et
+                    timeInput.addEventListener("blur", () => {
+                        let value = timeInput.value;
 
-                    if (!value.includes(":")) return (timeInput.value = "");
+                        if (!value.includes(":")) return (timeInput.value = "");
 
-                    let [hh, mm] = value.split(":").map(v => parseInt(v, 10));
+                        let [hh, mm] = value.split(":").map(v => parseInt(v, 10));
 
-                    if (isNaN(hh) || isNaN(mm)) {
-                        timeInput.value = "";
-                        return;
-                    }
+                        if (isNaN(hh) || isNaN(mm)) {
+                            timeInput.value = "";
+                            return;
+                        }
 
-                    // Saat aralığını düzelt
-                    if (hh < 0) hh = 0;
-                    if (hh > 23) hh = 23;
+                        // Saat aralığını düzelt
+                        if (hh < 0) hh = 0;
+                        if (hh > 23) hh = 23;
 
-                    // Dakika aralığını düzelt
-                    if (mm < 0) mm = 0;
-                    if (mm > 59) mm = 59;
+                        // Dakika aralığını düzelt
+                        if (mm < 0) mm = 0;
+                        if (mm > 59) mm = 59;
 
-                    // Tek haneli saat/dakika başına 0 koy
-                    timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
-                        .toString()
-                        .padStart(2, "0")}`;
-                });
+                        // Tek haneli saat/dakika başına 0 koy
+                        timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
+                            .toString()
+                            .padStart(2, "0")}`;
+                    });
+                }
 
                 $(".remove-route-stop").on("click", e => {
                     const $stop = $(e.currentTarget).closest(".route-stop");
@@ -3090,7 +3208,7 @@ $(".branch-close").on("click", e => {
 
 $(".add-branch").on("click", async e => {
     await loadBranchOptions();
-    $("#isBranchActive").prop('checked', false)
+    $("#isBranchActive").prop('checked', true)
     $("#isMainBranch").prop('checked', false)
     $(".branch-title").val("")
     $(".branch-place").val("")
@@ -3410,7 +3528,7 @@ $(".save-user").on("click", async e => {
     await $.ajax({
         url: "/erp/post-save-user",
         type: "POST",
-        data: { id: editingUserId, isActive, name, username, password, phone, branchId, permissions },
+        data: { id: editingUserId, isActive, name, username, password, phone, branchId, permissions: JSON.stringify(permissions) },
         success: function (response) {
             $("#isUserActive").prop("checked", true)
             $(".user-name").val("")
@@ -3420,9 +3538,9 @@ $(".save-user").on("click", async e => {
             $(".user-branches").val("")
             editingUserId = null
             $(".blackout").css("display", "none")
-            $(".branch").css("display", "none")
-            $(".branch-info").css("display", "none")
-            $(".branch-settings").css("display", "none")
+            $(".users").css("display", "none")
+            $(".user-info").css("display", "none")
+            $(".user-settings").css("display", "none")
         },
         error: function (xhr, status, error) {
             console.log(error);

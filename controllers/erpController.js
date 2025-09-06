@@ -303,7 +303,7 @@ exports.getTrip = async (req, res, next) => {
             ticket.user = user.name;
             ticket.userBranch = branch.title;
             ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString();
-            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId].stopId).toString()
+            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId]?.stopId).toString()
             ticket.tripRefundOptionDate = trip.refundOptionDate
 
             newTicketArray[ticket.seatNo] = ticket
@@ -1662,7 +1662,7 @@ exports.postTripBus = async (req, res, next) => {
             captainId: bus.captainId
         }, { where: { id: tripId } });
 
-        const captain = await Captain.findOne({ where: { id: bus.captainId } });
+        const captain = await Staff.findOne({ where: { id: bus.captainId } });
 
         res.json({ message: "Güncellendi", busModelId: bus.busModelId, captain });
     } catch (err) {
@@ -1991,7 +1991,7 @@ exports.postSaveTrip = async (req, res, next) => {
                 date: tripDate.toISOString().split("T")[0], // YYYY-MM-DD
                 time: departureTime,
                 fromPlaceString: fromStop.title,
-                toPlaceString: toStop.title
+                toPlaceString: toStop.title,
             });
         }
 
@@ -2194,10 +2194,9 @@ exports.getUsersByBranch = async (req, res, next) => {
 
 exports.postSaveUser = async (req, res, next) => {
     try {
-        console.log("Gelen veri:", req.body);
-
         const data = convertEmptyFieldsToNull(req.body);
-        const { id, isActive, name, username, password, phone, branchId, permissions } = data;
+        const { id, isActive, name, username, password, phone, branchId } = data;
+        const permissions = JSON.parse(data.permissions)
 
         let hashedPassword;
 
