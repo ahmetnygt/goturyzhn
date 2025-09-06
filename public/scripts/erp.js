@@ -3621,25 +3621,28 @@ $(".members-close").on("click", e => {
     $(".members").css("display", "none")
 })
 
-function filterMembers() {
-    const id = $(".member-search-idNumber").val().toLowerCase()
-    const name = $(".member-search-name").val().toLowerCase()
-    const surname = $(".member-search-surname").val().toLowerCase()
-    const phone = $(".member-search-phone").val().toLowerCase()
+function searchMembers() {
+    const idNumber = $(".member-search-idNumber").val()
+    const name = $(".member-search-name").val()
+    const surname = $(".member-search-surname").val()
+    const phone = $(".member-search-phone").val()
 
-    $(".member-row").each(function () {
-        const row = $(this)
-        const match = row.data("id")?.toLowerCase()?.includes(id) &&
-            row.data("name")?.toLowerCase()?.includes(name) &&
-            row.data("surname")?.toLowerCase()?.includes(surname) &&
-            row.data("phone")?.toLowerCase()?.includes(phone)
-        row.toggle(match)
+    $.ajax({
+        url: "/erp/get-members-list",
+        type: "GET",
+        data: { idNumber, name, surname, phone },
+        success: function (resp) {
+            $(".member-list-nodes").html(resp)
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
     })
 }
 
-$(".member-search-idNumber, .member-search-name, .member-search-surname, .member-search-phone").on("input", filterMembers)
+$(".member-search-idNumber, .member-search-name, .member-search-surname, .member-search-phone").on("input", searchMembers)
 
-$(".member-search-btn").on("click", filterMembers)
+$(".member-search-btn").on("click", searchMembers)
 
 $(".member-add-btn").on("click", async e => {
     const idNumber = $(".member-search-idNumber").val()
@@ -3658,18 +3661,7 @@ $(".member-add-btn").on("click", async e => {
                 phone: phone
             },
             success: async function (response) {
-                await $.ajax({
-                    url: "/erp/get-members-list",
-                    type: "GET",
-                    data: {},
-                    success: function (resp) {
-                        $(".member-list-nodes").html(resp)
-                        filterMembers()
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                })
+                searchMembers()
             },
             error: function (xhr, status, error) {
                 console.log(error);
