@@ -2056,7 +2056,26 @@ $(".save-trip-note").on("click", async e => {
     }
 })
 
-$("a.open-ticket-nav").on("click", e => {
+$("a.open-ticket-nav").on("click", async e => {
+    const fromSelect = $(".open-ticket-from")
+    const toSelect = $(".open-ticket-to")
+    fromSelect.empty()
+    toSelect.empty()
+    await $.ajax({
+        url: "/erp/get-stops-data",
+        type: "GET",
+        success: function (stops) {
+            fromSelect.append(`<option value="" selected>Seçiniz</option>`)
+            toSelect.append(`<option value="" selected>Seçiniz</option>`)
+            stops.forEach(s => {
+                fromSelect.append(`<option value="${s.id}">${s.title}</option>`)
+                toSelect.append(`<option value="${s.id}">${s.title}</option>`)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
     $(".open-ticket-sale").css("display", "block")
     $(".blackout").css("display", "block")
 })
@@ -2189,12 +2208,29 @@ $(".register-close").on("click", e => {
     isRegisterShown = false
 })
 
-$(".other-register-nav").on("click", e => {
+$(".other-register-nav").on("click", async e => {
     $(".blackout").css("display", "block")
     $(".other-register").css("display", "block")
     $(".other-register-user").empty()
     $(".other-register-balance").val("")
     $(".other-transaction-list").empty()
+
+    const branchSelect = $(".other-register-branch")
+    branchSelect.empty()
+    await $.ajax({
+        url: "/erp/get-branches-list",
+        type: "GET",
+        data: { onlyData: true },
+        success: function (branches) {
+            branchSelect.append(`<option value="">Şube Seç</option>`)
+            branches.forEach(b => {
+                branchSelect.append(`<option value="${b.id}">${b.title}</option>`)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
 })
 
 $(".other-register-close").on("click", e => {
@@ -2346,6 +2382,20 @@ $(".add-transaction-button").on("click", async e => {
 })
 
 $(".bus-plans-nav").on("click", async e => {
+    const list = $(".bus-plan-list")
+    list.empty()
+    await $.ajax({
+        url: "/erp/get-bus-models-data",
+        type: "GET",
+        success: function (busModels) {
+            busModels.forEach(b => {
+                list.append(`<button class=\"btn btn-outline-primary bus-plan-button d-flex w-100\" data-id=\"${b.id}\"><div class=\"col-6\"><p class=\"text-center mb-0\">${b.title}</p></div><div class=\"col-6\"><p class=\"text-center mb-0\">${b.description}</p></div></button>`)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
     $(".bus-plans").css("display", "block")
     $(".blackout").css("display", "block")
 })
@@ -2356,7 +2406,7 @@ $(".bus-plans-close").on("click", e => {
 })
 
 let editingBusPlanId = null
-$(".bus-plan-button").on("click", async e => {
+$(document).on("click", ".bus-plan-button", async e => {
     const id = e.currentTarget.dataset.id
     editingBusPlanId = id
 
@@ -2500,6 +2550,34 @@ $(".add-bus-plan").on("click", async e => {
 
 let editingBusId = null
 $(".bus-nav").on("click", async e => {
+    const modelSelect = $(".bus-bus-model")
+    const captainSelect = $(".bus-captain")
+    modelSelect.empty()
+    captainSelect.empty()
+
+    await $.ajax({
+        url: "/erp/get-bus-models-data",
+        type: "GET",
+        success: function (models) {
+            modelSelect.append(`<option value="" selected></option>`)
+            models.forEach(b => {
+                modelSelect.append(`<option value="${b.id}">${b.title}</option>`)
+            })
+        }
+    })
+
+    await $.ajax({
+        url: "/erp/get-staffs-list",
+        type: "GET",
+        data: { onlyData: true },
+        success: function (staff) {
+            captainSelect.append(`<option value="" selected></option>`)
+            staff.filter(s => s.duty === "driver").forEach(s => {
+                captainSelect.append(`<option value="${s.id}">${s.name} ${s.surname}</option>`)
+            })
+        }
+    })
+
     await $.ajax({
         url: "/erp/get-buses-list",
         type: "GET",
@@ -2689,6 +2767,22 @@ $(".save-staff").on("click", async e => {
 
 let editingStopId = null
 $(".stops-nav").on("click", async e => {
+    const placeSelect = $(".stop-place")
+    placeSelect.empty()
+    await $.ajax({
+        url: "/erp/get-places-data",
+        type: "GET",
+        success: function (places) {
+            placeSelect.append(`<option value="" selected></option>`)
+            places.forEach(p => {
+                placeSelect.append(`<option value="${p.id}">${p.title}</option>`)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+
     await $.ajax({
         url: "/erp/get-stops-list",
         type: "GET",
@@ -3439,6 +3533,23 @@ function renderPermissions(perms) {
 }
 
 $(".user-settings-nav").on("click", async e => {
+    const branchSelect = $(".user-branches")
+    branchSelect.empty()
+    await $.ajax({
+        url: "/erp/get-branches-list",
+        type: "GET",
+        data: { onlyData: true },
+        success: function (branches) {
+            branchSelect.append(`<option value="" selected></option>`)
+            branches.forEach(b => {
+                branchSelect.append(`<option value="${b.id}">${b.title}</option>`)
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+
     await $.ajax({
         url: "/erp/get-users-list",
         type: "GET",
