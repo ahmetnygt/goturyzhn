@@ -1808,6 +1808,16 @@ exports.getStopsData = async (req, res, next) => {
     }
 };
 
+exports.getPlacesData = async (req, res, next) => {
+    try {
+        const places = await Place.findAll();
+        res.json(places);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.postSaveStop = async (req, res, next) => {
     try {
         const data = convertEmptyFieldsToNull(req.body);
