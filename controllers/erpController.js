@@ -269,7 +269,7 @@ exports.getTrip = async (req, res, next) => {
             return acc;
         }, {});
 
-        trip.isOwnBranchStop = (stopId == branchMap[req.session.user.branchId].stopId).toString()
+        trip.isOwnBranchStop = (stopId == branchMap[req.session.user.branchId]?.stopId).toString()
 
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
