@@ -236,7 +236,7 @@ function initTcknInputs(selector, opts = {}) {
     const els = document.querySelectorAll(selector);
     if (!els.length) return;
 
-    const { clearOnInvalid = true, liveMark = true } = opts;
+    const { clearOnInvalid = true, liveMark = false } = opts;
 
     const onlyDigits = s => (s || "").replace(/\D/g, "");
 
@@ -370,6 +370,8 @@ async function loadTrip(date, time, tripId) {
             currentTripTime = $("#tripTime").val()
             currentTripPlaceTime = $("#tripPlaceTime").val()
             currentTripId = $("#tripId").val()
+            selectedSeats = []
+            selectedTakenSeats = []
 
             fromId = $("#fromId").val()
             toId = $("#toId").val()
@@ -1043,6 +1045,7 @@ async function loadTrip(date, time, tripId) {
                 if (!accountCutId) return;
                 try {
                     await $.ajax({ url: "/erp/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
                 } catch (err) {
                     console.log(err);
                 }
@@ -1072,7 +1075,7 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "none");
             });
 
-            $(".account-cut-save").on("click", async () => {
+            $(".account-cut-save").off("click").on("click", async () => {
                 const data = {
                     tripId: currentTripId,
                     stopId: currentStop,
@@ -1088,6 +1091,7 @@ async function loadTrip(date, time, tripId) {
                 };
                 try {
                     await $.ajax({ url: "/erp/post-bus-account-cut", type: "POST", data });
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
                 } catch (err) {
                     console.log(err);
                 }
@@ -1253,6 +1257,7 @@ $("#currentStop").on("change", async (e) => {
     });
 
     $(".tripRows").html(response);
+    loadTrip(currentTripDate, currentTripTime, currentTripId);
 
     $(".tripRow").on("click", async e => {
         const date = e.currentTarget.dataset.date;
@@ -1266,6 +1271,47 @@ $("#currentStop").on("change", async (e) => {
 // Bilet kesim ekranındaki onaylama tuşu
 $(".ticket-button-action").on("click", async e => {
     if (e.currentTarget.dataset.action == "sell") {
+        let tickets = []
+
+        for (let i = 0; i < selectedSeats.length; i++) {
+
+            const ticket = $(".ticket-row")[i]
+
+            const ticketObj = {
+                seatNumber: $(ticket).find(".seat-number").find("input").val(),
+                idNumber: $(ticket).find(".identity").find("input").val(),
+                name: $(ticket).find(".name").find("input").val(),
+                surname: $(ticket).find(".surname").find("input").val(),
+                phoneNumber: $(".ticket-rows").find(".phone").find("input").val(),
+                gender: $(ticket).find(".gender input:checked").val(),
+                nationality: $(ticket).find(".nationality").find("select").val(),
+                type: $(ticket).find(".type").find("select").val(),
+                category: $(ticket).find(".category").find("select").val(),
+                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
+                price: $(ticket).find(".price").find("input").val(),
+                payment: $(".ticket-rows").find(".payment").find("select").val(),
+            }
+
+            tickets.push(ticketObj)
+        }
+
+        const ticketsStr = JSON.stringify(tickets)
+
+        await $.ajax({
+            url: "/erp/post-tickets",
+            type: "POST",
+            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+            success: async function (response) {
+                ticketClose()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+
+    }
+    else if (e.currentTarget.dataset.action == "complete") {
         let tickets = []
 
         for (let i = 0; i < selectedSeats.length; i++) {
@@ -1427,7 +1473,30 @@ $(".ticket-button-action").on("click", async e => {
         });
 
     }
-    else if (e.currentTarget.dataset.action == "cancel/refund") {
+    else if (e.currentTarget.dataset.action == "cancel") {
+
+        if (selectedTakenSeats.length > 0) {
+            let json = JSON.stringify(selectedTakenSeats)
+            await $.ajax({
+                url: "/erp/post-cancel-ticket",
+                type: "POST",
+                data: { seats: json, pnr: cancelingSeatPNR, date: currentTripDate, time: currentTripTime },
+                success: async function (response) {
+                    $(".ticket-cancel-refund-open").css("display", "none")
+                    $(".blackout").css("display", "none")
+                    $(".tickets").html("")
+                    cancelingSeatPNR = null
+                    selectedTakenSeats = []
+                    $(".cancel-action-button").html(`BİLET SEÇİN`)
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
+                },
+                error: function (xhr, status, error) {
+                }
+            });
+        }
+
+    }
+    else if (e.currentTarget.dataset.action == "refund") {
 
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
@@ -1484,7 +1553,51 @@ let movingSelectedSeats = []
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
 
-    if (action == "edit") {
+    if (action == "complete") {
+        $(".ticket-button-action").attr("data-action", "complete")
+        $(".ticket-button-action").html("SAT")
+        await $.ajax({
+            url: "/erp/get-ticket-row",
+            type: "GET",
+            data: { isTaken: true, seatNumbers: selectedTakenSeats, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+            success: function (response) {
+
+                $(".ticket-row").remove()
+                $(".ticket-info").remove()
+                $(".ticket-rows").prepend(response)
+                $(".ticket-info-pop-up").css("display", "block")
+                $(".blackout").css("display", "block")
+
+                $(".taken-ticket-ops-pop-up").hide()
+
+                initTcknInputs(".identity input")
+                initPhoneInput(".phone input")
+
+                flatpickr($(".reservation-expire input.changable"), {
+                    locale: "tr",
+                    enableTime: true
+                })
+                $(document).on("change", ".ticket-row input[type='radio']", function () {
+                    const $row = $(this).closest(".ticket-row");
+
+                    $row.removeClass("m f");
+
+                    if ($(this).val() === "m") {
+                        $row.addClass("m");
+                    } else if ($(this).val() === "f") {
+                        $row.addClass("f");
+                    }
+                });
+
+                $(".seat").removeClass("selected")
+            },
+            error: function (xhr, status, error) {
+                alert(error);
+            }
+        });
+    }
+
+    else if (action == "edit") {
         $(".ticket-button-action").attr("data-action", "edit")
         $(".ticket-button-action").html("KAYDET")
         await $.ajax({
@@ -1528,8 +1641,8 @@ $(".taken-ticket-op").on("click", async e => {
         });
     }
 
-    else if (action == "cancel/refund") {
-        $(".ticket-button-action").attr("data-action", "cancel/refund")
+    else if (action == "cancel") {
+        $(".ticket-button-action").attr("data-action", "cancel")
 
         let pnr = null
         const seat = selectedTakenSeats[0];
@@ -1541,7 +1654,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
-                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İPTAL/İADE")
+                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İPTAL")
                 $(".ticket-cancel-refund-open .tickets").prepend(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
@@ -1555,7 +1668,7 @@ $(".taken-ticket-op").on("click", async e => {
                         e.currentTarget.classList.remove("selected")
                         selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
                         if (selectedTakenSeats > 0) {
-                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL / İADE ET`)
+                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL ET`)
                             $(".cancel-action-button").removeClass("disabled")
                         }
                         else {
@@ -1567,7 +1680,61 @@ $(".taken-ticket-op").on("click", async e => {
                     else {
                         e.currentTarget.classList.add("selected")
                         selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
-                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL / İADE ET`)
+                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL ET`)
+                        $(".cancel-action-button").removeClass("disabled")
+                        $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
+                    }
+                })
+
+                $(".seat").removeClass("selected")
+                selectedTakenSeats = []
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
+
+    else if (action == "refund") {
+        $(".ticket-button-action").attr("data-action", "refund")
+
+        let pnr = null
+        const seat = selectedTakenSeats[0];
+        pnr = $(`.seat.seat-${seat}`).data("pnr")
+        cancelingSeatPNR = pnr
+
+        await $.ajax({
+            url: "/erp/get-cancel-open-ticket",
+            type: "GET",
+            data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
+            success: function (response) {
+                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İADE")
+                $(".ticket-cancel-refund-open .tickets").prepend(response)
+                $(".ticket-cancel-refund-open").css("display", "block")
+                $(".blackout").css("display", "block")
+
+                $(".taken-ticket-ops-pop-up").hide()
+
+                selectedTakenSeats = []
+
+                $(".ticket-cancel-box").on("click", e => {
+                    if (e.currentTarget.classList.contains("selected")) {
+                        e.currentTarget.classList.remove("selected")
+                        selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
+                        if (selectedTakenSeats > 0) {
+                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İADE ET`)
+                            $(".cancel-action-button").removeClass("disabled")
+                        }
+                        else {
+                            $(".cancel-action-button").addClass("disabled")
+                            $(".cancel-action-button").html(`BİLET SEÇİN`)
+                        }
+                        $(e.currentTarget).find(".ticket-cancel-check").css("display", "none")
+                    }
+                    else {
+                        e.currentTarget.classList.add("selected")
+                        selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
+                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İADE ET`)
                         $(".cancel-action-button").removeClass("disabled")
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
                     }
@@ -1583,7 +1750,7 @@ $(".taken-ticket-op").on("click", async e => {
     }
 
     else if (action == "open") {
-        $(".ticket-button-action").attr("data-action", "cancel/refund")
+        $(".ticket-button-action").attr("data-action", "open")
 
         let pnr = null
         const seat = selectedTakenSeats[0];
@@ -1909,6 +2076,8 @@ $(".open-ticket-next").on("click", async e => {
         type: "GET",
         data: { fromId, toId, count, isOpen: true },
         success: function (response) {
+            $(".ticket-row").remove()
+            $(".ticket-info").remove()
             $(".ticket-rows").prepend(response)
             initTcknInputs(".identity input")
             initPhoneInput(".phone input")
@@ -2119,6 +2288,7 @@ $(".add-transaction-button").on("click", async e => {
                     data: {},
                     success: async function (response) {
                         $(".transaction-list").html(response)
+
                         await $.ajax({
                             url: "/erp/get-transaction-data",
                             type: "GET",
@@ -2129,11 +2299,12 @@ $(".add-transaction-button").on("click", async e => {
                                 const cashRefund = Number(response.cashRefund) || 0;
                                 const cardRefund = Number(response.cardRefund) || 0;
                                 const transferIn = Number(response.transferIn) || 0;
+                                const transferOut = Number(response.transferOut) || 0;
                                 const payedToBus = Number(response.payedToBus) || 0;
                                 const otherIn = Number(response.otherIn) || 0;
                                 const otherOut = Number(response.otherOut) || 0;
                                 const inSum = cashSales + cardSales + transferIn + otherIn
-                                const outSum = cashRefund + cardRefund + payedToBus + otherOut
+                                const outSum = cashRefund + cardRefund + payedToBus + transferOut + otherOut
                                 const balance = inSum - outSum
                                 console.log(response)
                                 console.log(inSum)
@@ -2151,17 +2322,18 @@ $(".add-transaction-button").on("click", async e => {
                                 $(".card-refund").val(cardRefund)
                                 $(".refund-summary").val(cardRefund + cashRefund)
                                 $(".payed-to-bus").val(payedToBus)
-                                $(".other-expense").val(otherOut)
+                                $(".other-expense").val(otherOut + transferOut)
+                                $(".blackout").css("display", "block")
+                                $(".register").css("display", "block")
+                                isRegisterShown = true
                             },
                             error: function (xhr, status, error) {
-                                const message = xhr.responseJSON?.message || error;
-                                alert(message);
+                                console.log(error);
                             }
                         })
                     },
                     error: function (xhr, status, error) {
-                        const message = xhr.responseJSON?.message || error;
-                        alert(message);
+                        console.log(error);
                     }
                 })
             }
@@ -3368,6 +3540,21 @@ $(".customer-blacklist-btn").on("click", async e => {
         data: { idNumber, name, surname, phone, blacklist: true },
         success: function (response) {
             $(".customer-list-nodes").html(response)
+            $(".customer-blacklist-remove").on("click", async e => {
+                const id = e.currentTarget.dataset.id
+                await $.ajax({
+                    url: "/erp/post-customer-blacklist",
+                    type: "POST",
+                    data: { id, isRemove: true },
+                    success: function () {
+                        $(".customer-blacklist-pop-up").css("display", "none");
+                        $(".customer-blacklist-btn").click();
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+            })
             $(".blacklist-reason-header").show()
             $(".customer-list-name-header").removeClass("col-3").addClass("col-2")
             $(".customer-list-category-header").removeClass("col-3").addClass("col-2")
@@ -3400,7 +3587,6 @@ $(".customer-blacklist-add").on("click", async e => {
         data: { id, description },
         success: function () {
             $(".customer-blacklist-pop-up").css("display", "none");
-            $(".blackout").css("display", "none");
             $(".customer-search-btn").click();
         },
         error: function (xhr, status, error) {
@@ -3443,10 +3629,10 @@ function filterMembers() {
 
     $(".member-row").each(function () {
         const row = $(this)
-        const match = row.data("id").toLowerCase().includes(id) &&
-            row.data("name").toLowerCase().includes(name) &&
-            row.data("surname").toLowerCase().includes(surname) &&
-            row.data("phone").toLowerCase().includes(phone)
+        const match = row.data("id")?.toLowerCase()?.includes(id) &&
+            row.data("name")?.toLowerCase()?.includes(name) &&
+            row.data("surname")?.toLowerCase()?.includes(surname) &&
+            row.data("phone")?.toLowerCase()?.includes(phone)
         row.toggle(match)
     })
 }
@@ -3461,33 +3647,35 @@ $(".member-add-btn").on("click", async e => {
     const surname = $(".member-search-surname").val()
     const phone = $(".member-search-phone").val()
 
-    await $.ajax({
-        url: "/erp/post-add-member",
-        type: "POST",
-        data: {
-            idNumber: idNumber,
-            name: name,
-            surname: surname,
-            phone: phone
-        },
-        success: async function (response) {
-            await $.ajax({
-                url: "/erp/get-members-list",
-                type: "GET",
-                data: {},
-                success: function (resp) {
-                    $(".member-list-nodes").html(resp)
-                    filterMembers()
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            })
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
-    })
+    if (idNumber && name && surname && phone) {
+        await $.ajax({
+            url: "/erp/post-add-member",
+            type: "POST",
+            data: {
+                idNumber: idNumber,
+                name: name,
+                surname: surname,
+                phone: phone
+            },
+            success: async function (response) {
+                await $.ajax({
+                    url: "/erp/get-members-list",
+                    type: "GET",
+                    data: {},
+                    success: function (resp) {
+                        $(".member-list-nodes").html(resp)
+                        filterMembers()
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        })
+    }
 })
 
 $(".add-user").on("click", async e => {

@@ -630,12 +630,20 @@ exports.postTripStopRestriction = async (req, res, next) => {
 
         const allowed = isAllowed === true || isAllowed === 'true' || isAllowed === 1 || isAllowed === '1';
 
-        await RouteStopRestriction.upsert({
-            tripId,
-            fromRouteStopId: fromId,
-            toRouteStopId: toId,
-            isAllowed: allowed
+        const restiction = await RouteStopRestriction.findOne({
+            where: { tripId, fromRouteStopId: fromId, toRouteStopId: toId }
         });
+
+        if (restiction) {
+            await restiction.update({ isAllowed: allowed });
+        } else {
+            await RouteStopRestriction.create({
+                tripId,
+                fromRouteStopId: fromId,
+                toRouteStopId: toId,
+                isAllowed: allowed
+            });
+        }
 
         res.json({ message: "OK" });
     } catch (err) {
@@ -762,7 +770,7 @@ exports.getErp = async (req, res, next) => {
 }
 
 exports.getErpLogin = async (req, res, next) => {
-    res.render("erplogin")
+    res.render("erplogin", { isNoNavbar: true })
 }
 
 exports.postErpLogin = async (req, res, next) => {
@@ -799,8 +807,7 @@ exports.postErpLogin = async (req, res, next) => {
         }
 
         req.session.save(() => {
-            const url = req.session.redirectTo || "/erp";
-            delete req.session.redirectTo;
+            const url = "/erp";
 
             console.log("Giriş yapan kullanıcı:", u.name);
             res.redirect(url);
@@ -850,13 +857,20 @@ exports.getTicketRow = async (req, res, next) => {
 
     // --- OPEN CASE ---
     if (isOpen) {
-        const { fromId, toId, count: seats } = req.query;
+        const { fromId, toId, count } = req.query;
         let price = 0;
         if (fromId && toId) {
             const p = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
             price = p ? p : 0;
         }
-        return res.render("mixins/ticketRow", { gender: "m", seats, price, trip, isOwnBranch });
+
+        let seats = []
+        let gender = []
+        for (let i = 0; i < count; i++) {
+            seats.push(0)
+            gender.push("m")
+        }
+        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch });
     }
 
     // --- TAKEN CASE ---
@@ -2134,11 +2148,17 @@ exports.postAddMember = async (req, res, next) => {
 
 exports.postCustomerBlacklist = async (req, res, next) => {
     try {
-        const { id, description } = req.body;
+        const { id, description, isRemove } = req.body;
         const customer = await Customer.findByPk(id);
         if (!customer) return res.status(404).json({ success: false });
-        customer.isBlackList = true;
-        customer.blackListDescription = description;
+        if (!isRemove) {
+            customer.isBlackList = true;
+            customer.blackListDescription = description;
+        }
+        else {
+            customer.isBlackList = false;
+            customer.blackListDescription = "";
+        }
         await customer.save();
         res.status(200).json({ success: true });
     } catch (err) {

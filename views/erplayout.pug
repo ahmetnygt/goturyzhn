@@ -10,82 +10,83 @@ html
   body
     .loading
       .loader
-    nav.navbar.navbar-expand-lg.bg-body-tertiary
-      .container-fluid
-        a.navbar-brand(href="#") 
-          img.d-inline-block.align-text-top(src="/images/gotur_vip_logo.jpg" alt="Logo" width="100" height="25")
-        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
-          span.navbar-toggler-icon
-        #navbarSupportedContent.collapse.navbar-collapse
-          ul.navbar-nav.me-auto.mb-2.mb-lg-0
-            li.nav-item.dropdown
-              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                | Bilet
-              ul.dropdown-menu
-                li
-                  a.dropdown-item.ticket-search(href="#") Bilet Ara
-                li
-                  a.dropdown-item.open-ticket-nav(href="#") Açık Bilet Sat
-            li.nav-item.dropdown
-              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                | Kasa
-              ul.dropdown-menu
-                li
-                  a.dropdown-item.register-nav(href="#") Kasam
-                if permissions.includes('REGISTER_RECORD_MANAGE')
+    if !isNoNavbar
+      nav.navbar.navbar-expand-lg.bg-body-tertiary
+        .container-fluid
+          a.navbar-brand(href="#") 
+            img.d-inline-block.align-text-top(src="/images/gotur_vip_logo.jpg" alt="Logo" width="100" height="25")
+          button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
+            span.navbar-toggler-icon
+          #navbarSupportedContent.collapse.navbar-collapse
+            ul.navbar-nav.me-auto.mb-2.mb-lg-0
+              li.nav-item.dropdown
+                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                  | Bilet
+                ul.dropdown-menu
                   li
-                    a.dropdown-item.add-income-nav(href="#") Gelir Ekle
+                    a.dropdown-item.ticket-search(href="#") Bilet Ara
                   li
-                    a.dropdown-item.add-expense-nav(href="#") Gider Ekle
-                if permissions.includes('REGISTER_VIEW_OTHERS')
+                    a.dropdown-item.open-ticket-nav(href="#") Açık Bilet Sat
+              li.nav-item.dropdown
+                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                  | Kasa
+                ul.dropdown-menu
                   li
-                    a.dropdown-item.other-register-nav(href="#") Diğer Kasalar
-            li.nav-item.dropdown
-              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                | Ödeme
-              ul.dropdown-menu
-                li
-                  a.dropdown-item.payment-request-nav(href="#") Ödeme İste
-                li
-                  a.dropdown-item.payment-send-nav(href="#") Ödeme Yap
-                li
-                  a.dropdown-item.pending-payments-nav(href="#") Bekleyen Ödemelerim
-                li
-                  a.dropdown-item.pending-collections-nav(href="#") Bekleyen Tahsilatlarım
-            li.nav-item.dropdown
-              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                | Abonelik
-              ul.dropdown-menu
-                li
-                  a.dropdown-item.member-nav(href="#") Aboneler
-            li.nav-item.dropdown
-              a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                | Yönetim
-              ul.dropdown-menu
-                li
-                  a.dropdown-item.branch-settings-nav(href="#") Şubeler
-                li
-                  a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
-                li
-                  a.dropdown-item.bus-nav(href="#") Otobüsler
-                li
-                  a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
-                li
-                  a.dropdown-item.staff-nav(href="#") Personeller
-                li
-                  a.dropdown-item.stops-nav(href="#") Duraklar
-                li
-                  a.dropdown-item.route-nav(href="#") Hatlar
-                li
-                  a.dropdown-item.trip-nav(href="#") Seferler
-                li
-                  a.dropdown-item.price-nav(href="#") Fiyatlar
-                li
-                  a.dropdown-item.customer-nav(href="#") Müşteriler
-            li.nav-item
-              a.nav-link(href="#") Link
-        if user
-          button.btn.btn-outline-success(type="submit") #{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
+                    a.dropdown-item.register-nav(href="#") Kasam
+                  if permissions.includes('REGISTER_RECORD_MANAGE')
+                    li
+                      a.dropdown-item.add-income-nav(href="#") Gelir Ekle
+                    li
+                      a.dropdown-item.add-expense-nav(href="#") Gider Ekle
+                  if permissions.includes('REGISTER_VIEW_OTHERS')
+                    li
+                      a.dropdown-item.other-register-nav(href="#") Diğer Kasalar
+              li.nav-item.dropdown
+                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                  | Ödeme
+                ul.dropdown-menu
+                  li
+                    a.dropdown-item.payment-request-nav(href="#") Ödeme İste
+                  li
+                    a.dropdown-item.payment-send-nav(href="#") Ödeme Yap
+                  li
+                    a.dropdown-item.pending-payments-nav(href="#") Bekleyen Ödemelerim
+                  li
+                    a.dropdown-item.pending-collections-nav(href="#") Bekleyen Tahsilatlarım
+              li.nav-item.dropdown
+                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                  | Abonelik
+                ul.dropdown-menu
+                  li
+                    a.dropdown-item.member-nav(href="#") Aboneler
+              li.nav-item.dropdown
+                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                  | Yönetim
+                ul.dropdown-menu
+                  li
+                    a.dropdown-item.branch-settings-nav(href="#") Şubeler
+                  li
+                    a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
+                  li
+                    a.dropdown-item.bus-nav(href="#") Otobüsler
+                  li
+                    a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
+                  li
+                    a.dropdown-item.staff-nav(href="#") Personeller
+                  li
+                    a.dropdown-item.stops-nav(href="#") Duraklar
+                  li
+                    a.dropdown-item.route-nav(href="#") Hatlar
+                  li
+                    a.dropdown-item.trip-nav(href="#") Seferler
+                  li
+                    a.dropdown-item.price-nav(href="#") Fiyatlar
+                  li
+                    a.dropdown-item.customer-nav(href="#") Müşteriler
+              li.nav-item
+                a.nav-link(href="#") Link
+          if user
+            button.btn.btn-outline-success(type="submit") #{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
     div(style="padding:1rem 1rem 0rem 1rem!important;")
       block content
 
