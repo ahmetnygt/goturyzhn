@@ -45,6 +45,122 @@ function updateTripStaffPhones() {
     $(".trip-staff-hostess-phone").val(getStaffPhone(getId(".trip-staff-hostess", "#hostessId")));
 }
 
+function initPhoneInput(selector, mobileOnly = false) {
+    const input = document.querySelector(selector);
+
+    if (!input) return;
+
+    const onlyDigits = s => (s || "").replace(/\D/g, "");
+
+    function normalizeTR(digits) {
+        let d = onlyDigits(digits);
+        if (d.startsWith("0")) d = d.slice(1); // baştaki 0 at
+        return d.slice(0, 10);
+    }
+
+    function formatTR(d10) {
+        let s = d10;
+        if (!s) return "";
+        let out = "";
+        if (s.length > 0) out += s.slice(0, Math.min(3, s.length));
+        if (s.length > 3) out += " " + s.slice(3, Math.min(6, s.length));
+        if (s.length > 6) out += " " + s.slice(6, Math.min(8, s.length));
+        if (s.length > 8) out += " " + s.slice(8, Math.min(10, s.length));
+        return out;
+    }
+
+    input.addEventListener("input", () => {
+        const d10 = normalizeTR(input.value);
+        input.value = formatTR(d10);
+        input.style.borderColor =
+            d10.length === 10 && (!mobileOnly || d10.startsWith("5"))
+                ? "green"
+                : "";
+    });
+
+    input.addEventListener("blur", () => {
+        const d10 = normalizeTR(input.value);
+
+        if (d10.length !== 10) {
+            input.value = "";
+            return;
+        }
+
+        if (mobileOnly && !d10.startsWith("5")) {
+            input.value = "";
+            return;
+        }
+
+        input.value = formatTR(d10);
+    });
+}
+
+initPhoneInput(".bus-phone")
+
+function initPlateInput(selector) {
+    const el = document.querySelector(selector);
+    if (!el) return;
+
+    // Yalnızca A-Z ve 0-9 kalsın, harfleri büyüt
+    const sanitize = s => (s || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+
+    // Anlık biçim: DD [SPACE] L{1,3} [SPACE] N{2,4}
+    function formatPlate(raw) {
+        const s = sanitize(raw);
+
+        // 1) İl kodu -> ilk 2 rakam
+        let d = s.match(/^\d{1,2}/)?.[0] || "";
+        let rest = s.slice(d.length);
+
+        // 2) Harfler -> 1-3 harf
+        let L = rest.match(/^[A-Z]{1,3}/)?.[0] || "";
+        rest = rest.slice(L.length);
+
+        // 3) Rakamlar -> 2-4 rakam
+        let n = rest.match(/^\d{1,4}/)?.[0] || "";
+
+        // kes: toplam kısımların üst sınırlarını aşma
+        d = d.slice(0, 2);
+        L = L.slice(0, 3);
+        n = n.slice(0, 4);
+
+        let out = d;
+        if (L.length) out += (out ? " " : "") + L;
+        if (n.length) out += (out ? " " : "") + n;
+
+        return out;
+    }
+
+    // Kesin doğrulama (blur için)
+    function isValidPlate(val) {
+        // Biçim kontrolü
+        const m = /^(\d{2})\s([A-Z]{1,3})\s(\d{2,4})$/.exec(val);
+        if (!m) return false;
+
+        const il = parseInt(m[1], 10);
+        if (il < 1 || il > 81) return false; // il kodu 01–81
+
+        // Harflerde Türkçe ş,ç,ğ,ö,ü,ı kullanılmadığı varsayılır (regex zaten dışladı)
+        return true;
+    }
+
+    el.addEventListener("input", () => {
+        // Caret karmaşıklığına girmeden basitçe yeniden biçimlendir
+        el.value = formatPlate(el.value);
+    });
+
+    el.addEventListener("blur", () => {
+        if (!isValidPlate(el.value)) {
+            // Geçersizse temizle
+            el.value = "";
+        }
+    });
+}
+
+initPlateInput(".bus-license-plate")
+
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
     await $.ajax({
@@ -2428,6 +2544,7 @@ $(".add-route").on("click", e => {
     $(".route-from").val("")
     $(".route-to").val("")
     $(".route-description").val("")
+    $(".route-stops").html("")
     editingRouteId = null
     $(".route").css("width", "80vw")
     $(".route-list").removeClass("col-12").addClass("col-4")
@@ -2436,41 +2553,118 @@ $(".add-route").on("click", e => {
     $(".save-route").html("EKLE")
 })
 
+const timeInput = document.querySelector(".route-stop-duration");
+
+// Yazarken 2 haneden sonra ":" ekle
+timeInput.addEventListener("input", () => {
+    let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
+    if (val.length >= 3) {
+        val = val.slice(0, 2) + ":" + val.slice(2, 4);
+    }
+    timeInput.value = val;
+});
+
+// Odak kaybedince kontrol et
+timeInput.addEventListener("blur", () => {
+    let value = timeInput.value;
+
+    if (!value.includes(":")) return (timeInput.value = "");
+
+    let [hh, mm] = value.split(":").map(v => parseInt(v, 10));
+
+    if (isNaN(hh) || isNaN(mm)) {
+        timeInput.value = "";
+        return;
+    }
+
+    // Saat aralığını düzelt
+    if (hh < 0) hh = 0;
+    if (hh > 23) hh = 23;
+
+    // Dakika aralığını düzelt
+    if (mm < 0) mm = 0;
+    if (mm > 59) mm = 59;
+
+    // Tek haneli saat/dakika başına 0 koy
+    timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
+        .toString()
+        .padStart(2, "0")}`;
+});
 
 $(".add-route-stop-button").on("click", async e => {
     const stopId = $(".route-stop-place").val()
     const duration = $(".route-stop-duration").val()
     const isFirst = routeStops.length == 0
 
-    await $.ajax({
-        url: "/erp/get-route-stop",
-        type: "GET",
-        data: { stopId, duration, isFirst },
-        success: function (response) {
-            $(".route-stop-duration").css("display", "block")
-            $(".route-stop-place").val("")
-            $(".route-stop-duration").val("")
-            routeStops.push({ stopId, duration })
-            $(".route-stops").append(response)
-            $(".remove-route-stop").on("click", e => {
-                const $stop = $(e.currentTarget).closest(".route-stop");
-                const stopId = $stop.data("stopId");
+    if (stopId)
+        await $.ajax({
+            url: "/erp/get-route-stop",
+            type: "GET",
+            data: { stopId, duration, isFirst },
+            success: function (response) {
+                $(".route-stop-duration").css("display", "block")
+                $(".route-stop-place").val("")
+                $(".route-stop-duration").val("")
+                routeStops.push({ stopId, duration })
+                $(".route-stops").append(response)
 
-                if ($stop[0] === $(".route-stop")[0]) {
-                    $(".route-stop").eq(1).find("._route-stop-duration").remove();
-                }
+                const timeInput = document.querySelector(".duration-input");
 
-                console.log($stop)
-                $stop.remove();
+                // Yazarken 2 haneden sonra ":" ekle
+                timeInput.addEventListener("input", () => {
+                    let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
+                    if (val.length >= 3) {
+                        val = val.slice(0, 2) + ":" + val.slice(2, 4);
+                    }
+                    timeInput.value = val;
+                });
 
-                routeStops = routeStops.filter(r => r.stopId !== stopId);
-            });
+                // Odak kaybedince kontrol et
+                timeInput.addEventListener("blur", () => {
+                    let value = timeInput.value;
 
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
-    })
+                    if (!value.includes(":")) return (timeInput.value = "");
+
+                    let [hh, mm] = value.split(":").map(v => parseInt(v, 10));
+
+                    if (isNaN(hh) || isNaN(mm)) {
+                        timeInput.value = "";
+                        return;
+                    }
+
+                    // Saat aralığını düzelt
+                    if (hh < 0) hh = 0;
+                    if (hh > 23) hh = 23;
+
+                    // Dakika aralığını düzelt
+                    if (mm < 0) mm = 0;
+                    if (mm > 59) mm = 59;
+
+                    // Tek haneli saat/dakika başına 0 koy
+                    timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
+                        .toString()
+                        .padStart(2, "0")}`;
+                });
+
+                $(".remove-route-stop").on("click", e => {
+                    const $stop = $(e.currentTarget).closest(".route-stop");
+                    const stopId = $stop.data("stopId");
+
+                    if ($stop[0] === $(".route-stop")[0]) {
+                        $(".route-stop").eq(1).find("._route-stop-duration").remove();
+                    }
+
+                    console.log($stop)
+                    $stop.remove();
+
+                    routeStops = routeStops.filter(r => r.stopId !== stopId);
+                });
+
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        })
 })
 
 $(".save-route").on("click", async e => {
@@ -2917,7 +3111,7 @@ $(".save-branch").on("click", async e => {
 let editingUserId = null
 
 function renderPermissions(perms) {
-    const modules = ['register', 'trip', 'sale', 'account'];
+    const modules = ['register', 'trip', 'sales', 'account_cut'];
     modules.forEach(m => {
         const container = $(`.permission-list[data-module="${m}"]`);
         container.html('');
@@ -2958,6 +3152,7 @@ $(".user-settings-nav").on("click", async e => {
                         $(".user-password").val("")
                         $(".user-phone").val(response.phoneNumber)
                         $(".user-branches").val(response.branchId)
+                        console.log(response.permissions)
                         renderPermissions(response.permissions)
                     },
                     error: function (xhr, status, error) {

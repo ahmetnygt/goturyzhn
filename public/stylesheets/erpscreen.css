@@ -9,6 +9,59 @@ body {
     background-color: rgb(217, 218, 219) !important;
 }
 
+.loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #00000048;
+    z-index: 9999999999;
+    backdrop-filter: blur(5px);
+}
+
+.loader {
+    height: 30px;
+    aspect-ratio: 2.5;
+    --_g: no-repeat radial-gradient(farthest-side, #2660ff 90%, #0000);
+    background: var(--_g), var(--_g), var(--_g), var(--_g);
+    background-size: 20% 50%;
+    animation: l43 1s infinite linear;
+}
+
+@keyframes l43 {
+    0% {
+        background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%
+    }
+
+    16.67% {
+        background-position: calc(0*100%/3) 0, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%
+    }
+
+    33.33% {
+        background-position: calc(0*100%/3) 100%, calc(1*100%/3) 0, calc(2*100%/3) 50%, calc(3*100%/3) 50%
+    }
+
+    50% {
+        background-position: calc(0*100%/3) 50%, calc(1*100%/3) 100%, calc(2*100%/3) 0, calc(3*100%/3) 50%
+    }
+
+    66.67% {
+        background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 100%, calc(3*100%/3) 0
+    }
+
+    83.33% {
+        background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 100%
+    }
+
+    100% {
+        background-position: calc(0*100%/3) 50%, calc(1*100%/3) 50%, calc(2*100%/3) 50%, calc(3*100%/3) 50%
+    }
+}
+
 *::-webkit-scrollbar {
     height: 7px;
     width: 7px;
@@ -1149,7 +1202,8 @@ div.ticket-cancel-refund-open-close {
     width: 100%;
 }
 
-.account-cut,.account-cut-undo {
+.account-cut,
+.account-cut-undo {
     position: absolute;
     gap: .25rem;
     left: .75rem;

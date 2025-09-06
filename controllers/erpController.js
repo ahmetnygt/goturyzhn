@@ -1857,17 +1857,22 @@ exports.getRoute = async (req, res, next) => {
 }
 
 exports.getRouteStop = async (req, res, next) => {
-    const { stopId, duration, isFirst } = req.query
+    try {
+        const { stopId, duration, isFirst } = req.query
 
-    let routeStop = {};
+        let routeStop = {};
 
-    routeStop.isFirst = isFirst
-    routeStop.duration = duration
-    routeStop.stopId = stopId
-    const stop = await Stop.findOne({ where: { id: stopId } })
-    routeStop.stop = stop.title
+        routeStop.isFirst = isFirst
+        routeStop.duration = duration
+        routeStop.stopId = stopId
+        const stop = await Stop.findOne({ where: { id: stopId } })
+        routeStop.stop = stop.title
 
-    res.render("mixins/routeStop", { routeStop })
+        res.render("mixins/routeStop", { routeStop })
+    }
+    catch (err) {
+        console.log(err)
+    }
 }
 
 exports.getRouteStopsList = async (req, res, next) => {
@@ -2156,7 +2161,7 @@ exports.getUser = async (req, res, next) => {
     const permissions = await Permission.findAll({ attributes: ['id', 'description', 'module'] });
     const userPerms = id ? await FirmUserPermission.findAll({ where: { firmUserId: id } }) : [];
 
-    const grouped = { register: [], trip: [], sale: [], account: [] };
+    const grouped = { register: [], trip: [], sales: [], account_cut: [] };
     permissions.forEach(p => {
         const allow = userPerms.some(up => up.permissionId === p.id && up.allow);
         const item = { id: p.id, description: p.description, allow };
@@ -2167,14 +2172,11 @@ exports.getUser = async (req, res, next) => {
             case 'trip':
                 grouped.trip.push(item);
                 break;
-            case 'sale':
-                grouped.sale.push(item);
+            case 'sales':
+                grouped.sales.push(item);
                 break;
-            case 'account':
             case 'account_cut':
-            case 'accountcut':
-            case 'accountcutting':
-                grouped.account.push(item);
+                grouped.account_cut.push(item);
                 break;
         }
     });

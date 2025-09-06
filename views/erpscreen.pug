@@ -400,6 +400,9 @@ block content
                     span.input-group-text Kaptan Şoför
                     select.bus-captain.form-select()
                         option(value="" selected) 
+                        each s in staff
+                            if s.duty == "driver"
+                                option(value=s.id) #{s.name} #{s.surname}
                 .input-group
                     span.input-group-text Araç Telefonu
                     input.bus-phone.form-control(type="text" )
@@ -577,7 +580,7 @@ block content
                 .input-group.mb-3
                     select.route-stop-place.form-select()
                         option(value="" selected)
-                    input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;")
+                    input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;" pattern="^([01]\d|2[0-3]):([0-5]\d)$")
                     button.add-route-stop-button.btn.btn-outline-primary(type="button") EKLE
                 .route-stops.d-flex.flex-column.gap-3
 
@@ -1022,15 +1025,15 @@ block content
                         a.nav-link(data-bs-toggle="tab" href="#satis") Satış
                     li.nav-item
                         a.nav-link(data-bs-toggle="tab" href="#hesap") Hesap Kesim
-                .tab-content.mt-3
+                .tab-content.mt-3(style="overflow-y: auto;height: 40vh;")
                     .tab-pane.fade.show.active#kasa
                         .permission-list(data-module="register")
                     .tab-pane.fade#sefer
                         .permission-list(data-module="trip")
                     .tab-pane.fade#satis
-                        .permission-list(data-module="sale")
+                        .permission-list(data-module="sales")
                     .tab-pane.fade#hesap
-                        .permission-list(data-module="account")
+                        .permission-list(data-module="account_cut")
 
     .members
         .gtr-header
