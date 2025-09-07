@@ -1,0 +1,9 @@
+if tickets.length
+    each t in tickets
+        .d-flex.justify-content-between.border-bottom.py-1
+            span #{t.date}
+            span #{t.from} - #{t.to}
+            span #{t.pnr}
+            span #{t.price}
+else
+    p.text-center.m-0 Kayıt bulunamadı
