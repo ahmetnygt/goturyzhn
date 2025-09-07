@@ -20,6 +20,11 @@ const Permission = sequelize.define("permission", {
         type: Sequelize.STRING,
         allowNull: true,
     },
+    isActive: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: 1
+    }
 });
 
 module.exports = Permission;

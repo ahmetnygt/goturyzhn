@@ -1004,7 +1004,7 @@ block content
                         a.nav-link(data-bs-toggle="tab" href="#satis") Satış
                     li.nav-item
                         a.nav-link(data-bs-toggle="tab" href="#hesap") Hesap Kesim
-                .tab-content.mt-3(style="overflow-y: auto;height: 40vh;")
+                .tab-content.mt-3.px-2(style="overflow-y: auto;height: 40vh;")
                     .tab-pane.fade.show.active#kasa
                         .permission-list(data-module="register")
                     .tab-pane.fade#sefer
@@ -1035,17 +1035,19 @@ block content
             button.btn.btn-outline-primary.member-search-btn ARA
             button.btn.btn-outline-primary.member-add-btn EKLE
         .member-list.p-3
-            .d-flex.mb-2(class=`${permissions.includes('TRIP_BLACKLIST_MANAGE')?"col-11":"col-12"}`)
-                .col-3
+            .d-flex.mb-2
+                .col-2
                     p.text-center.m-0 TC
-                .col-3
+                .col-2
                     p.text-center.m-0 Ad
-                .col-3
+                .col-2
                     p.text-center.m-0 Soyad
-                .col-3
+                .col-2
                     p.text-center.m-0 Telefon
-            if permissions.includes('TRIP_BLACKLIST_MANAGE')
-                .col-1
+                .col-2
+                    p.text-center.m-0 İnd. Tipi
+                .col-2
+                    p.text-center.m-0 Puan veya İnd. Oranı 
             .member-list-nodes.d-flex.flex-column.gap-3
 
     .customers
@@ -1119,8 +1121,9 @@ block content
                 .bg-white.h-100.p-2.w-50
                     .d-flex.justify-content-around.align-items-center 
                         span SEFER NOTLARI
-                        button.add-trip-note-button.btn.btn-outline-primary 
-                            i.fa-solid.fa-plus
+                        if permissions.includes("TRIP_NOTES_MANAGE")
+                            button.add-trip-note-button.btn.btn-outline-primary 
+                                i.fa-solid.fa-plus
                     hr.m-2
                     .trip-notes
                 .stops-times.bg-white.h-100.p-2.w-50

@@ -4,6 +4,7 @@ let currentTripDate;
 let currentTripTime;
 let currentTripPlaceTime;
 let currentTripId;
+let currentGroupId;
 let editingNoteId;
 let currentStop = "1";
 let currentStopStr = "Çanakkale İskele";
@@ -284,11 +285,11 @@ function initTcknInputs(selector, opts = {}) {
                 el.value = d;
                 if (liveMark) el.style.borderColor = "green";
             } else {
-                if (clearOnInvalid) {
-                    el.value = "";
-                    el.style.borderColor = "";
-                    alert("Yanlış bir kimlik numarası girdiniz.")
-                }
+                // if (clearOnInvalid) {
+                //     el.value = "";
+                //     el.style.borderColor = "";
+                //     alert("Yanlış bir kimlik numarası girdiniz.")
+                // }
             }
         });
     });
@@ -854,6 +855,7 @@ async function loadTrip(date, time, tripId) {
                     }
                 } else {
                     // dolu koltuk: grupça seç/kaldır
+                    currentGroupId = $seat.data("group-id")
                     $(".taken-ticket-op").css("display", "block")
 
                     if ($seat.data("status") == "reservation") {
@@ -1257,7 +1259,8 @@ $("#currentStop").on("change", async (e) => {
     });
 
     $(".tripRows").html(response);
-    loadTrip(currentTripDate, currentTripTime, currentTripId);
+    if (currentTripId)
+        loadTrip(currentTripDate, currentTripTime, currentTripId);
 
     $(".tripRow").on("click", async e => {
         const date = e.currentTarget.dataset.date;
@@ -1314,7 +1317,7 @@ $(".ticket-button-action").on("click", async e => {
     else if (e.currentTarget.dataset.action == "complete") {
         let tickets = []
 
-        for (let i = 0; i < selectedSeats.length; i++) {
+        for (let i = 0; i < selectedTakenSeats.length; i++) {
 
             const ticket = $(".ticket-row")[i]
 
@@ -1331,17 +1334,19 @@ $(".ticket-button-action").on("click", async e => {
                 optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(ticket).find(".price").find("input").val(),
                 payment: $(".ticket-rows").find(".payment").find("select").val(),
+                pnr: $(".ticket-rows").find(".pnr").find("input").val(),
             }
 
             tickets.push(ticketObj)
         }
 
         const ticketsStr = JSON.stringify(tickets)
+        console.log(ticketsStr)
 
         await $.ajax({
-            url: "/erp/post-tickets",
+            url: "/erp/post-complete-tickets",
             type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, groupId: currentGroupId, toId, tripId: currentTripId, status: "completed" },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime, currentTripId)

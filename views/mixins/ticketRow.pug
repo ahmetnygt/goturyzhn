@@ -80,12 +80,12 @@
             select.form-select.form-select-sm
                 option(value="cash") Nakit 
                 option(value="card") K. Kartı 
+        .pnr
+            label.form-label PNR
+            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"" readonly) 
         .sum-price
             label.form-label Toplam Fiyat
             input.form-control.form-control-sm(readonly type="text" name="" value=ticket?ticket[0].price*seats.length:"") 
-        .pnr
-            label.form-label PNR
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"") 
     .row
         .description
             label.form-label Açıklama

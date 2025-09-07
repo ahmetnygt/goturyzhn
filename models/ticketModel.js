@@ -39,7 +39,7 @@ const Ticket = sequelize.define("ticket", {
     },
     idNumber: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
     },
     name: {
         type: Sequelize.STRING,
@@ -47,7 +47,7 @@ const Ticket = sequelize.define("ticket", {
     },
     surname: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
     },
     phoneNumber: {
         type: Sequelize.STRING,

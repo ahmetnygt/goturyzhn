@@ -269,7 +269,7 @@ exports.getTrip = async (req, res, next) => {
             return acc;
         }, {});
 
-        trip.isOwnBranchStop = (stopId == branchMap[req.session.user.branchId]?.stopId).toString()
+        trip.isOwnBranchStop = (stopId == branchMap[req.session.user.branchId].stopId).toString()
 
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
@@ -1037,6 +1037,129 @@ exports.postTickets = async (req, res, next) => {
         return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
 };
+
+exports.postCompleteTickets = async (req, res, next) => {
+    try {
+        const tickets = Array.isArray(req.body.tickets)
+            ? req.body.tickets
+            : JSON.parse(req.body.tickets || "[]");
+
+        const tripDate = req.body.tripDate;
+        const tripTime = req.body.tripTime;
+        const tripId = req.body.tripId;
+        const status = req.body.status;
+        const fromId = req.body.fromId;
+        const toId = req.body.toId;
+
+        const pnr = tickets[0].pnr
+        const seatNumbers = tickets.map(t => t.seatNumber)
+
+        // --- Trip.where'i dinamik kur ---
+        const tripWhere = {};
+        if (tripDate) tripWhere.date = tripDate;
+        if (tripTime) tripWhere.time = tripTime;
+        if (tripId) tripWhere.id = tripId;
+
+        if (Object.keys(tripWhere).length === 0) {
+            return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
+        }
+
+        const trip = await Trip.findOne({ where: tripWhere });
+        if (!trip) {
+            return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        // --- RouteStops ve Stops (boş dizi korumalı) ---
+        const routeStops = await RouteStop.findAll({
+            where: { routeId: trip.routeId },
+            order: [["order", "ASC"]],
+        });
+
+        const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
+        let stops = [];
+        if (stopIds.length) {
+            stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        }
+
+        const foundTickets = await Ticket.findAll({ where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } } })
+
+        for (let i = 0; i < foundTickets.length; i++) {
+            const ticket = foundTickets[i];
+            ticket.userId = req.session.user.id
+            ticket.idNumber = tickets[i].idNumber
+            ticket.name = tickets[i].name
+            ticket.surname = tickets[i].surname
+            ticket.phoneNumber = tickets[i].phoneNumber
+            ticket.gender = tickets[i].gender
+            ticket.nationality = tickets[i].nationality
+            ticket.type = tickets[i].type
+            ticket.category = tickets[i].category
+            ticket.optionTime = tickets[i].optionTime
+            ticket.price = tickets[i].price
+            ticket.payment = tickets[i].payment
+            ticket.status = "completed"
+
+
+            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
+            const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
+            const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
+
+            const orConds = [];
+            if (ticket.idNumber) orConds.push({ idNumber: ticket.idNumber });
+            if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
+
+            let existingCustomer = null;
+            if (orConds.length) {
+                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+            }
+
+            if (!existingCustomer) {
+                const customer = await Customer.create({
+                    idNumber: ticket.idNumber || null,
+                    name: nameUp || null,
+                    surname: surnameUp || null,
+                    phoneNumber: ticket.phoneNumber || null,
+                    gender: ticket.gender || null,
+                    nationality: ticket.nationality || null,
+                    customerType: ticket.type || null,
+                    customerCategory: ticket.category || null
+                });
+                ticket.customerId = customer.id
+            }
+
+            await ticket.save()
+
+            const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
+            const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+
+            await Transaction.create({
+                userId: req.session.user.id,
+                type: "income",
+                category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
+                amount: ticket.price,
+                description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
+                ticketId: ticket.id
+            });
+
+            const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+            if (register) {
+                if (ticket.payment === "cash") {
+                    register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
+                } else {
+                    register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
+                }
+                await register.save();
+            }
+
+            res.locals.newRecordId = ticket.id;
+            console.log(`${ticket.name} Kaydedildi - ${pnr || "-"}`);
+        }
+        return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+    } catch (err) {
+        console.error("Kayıt hatası:", err);
+        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+    }
+}
 
 exports.postSellOpenTickets = async (req, res, next) => {
     try {
@@ -2279,9 +2402,19 @@ exports.postSaveUser = async (req, res, next) => {
         );
 
         const permIds = permissions ? (Array.isArray(permissions) ? permissions : [permissions]).map(Number) : [];
-        await FirmUserPermission.destroy({ where: { firmUserId: user.id } }).catch(err => console.log(err))
-        if (permIds.length) {
-            const rows = permIds.map(p => ({ firmUserId: user.id, permissionId: p, allow: true }));
+
+        const existingPerms = await FirmUserPermission.findAll({ where: { firmUserId: user.id } });
+        const existingIds = existingPerms.map(p => p.permissionId);
+
+        const permsToAdd = permIds.filter(id => !existingIds.includes(id));
+        const permsToRemove = existingIds.filter(id => !permIds.includes(id));
+
+        if (permsToRemove.length) {
+            await FirmUserPermission.destroy({ where: { firmUserId: user.id, permissionId: permsToRemove } });
+        }
+
+        if (permsToAdd.length) {
+            const rows = permsToAdd.map(p => ({ firmUserId: user.id, permissionId: p, allow: true }));
             await FirmUserPermission.bulkCreate(rows);
         }
 

@@ -40,6 +40,19 @@ const Customer = sequelize.define("customer", {
         type: Sequelize.ENUM("normal", "member"),
         allowNull: false
     },
+    pointOrPercent: {
+        type: Sequelize.ENUM("point", "percent"),
+    },
+    point_amount: {
+        type: Sequelize.BIGINT,
+        allowNull: false,
+        defaultValue: 0
+    },
+    percent: {
+        type: Sequelize.BIGINT,
+        allowNull: false,
+        defaultValue: 0
+    },
     isBlackList: {
         type: Sequelize.BOOLEAN,
         allowNull: false,

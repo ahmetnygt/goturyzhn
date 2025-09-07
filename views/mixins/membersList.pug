@@ -1,10 +1,14 @@
 each m in members
     button.d-flex.btn.btn-outline-primary.member-row(data-id=m.idNumber data-name=m.name data-surname=m.surname data-phone=m.phoneNumber)
-        .col-3
+        .col-2
             p.text-center.m-0 #{m.idNumber}
-        .col-3
+        .col-2
             p.text-center.m-0 #{m.name}
-        .col-3
+        .col-2
             p.text-center.m-0 #{m.surname}
-        .col-3
+        .col-2
             p.text-center.m-0 #{m.phoneNumber}
+        .col-2
+            p.text-center.m-0 #{m.pointOrPercent=="point"?"Puan":"İndirim (%)"}
+        .col-2
+            p.text-center.m-0 #{m.pointOrPercent=="point"?m.point_amount+" puan":m.percent+"%"}
