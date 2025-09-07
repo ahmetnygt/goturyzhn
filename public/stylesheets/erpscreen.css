@@ -620,6 +620,41 @@ select.price-button-select {
     width: 8rem !important;
 }
 
+.member-info {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    width: 80vw;
+    min-height: 40vh;
+    overflow: hidden;
+    display: none;
+}
+
+.member-info-left,
+.member-info-middle,
+.member-info-right {
+    flex: 1;
+}
+
+.member-info-left,
+.member-info-middle {
+    border-right: 1px solid #dee2e6;
+}
+
+.member-info input {
+    width: 100% !important;
+}
+
+.member-ticket-list {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
 .customers button {
     white-space: nowrap;
 }

@@ -1,5 +1,17 @@
 each m in members
-    button.d-flex.btn.btn-outline-primary.member-row(data-id=m.idNumber data-name=m.name data-surname=m.surname data-phone=m.phoneNumber)
+    button.d-flex.btn.btn-outline-primary.member-row(
+        data-id=m.id
+        data-idnumber=m.idNumber
+        data-name=m.name
+        data-surname=m.surname
+        data-phone=m.phoneNumber
+        data-gender=m.gender
+        data-customertype=m.customerType
+        data-customercategory=m.customerCategory
+        data-pointorpercent=m.pointOrPercent
+        data-pointamount=m.point_amount
+        data-percent=m.percent
+    )
         .col-2
             p.text-center.m-0 #{m.idNumber}
         .col-2

@@ -3752,6 +3752,51 @@ $(".members-close").on("click", e => {
     $(".members").css("display", "none")
 })
 
+$(document).on("click", ".member-row", function () {
+    const idNumber = $(this).data("idnumber");
+    const name = $(this).data("name");
+    const surname = $(this).data("surname");
+    const phone = $(this).data("phone");
+    const gender = $(this).data("gender");
+    const type = $(this).data("customertype");
+    const category = $(this).data("customercategory");
+    const pointOrPercent = $(this).data("pointorpercent");
+    const pointAmount = $(this).data("pointamount");
+    const percent = $(this).data("percent");
+
+    $(".member-info-idNumber").val(idNumber);
+    $(".member-info-name").val(name);
+    $(".member-info-surname").val(surname);
+    $(".member-info-phone").val(phone);
+    $(".member-info-gender").val(gender);
+    $(".member-info-type").val(type);
+    $(".member-info-category").val(category);
+    $(".member-info-pointorpercent").val(pointOrPercent);
+    $(".member-info-pointamount").val(pointAmount);
+    $(".member-info-percent").val(percent);
+
+    $(".members").css("display", "none");
+    $(".member-info").css("display", "block");
+    $(".blackout").css("display", "block");
+
+    $.ajax({
+        url: "/erp/get-member-tickets",
+        type: "GET",
+        data: { idNumber },
+        success: function (resp) {
+            $(".member-ticket-list").html(resp);
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+});
+
+$(".member-info-close").on("click", e => {
+    $(".member-info").css("display", "none");
+    $(".members").css("display", "block");
+});
+
 function searchMembers() {
     const idNumber = $(".member-search-idNumber").val()
     const name = $(".member-search-name").val()

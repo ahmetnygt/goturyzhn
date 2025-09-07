@@ -2301,6 +2301,47 @@ exports.postAddMember = async (req, res, next) => {
     }
 }
 
+exports.getMemberTickets = async (req, res, next) => {
+    try {
+        const { idNumber } = req.query;
+        if (!idNumber) {
+            return res.render("mixins/memberTickets", { tickets: [] });
+        }
+        const customer = await Customer.findOne({ where: { idNumber } });
+        if (!customer) {
+            return res.render("mixins/memberTickets", { tickets: [] });
+        }
+
+        const tickets = await Ticket.findAll({
+            where: { customerId: customer.id },
+            order: [["createdAt", "DESC"]]
+        });
+
+        const stopIds = [];
+        tickets.forEach(t => {
+            if (t.fromRouteStopId) stopIds.push(t.fromRouteStopId);
+            if (t.toRouteStopId) stopIds.push(t.toRouteStopId);
+        });
+        const uniqueStopIds = [...new Set(stopIds)];
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: uniqueStopIds } }, raw: true });
+        const stopMap = {};
+        stops.forEach(s => stopMap[s.id] = s.title);
+
+        const ticketData = tickets.map(t => ({
+            pnr: t.pnr,
+            from: stopMap[t.fromRouteStopId] || "",
+            to: stopMap[t.toRouteStopId] || "",
+            price: t.price,
+            date: t.createdAt ? new Date(t.createdAt).toLocaleDateString("tr-TR") : ""
+        }));
+
+        res.render("mixins/memberTickets", { tickets: ticketData });
+    } catch (err) {
+        console.error("getMemberTickets error:", err);
+        res.render("mixins/memberTickets", { tickets: [] });
+    }
+}
+
 exports.postCustomerBlacklist = async (req, res, next) => {
     try {
         const { id, description, isRemove } = req.body;
