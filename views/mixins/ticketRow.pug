@@ -47,6 +47,7 @@
                     option(value="guest") Misafir
         .price
             label.form-label Fiyat
+                span.customer-point.ms-2
             if !permissions.includes('ENTER_FREE_PRICE')
                 input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.price1)
             else 

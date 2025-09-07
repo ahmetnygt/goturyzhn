@@ -730,6 +730,30 @@ async function loadTrip(date, time, tripId) {
                         initTcknInputs(".identity input")
                         initPhoneInput(".phone input")
 
+                        $(".identity input").on("blur", async e => {
+                            const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                            if (customer) {
+                                const row = e.currentTarget.parentElement.parentElement
+                                $(row).find(".name").find("input").val(customer.name)
+                                $(row).find(".surname").find("input").val(customer.surname)
+                                $(row).find(".category").find("input").val(customer.customerCategory)
+                                $(row).find(".type").find("input").val(customer.customerType)
+                                $(row).find(".nationality").find("input").val(customer.nationality)
+                                $(row).find(".price").find("span.customer-point").html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%").addClass("text-danger")
+                                if (customer.gender == "m") {
+                                    $(row).find(".gender").find("input.male").prop("checked", true)
+                                    $(row).find(".gender").find("input.female").prop("checked", false)
+                                    $(row).addClass("m").removeClass("f")
+                                }
+                                else if (customer.gender == "f") {
+                                    $(row).find(".gender").find("input.male").prop("checked", false)
+                                    $(row).find(".gender").find("input.female").prop("checked", true)
+                                    $(row).addClass("f").removeClass("m")
+                                }
+                                $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber)
+                            }
+                        })
+
                         $(".ticket-info-pop-up").css("display", "block")
                         $(".blackout").css("display", "block")
 
@@ -1578,6 +1602,29 @@ $(".taken-ticket-op").on("click", async e => {
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
 
+                $(".identity input").on("blur", async e => {
+                    const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                    if (customer) {
+                        const row = e.currentTarget.parentElement.parentElement
+                        $(row).find(".name").find("input").val(customer.name)
+                        $(row).find(".surname").find("input").val(customer.surname)
+                        $(row).find(".category").find("input").val(customer.customerCategory)
+                        $(row).find(".type").find("input").val(customer.customerType)
+                        $(row).find(".nationality").find("input").val(customer.nationality)
+                        if (customer.gender == "m") {
+                            $(row).find(".gender").find("input.male").prop("checked", true)
+                            $(row).find(".gender").find("input.female").prop("checked", false)
+                            $(row).addClass("m").removeClass("f")
+                        }
+                        else {
+                            $(row).find(".gender").find("input.male").prop("checked", false)
+                            $(row).find(".gender").find("input.female").prop("checked", true)
+                            $(row).addClass("f").removeClass("m")
+                        }
+                        $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber)
+                    }
+                })
+
                 flatpickr($(".reservation-expire input.changable"), {
                     locale: "tr",
                     enableTime: true
@@ -1621,6 +1668,29 @@ $(".taken-ticket-op").on("click", async e => {
 
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
+
+                $(".identity input").on("blur", async e => {
+                    const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                    if (customer) {
+                        const row = e.currentTarget.parentElement.parentElement
+                        $(row).find(".name").find("input").val(customer.name)
+                        $(row).find(".surname").find("input").val(customer.surname)
+                        $(row).find(".category").find("input").val(customer.customerCategory)
+                        $(row).find(".type").find("input").val(customer.customerType)
+                        $(row).find(".nationality").find("input").val(customer.nationality)
+                        if (customer.gender == "m") {
+                            $(row).find(".gender").find("input.male").prop("checked", true)
+                            $(row).find(".gender").find("input.female").prop("checked", false)
+                            $(row).addClass("m").removeClass("f")
+                        }
+                        else {
+                            $(row).find(".gender").find("input.male").prop("checked", false)
+                            $(row).find(".gender").find("input.female").prop("checked", true)
+                            $(row).addClass("f").removeClass("m")
+                        }
+                        $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber)
+                    }
+                })
 
                 flatpickr($(".reservation-expire input.changable"), {
                     locale: "tr",
@@ -2105,6 +2175,28 @@ $(".open-ticket-next").on("click", async e => {
             $(".ticket-rows").prepend(response)
             initTcknInputs(".identity input")
             initPhoneInput(".phone input")
+            $(".identity input").on("blur", async e => {
+                const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                if (customer) {
+                    const row = e.currentTarget.parentElement.parentElement
+                    $(row).find(".name").find("input").val(customer.name)
+                    $(row).find(".surname").find("input").val(customer.surname)
+                    $(row).find(".category").find("input").val(customer.customerCategory)
+                    $(row).find(".type").find("input").val(customer.customerType)
+                    $(row).find(".nationality").find("input").val(customer.nationality)
+                    if (customer.gender == "m") {
+                        $(row).find(".gender").find("input.male").prop("checked", true)
+                        $(row).find(".gender").find("input.female").prop("checked", false)
+                        $(row).addClass("m").removeClass("f")
+                    }
+                    else {
+                        $(row).find(".gender").find("input.male").prop("checked", false)
+                        $(row).find(".gender").find("input.female").prop("checked", true)
+                        $(row).addClass("f").removeClass("m")
+                    }
+                    $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber)
+                }
+            })
             $(".open-ticket-sale").css("display", "none")
             $(".ticket-info-pop-up_from").html($(`.open-ticket-from option[value=${fromId}]`).text().toLocaleUpperCase())
             $(".ticket-info-pop-up_to").html($(`.open-ticket-from option[value=${toId}]`).text().toLocaleUpperCase())

@@ -1003,6 +1003,15 @@ exports.postTickets = async (req, res, next) => {
                     customerCategory: t.category || null
                 });
             }
+            else {
+                ticket.customerId = existingCustomer.id
+                if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
+                    existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price) * 0.05
+                    console.log(existingCustomer)
+                }
+                await ticket.save()
+                await existingCustomer.save()
+            }
 
             if (ticket.status === "completed") {
                 const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
@@ -2245,6 +2254,16 @@ exports.getCustomersList = async (req, res, next) => {
 
     const customers = await Customer.findAll({ where });
     res.render("mixins/customersList", { customers, blacklist });
+}
+
+exports.getCustomer = async (req, res, next) => {
+    const { idNumber } = req.query;
+    const where = {}
+
+    if (idNumber) where.idNumber = Number(idNumber);
+
+    const customer = await Customer.findOne({ where });
+    res.json(customer);
 }
 
 exports.getMembersList = async (req, res, next) => {
