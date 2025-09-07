@@ -10,10 +10,17 @@ html
   body
     .loading
       .loader
+    .error-popup
+      .gtr-header
+        span HATA
+      .error-close
+        i.fa-solid.fa-x
+      .p-3
+        p.error-message
     if !isNoNavbar
       nav.navbar.navbar-expand-lg.bg-body-tertiary
         .container-fluid
-          a.navbar-brand(href="#") 
+          a.navbar-brand(href="#")
             img.d-inline-block.align-text-top(src="/images/gotur_vip_logo.jpg" alt="Logo" width="100" height="25")
           button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
             span.navbar-toggler-icon

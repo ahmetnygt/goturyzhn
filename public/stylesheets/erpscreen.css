@@ -318,7 +318,8 @@ div.trip-revenue-close,
 div.trip-staff-close,
 div.trip-stop-restriction-close,
 div.trip-note-close,
-div.open-ticket-close {
+div.open-ticket-close,
+div.error-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -915,6 +916,23 @@ div.ticket-cancel-refund-open-close {
     display: none;
     border-radius: .6rem;
     overflow: hidden;
+}
+
+.error-popup {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    display: none;
+    max-width: 80vw;
+}
+
+.error-popup .gtr-header {
+    background-color: #dc3545;
 }
 
 .notes-stops {

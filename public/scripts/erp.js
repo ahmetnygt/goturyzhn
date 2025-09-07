@@ -31,11 +31,37 @@ const hideLoading = () => {
     if (loadingCount === 0) $(".loading").css("display", "none");
 };
 
+const showError = message => {
+    $(".error-popup .error-message").text(message);
+    $(".error-popup").css("display", "block");
+};
+
+$(document).on("click", ".error-close", () => $(".error-popup").hide());
+
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
     showLoading();
     try {
-        return await originalFetch(...args);
+        const res = await originalFetch(...args);
+        if (!res.ok) {
+            try {
+                const clone = res.clone();
+                let msg;
+                try {
+                    const data = await clone.json();
+                    msg = data.message || data.error || JSON.stringify(data);
+                } catch (_) {
+                    msg = await clone.text();
+                }
+                showError(msg);
+            } catch (e) {
+                showError(e.message);
+            }
+        }
+        return res;
+    } catch (err) {
+        showError(err.message || "Bilinmeyen hata");
+        throw err;
     } finally {
         hideLoading();
     }
