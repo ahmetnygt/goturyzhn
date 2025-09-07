@@ -79,8 +79,9 @@
         .payment
             label.form-label Ödeme
             select.form-select.form-select-sm
-                option(value="cash") Nakit 
-                option(value="card") K. Kartı 
+                option(value="cash") Nakit
+                option(value="card") K. Kartı
+                option(value="point") Puan
         .pnr
             label.form-label PNR
             input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"" readonly) 

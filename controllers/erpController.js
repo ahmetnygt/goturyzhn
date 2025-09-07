@@ -1006,8 +1006,11 @@ exports.postTickets = async (req, res, next) => {
             else {
                 ticket.customerId = existingCustomer.id
                 if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
-                    existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price) * 0.05
-                    console.log(existingCustomer)
+                    if (ticket.payment === "point") {
+                        existingCustomer.point_amount = Number(existingCustomer.point_amount) - Number(ticket.price)
+                    } else {
+                        existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price) * 0.05
+                    }
                 }
                 await ticket.save()
                 await existingCustomer.save()
@@ -1020,7 +1023,7 @@ exports.postTickets = async (req, res, next) => {
                 await Transaction.create({
                     userId: req.session.user.id,
                     type: "income",
-                    category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
+                    category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                     amount: ticket.price,
                     description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
                     ticketId: ticket.id
@@ -1030,7 +1033,7 @@ exports.postTickets = async (req, res, next) => {
                 if (register) {
                     if (ticket.payment === "cash") {
                         register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
-                    } else {
+                    } else if (ticket.payment === "card") {
                         register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
                     }
                     await register.save();
@@ -1145,7 +1148,7 @@ exports.postCompleteTickets = async (req, res, next) => {
             await Transaction.create({
                 userId: req.session.user.id,
                 type: "income",
-                category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
+                category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                 amount: ticket.price,
                 description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
                 ticketId: ticket.id
@@ -1155,7 +1158,7 @@ exports.postCompleteTickets = async (req, res, next) => {
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
-                } else {
+                } else if (ticket.payment === "card") {
                     register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
                 }
                 await register.save();
@@ -1246,7 +1249,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
             await Transaction.create({
                 userId: req.session.user.id,
                 type: "income",
-                category: ticket.payment === "cash" ? "cash_sale" : "card_sale",
+                category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                 amount: ticket.price,
                 description: `Açık bilet satıldı | ${fromTitle} - ${toTitle}`,
                 ticketId: ticket.id
@@ -1256,7 +1259,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
-                } else {
+                } else if (ticket.payment === "card") {
                     register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
                 }
                 await register.save();

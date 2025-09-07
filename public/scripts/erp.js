@@ -765,7 +765,11 @@ async function loadTrip(date, time, tripId) {
                                 $(row).find(".category").find("input").val(customer.customerCategory)
                                 $(row).find(".type").find("input").val(customer.customerType)
                                 $(row).find(".nationality").find("input").val(customer.nationality)
-                                $(row).find(".price").find("span.customer-point").html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%").addClass("text-danger")
+                                $(row).find(".price").find("span.customer-point")
+                                    .html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%")
+                                    .addClass("text-danger")
+                                    .data("pointorpercent", customer.pointOrPercent)
+                                    .data("pointamount", customer.point_amount)
                                 if (customer.gender == "m") {
                                     $(row).find(".gender").find("input.male").prop("checked", true)
                                     $(row).find(".gender").find("input.female").prop("checked", false)
@@ -1324,6 +1328,21 @@ $("#currentStop").on("change", async (e) => {
 // Bilet kesim ekranındaki onaylama tuşu
 $(".ticket-button-action").on("click", async e => {
     if (e.currentTarget.dataset.action == "sell") {
+        const firstTicket = $(".ticket-row").first();
+        let usePointPayment = false;
+        if (firstTicket.length) {
+            const price = Number(firstTicket.find(".price").find("input").val());
+            const span = firstTicket.find(".price").find("span.customer-point");
+            const pointOrPercent = span.data("pointorpercent");
+            const pointAmount = Number(span.data("pointamount") || 0);
+            if (pointOrPercent === "point" && pointAmount >= price) {
+                usePointPayment = confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
+                if (usePointPayment) {
+                    $(".ticket-rows").find(".payment").find("select").val("point");
+                }
+            }
+        }
+
         let tickets = []
 
         for (let i = 0; i < selectedSeats.length; i++) {
@@ -1342,7 +1361,7 @@ $(".ticket-button-action").on("click", async e => {
                 category: $(ticket).find(".category").find("select").val(),
                 optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(ticket).find(".price").find("input").val(),
-                payment: $(".ticket-rows").find(".payment").find("select").val(),
+                payment: usePointPayment ? "point" : $(".ticket-rows").find(".payment").find("select").val(),
             }
 
             tickets.push(ticketObj)
