@@ -250,7 +250,7 @@ exports.getTrip = async (req, res, next) => {
 
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
-        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } } })
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
 
         const routeStopOrderMap = routeStops.reduce((acc, rs) => {
             acc[rs.stopId] = rs.order;
@@ -290,7 +290,7 @@ exports.getTrip = async (req, res, next) => {
             }
             else if (ticketPlaceOrder > currentStopOrder) {
                 ticket.stopOrder = "ahead"
-                ticket.createdAt = null
+                // ticket.createdAt = null
             }
             else if (ticketPlaceOrder < currentStopOrder) {
                 ticket.stopOrder = "before"

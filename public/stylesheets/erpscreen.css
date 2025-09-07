@@ -1295,7 +1295,6 @@ div.ticket-cancel-refund-open-close {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
     width: 100%;
     height: 100%;
 }
@@ -1305,7 +1304,7 @@ div.ticket-cancel-refund-open-close {
     flex-direction: column;
     gap: .5rem;
     overflow-y: auto;
-    padding: 0rem 1rem;
+    padding: 1rem;
 }
 
 .seat-row {
