@@ -290,10 +290,11 @@ exports.getTrip = async (req, res, next) => {
             }
             else if (ticketPlaceOrder > currentStopOrder) {
                 ticket.stopOrder = "ahead"
-                // ticket.createdAt = null
+                ticket.createdAt = null
             }
             else if (ticketPlaceOrder < currentStopOrder) {
                 ticket.stopOrder = "before"
+                ticket.createdAt = null
             }
 
             const user = userMap[ticket.userId];

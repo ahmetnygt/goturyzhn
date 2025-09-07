@@ -297,6 +297,7 @@ div.branch-close,
 div.users-close,
 div.customers-close,
 div.members-close,
+div.member-info-close,
 div.bus-close,
 div.route-close,
 div.trip-close,
@@ -635,10 +636,13 @@ select.price-button-select {
     display: none;
 }
 
-.member-info-left,
+.member-info-left .input-group {
+    flex-wrap: nowrap !important;
+}
+
 .member-info-middle,
 .member-info-right {
-    flex: 1;
+    /* flex: 1; */
 }
 
 .member-info-left,
