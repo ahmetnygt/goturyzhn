@@ -21,6 +21,9 @@ let tripStaffList = [];
 let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
+let seatStore = {};
+let seatRefreshTimer;
+
 let loadingCount = 0;
 const showLoading = () => {
     if (loadingCount === 0) $(".loading").css("display", "flex");
@@ -168,6 +171,80 @@ function initPhoneInput(selector, mobileOnly = false) {
 
 initPhoneInput(".bus-phone")
 initPhoneInput(".user-phone")
+
+async function refreshSeats() {
+    if (!currentTripId) return;
+    try {
+        const res = await fetch(`/erp/trips/${currentTripId}/seats`);
+        const data = await res.json();
+        seatStore = {};
+        data.forEach(s => { seatStore[s.seatNo] = s.passengers; });
+
+        document.querySelectorAll('.seat').forEach(seat => {
+            const seatNo = seat.dataset.seatNumber;
+            const passengers = seatStore[seatNo] || [];
+
+            const base = ['seat', `seat-${seatNo}`];
+            if (seat.classList.contains('hidden')) base.push('hidden');
+            if (seat.classList.contains('none')) base.push('none');
+            seat.className = base.join(' ');
+
+            seat.querySelector('.from').textContent = '';
+            seat.querySelector('.to').textContent = '';
+            seat.querySelector('.price').textContent = '';
+            seat.querySelector('.web').textContent = '';
+
+            if (passengers.length) {
+                const p = passengers[0];
+                if (p.gender) seat.classList.add(p.gender);
+                if (p.status) seat.classList.add(p.status);
+                seat.querySelector('.from').textContent = p.from || '';
+                seat.querySelector('.to').textContent = p.to || '';
+                seat.querySelector('.price').textContent = p.price ? `${p.price}₺` : '';
+                seat.querySelector('.web').textContent = p.status === 'web' ? 'WEB' : '';
+
+                seat.dataset.groupId = p.ticketGroupId || '';
+                seat.dataset.pnr = p.pnr || '';
+                seat.dataset.gender = p.gender || '';
+                seat.dataset.from = p.from || '';
+                seat.dataset.to = p.to || '';
+                seat.dataset.name = p.name || '';
+                seat.dataset.phone = p.phoneNumber || '';
+                seat.dataset.price = p.price || '';
+                seat.dataset.createdAt = p.createdAt || '';
+                seat.dataset.userName = p.userName || '';
+                seat.dataset.branch = p.branch || '';
+                seat.dataset.isOwnBranchTicket = p.isOwnBranchTicket || '';
+                seat.dataset.isOwnBranchStop = p.isOwnBranchStop || '';
+                seat.dataset.status = p.status || '';
+                seat.dataset.refundOption = p.tripRefundOptionDate || '';
+            } else {
+                seat.dataset.groupId = '';
+                seat.dataset.pnr = '';
+                seat.dataset.gender = '';
+                seat.dataset.from = '';
+                seat.dataset.to = '';
+                seat.dataset.name = '';
+                seat.dataset.phone = '';
+                seat.dataset.price = '';
+                seat.dataset.createdAt = '';
+                seat.dataset.userName = '';
+                seat.dataset.branch = '';
+                seat.dataset.isOwnBranchTicket = '';
+                seat.dataset.isOwnBranchStop = '';
+                seat.dataset.status = '';
+                seat.dataset.refundOption = '';
+            }
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function startSeatPolling() {
+    if (seatRefreshTimer) clearInterval(seatRefreshTimer);
+    seatRefreshTimer = setInterval(refreshSeats, 30000);
+}
 
 function initPlateInput(selector) {
     const el = document.querySelector(selector);
@@ -391,6 +468,9 @@ async function loadTrip(date, time, tripId) {
 
             $(".ticket-info-pop-up_from").html(fromStr.toUpperCase())
             $(".ticket-info-pop-up_to").html(toStr.toUpperCase())
+
+            await refreshSeats();
+            startSeatPolling();
 
             const tripBusId = $(".trip-bus-license-plate").data("current-bus-id")
             const tripBusModelId = $(".trip-bus-plan").data("current-bus-model-id")
@@ -953,33 +1033,30 @@ async function loadTrip(date, time, tripId) {
 
 
             $(".seat").on("mouseenter", function (e) {
-                const data = e.currentTarget.dataset
+                const seatNo = e.currentTarget.dataset.seatNumber;
+                const passengers = seatStore[seatNo] || [];
+                if (!passengers.length) return;
 
                 const rect = this.getBoundingClientRect();
                 const popupLeft = rect.right + window.scrollX + 10;
                 const popupTop = rect.top + window.scrollY;
 
-                if (data.createdAt) {
-                    $(".passenger-info-popup").removeClass("m").removeClass("f")
-                    $(".passenger-info-popup").addClass(data.gender)
-                    $(".passenger-info-popup .seat-number").html(data.seatNumber)
-                    $(".passenger-info-popup .from").html(data.from)
-                    $(".passenger-info-popup .to").html(data.to)
-                    $(".passenger-info-popup .name").html(data.name)
-                    $(".passenger-info-popup .username").html(data.userName)
-                    $(".passenger-info-popup .userBranch").html(data.branch)
-                    $(".passenger-info-popup .phone").html(data.phone)
-                    $(".passenger-info-popup .price").html(data.price)
-                    $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "")
-                    const date = new Date(data.createdAt)
-                    $(".passenger-info-popup .createdAt").html(date.toLocaleDateString() + " " + date.toLocaleTimeString())
+                const $popup = $(".passenger-info-popup");
+                $popup.removeClass("m").removeClass("f").addClass(passengers[0].gender);
+                $popup.html("");
 
-                    $(".passenger-info-popup").css({
-                        left: popupLeft + "px",
-                        top: popupTop + "px",
-                        display: "block"
-                    });
-                }
+                passengers.forEach((p, idx) => {
+                    const date = new Date(p.createdAt);
+                    const item = $(`<div class=\"passenger-item\">\n<p class=\"text-center\"><b>${seatNo}</b></p>\n<p class=\"text-center\"><b>${p.from}<i class='fa-solid fa-route mx-2'></i>${p.to}</b></p>\n<p class=\"text-center\">${p.name} / ${p.phoneNumber}</p>\n<p><b>İşlem Yapan:</b>${p.userName} / ${p.branch}</p>\n<p><b>Ücret:</b>${p.price}₺</p>\n<p><b>PNR:</b>${p.pnr || ""}</p>\n<p><b>İşlem Zamanı:</b>${date.toLocaleDateString()} ${date.toLocaleTimeString()}</p>\n</div>`);
+                    $popup.append(item);
+                    if (idx !== passengers.length - 1) $popup.append('<hr/>');
+                });
+
+                $popup.css({
+                    left: popupLeft + "px",
+                    top: popupTop + "px",
+                    display: "block"
+                });
             });
 
             $(".seat").on("mouseleave", function () {

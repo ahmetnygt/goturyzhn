@@ -369,6 +369,64 @@ exports.getTripTable = async (req, res, next) => {
     res.render("mixins/passengersTable", { tickets: newTicketArray })
 }
 
+exports.getTripSeats = async (req, res, next) => {
+    try {
+        const tripId = req.params.id;
+
+        const trip = await Trip.findOne({ where: { id: tripId } });
+        if (!trip) return res.status(404).json({ error: "Sefer bulunamadı." });
+
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] });
+        const stopIds = [...new Set(routeStops.map(rs => rs.stopId))];
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+
+        const tickets = await Ticket.findAll({
+            where: { tripId: trip.id, status: { [Op.notIn]: ["canceled", "refund"] } },
+            order: [["seatNo", "ASC"]]
+        });
+
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } });
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } });
+
+        const stopsMap = stops.reduce((acc, s) => { acc[s.id] = s.title; return acc; }, {});
+        const userMap = users.reduce((acc, u) => { acc[u.id] = u; return acc; }, {});
+        const branchMap = branches.reduce((acc, b) => { acc[b.id] = b; return acc; }, {});
+
+        const seatMap = {};
+        tickets.forEach(t => {
+            const user = userMap[t.userId] || {};
+            const branch = branchMap[user.branchId] || {};
+            const passenger = {
+                seatNumber: t.seatNo,
+                ticketGroupId: t.ticketGroupId,
+                pnr: t.pnr,
+                gender: t.gender,
+                from: stopsMap[t.fromRouteStopId],
+                to: stopsMap[t.toRouteStopId],
+                name: `${t.name} ${t.surname}`,
+                phoneNumber: t.phoneNumber,
+                price: t.price,
+                createdAt: t.createdAt,
+                userName: user.name,
+                branch: branch.title,
+                status: t.status,
+                isOwnBranchTicket: (user.branchId == req.session.user.branchId).toString(),
+                isOwnBranchStop: (t.fromRouteStopId == branchMap[req.session.user.branchId]?.stopId).toString(),
+                tripRefundOptionDate: trip.refundOptionDate
+            };
+
+            if (!seatMap[t.seatNo]) seatMap[t.seatNo] = [];
+            seatMap[t.seatNo].push(passenger);
+        });
+
+        const result = Object.entries(seatMap).map(([seatNo, passengers]) => ({ seatNo: Number(seatNo), passengers }));
+        res.json(result);
+    } catch (err) {
+        console.error("getTripSeats error:", err);
+        res.status(500).json({ error: "Sunucu hatası." });
+    }
+};
+
 exports.getTripNotes = async (req, res, next) => {
     const tripId = req.query.tripId
 
