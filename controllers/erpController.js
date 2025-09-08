@@ -142,15 +142,11 @@ function getSeatTypes(planBinary) {
 
         seatNo++;
         const col = i % SEATS_PER_ROW;
-        let neighbor = null;
 
-        if (col === 0) neighbor = i + 1;
-        else if (col === 1) neighbor = i - 1;
-        else if (col === 3) neighbor = i + 1;
-        else if (col === 4) neighbor = i - 1;
-
-        const type = neighbor !== null && planBinary[neighbor] === '1' ? 'double' : 'single';
-        seatTypes[seatNo] = type;
+        // A seat is double if there's another seat directly adjacent on either side
+        const hasLeft = col > 0 && planBinary[i - 1] === '1';
+        const hasRight = col < SEATS_PER_ROW - 1 && planBinary[i + 1] === '1';
+        seatTypes[seatNo] = (hasLeft || hasRight) ? 'double' : 'single';
     }
 
     return seatTypes;
