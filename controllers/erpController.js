@@ -177,9 +177,13 @@ exports.getDayTripsList = async (req, res, next) => {
         const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
         const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
+        const fromStop = await Stop.findOne({ where: { id: stopId } })
+
         var newTrips = []
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
+
+            t.fromPlaceString = fromStop.title
 
             t.isExpired = new Date(`${t.date} ${t.time}`) < new Date()
 
@@ -986,7 +990,7 @@ exports.postTickets = async (req, res, next) => {
                 idNumber: t.idNumber,
                 name: (t.name || "").toLocaleUpperCase("tr-TR"),
                 surname: (t.surname || "").toLocaleUpperCase("tr-TR"),
-                price: t.price ?? 0,
+                price: t.price ? t.price : null,
                 tripId: trip.id,
                 ticketGroupId: ticketGroupId,
                 status: status,
@@ -1039,7 +1043,7 @@ exports.postTickets = async (req, res, next) => {
                 await existingCustomer.save()
             }
 
-            if (ticket.status === "completed") {
+            if (ticket.status === "completed" && ticket.payment !== "point") {
                 const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
                 const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
@@ -1368,12 +1372,57 @@ exports.postCancelTicket = async (req, res, next) => {
         const pnr = req.body.pnr;
 
         const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.fromRouteStopId)), ...new Set(tickets.map(t => t.toRouteStopId))] } } })
 
         for (let i = 0; i < tickets.length; i++) {
             if (tickets[i].tripId == trip.id) {
-                const currentStatus = tickets[i].status
-                tickets[i].status = currentStatus === "reservation" ? "canceled" : "refund";
-                await tickets[i].save();
+                const ticket = tickets[i]
+                const currentStatus = ticket.status
+                ticket.status = currentStatus === "reservation" ? "canceled" : "refund";
+                await ticket.save();
+
+                if (ticket.status == "refund" && ticket.payment !== "point") {
+                    const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
+                    const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+
+                    await Transaction.create({
+                        userId: req.session.user.id,
+                        type: "expense",
+                        category: ticket.payment === "cash" ? "cash_refund" : ticket.payment === "card" ? "card_refund" : "point_refund",
+                        amount: ticket.price,
+                        description: `Bilet iade edildi | ${fromTitle} - ${toTitle}`,
+                        ticketId: ticket.id
+                    });
+
+                    const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+                    if (register) {
+                        if (ticket.payment === "cash") {
+                            register.cash_balance = (register.cash_balance || 0) - (ticket.price || 0);
+                        } else if (ticket.payment === "card") {
+                            register.card_balance = (register.card_balance || 0) - (ticket.price || 0);
+                        }
+                        await register.save();
+                    }
+                }
+                else if (ticket.status == "refund" && ticket.payment == "point") {
+                    const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
+                    const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
+
+                    const orConds = [];
+                    if (ticket.idNumber) orConds.push({ idNumber: ticket.idNumber });
+                    if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
+
+                    let existingCustomer = null;
+                    if (orConds.length) {
+                        existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+                    }
+
+                    if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
+                        existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price)
+                    }
+                    await existingCustomer.save()
+                }
+                res.locals.newRecordId = ticket.id;
             }
         }
 
@@ -1537,28 +1586,83 @@ exports.postMoveTickets = async (req, res, next) => {
 }
 
 exports.getSearchTable = async (req, res, next) => {
-    const where = {
-        ...(req.query.name && { name: req.query.name }),
-        ...(req.query.surname && { surname: req.query.surname }),
-        ...(req.query.idnum && { idNumber: req.query.idnum }),
-        ...(req.query.phone && { phoneNumber: req.query.phone }),
-        ...(req.query.pnr && { pnr: req.query.pnr })
+    try {
+        // Query'leri trimleyip boş olanları ele
+        const filters = {
+            ...(req.query.name?.trim() && { name: req.query.name.trim() }),
+            ...(req.query.surname?.trim() && { surname: req.query.surname.trim() }),
+            ...(req.query.idnum?.trim() && { idNumber: req.query.idnum.trim() }),
+            ...(req.query.phone?.trim() && { phoneNumber: req.query.phone.trim() }),
+            ...(req.query.pnr?.trim() && { pnr: req.query.pnr.trim() }),
+        };
+
+        // Filtre yoksa where göndermeyelim
+        const where = Object.keys(filters).length ? filters : undefined;
+
+        const tickets = await Ticket.findAll({
+            ...(where && { where }),
+            order: [["seatNo", "ASC"]],
+        });
+
+        // Hiç bilet yoksa direkt boş tablo render et
+        if (!tickets.length) {
+            return res.render("mixins/passengersTable", { tickets: [] });
+        }
+
+        // İlişkili verileri sadece ihtiyaç varsa topla
+        const tripIds = [...new Set(tickets.map((t) => t.tripId).filter(Boolean))];
+
+        let stopMap = new Map(); // stopId -> stopTitle
+
+        if (tripIds.length) {
+            const trips = await Trip.findAll({
+                where: { id: { [Op.in]: tripIds } },
+            });
+
+            const routeIds = [
+                ...new Set(trips.map((tr) => tr.routeId).filter(Boolean)),
+            ];
+
+            if (routeIds.length) {
+                const routeStops = await RouteStop.findAll({
+                    where: { routeId: { [Op.in]: routeIds } },
+                    order: [["order", "ASC"]],
+                });
+
+                const stopIds = [
+                    ...new Set(routeStops.map((rs) => rs.stopId).filter(Boolean)),
+                ];
+
+                if (stopIds.length) {
+                    const stops = await Stop.findAll({
+                        where: { id: { [Op.in]: stopIds } },
+                    });
+
+                    // Hızlı erişim için map'e çevir
+                    stopMap = new Map(stops.map((s) => [String(s.id), s.title]));
+                }
+            }
+        }
+
+        // Ticket'ları from/to başlıklarıyla zenginleştir
+        const newTicketArray = tickets.map((ticket) => {
+            const t = ticket.toJSON ? ticket.toJSON() : ticket; // Sequelize instance -> plain obj
+            const fromTitle = stopMap.get(String(t.fromRouteStopId)) || "-";
+            const toTitle = stopMap.get(String(t.toRouteStopId)) || "-";
+
+            return {
+                ...t,
+                from: fromTitle,
+                to: toTitle,
+            };
+        });
+
+        return res.render("mixins/passengersTable", { tickets: newTicketArray });
+    } catch (err) {
+        return next(err);
     }
+};
 
-    const tickets = await Ticket.findAll({ where: where, order: [["seatNo", "ASC"]] })
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
-
-    let newTicketArray = []
-    for (let i = 0; i < tickets.length; i++) {
-        const ticket = tickets[i];
-        ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
-        ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
-
-        newTicketArray.push(ticket)
-    }
-    res.render("mixins/passengersTable", { tickets: newTicketArray })
-}
 
 exports.getBusPlanPanel = async (req, res, next) => {
     let id = req.query.id

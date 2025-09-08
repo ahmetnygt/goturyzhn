@@ -185,6 +185,15 @@ body {
     display: none;
 }
 
+.ticket-search-pop-up * {
+    user-select: none;
+}
+
+.searched-table {
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
 .open-ticket-sale {
     position: absolute;
     left: 50%;

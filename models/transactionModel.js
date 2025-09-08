@@ -17,6 +17,7 @@ const Transaction = sequelize.define("transaction", {
     },
     category: {
         type: Sequelize.ENUM(
+            "point_sale",
             "cash_sale",
             "card_sale",
             "cash_refund",
