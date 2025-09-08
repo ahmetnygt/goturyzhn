@@ -18,14 +18,15 @@ html
       .p-3
         p.error-message
     if !isNoNavbar
-      nav.navbar.navbar-expand-lg.bg-body-tertiary
+      nav.navbar.navbar-expand-lg.bg-body-tertiary(style="height: 8vh;")
         .container-fluid
+          #clock.me-2.fs-4
           a.navbar-brand(href="#")
             img.d-inline-block.align-text-top(src="/images/gotur_vip_logo.jpg" alt="Logo" width="100" height="25")
           button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
             span.navbar-toggler-icon
           #navbarSupportedContent.collapse.navbar-collapse
-            ul.navbar-nav.me-auto.mb-2.mb-lg-0
+            ul.navbar-nav.mb-2.mb-lg-0
               li.nav-item.dropdown
                 a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
                   | Bilet
@@ -93,9 +94,12 @@ html
                   li
                     a.dropdown-item.customer-nav(href="#") Müşteriler
               li.nav-item
-                a.nav-link(href="#") Link
+                a.nav-link(href="#") Raporlar
           if user
-            button.btn.btn-outline-success(type="submit") #{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
+            button.btn.btn-outline-success.d-flex.gap-2.align-items-center(type="submit") 
+              a.navbar-brand(href="#")
+                img.d-inline-block.align-text-top(src="/images/uludag.png" alt="Logo" width="100" height="25")
+              |#{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
     div(style="padding:1rem 1rem 0rem 1rem!important;")
       block content
 

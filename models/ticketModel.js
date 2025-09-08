@@ -31,7 +31,7 @@ const Ticket = sequelize.define("ticket", {
     },
     price: {
         type: Sequelize.FLOAT,
-        allowNull: false
+        allowNull: true
     },
     status: {
         type: Sequelize.ENUM("web", "gotur", "completed", "reservation", "canceled", "refund", "open"),

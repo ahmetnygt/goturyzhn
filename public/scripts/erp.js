@@ -21,6 +21,19 @@ let tripStaffList = [];
 let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
+function updateClock() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+}
+
+// İlk yüklemede çalıştır
+updateClock();
+// Her saniyede bir güncelle
+setInterval(updateClock, 1000);
+
 let loadingCount = 0;
 const showLoading = () => {
     if (loadingCount === 0) $(".loading").css("display", "flex");
@@ -1023,7 +1036,8 @@ async function loadTrip(date, time, tripId) {
                     $(".passenger-info-popup .username").html(data.userName)
                     $(".passenger-info-popup .userBranch").html(data.branch)
                     $(".passenger-info-popup .phone").html(data.phone)
-                    $(".passenger-info-popup .price").html(data.price)
+                    $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "")
+                    $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "")
                     $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "")
                     const date = new Date(data.createdAt)
                     $(".passenger-info-popup .createdAt").html(date.toLocaleDateString() + " " + date.toLocaleTimeString())
@@ -1329,59 +1343,63 @@ $("#currentStop").on("change", async (e) => {
 $(".ticket-button-action").on("click", async e => {
     if (e.currentTarget.dataset.action == "sell") {
         const firstTicket = $(".ticket-row").first();
-        let usePointPayment = false;
-        if (firstTicket.length) {
-            const price = Number(firstTicket.find(".price").find("input").val());
-            const span = firstTicket.find(".price").find("span.customer-point");
-            const pointOrPercent = span.data("pointorpercent");
-            const pointAmount = Number(span.data("pointamount") || 0);
-            if (pointOrPercent === "point" && pointAmount >= price) {
-                usePointPayment = confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
-                if (usePointPayment) {
-                    $(".ticket-rows").find(".payment").find("select").val("point");
+        const price = Number(firstTicket.find(".price").find("input").val());
+        const span = firstTicket.find(".price").find("span.customer-point");
+        const pointOrPercent = span.data("pointorpercent");
+        const pointAmount = Number(span.data("pointamount") || 0);
+        if ($(".ticket-rows").find(".payment").find("select").val() == "point" && pointAmount < price) {
+            alert("Müşterinin puanı fiyatı karşılamıyor. Başka bir ödeme yöntemi deneyin.");
+        }
+        else {
+            let usePointPayment = false;
+            if (firstTicket.length) {
+                if (pointOrPercent === "point" && pointAmount >= price) {
+                    usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
+                    if (usePointPayment) {
+                        $(".ticket-rows").find(".payment").find("select").val("point");
+                    }
                 }
             }
-        }
 
-        let tickets = []
+            let tickets = []
 
-        for (let i = 0; i < selectedSeats.length; i++) {
+            for (let i = 0; i < selectedSeats.length; i++) {
 
-            const ticket = $(".ticket-row")[i]
+                const ticket = $(".ticket-row")[i]
 
-            const ticketObj = {
-                seatNumber: $(ticket).find(".seat-number").find("input").val(),
-                idNumber: $(ticket).find(".identity").find("input").val(),
-                name: $(ticket).find(".name").find("input").val(),
-                surname: $(ticket).find(".surname").find("input").val(),
-                phoneNumber: $(".ticket-rows").find(".phone").find("input").val(),
-                gender: $(ticket).find(".gender input:checked").val(),
-                nationality: $(ticket).find(".nationality").find("select").val(),
-                type: $(ticket).find(".type").find("select").val(),
-                category: $(ticket).find(".category").find("select").val(),
-                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
-                price: $(ticket).find(".price").find("input").val(),
-                payment: usePointPayment ? "point" : $(".ticket-rows").find(".payment").find("select").val(),
+                const ticketObj = {
+                    seatNumber: $(ticket).find(".seat-number").find("input").val(),
+                    idNumber: $(ticket).find(".identity").find("input").val(),
+                    name: $(ticket).find(".name").find("input").val(),
+                    surname: $(ticket).find(".surname").find("input").val(),
+                    phoneNumber: $(".ticket-rows").find(".phone").find("input").val(),
+                    gender: $(ticket).find(".gender input:checked").val(),
+                    nationality: $(ticket).find(".nationality").find("select").val(),
+                    type: $(ticket).find(".type").find("select").val(),
+                    category: $(ticket).find(".category").find("select").val(),
+                    optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
+                    price: $(ticket).find(".price").find("input").val(),
+                    payment: usePointPayment ? "point" : $(".ticket-rows").find(".payment").find("select").val(),
+                }
+
+                tickets.push(ticketObj)
             }
 
-            tickets.push(ticketObj)
+            const ticketsStr = JSON.stringify(tickets)
+
+            await $.ajax({
+                url: "/erp/post-tickets",
+                type: "POST",
+                data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+                success: async function (response) {
+                    ticketClose()
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            });
         }
-
-        const ticketsStr = JSON.stringify(tickets)
-
-        await $.ajax({
-            url: "/erp/post-tickets",
-            type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
-            success: async function (response) {
-                ticketClose()
-                loadTrip(currentTripDate, currentTripTime, currentTripId)
-            },
-            error: function (xhr, status, error) {
-                console.log(error);
-            }
-        });
-
     }
     else if (e.currentTarget.dataset.action == "complete") {
         let tickets = []
