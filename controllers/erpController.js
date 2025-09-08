@@ -132,6 +132,32 @@ function addTime(baseTime, addTime) {
     return `${hh}:${mm}:${ss}`;
 }
 
+function getSeatTypes(planBinary) {
+    const SEATS_PER_ROW = 5;
+    const seatTypes = {};
+    let seatNo = 0;
+
+    for (let i = 0; i < planBinary.length; i++) {
+        if (planBinary[i] !== '1') continue;
+
+        seatNo++;
+        const col = i % SEATS_PER_ROW;
+        let neighbor = null;
+
+        if (col === 0) neighbor = i + 1;
+        else if (col === 1) neighbor = i - 1;
+        else if (col === 3) neighbor = i + 1;
+        else if (col === 4) neighbor = i - 1;
+
+        const type = neighbor !== null && planBinary[neighbor] === '1' ? 'double' : 'single';
+        seatTypes[seatNo] = type;
+    }
+
+    return seatTypes;
+}
+
+exports.getSeatTypes = getSeatTypes;
+
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
@@ -227,6 +253,7 @@ exports.getTrip = async (req, res, next) => {
         const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
+        const seatTypes = getSeatTypes(busModel.planBinary)
         const accountCut = await BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
@@ -345,7 +372,7 @@ exports.getTrip = async (req, res, next) => {
         }
 
         // res.json({ trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
-        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
+        res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, seatTypes, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
     }
     else {
         res.status(404).json({ error: "Sefer bulunamadı." })
