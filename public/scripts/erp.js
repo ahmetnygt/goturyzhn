@@ -1199,7 +1199,7 @@ async function loadTrip(date, time, tripId) {
 
 // Site ilk açıldığında bugünün seferini yükler
 $(document).ready(function () {
-    loadTrip('2025-05-12', '12:30:00', 1)
+    // loadTrip('2025-05-12', '12:30:00', 1)
     loadTripsList("2025-05-12")
 })
 

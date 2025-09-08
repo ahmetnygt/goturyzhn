@@ -155,9 +155,13 @@ exports.getDayTripsList = async (req, res, next) => {
         const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
         const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
+        const fromStop = await Stop.findOne({ where: { id: stopId } })
+
         var newTrips = []
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
+
+            t.fromPlaceString = fromStop.title
 
             t.isExpired = new Date(`${t.date} ${t.time}`) < new Date()
 
