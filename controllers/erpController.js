@@ -851,7 +851,7 @@ exports.postErpLogin = async (req, res, next) => {
 exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
 
 exports.getTicketRow = async (req, res, next) => {
-    const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId } = req.query;
+    const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId, seatTypes } = req.query;
 
     // Trip için where koşulunu dinamik kur
     const tripWhere = {};
@@ -928,7 +928,7 @@ exports.getTicketRow = async (req, res, next) => {
         price = p ? p : 0;
     }
 
-    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch });
+    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes });
 };
 
 

@@ -14,6 +14,8 @@ let fromStr;
 let toStr;
 let accountCutData;
 let accountCutId;
+let originalPrices = []
+let seatTypes = []
 
 let tripStaffInitial = {};
 let tripStaffList = [];
@@ -49,8 +51,8 @@ const showError = message => {
         typeof message === "string"
             ? message
             : message && message.message
-            ? message.message
-            : JSON.stringify(message);
+                ? message.message
+                : JSON.stringify(message);
     $(".error-popup .error-message").text(msg || "Bilinmeyen hata");
     $(".error-popup").css("display", "block");
 };
@@ -756,15 +758,19 @@ async function loadTrip(date, time, tripId) {
             $(".ticket-op-button").on("click", async e => {
                 const button = e.currentTarget
                 const action = e.currentTarget.dataset.action
-                const seat = currentSeat[0].dataset.seatNumber
                 const fromId = currentStop
                 const toId = button.dataset.stopId
+
+                for (let i = 0; i < selectedSeats.length; i++) {
+                    const seat = selectedSeats[i];
+                    seatTypes.push($(`.seat-${seat}`).data("seat-type"))
+                }
 
                 $(".ticket-ops-pop-up").hide()
                 await $.ajax({
                     url: "/erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+                    data: { gender: button.dataset.gender, seats: selectedSeats, seatTypes: seatTypes, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
                     success: function (response) {
                         $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase())
                         $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
@@ -774,9 +780,12 @@ async function loadTrip(date, time, tripId) {
                         $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET")
                         $(".ticket-rows").prepend(response)
 
+                        seatTypes = []
+
                         initTcknInputs(".identity input")
                         initPhoneInput(".phone input")
 
+                        // originalPrice = Number($(".ticket-row").find(".price").find("input").val())
                         $(".identity input").on("blur", async e => {
                             const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                             if (customer) {
@@ -791,6 +800,19 @@ async function loadTrip(date, time, tripId) {
                                     .addClass("text-danger")
                                     .data("pointorpercent", customer.pointOrPercent)
                                     .data("pointamount", customer.point_amount)
+                                // $(row).find(".price").find("input").val(originalPrice)
+                                // if (customer.pointOrPercent == "percent") {
+                                //     const discount = Number(customer.percent)
+                                //     const newPrice = originalPrice - (originalPrice / 100 * discount)
+                                //     $(row).find(".price").find("input").val(newPrice)
+                                // }
+                                // else if (!customer.pointOrPercent) {
+                                //     $(row).find(".price").find("span.customer-point")
+                                //         .html("")
+                                //         .removeClass("text-danger")
+                                //         .data("pointorpercent", "")
+                                //         .data("pointamount", "")
+                                // }
                                 if (customer.gender == "m") {
                                     $(row).find(".gender").find("input.male").prop("checked", true)
                                     $(row).find(".gender").find("input.female").prop("checked", false)

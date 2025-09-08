@@ -1,7 +1,7 @@
 - for(let i = 0; i < seats.length; i++){
     .ticket-row(class=gender[i])
         .seat-number
-            p.mb-0 #{seats[i]}
+            p.mb-0 #{`${seats[i]<10?"0"+seats[i]:seats[i]}`}
             input(type="hidden" value=seats[i])
         .gender
             input.male(id="male_"+i name="gender_"+i type="radio" value="m" checked=gender[i]=="m"?true:false)
@@ -46,12 +46,18 @@
                     option(value="member") Abone
                     option(value="guest") Misafir
         .price
-            label.form-label Fiyat
-                span.customer-point.ms-2
+            label.form-label Fiyat 
+                span.customer-point.ms-1
             if !permissions.includes('ENTER_FREE_PRICE')
-                input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.price1)
+                if seatTypes[i] == "single"
+                    input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
+                else
+                    input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.price1)
             else 
-                input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.price1)
+                if seatTypes[i] == "single"
+                    input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
+                else
+                    input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.price1)
 -}
 .ticket-info    
     .up-row
