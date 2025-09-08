@@ -32,9 +32,17 @@ const hideLoading = () => {
 };
 
 const showError = message => {
-    $(".error-popup .error-message").text(message);
+    const msg =
+        typeof message === "string"
+            ? message
+            : message && message.message
+            ? message.message
+            : JSON.stringify(message);
+    $(".error-popup .error-message").text(msg || "Bilinmeyen hata");
     $(".error-popup").css("display", "block");
 };
+
+window.showError = showError;
 
 $(document).on("click", ".error-close", () => $(".error-popup").hide());
 
