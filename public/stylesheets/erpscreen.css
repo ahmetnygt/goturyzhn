@@ -158,6 +158,7 @@ body {
     border-radius: 5px;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     background-color: white;
+    user-select: none;
 }
 
 .passenger-table table {
@@ -1406,6 +1407,28 @@ div.ticket-cancel-refund-open-close {
     opacity: 15%;
     cursor: pointer;
     user-select: none;
+}
+
+.seat[data-only-gender="m"] .seat-number {
+    color: #216396;
+    opacity: 1;
+}
+
+.seat[data-only-gender="m"] .seat-number::after,
+.seat[data-only-gender="m"] .seat-number::before {
+    color: #216396;
+    content: "-";
+}
+
+.seat[data-only-gender="f"] .seat-number {
+    color: #920256;
+    opacity: 1;
+}
+
+.seat[data-only-gender="f"] .seat-number::after,
+.seat[data-only-gender="f"] .seat-number::before {
+    color: #920256;
+    content: "-";
 }
 
 .seat .seat-content {

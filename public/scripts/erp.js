@@ -416,6 +416,30 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            // Adjacent seat gender indicators
+            document.querySelectorAll('.seat').forEach(seat => {
+                const gender = seat.dataset.gender;
+                if (gender !== 'm' && gender !== 'f') return;
+
+                const row = seat.closest('.seat-row');
+                const seats = Array.from(row.querySelectorAll('.seat')).filter(s => !s.classList.contains('none'));
+                const index = seats.indexOf(seat);
+
+                if (index > 0) {
+                    const leftSeat = seats[index - 1];
+                    if (!leftSeat.dataset.gender) {
+                        leftSeat.dataset.onlyGender = gender;
+                    }
+                }
+
+                if (index < seats.length - 1) {
+                    const rightSeat = seats[index + 1];
+                    if (!rightSeat.dataset.gender) {
+                        rightSeat.dataset.onlyGender = gender;
+                    }
+                }
+            });
+
             currentTripDate = $("#tripDate").val()
             currentTripTime = $("#tripTime").val()
             currentTripPlaceTime = $("#tripPlaceTime").val()
@@ -770,7 +794,7 @@ async function loadTrip(date, time, tripId) {
                 await $.ajax({
                     url: "/erp/get-ticket-row",
                     type: "GET",
-                    data: { gender: button.dataset.gender, seats: selectedSeats, seatTypes: seatTypes, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+                    data: { action: e.currentTarget.dataset.action, gender: button.dataset.gender, seats: selectedSeats, seatTypes: seatTypes, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
                     success: function (response) {
                         $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase())
                         $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
@@ -785,11 +809,15 @@ async function loadTrip(date, time, tripId) {
                         initTcknInputs(".identity input")
                         initPhoneInput(".phone input")
 
-                        // originalPrice = Number($(".ticket-row").find(".price").find("input").val())
+                        $(".ticket-row").each((i, e) => {
+                            originalPrices[i] = Number($(".ticket-row").find(".price").find("input").val())
+                        })
                         $(".identity input").on("blur", async e => {
                             const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                             if (customer) {
                                 const row = e.currentTarget.parentElement.parentElement
+                                const rows = [...document.querySelectorAll('.ticket-row')];
+                                const originalPrice = originalPrices[rows.indexOf(e.currentTarget.closest('.ticket-row'))];
                                 $(row).find(".name").find("input").val(customer.name)
                                 $(row).find(".surname").find("input").val(customer.surname)
                                 $(row).find(".category").find("input").val(customer.customerCategory)
@@ -800,19 +828,19 @@ async function loadTrip(date, time, tripId) {
                                     .addClass("text-danger")
                                     .data("pointorpercent", customer.pointOrPercent)
                                     .data("pointamount", customer.point_amount)
-                                // $(row).find(".price").find("input").val(originalPrice)
-                                // if (customer.pointOrPercent == "percent") {
-                                //     const discount = Number(customer.percent)
-                                //     const newPrice = originalPrice - (originalPrice / 100 * discount)
-                                //     $(row).find(".price").find("input").val(newPrice)
-                                // }
-                                // else if (!customer.pointOrPercent) {
-                                //     $(row).find(".price").find("span.customer-point")
-                                //         .html("")
-                                //         .removeClass("text-danger")
-                                //         .data("pointorpercent", "")
-                                //         .data("pointamount", "")
-                                // }
+                                $(row).find(".price").find("input").val(originalPrice)
+                                if (customer.pointOrPercent == "percent") {
+                                    const discount = Number(customer.percent)
+                                    const newPrice = originalPrice - (originalPrice / 100 * discount)
+                                    $(row).find(".price").find("input").val(newPrice)
+                                }
+                                else if (!customer.pointOrPercent) {
+                                    $(row).find(".price").find("span.customer-point")
+                                        .html("")
+                                        .removeClass("text-danger")
+                                        .data("pointorpercent", "")
+                                        .data("pointamount", "")
+                                }
                                 if (customer.gender == "m") {
                                     $(row).find(".gender").find("input.male").prop("checked", true)
                                     $(row).find(".gender").find("input.female").prop("checked", false)
@@ -830,9 +858,13 @@ async function loadTrip(date, time, tripId) {
                         $(".ticket-info-pop-up").css("display", "block")
                         $(".blackout").css("display", "block")
 
-                        flatpickr($(".reservation-expire input.changable"), {
+                        flatpickr($(".reservation-expire input.changable.date"), {
                             locale: "tr",
-                            enableTime: true
+                        })
+                        flatpickr($(".reservation-expire input.changable.time"), {
+                            locale: "tr",
+                            enableTime: true,
+                            noCalendar: true,
                         })
 
                         $(document).on("change", ".ticket-row input[type='radio']", function () {
@@ -916,6 +948,11 @@ async function loadTrip(date, time, tripId) {
 
                 // ---- Normal mod (popup + seçim) ----
                 const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
+
+                $(".ticket-op").css("display", "flex")
+
+                if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none")
+                else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none")
 
                 // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
                 if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
@@ -1407,7 +1444,8 @@ $(".ticket-button-action").on("click", async e => {
                     nationality: $(ticket).find(".nationality").find("select").val(),
                     type: $(ticket).find(".type").find("select").val(),
                     category: $(ticket).find(".category").find("select").val(),
-                    optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
+                    optionTime: $(".ticket-rows").find(".reservation-expire").find("input.time").val(),
+                    optionDate: $(".ticket-rows").find(".reservation-expire").find("input.date").val(),
                     price: $(ticket).find(".price").find("input").val(),
                     payment: usePointPayment ? "point" : $(".ticket-rows").find(".payment").find("select").val(),
                 }
@@ -1572,7 +1610,8 @@ $(".ticket-button-action").on("click", async e => {
                 nationality: $(ticket).find(".nationality").find("select").val(),
                 type: $(ticket).find(".type").find("select").val(),
                 category: $(ticket).find(".category").find("select").val(),
-                optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
+                optionTime: $(".ticket-rows").find(".reservation-expire").find("input.time").val(),
+                optionDate: $(".ticket-rows").find(".reservation-expire").find("input.date").val(),
                 price: $(ticket).find(".price").find("input").val(),
             }
 
@@ -1676,12 +1715,17 @@ $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
 
     if (action == "complete") {
+        for (let i = 0; i < selectedTakenSeats.length; i++) {
+            const seat = selectedTakenSeats[i];
+            seatTypes.push($(`.seat-${seat}`).data("seat-type"))
+        }
+
         $(".ticket-button-action").attr("data-action", "complete")
         $(".ticket-button-action").html("SAT")
         await $.ajax({
             url: "/erp/get-ticket-row",
             type: "GET",
-            data: { isTaken: true, seatNumbers: selectedTakenSeats, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+            data: { action: "complete", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -1689,6 +1733,8 @@ $(".taken-ticket-op").on("click", async e => {
                 $(".ticket-rows").prepend(response)
                 $(".ticket-info-pop-up").css("display", "block")
                 $(".blackout").css("display", "block")
+
+                seatTypes = []
 
                 $(".taken-ticket-ops-pop-up").hide()
 
@@ -1718,10 +1764,15 @@ $(".taken-ticket-op").on("click", async e => {
                     }
                 })
 
-                flatpickr($(".reservation-expire input.changable"), {
+                flatpickr($(".reservation-expire input.changable.date"), {
                     locale: "tr",
-                    enableTime: true
                 })
+                flatpickr($(".reservation-expire input.changable.time"), {
+                    locale: "tr",
+                    enableTime: true,
+                    noCalendar: true,
+                })
+
                 $(document).on("change", ".ticket-row input[type='radio']", function () {
                     const $row = $(this).closest(".ticket-row");
 
@@ -1743,12 +1794,17 @@ $(".taken-ticket-op").on("click", async e => {
     }
 
     else if (action == "edit") {
+        for (let i = 0; i < selectedTakenSeats.length; i++) {
+            const seat = selectedTakenSeats[i];
+            seatTypes.push($(`.seat-${seat}`).data("seat-type"))
+        }
+
         $(".ticket-button-action").attr("data-action", "edit")
         $(".ticket-button-action").html("KAYDET")
         await $.ajax({
             url: "/erp/get-ticket-row",
             type: "GET",
-            data: { isTaken: true, seatNumbers: selectedTakenSeats, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+            data: { action: "edit", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -1756,6 +1812,8 @@ $(".taken-ticket-op").on("click", async e => {
                 $(".ticket-rows").prepend(response)
                 $(".ticket-info-pop-up").css("display", "block")
                 $(".blackout").css("display", "block")
+
+                seatTypes = []
 
                 $(".taken-ticket-ops-pop-up").hide()
 
@@ -1785,10 +1843,15 @@ $(".taken-ticket-op").on("click", async e => {
                     }
                 })
 
-                flatpickr($(".reservation-expire input.changable"), {
+                flatpickr($(".reservation-expire input.changable.date"), {
                     locale: "tr",
-                    enableTime: true
                 })
+                flatpickr($(".reservation-expire input.changable.time"), {
+                    locale: "tr",
+                    enableTime: true,
+                    noCalendar: true,
+                })
+
                 $(document).on("change", ".ticket-row input[type='radio']", function () {
                     const $row = $(this).closest(".ticket-row");
 
@@ -2261,7 +2324,7 @@ $(".open-ticket-next").on("click", async e => {
     await $.ajax({
         url: "/erp/get-ticket-row",
         type: "GET",
-        data: { fromId, toId, count, isOpen: true },
+        data: { fromId, toId, count, isOpen: true, action: "sell" },
         success: function (response) {
             $(".ticket-row").remove()
             $(".ticket-info").remove()

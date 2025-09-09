@@ -1,5 +1,5 @@
 if (permissions.includes("SALE_CREATE_OWN_BRANCH") && isOwnBranchStop == "true" || permissions.includes("SALE_CREATE_OTHER_BRANCH") && isOwnBranchStop == "false")
-    .ticket-op
+    .ticket-op.m
         p ERKEK SATIŞ
         i.fa-solid.fa-caret-right
         ul.ticket-op-buttons
@@ -11,7 +11,7 @@ if (permissions.includes("SALE_CREATE_OWN_BRANCH") && isOwnBranchStop == "true" 
                         button.ticket-op-button(type="button" data-gender="m" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 
 //!- if (permissions.includes("PAST_TRIP_RESERVATION") && new Date(reservationOptionDate.replace("Z","")) < new Date())
-.ticket-op
+.ticket-op.m
     p ERKEK REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons
@@ -22,7 +22,7 @@ if (permissions.includes("SALE_CREATE_OWN_BRANCH") && isOwnBranchStop == "true" 
                 else
                     button.ticket-op-button(type="button" data-gender="m" data-action="reservation" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 if (permissions.includes("SALE_CREATE_OWN_BRANCH") && isOwnBranchStop == "true" || permissions.includes("SALE_CREATE_OTHER_BRANCH") && isOwnBranchStop == "false")
-    .ticket-op
+    .ticket-op.f
         p KADIN SATIŞ
         i.fa-solid.fa-caret-right
         ul.ticket-op-buttons
@@ -33,7 +33,7 @@ if (permissions.includes("SALE_CREATE_OWN_BRANCH") && isOwnBranchStop == "true" 
                     else
                         button.ticket-op-button(type="button" data-gender="f" data-action="sell" data-route-stop=rs.title data-stop-id=rs.stopId) #{rs.title}
 //!- if (permissions.includes("PAST_TRIP_RESERVATION") && reservationOptionDate > new Date())
-.ticket-op
+.ticket-op.f
     p KADIN REZERVASYON
     i.fa-solid.fa-caret-right
     ul.ticket-op-buttons

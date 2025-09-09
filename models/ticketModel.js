@@ -34,7 +34,7 @@ const Ticket = sequelize.define("ticket", {
         allowNull: true
     },
     status: {
-        type: Sequelize.ENUM("web", "gotur", "completed", "reservation", "canceled", "refund", "open"),
+        type: Sequelize.ENUM("web", "gotur", "completed", "reservation", "canceled", "refund", "open","pending"),
         allowNull: false
     },
     idNumber: {
@@ -70,7 +70,10 @@ const Ticket = sequelize.define("ticket", {
         allowNull: false
     },
     optionTime: {
-        type: Sequelize.DATE,
+        type: Sequelize.TIME,
+    },
+    optionDate: {
+        type: Sequelize.DATEONLY,
     },
     fromRouteStopId: {
         type: Sequelize.BIGINT,

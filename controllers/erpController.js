@@ -272,7 +272,7 @@ exports.getTrip = async (req, res, next) => {
         const tripDate = new Date(trip.date);
         const [hours, minutes] = trip.modifiedTime.split(":");
         const pad = (num) => String(num).padStart(2, "0");
-        trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
+        trip.dateString = new Intl.DateTimeFormat("tr-TR", {day: "numeric",month: "long"}).format(tripDate);
         trip.timeString = `${hours}.${minutes}`
 
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
@@ -851,7 +851,7 @@ exports.postErpLogin = async (req, res, next) => {
 exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
 
 exports.getTicketRow = async (req, res, next) => {
-    const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId, seatTypes } = req.query;
+    const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId, seatTypes, action } = req.query;
 
     // Trip için where koşulunu dinamik kur
     const tripWhere = {};
@@ -898,14 +898,14 @@ exports.getTicketRow = async (req, res, next) => {
             seats.push(0)
             gender.push("m")
         }
-        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch });
+        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action });
     }
 
     // --- TAKEN CASE ---
     if (isTaken) {
         const { seatNumbers } = req.query;
         const ticket = seatNumbers
-            ? await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers } } })
+            ? await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers }, fromRouteStopId: stopId, status: { [Op.notIn]: ["cancelled", "refund"] } } })
             : [];
 
         if (!ticket.length) {
@@ -916,7 +916,7 @@ exports.getTicketRow = async (req, res, next) => {
         const ticketUserBranch = user ? await Branch.findOne({ where: { id: user.branchId } }) : null;
 
         const gender = ticket.map((t) => t.gender);
-        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch });
+        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action });
     }
 
     // --- ELSE CASE ---
@@ -928,7 +928,7 @@ exports.getTicketRow = async (req, res, next) => {
         price = p ? p : 0;
     }
 
-    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes });
+    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action });
 };
 
 
@@ -998,6 +998,7 @@ exports.postTickets = async (req, res, next) => {
                 customerType: t.type,
                 customerCategory: t.category,
                 optionTime: t.optionTime,
+                optionDate: t.optionDate,
                 fromRouteStopId: fromId,
                 toRouteStopId: toId,
                 userId: req.session.user.id,
