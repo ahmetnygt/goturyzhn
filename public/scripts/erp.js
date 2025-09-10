@@ -4550,7 +4550,7 @@ setInterval(async () => {
     if ($(".pending-payments").css("display") === "none") {
         await loadPendingPayments();
     }
-}, 5000);
+}, 60000);
 
 $(".pending-payments-close").on("click", e => {
     $(".pending-payments").css("display", "none");
