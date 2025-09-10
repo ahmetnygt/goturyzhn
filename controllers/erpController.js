@@ -1723,7 +1723,7 @@ exports.getSearchTable = async (req, res, next) => {
 
         // Hiç bilet yoksa direkt boş tablo render et
         if (!tickets.length) {
-            return res.render("mixins/passengersTable", { activeTickets: [], canceledTickets: [] });
+            return res.render("mixins/searchPassengersTable", { activeTickets: [], canceledTickets: [] });
         }
 
         // İlişkili verileri sadece ihtiyaç varsa topla
@@ -1784,7 +1784,7 @@ exports.getSearchTable = async (req, res, next) => {
         const activeTickets = newTicketArray.filter(t => !canceledStatuses.includes(t.status));
         const canceledTickets = newTicketArray.filter(t => canceledStatuses.includes(t.status));
 
-        return res.render("mixins/passengersTable", { activeTickets, canceledTickets });
+        return res.render("mixins/searchPassengersTable", { activeTickets, canceledTickets });
     } catch (err) {
         return next(err);
     }

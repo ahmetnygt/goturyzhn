@@ -1,0 +1,54 @@
+- const tickets = activeTickets.concat(canceledTickets)
+table.table.table-bordered.table-hover.table-sm.m-0.bg-white
+    thead
+        tr
+            th(scope="col") K.No
+            th(scope="col") Ad Soyad
+            th(scope="col") Cinsiyet
+            th(scope="col") Nereden
+            th(scope="col") Nereye
+            th(scope="col") Tarih
+            th(scope="col") Ücret
+            th(scope="col") Tahsilat
+            th(scope="col") Durum
+            th(scope="col") Telefon
+            th(scope="col") Kimlik
+            th(scope="col") PNR
+    tbody
+        each t in tickets
+            tr(class=t.isOtherStop ? 'other-stop' : ''
+                data-seat-number=t.seatNo
+                data-status=t.status
+                data-pnr=t.pnr ? t.pnr : ''
+                data-group-id=t.ticketGroupId
+                data-is-own-branch-ticket=t.isOwnBranchTicket
+                data-is-own-branch-stop=t.isOwnBranchStop
+                data-refund-option=t.tripRefundOptionDate
+                data-stop-id=t.fromRouteStopId)
+                td.text-center #{t.seatNo}
+                td #{t.name} #{t.surname}
+                td #{t.gender}
+                td #{t.from}
+                td #{t.to}
+                td #{t.date}
+                td #{t.price}
+                td Nakit
+                if t.status == "web"
+                    td WEB
+                else if t.status == "completed" || t.status == "gotur"
+                    td SATIŞ
+                else if t.status == "reservation"
+                    td REZ
+                else if t.status == "open"
+                    td AÇIK
+                else if t.status == "pending"
+                    td BEKLEMEDE
+                else if t.status == "canceled"
+                    td İPTAL
+                else if t.status == "refund"
+                    td İADE
+                else
+                    td -
+                td #{t.phoneNumber}
+                td #{t.idNumber}
+                td #{t.pnr ? t.pnr : ""}
