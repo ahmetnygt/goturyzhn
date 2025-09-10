@@ -5,9 +5,11 @@ let currentTripTime;
 let currentTripPlaceTime;
 let currentTripId;
 let currentGroupId;
+let currentPassengerRow;
 let editingNoteId;
 let currentStop = "1";
 let currentStopStr = "Çanakkale İskele";
+let selectedTicketStopId = currentStop;
 let fromId;
 let toId;
 let fromStr;
@@ -95,6 +97,100 @@ $(document).ajaxComplete(hideLoading);
 
 window.permissions = [];
 const hasPermission = code => window.permissions.includes(code);
+
+function updateTakenTicketOpsVisibility($el) {
+    $(".taken-ticket-op").css("display", "block");
+
+    const status = $el.data("status");
+
+    if (status == "reservation") {
+        $(".taken-ticket-op[data-action='refund']").css("display", "none");
+        $(".taken-ticket-op[data-action='open']").css("display", "none");
+        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none");
+    }
+    else if (status == "completed") {
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none");
+    }
+    else if (status == "web" || status == "gotur") {
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none");
+    }
+    else if (status == "pending") {
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+        $(".taken-ticket-op[data-action='refund']").css("display", "none");
+        $(".taken-ticket-op[data-action='open']").css("display", "none");
+        $(".taken-ticket-op[data-action='move']").css("display", "none");
+        $(".taken-ticket-op[data-action='edit']").css("display", "none");
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+    }
+
+    if (!hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == true && status == "reservation"
+        ||
+        !hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false && status == "reservation"
+        ||
+        !hasPermission("EDIT_OTHER_BRANCH_SALES_IN_OWN_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == true && status == "completed"
+        ||
+        !hasPermission("EDIT_OTHER_BRANCH_SALES_IN_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false && status == "completed"
+        ||
+        !hasPermission("EDIT_OWN_BRANCH_SALES") && $el.data("is-own-branch-ticket") == true && status == "completed"
+        ||
+        !hasPermission("EDIT_OTHER_BRANCH_SALES") && $el.data("is-own-branch-ticket") == false && status == "completed"
+        ||
+        !hasPermission("INTERNET_TICKET_EDIT") && status == "web"
+    ) {
+        $(".taken-ticket-op[data-action='edit']").css("display", "none");
+    }
+
+    if (!hasPermission("CONVERT_OTHER_BRANCH_RESERVATION_TO_SALE_IN_OWN_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == true && status == "reservation"
+        ||
+        !hasPermission("CONVERT_OTHER_BRANCH_RESERVATION_TO_SALE_IN_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false && status == "reservation"
+    ) {
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+    }
+
+    if (!hasPermission("REFUND_OWN_BRANCH_SALES_OWN_BRANCH") && $el.data("is-own-branch-ticket") == true && $el.data("is-own-branch-stop") == true
+        ||
+        !hasPermission("REFUND_OWN_BRANCH_SALES_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == true && $el.data("is-own-branch-stop") == true
+        ||
+        !hasPermission("REFUND_OTHER_BRANCH_SALES_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false
+        ||
+        !hasPermission("REFUND_OTHER_BRANCH_SALES_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false
+        ||
+        !hasPermission("REFUND_EXPIRED_OPTION_TICKET") && new Date($el.data("refund-option").replace("Z", "")) < new Date()
+        ||
+        !hasPermission("WEB_TICKET_REFUND") && status == "web"
+        ||
+        !hasPermission("GOTUR_TICKET_REFUND") && status == "gotur"
+    ) {
+        $(".taken-ticket-op[data-action='refund']").css("display", "none");
+    }
+
+    if (!hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == true
+        ||
+        !hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false
+    ) {
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+    }
+
+    if (!hasPermission("OPEN_WEB_BRANCH_TICKETS") && (status == "web" || status == "gotur")
+        ||
+        !hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $el.data("is-own-branch-ticket") == false && $el.data("is-own-branch-stop") == false
+    ) {
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+    }
+
+    if (!hasPermission("TRANSFER_IN_OWN_BRANCH") && $el.data("is-own-branch-stop") == true
+        ||
+        !hasPermission("TRANSFER_IN_OTHER_BRANCH") && $el.data("is-own-branch-stop") == false
+        ||
+        !hasPermission("TRANSFER_EXPIRED_OPTION_TICKET") && new Date($el.data("refund-option").replace("Z", "")) < new Date()
+    ) {
+        $(".taken-ticket-op[data-action='move']").css("display", "none");
+    }
+}
 
 $(function () {
     hideLoading();
@@ -597,7 +693,6 @@ async function loadTrip(date, time, tripId) {
 
             $(document).on("click", function () {
                 $(".ticket-ops-pop-up").hide();
-                $(".taken-ticket-ops-pop-up").hide();
                 currentSeat = null;
             });
 
@@ -990,95 +1085,8 @@ async function loadTrip(date, time, tripId) {
                 } else {
                     // dolu koltuk: grupça seç/kaldır
                     currentGroupId = $seat.data("group-id")
-                    $(".taken-ticket-op").css("display", "block")
-
-                    if ($seat.data("status") == "reservation") {
-                        $(".taken-ticket-op[data-action='refund']").css("display", "none")
-                        $(".taken-ticket-op[data-action='open']").css("display", "none")
-                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
-                    }
-                    else if ($seat.data("status") == "completed") {
-                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
-                        $(".taken-ticket-op[data-action='complete']").css("display", "none")
-                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
-                    }
-                    else if ($seat.data("status") == "web" || $seat.data("status") == "gotur") {
-                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
-                        $(".taken-ticket-op[data-action='complete']").css("display", "none")
-                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
-                    }
-                    else if ($seat.data("status") == "pending") {
-                        $(".taken-ticket-op[data-action='complete']").css("display", "none")
-                        $(".taken-ticket-op[data-action='refund']").css("display", "none")
-                        $(".taken-ticket-op[data-action='open']").css("display", "none")
-                        $(".taken-ticket-op[data-action='move']").css("display", "none")
-                        $(".taken-ticket-op[data-action='edit']").css("display", "none")
-                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
-                    }
-
-                    if (!hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true && $seat.data("status") == "reservation"
-                        ||
-                        !hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false && $seat.data("status") == "reservation"
-                        ||
-                        !hasPermission("EDIT_OTHER_BRANCH_SALES_IN_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true && $seat.data("status") == "completed"
-                        ||
-                        !hasPermission("EDIT_OTHER_BRANCH_SALES_IN_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false && $seat.data("status") == "completed"
-                        ||
-                        !hasPermission("EDIT_OWN_BRANCH_SALES") && $seat.data("is-own-branch-ticket") == true && $seat.data("status") == "completed"
-                        ||
-                        !hasPermission("EDIT_OTHER_BRANCH_SALES") && $seat.data("is-own-branch-ticket") == false && $seat.data("status") == "completed"
-                        ||
-                        !hasPermission("INTERNET_TICKET_EDIT") && $seat.data("status") == "web"
-                    ) {
-                        $(".taken-ticket-op[data-action='edit']").css("display", "none")
-                    }
-
-                    if (!hasPermission("CONVERT_OTHER_BRANCH_RESERVATION_TO_SALE_IN_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true && $seat.data("status") == "reservation"
-                        ||
-                        !hasPermission("CONVERT_OTHER_BRANCH_RESERVATION_TO_SALE_IN_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false && $seat.data("status") == "reservation"
-                    ) {
-                        $(".taken-ticket-op[data-action='complete']").css("display", "none")
-                    }
-
-                    if (!hasPermission("REFUND_OWN_BRANCH_SALES_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == true && $seat.data("is-own-branch-stop") == true
-                        ||
-                        !hasPermission("REFUND_OWN_BRANCH_SALES_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == true && $seat.data("is-own-branch-stop") == true
-                        ||
-                        !hasPermission("REFUND_OTHER_BRANCH_SALES_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false
-                        ||
-                        !hasPermission("REFUND_OTHER_BRANCH_SALES_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false
-                        ||
-                        !hasPermission("REFUND_EXPIRED_OPTION_TICKET") && new Date($seat.data("refund-option").replace("Z", "")) < new Date()
-                        ||
-                        !hasPermission("WEB_TICKET_REFUND") && $seat.data("status") == "web"
-                        ||
-                        !hasPermission("GOTUR_TICKET_REFUND") && $seat.data("status") == "gotur"
-                    ) {
-                        $(".taken-ticket-op[data-action='refund']").css("display", "none")
-                    }
-
-                    if (!hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true
-                        ||
-                        !hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false
-                    ) {
-                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
-                    }
-
-                    if (!hasPermission("OPEN_WEB_BRANCH_TICKETS") && ($seat.data("status") == "web" || $seat.data("status") == "gotur")
-                        ||
-                        !hasPermission("CANCEL_OTHER_BRANCH_RESERVATION_OTHER_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == false
-                    ) {
-                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
-                    }
-
-                    if (!hasPermission("TRANSFER_IN_OWN_BRANCH") && $seat.data("is-own-branch-stop") == true
-                        ||
-                        !hasPermission("TRANSFER_IN_OTHER_BRANCH") && $seat.data("is-own-branch-stop") == false
-                        ||
-                        !hasPermission("TRANSFER_EXPIRED_OPTION_TICKET") && new Date($seat.data("refund-option").replace("Z", "")) < new Date()
-                    ) {
-                        $(".taken-ticket-op[data-action='move']").css("display", "none")
-                    }
+                    selectedTicketStopId = currentStop;
+                    updateTakenTicketOpsVisibility($seat)
 
                     if (selectedTakenSeats.length > 0) {
                         selectedTakenSeats = [];
@@ -1524,7 +1532,7 @@ $(".ticket-button-action").on("click", async e => {
         await $.ajax({
             url: "/erp/post-complete-tickets",
             type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, groupId: currentGroupId, toId, tripId: currentTripId, status: "completed" },
+            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: selectedTicketStopId, groupId: currentGroupId, toId, tripId: currentTripId, status: "completed" },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
@@ -1606,7 +1614,7 @@ $(".ticket-button-action").on("click", async e => {
         await $.ajax({
             url: "/erp/post-edit-ticket",
             type: "POST",
-            data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId },
+            data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: selectedTicketStopId, toId },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
@@ -1736,6 +1744,50 @@ let isMovingActive = false
 let movingSeatPNR = null
 let movingSelectedSeats = []
 
+$(document).on("click", ".passenger-table tbody tr", function (e) {
+    const $row = $(this);
+    if (!$row.closest('#activeTickets').length) return;
+    const rect = this.getBoundingClientRect();
+    const $popup = $(".taken-ticket-ops-pop-up");
+
+    if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
+        $popup.hide();
+        currentPassengerRow = null;
+        selectedTakenSeats = [];
+        $(".passenger-table tbody tr").removeClass("selected");
+        return;
+    }
+
+    currentPassengerRow = $row;
+    $(".seat").removeClass("selected");
+    $(".passenger-table tbody tr").removeClass("selected");
+
+    currentGroupId = $row.data("group-id");
+    selectedTicketStopId = $row.data("stop-id");
+
+    const seatNumbers = [];
+    $(`.passenger-table tbody tr[data-group-id='${currentGroupId}']`).each(function () {
+        seatNumbers.push($(this).data("seat-number"));
+        $(this).addClass("selected");
+    });
+    selectedTakenSeats = seatNumbers;
+
+    updateTakenTicketOpsVisibility($row);
+
+    let left = rect.right + window.scrollX + 10;
+    let top = rect.top + window.scrollY + 25;
+
+    $popup.css({ left: left + "px", top: top + "px", display: "block" });
+
+    const popupHeight = $popup.outerHeight();
+    const viewportBottom = window.scrollY + window.innerHeight;
+    if (top + popupHeight > viewportBottom) {
+        top = rect.top + window.scrollY - popupHeight - 10;
+        if (top < 0) top = 0;
+        $popup.css("top", top + "px");
+    }
+});
+
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
 
@@ -1750,7 +1802,7 @@ $(".taken-ticket-op").on("click", async e => {
         await $.ajax({
             url: "/erp/get-ticket-row",
             type: "GET",
-            data: { action: "complete", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+            data: { action: "complete", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -1829,7 +1881,7 @@ $(".taken-ticket-op").on("click", async e => {
         await $.ajax({
             url: "/erp/get-ticket-row",
             type: "GET",
-            data: { action: "edit", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+            data: { action: "edit", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -2063,7 +2115,7 @@ $(".taken-ticket-op").on("click", async e => {
         await $.ajax({
             url: "/erp/get-move-ticket",
             type: "GET",
-            data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: currentStop },
+            data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: selectedTicketStopId },
             success: async function (response) {
                 $(".moving .info").html(response)
                 isMovingActive = true
@@ -2120,7 +2172,7 @@ $(".moving-confirm").on("click", async e => {
     await $.ajax({
         url: "/erp/post-move-tickets",
         type: "POST",
-        data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: currentStop, toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId },
+        data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: selectedTicketStopId, toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId },
         success: async function (response) {
             selectedSeats = []
             selectedTakenSeats = []
