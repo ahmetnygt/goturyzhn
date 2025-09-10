@@ -386,17 +386,28 @@ exports.getTripTable = async (req, res, next) => {
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     const tickets = await Ticket.findAll({ where: { tripId: trip.id,status:{[Op.notIn]:["pending"]} }, order: [["seatNo", "ASC"]] })
+    const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
+    const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+
+    const userMap = users.reduce((acc, u) => { acc[u.id] = u; return acc }, {})
+    const branchMap = branches.reduce((acc, b) => { acc[b.id] = b; return acc }, {})
 
     const canceledStatuses = ["canceled", "refund"]
     const activeTickets = []
     const canceledTickets = []
 
     for (let i = 0; i < tickets.length; i++) {
-        const ticket = tickets[i]
+        const ticket = tickets[i].get({ plain: true })
         ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
         ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
         ticket.gender = ticket.gender === "m" ? "BAY" : "BAYAN"
         ticket.isOtherStop = currentStopId && ticket.fromRouteStopId != currentStopId
+
+        const user = userMap[ticket.userId]
+        const branch = branchMap[user.branchId]
+        ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString()
+        ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId]?.stopId).toString()
+        ticket.tripRefundOptionDate = trip.refundOptionDate
 
         if (canceledStatuses.includes(ticket.status)) {
             canceledTickets.push(ticket)

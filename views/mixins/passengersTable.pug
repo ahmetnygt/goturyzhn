@@ -21,7 +21,15 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                     th(scope="col") PNR
             tbody
                 each t in activeTickets
-                    tr(class=t.isOtherStop ? 'other-stop' : '')
+                    tr(class=t.isOtherStop ? 'other-stop' : ''
+                        data-seat-number=t.seatNo
+                        data-status=t.status
+                        data-pnr=t.pnr ? t.pnr : ''
+                        data-group-id=t.ticketGroupId
+                        data-is-own-branch-ticket=t.isOwnBranchTicket
+                        data-is-own-branch-stop=t.isOwnBranchStop
+                        data-refund-option=t.tripRefundOptionDate
+                        data-stop-id=t.fromRouteStopId)
                         td.text-center #{t.seatNo}
                         td #{t.name} #{t.surname}
                         td #{t.gender}
