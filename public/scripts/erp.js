@@ -995,14 +995,25 @@ async function loadTrip(date, time, tripId) {
                     if ($seat.data("status") == "reservation") {
                         $(".taken-ticket-op[data-action='refund']").css("display", "none")
                         $(".taken-ticket-op[data-action='open']").css("display", "none")
+                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
                     }
                     else if ($seat.data("status") == "completed") {
                         $(".taken-ticket-op[data-action='cancel']").css("display", "none")
                         $(".taken-ticket-op[data-action='complete']").css("display", "none")
+                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
                     }
                     else if ($seat.data("status") == "web" || $seat.data("status") == "gotur") {
                         $(".taken-ticket-op[data-action='cancel']").css("display", "none")
                         $(".taken-ticket-op[data-action='complete']").css("display", "none")
+                        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none")
+                    }
+                    else if ($seat.data("status") == "pending") {
+                        $(".taken-ticket-op[data-action='complete']").css("display", "none")
+                        $(".taken-ticket-op[data-action='refund']").css("display", "none")
+                        $(".taken-ticket-op[data-action='open']").css("display", "none")
+                        $(".taken-ticket-op[data-action='move']").css("display", "none")
+                        $(".taken-ticket-op[data-action='edit']").css("display", "none")
+                        $(".taken-ticket-op[data-action='cancel']").css("display", "none")
                     }
 
                     if (!hasPermission("UPDATE_OTHER_BRANCH_RESERVATION_OWN_BRANCH") && $seat.data("is-own-branch-ticket") == false && $seat.data("is-own-branch-stop") == true && $seat.data("status") == "reservation"
@@ -1093,9 +1104,21 @@ async function loadTrip(date, time, tripId) {
                 const popupLeft = rect.right + window.scrollX + 10;
                 const popupTop = rect.top + window.scrollY;
 
+                $(".passenger-info-popup .name-phone-container").css("display", "block")
+                $(".passenger-info-popup .price-container").css("display", "block")
+                $(".passenger-info-popup .payment-container").css("display", "block")
+                $(".passenger-info-popup .pnr-container").css("display", "block")
                 if (data.createdAt) {
-                    $(".passenger-info-popup").removeClass("m").removeClass("f")
-                    $(".passenger-info-popup").addClass(data.gender)
+                    $(".passenger-info-popup").removeClass("m").removeClass("f").removeClass("p")
+                    if (data.status == "pending") {
+                        $(".passenger-info-popup").addClass("p")
+                        $(".passenger-info-popup .name-phone-container").css("display", "none")
+                        $(".passenger-info-popup .price-container").css("display", "none")
+                        $(".passenger-info-popup .payment-container").css("display", "none")
+                        $(".passenger-info-popup .pnr-container").css("display", "none")
+                    }
+                    else
+                        $(".passenger-info-popup").addClass(data.gender)
                     $(".passenger-info-popup .seat-number").html(data.seatNumber)
                     $(".passenger-info-popup .from").html(data.from)
                     $(".passenger-info-popup .to").html(data.to)
@@ -1458,7 +1481,7 @@ $(".ticket-button-action").on("click", async e => {
             await $.ajax({
                 url: "/erp/post-tickets",
                 type: "POST",
-                data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+                data: { pendingIds: JSON.stringify($("#pendingIds").val()), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
                 success: async function (response) {
                     ticketClose()
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
@@ -1619,11 +1642,13 @@ $(".ticket-button-action").on("click", async e => {
         }
 
         const ticketsStr = JSON.stringify(tickets)
+        const pendingIds = $("#pendingIds").val()
+        console.log(pendingIds)
 
         await $.ajax({
             url: "/erp/post-tickets",
             type: "POST",
-            data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "reservation" },
+            data: { pendingIds, tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "reservation" },
             success: async function (response) {
                 ticketClose()
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
@@ -2067,6 +2092,28 @@ $(".taken-ticket-op").on("click", async e => {
             }
         });
     }
+    else if (action == "delete_pending") {
+        let pendingIds = []
+        for (let i = 0; i < selectedTakenSeats.length; i++) {
+            const seatNumber = selectedTakenSeats[i];
+            pendingIds.push($(`.seat-${seatNumber}`).data("pending-ticket-id"))
+        }
+        let jsonSeats = JSON.stringify(selectedTakenSeats)
+        let jsonPendingIds = JSON.stringify(pendingIds)
+
+        await $.ajax({
+            url: "/erp/post-delete-pending-tickets",
+            type: "POST",
+            data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+            success: async function (response) {
+                selectedTakenSeats = []
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
 })
 
 $(".moving-confirm").on("click", async e => {
@@ -2162,10 +2209,46 @@ $(".trip-staff-close").on("click", e => {
     $(".blackout").css("display", "none");
 });
 
-$(".ticket-close").on("click", e => {
+$(".ticket-close").on("click", async e => {
+    let pendingIds = $("#pendingIds").val()
+    if (pendingIds) {
+        let jsonSeats = JSON.stringify(selectedSeats)
+
+        await $.ajax({
+            url: "/erp/post-delete-pending-tickets",
+            type: "POST",
+            data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+            success: async function (response) {
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
     ticketClose();
 })
-$(".ticket-button-cancel").on("click", e => {
+$(".ticket-button-cancel").on("click", async e => {
+    let pendingIds = $("#pendingIds").val()
+    if (pendingIds) {
+        let jsonSeats = JSON.stringify(selectedSeats)
+
+        await $.ajax({
+            url: "/erp/post-delete-pending-tickets",
+            type: "POST",
+            data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+            success: async function (response) {
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
     ticketClose();
 })
 

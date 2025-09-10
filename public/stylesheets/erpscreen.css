@@ -1076,6 +1076,9 @@ div.ticket-cancel-refund-open-close {
     display: none;
 }
 
+.passenger-info-popup.p {
+    background-color: rgb(200 0 0) !important;
+}
 .passenger-info-popup.m {
     background-color: #216396;
 }
@@ -1450,6 +1453,13 @@ div.ticket-cancel-refund-open-close {
     user-select: none;
     font-size: .75rem;
     margin: 0;
+}
+
+.seat.pending{
+    background-color: rgb(200 0 0) !important;
+    border-color: rgb(150 0 0);
+    box-shadow: 0 0.5rem 1rem rgb(255 0 0 / 50%) !important;
+    color: rgb(100 0 0) !important;
 }
 
 .seat.m {

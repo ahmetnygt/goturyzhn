@@ -43,7 +43,7 @@ const Ticket = sequelize.define("ticket", {
     },
     name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
     },
     surname: {
         type: Sequelize.STRING,
@@ -51,7 +51,7 @@ const Ticket = sequelize.define("ticket", {
     },
     phoneNumber: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
     },
     gender: {
         type: Sequelize.ENUM("m", "f"),
@@ -63,11 +63,11 @@ const Ticket = sequelize.define("ticket", {
     },
     customerType: {
         type: Sequelize.ENUM("adult", "child", "student", "disabled", "retired"),
-        allowNull: false
+        allowNull: true
     },
     customerCategory: {
         type: Sequelize.ENUM("normal", "member", "guest"),
-        allowNull: false
+        allowNull: true
     },
     optionTime: {
         type: Sequelize.TIME,
@@ -85,7 +85,7 @@ const Ticket = sequelize.define("ticket", {
     },
     pnr: {
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     payment: {
         type: Sequelize.ENUM("cash", "card", "point"),

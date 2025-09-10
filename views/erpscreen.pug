@@ -850,7 +850,7 @@ block content
                 span.from 
                 i.fa-solid.fa-route.mx-2
                 span.to 
-        p.text-center
+        p.text-center.name-phone-container
             span.name 
             |   / 
             span.phone 
@@ -859,13 +859,13 @@ block content
             span.username
             |   /
             span.userBranch
-        p 
+        p.price-container
             b Ücret:
             span.price   
-        p 
+        p.payment-container
             b Tahsilat Tipi:
             span.payment  
-        p 
+        p.pnr-container
             b PNR:
             span.pnr  
         p 
@@ -1145,6 +1145,8 @@ block content
             span AÇIĞA AL
         .taken-ticket-op(data-action="move")
             span TRANSFER ET
+        .taken-ticket-op(data-action="delete_pending")
+            span İŞLEMİ İPTAL ET
         .taken-ticket-op(data-action="")
             span KOLTUK GEÇMİŞİ
 

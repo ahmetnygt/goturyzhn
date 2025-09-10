@@ -272,7 +272,7 @@ exports.getTrip = async (req, res, next) => {
         const tripDate = new Date(trip.date);
         const [hours, minutes] = trip.modifiedTime.split(":");
         const pad = (num) => String(num).padStart(2, "0");
-        trip.dateString = new Intl.DateTimeFormat("tr-TR", {day: "numeric",month: "long"}).format(tripDate);
+        trip.dateString = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate);
         trip.timeString = `${hours}.${minutes}`
 
         const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
@@ -928,9 +928,40 @@ exports.getTicketRow = async (req, res, next) => {
         price = p ? p : 0;
     }
 
-    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action });
-};
+    const group = await TicketGroup.create({ tripId: trip.id });
+    const ticketGroupId = group.id;
 
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5);
+    const nowDate = now.toISOString().split("T")[0];
+    const nowTime = now.toTimeString().split(" ")[0];
+
+    let pendingIds = []
+
+    for (let i = 0; i < seats.length; i++) {
+        const seatNumber = seats[i];
+
+        const ticket = await Ticket.create({
+            seatNo: seatNumber,
+            gender: gender[i],
+            nationality: "tr",
+            tripId: trip.id,
+            ticketGroupId: ticketGroupId,
+            status: "pending",
+            optionTime: nowTime,
+            optionDate: nowDate,
+            fromRouteStopId: fromId,
+            toRouteStopId: toId,
+            userId: req.session.user.id,
+        });
+
+        await ticket.save()
+
+        pendingIds.push(ticket.id)
+    }
+
+    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action, pendingIds });
+};
 
 exports.postTickets = async (req, res, next) => {
     try {
@@ -979,9 +1010,21 @@ exports.postTickets = async (req, res, next) => {
         // --- PNR (sadece fromId & toId varsa) ---
         const pnr = (fromId && toId) ? await generatePNR(fromId, toId, stops) : null;
 
+        const pendingIds = Array.isArray(req.body.pendingIds) ? req.body.pendingIds : JSON.parse(req.body.pendingIds);
+        console.log(pendingIds)
+        console.log(req.body.pendingIds)
         // --- Tüm biletleri sırayla kaydet ---
-        for (const t of tickets) {
+        for (let i = 0; i < tickets.length; i++) {
+            const t = tickets[i]
             if (!t) continue;
+
+            console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id })
+            const pendingTicket = await Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id } })
+            const pendingTicketGroup = await TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
+            await pendingTicket.destroy()
+            console.log("pending silindi")
+            await pendingTicketGroup.destroy()
+            console.log("pending grup silindi")
 
             const ticket = await Ticket.create({
                 seatNo: t.seatNumber,
@@ -1299,7 +1342,6 @@ exports.postSellOpenTickets = async (req, res, next) => {
         console.error("Kayıt hatası:", err);
         res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
-
 }
 
 exports.postEditTicket = async (req, res, next) => {
@@ -1431,6 +1473,44 @@ exports.postCancelTicket = async (req, res, next) => {
     } catch (err) {
         console.error("Kayıt hatası:", err);
         res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+    }
+};
+
+exports.postDeletePendingTickets = async (req, res, next) => {
+    try {
+        const { date, time, tripId } = req.body;
+        const seats = JSON.parse(req.body.seats);
+        const pendingIds = JSON.parse(req.body.pendingIds);
+
+        console.log(pendingIds)
+
+        const trip = await Trip.findOne({
+            where: {
+                date,
+                time,
+                id: tripId
+            }
+        })
+
+        const deleted = await Ticket.destroy({
+            where: {
+                tripId: trip.id,
+                seatNo: { [Op.in]: seats },
+                id: { [Op.in]: pendingIds }
+            }
+        });
+
+        if (deleted === 0) {
+            return res.status(404).json({ message: "Silinecek uygun kayıt bulunamadı" });
+        }
+
+        return res.status(200).json({
+            message: "Bekleyen bilet(ler) başarıyla silindi",
+            deleted
+        });
+    } catch (err) {
+        console.error("postDeletePendingTickets error:", err);
+        return res.status(500).json({ message: "Sunucu hatası" });
     }
 };
 
