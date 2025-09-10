@@ -2942,6 +2942,16 @@ exports.postResetRegister = async (req, res, next) => {
         const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
 
+        const total = Number(register.cash_balance) + Number(register.card_balance);
+
+        await Transaction.create({
+            userId: req.session.user.id,
+            type: "expense",
+            category: "register_reset",
+            amount: total,
+            description: "Kasa sifirlama"
+        });
+
         register.cash_balance = 0;
         register.card_balance = 0;
         register.reset_date_time = new Date();
@@ -3000,6 +3010,13 @@ exports.postTransferRegister = async (req, res, next) => {
         senderRegister.card_balance = 0;
         senderRegister.reset_date_time = new Date();
         await senderRegister.save();
+
+        await Payment.create({
+            initiatorId: sender.id,
+            payerId: receiver.id,
+            receiverId: sender.id,
+            amount: 0
+        });
 
         res.json({ success: true });
     } catch (err) {
@@ -3084,6 +3101,13 @@ exports.postConfirmPayment = async (req, res, next) => {
         if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
         if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
         if (payment.initiatorId === req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
+
+        if (Number(payment.amount) === 0) {
+            payment.status = "approved";
+            await payment.save();
+            return res.json({ success: true });
+        }
+
         payment.status = "approved";
         await payment.save();
 
