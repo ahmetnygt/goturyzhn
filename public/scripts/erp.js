@@ -691,11 +691,11 @@ async function loadTrip(date, time, tripId) {
                 })
             }
 
-            $(document).on("click", function () {
-                $(".ticket-ops-pop-up").hide();
-                $(".taken-ticket-ops-pop-up").hide();
-                currentSeat = null;
-            });
+            // $(document).on("click", function () {
+            //     $(".ticket-ops-pop-up").hide();
+            //     $(".taken-ticket-ops-pop-up").hide();
+            //     currentSeat = null;
+            // });
 
             $(document).off("click", ".trip-option-revenues");
             $(document).on("click", ".trip-option-revenues", async function (e) {
@@ -1748,9 +1748,10 @@ let movingSelectedSeats = []
 $(document).on("click", ".passenger-table tbody tr", function (e) {
     const $row = $(this);
     if (!$row.closest('#activeTickets').length) return;
-    const rect = this.getBoundingClientRect();
+
     const $popup = $(".taken-ticket-ops-pop-up");
 
+    // Eğer aynı satıra tıklandıysa popup kapat
     if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
         $popup.hide();
         currentPassengerRow = null;
@@ -1775,19 +1776,30 @@ $(document).on("click", ".passenger-table tbody tr", function (e) {
 
     updateTakenTicketOpsVisibility($row);
 
-    let left = rect.right + window.scrollX + 10;
-    let top = rect.top + window.scrollY + 25;
+    // Popup'ı mouse konumuna yerleştir
+    let left = e.pageX + 10;
+    let top  = e.pageY + 10;
 
-    $popup.css({ left: left + "px", top: top + "px", display: "block" });
-
+    const popupWidth  = $popup.outerWidth();
     const popupHeight = $popup.outerHeight();
-    const viewportBottom = window.scrollY + window.innerHeight;
-    if (top + popupHeight > viewportBottom) {
-        top = rect.top + window.scrollY - popupHeight - 10;
-        if (top < 0) top = 0;
-        $popup.css("top", top + "px");
+    const viewportWidth  = $(window).width();
+    const viewportHeight = $(window).height();
+
+    // Sağ kenarı taşmasın
+    if (left + popupWidth > viewportWidth) {
+        left = e.pageX - popupWidth - 10;
+        if (left < 0) left = 0;
     }
+
+    // Alt kenarı taşmasın
+    if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
+        top = e.pageY - popupHeight - 10;
+        if (top < 0) top = 0;
+    }
+
+    $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
 });
+
 
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
