@@ -171,6 +171,10 @@ body {
     white-space: nowrap;
 }
 
+.passenger-table tr.other-stop {
+    opacity: 0.5;
+}
+
 .ticket-search-pop-up {
     position: absolute;
     left: 50%;
