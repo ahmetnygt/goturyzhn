@@ -13,6 +13,7 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                     th(scope="col") Cinsiyet
                     th(scope="col") Nereden
                     th(scope="col") Nereye
+                    th(scope="col") Tarih
                     th(scope="col") Ücret
                     th(scope="col") Tahsilat
                     th(scope="col") Durum
@@ -35,6 +36,7 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                         td #{t.gender}
                         td #{t.from}
                         td #{t.to}
+                        td #{t.date}
                         td #{t.price}
                         td Nakit
                         if t.status == "web"
@@ -61,6 +63,7 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                     th(scope="col") Cinsiyet
                     th(scope="col") Nereden
                     th(scope="col") Nereye
+                    th(scope="col") Tarih
                     th(scope="col") Ücret
                     th(scope="col") Tahsilat
                     th(scope="col") Durum
@@ -75,6 +78,7 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                         td #{t.gender}
                         td #{t.from}
                         td #{t.to}
+                        td #{t.date}
                         td #{t.price}
                         td Nakit
                         if t.status == "canceled"
