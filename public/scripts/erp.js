@@ -2531,11 +2531,12 @@ $(".ticket-search-button").on("click", async e => {
     const idnum = $(".search-idnum").val()
     const phone = $(".search-phone").val()
     const pnr = $(".search-pnr").val()
+    const status = $(".search-status").val()
 
     await $.ajax({
         url: "/erp/get-search-table",
         type: "GET",
-        data: { name, surname, idnum, phone, pnr },
+        data: { name, surname, idnum, phone, pnr, status },
         success: function (response) {
             $(".searched-table").html(response)
         },
@@ -4603,6 +4604,7 @@ async function loadAnnouncements() {
             }
         });
         if (!showingPopup) showNextPopup();
+
     } catch (err) {
         console.error("Announcement error:", err);
     }

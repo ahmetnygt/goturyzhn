@@ -716,41 +716,52 @@ exports.getTripRevenues = async (req, res, next) => {
             raw: true
         });
 
-        const users = await FirmUser.findAll({ where: { id: [...new Set(tickets.map(t => t.userId))] } })
+        const userIds = [...new Set(tickets.map(t => t.userId).filter(id => id))];
+        const users = await FirmUser.findAll({ where: { id: userIds }, raw: true });
+        const branchIds = [...new Set(users.map(u => u.branchId).filter(id => id))];
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: branchIds } }, raw: true });
 
-        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } }, raw: true });
-
-        for (let i = 0; i < tickets.length; i++) {
-            const ticket = tickets[i];
-
-        }
+        const userBranch = {};
+        users.forEach(u => userBranch[u.id] = u.branchId);
 
         const branchTitles = {};
         branches.forEach(b => branchTitles[b.id] = b.title);
 
         const branchData = {};
         tickets.forEach(ticket => {
-            const branchId = groupBranch[ticket.ticketGroupId];
+            const branchId = userBranch[ticket.userId];
             if (!branchId) return;
+
             if (!branchData[branchId]) {
                 branchData[branchId] = {
                     title: branchTitles[branchId] || "",
                     currentAmount: 0,
-                    totalAmount: 0
+                    currentCount: 0,
+                    totalAmount: 0,
+                    totalCount: 0
                 };
             }
+
             const amount = Number(ticket.price);
             branchData[branchId].totalAmount += amount;
+            branchData[branchId].totalCount += 1;
+
             if (ticket.fromRouteStopId == stopId) {
                 branchData[branchId].currentAmount += amount;
+                branchData[branchId].currentCount += 1;
             }
         });
 
         const branchesArr = Object.values(branchData);
-        const totalCurrent = branchesArr.reduce((sum, b) => sum + b.currentAmount, 0);
-        const totalAmount = branchesArr.reduce((sum, b) => sum + b.totalAmount, 0);
+        const totals = branchesArr.reduce((acc, b) => {
+            acc.currentAmount += b.currentAmount;
+            acc.currentCount += b.currentCount;
+            acc.totalAmount += b.totalAmount;
+            acc.totalCount += b.totalCount;
+            return acc;
+        }, { currentAmount: 0, currentCount: 0, totalAmount: 0, totalCount: 0 });
 
-        res.json({ branches: branchesArr, totals: { current: totalCurrent, total: totalAmount } });
+        res.json({ branches: branchesArr, totals });
     } catch (err) {
         console.error("getTripRevenues error:", err);
         res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
@@ -1699,6 +1710,7 @@ exports.getSearchTable = async (req, res, next) => {
             ...(req.query.idnum?.trim() && { idNumber: req.query.idnum.trim() }),
             ...(req.query.phone?.trim() && { phoneNumber: req.query.phone.trim() }),
             ...(req.query.pnr?.trim() && { pnr: req.query.pnr.trim() }),
+            ...(req.query.status?.trim() && { status: req.query.status.trim() }),
         };
 
         // Filtre yoksa where göndermeyelim
@@ -1711,18 +1723,21 @@ exports.getSearchTable = async (req, res, next) => {
 
         // Hiç bilet yoksa direkt boş tablo render et
         if (!tickets.length) {
-            return res.render("mixins/passengersTable", { activeTickets: [], canceledTickets: [] });
+            return res.render("mixins/searchPassengersTable", { activeTickets: [], canceledTickets: [] });
         }
 
         // İlişkili verileri sadece ihtiyaç varsa topla
         const tripIds = [...new Set(tickets.map((t) => t.tripId).filter(Boolean))];
 
         let stopMap = new Map(); // stopId -> stopTitle
+        let tripMap = new Map(); // tripId -> tripDate
 
         if (tripIds.length) {
             const trips = await Trip.findAll({
                 where: { id: { [Op.in]: tripIds } },
             });
+
+            tripMap = new Map(trips.map((tr) => [String(tr.id), tr.date]));
 
             const routeIds = [
                 ...new Set(trips.map((tr) => tr.routeId).filter(Boolean)),
@@ -1754,12 +1769,14 @@ exports.getSearchTable = async (req, res, next) => {
             const t = ticket.toJSON ? ticket.toJSON() : ticket; // Sequelize instance -> plain obj
             const fromTitle = stopMap.get(String(t.fromRouteStopId)) || "-";
             const toTitle = stopMap.get(String(t.toRouteStopId)) || "-";
+            const tripDate = tripMap.get(String(t.tripId)) || t.optionDate || "";
 
             return {
                 ...t,
                 from: fromTitle,
                 to: toTitle,
                 gender: t.gender === "m" ? "BAY" : "BAYAN",
+                date: tripDate,
             };
         });
 
@@ -1767,7 +1784,7 @@ exports.getSearchTable = async (req, res, next) => {
         const activeTickets = newTicketArray.filter(t => !canceledStatuses.includes(t.status));
         const canceledTickets = newTicketArray.filter(t => canceledStatuses.includes(t.status));
 
-        return res.render("mixins/passengersTable", { activeTickets, canceledTickets });
+        return res.render("mixins/searchPassengersTable", { activeTickets, canceledTickets });
     } catch (err) {
         return next(err);
     }
@@ -3015,6 +3032,7 @@ exports.postSaveAnnouncement = async (req, res, next) => {
         const announcement = await Announcement.create({
             message,
             userId,
+
             branchId: branchId || null,
             showTicker: showTicker === true || showTicker === 'true',
             showPopup: showPopup === false ? false : true,

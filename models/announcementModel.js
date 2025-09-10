@@ -12,10 +12,12 @@ const Announcement = sequelize.define("announcement", {
         type: Sequelize.STRING,
         allowNull: false,
     },
+
     userId: {
         type: Sequelize.BIGINT,
         allowNull: false,
     },
+
     branchId: {
         type: Sequelize.BIGINT,
         allowNull: true,
