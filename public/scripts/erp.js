@@ -4351,6 +4351,7 @@ $(".save-user").on("click", async e => {
 })
 
 $(".register-reset-nav").on("click", async e => {
+    if (!confirm("Kasayı sıfırlamak istediğinize emin misiniz?")) return
     await $.ajax({
         url: "/erp/post-reset-register",
         type: "POST",
@@ -4516,11 +4517,12 @@ $(".payment-send-button").on("click", async e => {
     });
 });
 
-$(".pending-payments-nav").on("click", async e => {
+async function loadPendingPayments() {
     const list = await $.ajax({
         url: "/erp/get-pending-payments",
         type: "GET"
     });
+    if (!list || list.length === 0) return;
     let arr = [];
     for (let i = 0; i < list.length; i++) {
         const p = list[i];
@@ -4540,7 +4542,15 @@ $(".pending-payments-nav").on("click", async e => {
     $(".pending-payments-list").html(arr);
     $(".blackout").css("display", "block");
     $(".pending-payments").css("display", "block");
-});
+}
+
+$(".pending-payments-nav").on("click", loadPendingPayments);
+
+setInterval(async () => {
+    if ($(".pending-payments").css("display") === "none") {
+        await loadPendingPayments();
+    }
+}, 5000);
 
 $(".pending-payments-close").on("click", e => {
     $(".pending-payments").css("display", "none");
