@@ -235,6 +235,18 @@ body {
     overflow: hidden;
 }
 
+.add-announcement {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    display: none;
+    overflow: hidden;
+}
+
 .transaction-transfer {
     position: absolute;
     left: 50%;
@@ -1582,4 +1594,17 @@ div.ticket-cancel-refund-open-close {
 
 .move-to-trip-place-select option.restricted {
     color: red;
+}
+
+.announcement-pop-up {
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
+    border-radius: .3rem;
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background-color: white;
+    display: none;
+    width: 20rem;
 }

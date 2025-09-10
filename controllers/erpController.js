@@ -26,6 +26,8 @@ const Price = require("../models/priceModel")
 const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
+const Announcement = require("../models/announcementModel")
+const AnnouncementUser = require("../models/announcementUserModel")
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3002,6 +3004,69 @@ exports.postConfirmPayment = async (req, res, next) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Confirm payment error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postSaveAnnouncement = async (req, res, next) => {
+    try {
+        const { message, branchId, showTicker, showPopup } = req.body;
+        const announcement = await Announcement.create({
+            message,
+            branchId: branchId || null,
+            showTicker: showTicker === true || showTicker === 'true',
+            showPopup: showPopup === false ? false : true,
+        });
+        res.json({ message: "Eklendi", announcement });
+    } catch (err) {
+        console.error("Save announcement error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getAnnouncements = async (req, res, next) => {
+    try {
+        const userId = req.session.user.id;
+        const branchId = req.session.user.branchId;
+
+        const announcements = await Announcement.findAll({
+            where: {
+                isActive: true,
+                [Op.or]: [
+                    { branchId: null },
+                    { branchId: branchId }
+                ]
+            },
+            order: [["createdAt", "DESC"]]
+        });
+
+        const seenRows = await AnnouncementUser.findAll({
+            where: { userId },
+            attributes: ["announcementId"]
+        });
+        const seenIds = seenRows.map(r => r.announcementId);
+
+        const ticker = announcements.filter(a => a.showTicker);
+        const popup = announcements.filter(a => a.showPopup && !seenIds.includes(a.id));
+
+        res.json({ ticker, popup });
+    } catch (err) {
+        console.error("Get announcements error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postAnnouncementSeen = async (req, res, next) => {
+    try {
+        const { announcementId } = req.body;
+        const userId = req.session.user.id;
+        await AnnouncementUser.findOrCreate({
+            where: { announcementId, userId },
+            defaults: { seenAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Announcement seen error:", err);
         res.status(500).json({ message: err.message });
     }
 };

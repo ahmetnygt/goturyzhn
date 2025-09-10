@@ -88,6 +88,29 @@ block content
             i.fa-solid.fa-x
         .p-3.pending-collections-list.d-flex.flex-column.gap-2
 
+    .add-announcement
+        .gtr-header
+            span DUYURU EKLE
+        .announcement-add-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Mesaj
+                textarea.form-control.announcement-message
+            .input-group
+                span.input-group-text Şube
+                select.form-select.announcement-branch
+                    option(value="") Herkes
+            .form-check
+                input.form-check-input.announcement-show-ticker(type="checkbox" id="announcementTicker")
+                label.form-check-label(for="announcementTicker") Tickerda gözüksün
+            .form-check
+                input.form-check-input.announcement-show-popup(type="checkbox" id="announcementPopup" checked)
+                label.form-check-label(for="announcementPopup") Pop-up olarak gözüksün
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.announcement-add-button EKLE
+                button.btn.btn-outline-primary.announcement-add-close KAPAT
+
     .account-cut-deductions-popup
         .gtr-header
             span ARAÇ KALDIRMA KESİNTİLERİ
@@ -1171,7 +1194,7 @@ block content
                 .stops-times.bg-white.h-100.p-2.w-50
 
             .ticker
-                p GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR GÖTÜR 
+                p
         .col-5.d-flex.flex-column.align-items-center.px-3.gap-2.h-100
             .busPlan
 
