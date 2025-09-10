@@ -2937,13 +2937,76 @@ exports.postAddTransaction = async (req, res, next) => {
     }
 }
 
-//! DEVİR İŞLEMİNDE KREDİ KARTI NEREYE GİDİYO???
-// exports.postTransferRegister = async (req, res, next) => {
-//     const branch = req.body.branch;
-//     const user = req.body.user;
+exports.postResetRegister = async (req, res, next) => {
+    try {
+        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
 
-//     const registerBalance =
-// }
+        register.cash_balance = 0;
+        register.card_balance = 0;
+        register.reset_date_time = new Date();
+        await register.save();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Reset register error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.postTransferRegister = async (req, res, next) => {
+    try {
+        const targetUserId = Number(req.body.user);
+        if (!targetUserId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
+
+        const senderId = req.session.user.id;
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [senderId, targetUserId] } } });
+
+        const sender = users.find(u => u.id == senderId);
+        const receiver = users.find(u => u.id == targetUserId);
+
+        const senderRegister = await CashRegister.findOne({ where: { userId: senderId } });
+        const receiverRegister = await CashRegister.findOne({ where: { userId: targetUserId } });
+
+        if (!senderRegister || !receiverRegister) {
+            return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
+        }
+
+        const cashBalance = Number(senderRegister.cash_balance) || 0;
+        const cardBalance = Number(senderRegister.card_balance) || 0;
+        const total = cashBalance + cardBalance;
+
+        await Transaction.create({
+            userId: receiver.id,
+            type: "income",
+            category: "transfer_in",
+            amount: total,
+            description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa.`
+        });
+
+        await Transaction.create({
+            userId: sender.id,
+            type: "expense",
+            category: "transfer_out",
+            amount: total,
+            description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa.`
+        });
+
+        receiverRegister.cash_balance = Number(receiverRegister.cash_balance) + cashBalance;
+        receiverRegister.card_balance = Number(receiverRegister.card_balance) + cardBalance;
+        await receiverRegister.save();
+
+        senderRegister.cash_balance = 0;
+        senderRegister.card_balance = 0;
+        senderRegister.reset_date_time = new Date();
+        await senderRegister.save();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Transfer register error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
 
 exports.postRequestPayment = async (req, res, next) => {
     try {

@@ -258,7 +258,7 @@ block content
                     i.fa-solid.fa-minus.me-2
                     | Gider Ekle
             if permissions.includes('REGISTER_RESET')
-                button.btn.btn-outline-primary.btn-sm Sıfırla
+                button.btn.btn-outline-primary.btn-sm.register-reset-nav Sıfırla
             if permissions.includes('REGISTER_TRANSFER')
                 button.btn.btn-outline-primary.btn-sm.transaction-transfer-nav Başka Kullanıcıya Devret
         .p-3
@@ -723,14 +723,18 @@ block content
             thead
                 tr
                     th Şube
-                    th Durak
-                    th Toplam
+                    th Durak Adet
+                    th Durak Tutar
+                    th Toplam Adet
+                    th Toplam Tutar
             tbody.trip-revenue-rows
             tfoot
                 tr
                     th Toplam
-                    th.trip-revenue-total-current
-                    th.trip-revenue-total-all
+                    th.trip-revenue-total-current-count
+                    th.trip-revenue-total-current-amount
+                    th.trip-revenue-total-all-count
+                    th.trip-revenue-total-all-amount
 
     .trip-stop-restriction-pop-up
         .gtr-header
