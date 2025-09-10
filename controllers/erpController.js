@@ -379,22 +379,33 @@ exports.getTrip = async (req, res, next) => {
 exports.getTripTable = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
+    const currentStopId = req.query.stopId
 
     const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-    const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.in]: ["completed", "web", "reservation"] } }, order: [["seatNo", "ASC"]] })
-    let newTicketArray = []
+    const tickets = await Ticket.findAll({ where: { tripId: trip.id }, order: [["seatNo", "ASC"]] })
+
+    const canceledStatuses = ["canceled", "refund"]
+    const activeTickets = []
+    const canceledTickets = []
+
     for (let i = 0; i < tickets.length; i++) {
-        const ticket = tickets[i];
+        const ticket = tickets[i]
         ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
         ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
+        ticket.gender = ticket.gender === "m" ? "BAY" : "BAYAN"
+        ticket.isOtherStop = currentStopId && ticket.fromRouteStopId != currentStopId
 
-        newTicketArray.push(ticket)
+        if (canceledStatuses.includes(ticket.status)) {
+            canceledTickets.push(ticket)
+        } else {
+            activeTickets.push(ticket)
+        }
     }
 
-    res.render("mixins/passengersTable", { tickets: newTicketArray })
+    res.render("mixins/passengersTable", { activeTickets, canceledTickets })
 }
 
 exports.getTripNotes = async (req, res, next) => {
@@ -1687,7 +1698,7 @@ exports.getSearchTable = async (req, res, next) => {
 
         // Hiç bilet yoksa direkt boş tablo render et
         if (!tickets.length) {
-            return res.render("mixins/passengersTable", { tickets: [] });
+            return res.render("mixins/passengersTable", { activeTickets: [], canceledTickets: [] });
         }
 
         // İlişkili verileri sadece ihtiyaç varsa topla
@@ -1735,10 +1746,15 @@ exports.getSearchTable = async (req, res, next) => {
                 ...t,
                 from: fromTitle,
                 to: toTitle,
+                gender: t.gender === "m" ? "BAY" : "BAYAN",
             };
         });
 
-        return res.render("mixins/passengersTable", { tickets: newTicketArray });
+        const canceledStatuses = ["canceled", "refund"];
+        const activeTickets = newTicketArray.filter(t => !canceledStatuses.includes(t.status));
+        const canceledTickets = newTicketArray.filter(t => canceledStatuses.includes(t.status));
+
+        return res.render("mixins/passengersTable", { activeTickets, canceledTickets });
     } catch (err) {
         return next(err);
     }

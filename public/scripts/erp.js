@@ -358,7 +358,7 @@ async function loadTrip(date, time, tripId) {
             await $.ajax({
                 url: "/erp/get-passengers-table",
                 type: "GET",
-                data: { date: date, time: time, tripId },
+                data: { date: date, time: time, tripId, stopId: currentStop },
                 success: function (response) {
                     $(".passenger-table").html(response)
                 },
