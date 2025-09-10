@@ -26,6 +26,8 @@ const Price = require("../models/priceModel")
 const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
+const Announcement = require("../models/announcementModel")
+const AnnouncementUser = require("../models/announcementUserModel")
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3002,6 +3004,81 @@ exports.postConfirmPayment = async (req, res, next) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Confirm payment error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postSaveAnnouncement = async (req, res, next) => {
+    try {
+        const { message, branchId, showTicker, showPopup } = req.body;
+        const userId = req.session.user.id;
+        const announcement = await Announcement.create({
+            message,
+            userId,
+            branchId: branchId || null,
+            showTicker: showTicker === true || showTicker === 'true',
+            showPopup: showPopup === false ? false : true,
+        });
+        res.json({ message: "Eklendi", announcement });
+    } catch (err) {
+        console.error("Save announcement error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getAnnouncements = async (req, res, next) => {
+    try {
+        const userId = req.session.user.id;
+        const branchId = req.session.user.branchId;
+
+        const announcements = await Announcement.findAll({
+            where: {
+                isActive: true,
+                [Op.or]: [
+                    { branchId: null },
+                    { branchId: branchId }
+                ]
+            },
+            order: [["createdAt", "DESC"]]
+        });
+
+        const userIds = [...new Set(announcements.map(a => a.userId))];
+        const users = await FirmUser.findAll({ where: { id: { [Op.in]: userIds } }, attributes: ["id", "name"] });
+        const userMap = {};
+        users.forEach(u => { userMap[u.id] = u.name; });
+
+        const seenRows = await AnnouncementUser.findAll({
+            where: { userId },
+            attributes: ["announcementId"]
+        });
+        const seenIds = seenRows.map(r => r.announcementId);
+
+        const ticker = [];
+        const popup = [];
+        announcements.forEach(a => {
+            const data = { ...a.toJSON(), senderName: userMap[a.userId] };
+            if (a.showTicker) ticker.push(data);
+            if (a.showPopup && !seenIds.includes(a.id)) popup.push(data);
+        });
+
+        res.json({ ticker, popup });
+    } catch (err) {
+        console.error("Get announcements error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postAnnouncementSeen = async (req, res, next) => {
+    try {
+        const { announcementId } = req.body;
+        const userId = req.session.user.id;
+        await AnnouncementUser.findOrCreate({
+            where: { announcementId, userId },
+            defaults: { seenAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Announcement seen error:", err);
         res.status(500).json({ message: err.message });
     }
 };

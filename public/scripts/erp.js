@@ -4033,6 +4033,47 @@ $(".customer-nav").on("click", async e => {
     })
 })
 
+$(".announcement-add-nav").on("click", async e => {
+    const branchSelect = $(".announcement-branch")
+    branchSelect.empty()
+    branchSelect.append(`<option value="" selected>Herkes</option>`)
+    try {
+        const branches = await $.ajax({ url: "/erp/get-branches-list", type: "GET", data: { onlyData: true, isJustActives: false } })
+        branches.forEach(b => branchSelect.append(`<option value="${b.id}">${b.title}</option>`))
+    } catch (err) {
+        console.log(err)
+    }
+    $(".announcement-message").val("")
+    $(".announcement-show-ticker").prop("checked", false)
+    $(".announcement-show-popup").prop("checked", true)
+    $(".blackout").css("display", "block")
+    $(".add-announcement").css("display", "block")
+})
+
+$(".announcement-add-close").on("click", e => {
+    $(".add-announcement").css("display", "none")
+    $(".blackout").css("display", "none")
+})
+
+$(".announcement-add-button").on("click", async e => {
+    const message = $(".announcement-message").val()
+    const branchId = $(".announcement-branch").val()
+    const showTicker = $(".announcement-show-ticker").is(":checked")
+    const showPopup = $(".announcement-show-popup").is(":checked")
+    await $.ajax({
+        url: "/erp/post-save-announcement",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ message, branchId, showTicker, showPopup }),
+        success: function () {
+            $(".announcement-add-close").click()
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+})
+
 $(".customer-search-btn").on("click", async e => {
     const idNumber = $(".customer-search-idNumber").val();
     const name = $(".customer-search-name").val();
@@ -4510,3 +4551,61 @@ $(".pending-collections-close").on("click", e => {
     $(".pending-collections").css("display", "none");
     $(".blackout").css("display", "none");
 });
+
+const popupQueue = [];
+const shownPopupIds = new Set();
+let showingPopup = false;
+
+function showNextPopup() {
+    if (!popupQueue.length) {
+        showingPopup = false;
+        $(".blackout").hide();
+        return;
+    }
+    showingPopup = true;
+    const a = popupQueue.shift();
+    const pop = $("<div>").addClass("announcement-pop-up");
+    const header = $("<div>").addClass("gtr-header").append($("<span>").text("DUYURU"));
+    const close = $("<div>").addClass("announcement-pop-up-close").append($("<i>").addClass("fa-solid fa-x"));
+    close.on("click", async () => {
+        await $.ajax({ url: "/erp/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
+        pop.remove();
+        showNextPopup();
+    });
+    const body = $("<div>").addClass("p-3");
+    body.append($("<p>").text(a.message));
+    if (a.senderName) {
+        body.append($("<p>").addClass("mt-2 mb-0 text-end text-muted").text(a.senderName));
+    }
+    pop.append(header, close, body);
+    $("body").append(pop);
+    $(".blackout").show();
+    pop.show();
+}
+
+async function loadAnnouncements() {
+    try {
+        const data = await $.ajax({
+            url: "/erp/get-announcements",
+            type: "GET"
+        });
+
+        if (data.ticker && data.ticker.length) {
+            const text = data.ticker.map(a => a.message).join(" • ");
+            $(".ticker p").text(text);
+        }
+
+        const popups = data.popup || [];
+        popups.forEach(a => {
+            if (!shownPopupIds.has(a.id)) {
+                popupQueue.push(a);
+                shownPopupIds.add(a.id);
+            }
+        });
+        if (!showingPopup) showNextPopup();
+    } catch (err) {
+        console.error("Announcement error:", err);
+    }
+}
+
+$(loadAnnouncements);
