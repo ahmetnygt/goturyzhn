@@ -26,7 +26,8 @@ const Transaction = sequelize.define("transaction", {
             "income",
             "expense",
             "transfer_in",
-            "transfer_out"
+            "transfer_out",
+            "register_reset"
         ),
         allowNull: false
     },

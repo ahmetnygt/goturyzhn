@@ -2794,10 +2794,12 @@ exports.getTransactions = async (req, res, next) => {
         const transactions = await Transaction.findAll({
             where: {
                 userId,
-                createdAt: { [Op.gt]: register.reset_date_time }
+                createdAt: { [Op.gte]: register.reset_date_time }
             },
             order: [["createdAt", "DESC"]]
         });
+
+        transactions[0].amount = ""
 
         // Ticket bilgilerini Promise.all ile ekle
         await Promise.all(transactions.map(async (t) => {
@@ -2826,7 +2828,7 @@ exports.getTransactionData = async (req, res, next) => {
         const transactions = await Transaction.findAll({
             where: {
                 userId,
-                createdAt: { [Op.gt]: register.reset_date_time }
+                createdAt: { [Op.gt]: new Date(register.reset_date_time) }
             }
         });
 
@@ -2949,7 +2951,7 @@ exports.postResetRegister = async (req, res, next) => {
             type: "expense",
             category: "register_reset",
             amount: total,
-            description: "Kasa sifirlama"
+            description: "Kasa sıfırlandı. Önceki bakiye: " + total + "₺"
         });
 
         register.cash_balance = 0;
@@ -2991,7 +2993,7 @@ exports.postTransferRegister = async (req, res, next) => {
             type: "income",
             category: "transfer_in",
             amount: total,
-            description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa.`
+            description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa. Devir: ${total}₺`
         });
 
         await Transaction.create({
@@ -2999,7 +3001,7 @@ exports.postTransferRegister = async (req, res, next) => {
             type: "expense",
             category: "transfer_out",
             amount: total,
-            description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa.`
+            description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa. Devir: ${total}₺`
         });
 
         receiverRegister.cash_balance = Number(receiverRegister.cash_balance) + cashBalance;
