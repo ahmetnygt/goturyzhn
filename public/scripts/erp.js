@@ -4350,6 +4350,21 @@ $(".save-user").on("click", async e => {
     })
 })
 
+$(".register-reset-nav").on("click", async e => {
+    await $.ajax({
+        url: "/erp/post-reset-register",
+        type: "POST",
+        data: {},
+        success: function (response) {
+            $(".register").css("display", "none")
+            $(".blackout").css("display", "none")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
+})
+
 $(".transaction-transfer-nav").on("click", async e => {
     await $.ajax({
         url: "/erp/get-branches-list",

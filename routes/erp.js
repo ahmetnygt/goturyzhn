@@ -110,6 +110,8 @@ router.get('/get-transactions-list', auth, erpController.getTransactions);
 router.get('/get-transaction-data', auth, erpController.getTransactionData);
 router.get('/get-user-register-balance', auth, erpController.getUserRegisterBalance);
 router.post('/post-add-transaction', auth, erpController.postAddTransaction);
+router.post('/post-reset-register', auth, erpController.postResetRegister);
+router.post('/post-transfer-register', auth, erpController.postTransferRegister);
 
 router.post('/post-request-payment', auth, erpController.postRequestPayment);
 router.post('/post-send-payment', auth, erpController.postSendPayment);
