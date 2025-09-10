@@ -504,7 +504,7 @@ exports.postBusAccountCut = async (req, res, next) => {
 
         const trip = await Trip.findOne({ where: { id: tripId } })
         const bus = await Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await RouteStop.findAll({ where: { tripId: trip.id } })
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         const data = await calculateBusAccountData(tripId, stopId, req.session.user);
@@ -532,7 +532,7 @@ exports.postBusAccountCut = async (req, res, next) => {
             type: "expense",
             category: "payed_to_bus",
             amount: payedAmount,
-            description: `${bus.licensePlate} | ${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId)} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId)}`
+            description: `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
         const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
@@ -585,7 +585,7 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
 
         const trip = await Trip.findOne({ where: { id: accountCut.tripId } })
         const bus = await Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await RouteStop.findAll({ where: { tripId: trip.id } })
+        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
         const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         await Transaction.create({
@@ -593,12 +593,12 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
             type: "income",
             category: "payed_to_bus",
             amount: accountCut.payedAmount,
-            description: `Hesap kesimi geri alındı | ${bus.licensePlate} | ${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId)} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId)}`
+            description: `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == accountCut.stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
         const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (register) {
-            register.cash_balance = (register.cash_balance || 0) - (payedAmount || 0);
+            register.cash_balance = (register.cash_balance || 0) + (accountCut.payedAmount || 0);
             await register.save();
         }
 
