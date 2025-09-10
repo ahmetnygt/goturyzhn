@@ -117,4 +117,8 @@ router.get('/get-pending-payments', auth, erpController.getPendingPayments);
 router.get('/get-pending-collections', auth, erpController.getPendingCollections);
 router.post('/post-confirm-payment', auth, erpController.postConfirmPayment);
 
+router.get('/get-announcements', auth, erpController.getAnnouncements);
+router.post('/post-save-announcement', auth, erpController.postSaveAnnouncement);
+router.post('/post-announcement-seen', auth, erpController.postAnnouncementSeen);
+
 module.exports = router;
