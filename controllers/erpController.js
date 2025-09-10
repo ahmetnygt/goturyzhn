@@ -1697,6 +1697,7 @@ exports.getSearchTable = async (req, res, next) => {
             ...(req.query.idnum?.trim() && { idNumber: req.query.idnum.trim() }),
             ...(req.query.phone?.trim() && { phoneNumber: req.query.phone.trim() }),
             ...(req.query.pnr?.trim() && { pnr: req.query.pnr.trim() }),
+            ...(req.query.status?.trim() && { status: req.query.status.trim() }),
         };
 
         // Filtre yoksa where göndermeyelim
@@ -1716,11 +1717,14 @@ exports.getSearchTable = async (req, res, next) => {
         const tripIds = [...new Set(tickets.map((t) => t.tripId).filter(Boolean))];
 
         let stopMap = new Map(); // stopId -> stopTitle
+        let tripMap = new Map(); // tripId -> tripDate
 
         if (tripIds.length) {
             const trips = await Trip.findAll({
                 where: { id: { [Op.in]: tripIds } },
             });
+
+            tripMap = new Map(trips.map((tr) => [String(tr.id), tr.date]));
 
             const routeIds = [
                 ...new Set(trips.map((tr) => tr.routeId).filter(Boolean)),
@@ -1752,12 +1756,14 @@ exports.getSearchTable = async (req, res, next) => {
             const t = ticket.toJSON ? ticket.toJSON() : ticket; // Sequelize instance -> plain obj
             const fromTitle = stopMap.get(String(t.fromRouteStopId)) || "-";
             const toTitle = stopMap.get(String(t.toRouteStopId)) || "-";
+            const tripDate = tripMap.get(String(t.tripId)) || t.optionDate || "";
 
             return {
                 ...t,
                 from: fromTitle,
                 to: toTitle,
                 gender: t.gender === "m" ? "BAY" : "BAYAN",
+                date: tripDate,
             };
         });
 

@@ -326,6 +326,18 @@ block content
                 span.input-group-text PNR
                 input.search-pnr.form-control(type="text")
             .input-group
+                span.input-group-text Durum
+                select.search-status.form-select
+                    option(value="") Tümü
+                    option(value="web") WEB
+                    option(value="gotur") Götür
+                    option(value="completed") SATIŞ
+                    option(value="reservation") REZERVASYON
+                    option(value="open") AÇIK
+                    option(value="pending") BEKLEMEDE
+                    option(value="canceled") İPTAL
+                    option(value="refund") İADE
+            .input-group
                 span.input-group-text Kalkış
                 select.form-select(type="text")
             .input-group
