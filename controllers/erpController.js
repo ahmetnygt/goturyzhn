@@ -385,7 +385,7 @@ exports.getTripTable = async (req, res, next) => {
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-    const tickets = await Ticket.findAll({ where: { tripId: trip.id }, order: [["seatNo", "ASC"]] })
+    const tickets = await Ticket.findAll({ where: { tripId: trip.id,status:{[Op.notIn]:["pending"]} }, order: [["seatNo", "ASC"]] })
 
     const canceledStatuses = ["canceled", "refund"]
     const activeTickets = []
