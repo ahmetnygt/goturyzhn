@@ -704,11 +704,20 @@ async function loadTrip(date, time, tripId) {
                     const revenues = await $.get("/erp/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
                     const rows = [];
                     revenues.branches.forEach(b => {
-                        rows.push(`<tr><td>${b.title}</td><td>${b.currentAmount}₺</td><td>${b.totalAmount}₺</td></tr>`);
+                        rows.push(`
+                            <tr>
+                                <td>${b.title}</td>
+                                <td>${b.currentCount}</td>
+                                <td>${b.currentAmount}₺</td>
+                                <td>${b.totalCount}</td>
+                                <td>${b.totalAmount}₺</td>
+                            </tr>`);
                     });
                     $(".trip-revenue-rows").html(rows.join(""));
-                    $(".trip-revenue-total-current").html(revenues.totals.current + "₺");
-                    $(".trip-revenue-total-all").html(revenues.totals.total + "₺");
+                    $(".trip-revenue-total-current-count").html(revenues.totals.currentCount);
+                    $(".trip-revenue-total-current-amount").html(revenues.totals.currentAmount + "₺");
+                    $(".trip-revenue-total-all-count").html(revenues.totals.totalCount);
+                    $(".trip-revenue-total-all-amount").html(revenues.totals.totalAmount + "₺");
                     $(".trip-revenue-pop-up").css("display", "block");
                     $(".blackout").css("display", "block");
                 } catch (err) {

@@ -714,41 +714,52 @@ exports.getTripRevenues = async (req, res, next) => {
             raw: true
         });
 
-        const users = await FirmUser.findAll({ where: { id: [...new Set(tickets.map(t => t.userId))] } })
+        const userIds = [...new Set(tickets.map(t => t.userId).filter(id => id))];
+        const users = await FirmUser.findAll({ where: { id: userIds }, raw: true });
+        const branchIds = [...new Set(users.map(u => u.branchId).filter(id => id))];
+        const branches = await Branch.findAll({ where: { id: { [Op.in]: branchIds } }, raw: true });
 
-        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId))] } }, raw: true });
-
-        for (let i = 0; i < tickets.length; i++) {
-            const ticket = tickets[i];
-
-        }
+        const userBranch = {};
+        users.forEach(u => userBranch[u.id] = u.branchId);
 
         const branchTitles = {};
         branches.forEach(b => branchTitles[b.id] = b.title);
 
         const branchData = {};
         tickets.forEach(ticket => {
-            const branchId = groupBranch[ticket.ticketGroupId];
+            const branchId = userBranch[ticket.userId];
             if (!branchId) return;
+
             if (!branchData[branchId]) {
                 branchData[branchId] = {
                     title: branchTitles[branchId] || "",
                     currentAmount: 0,
-                    totalAmount: 0
+                    currentCount: 0,
+                    totalAmount: 0,
+                    totalCount: 0
                 };
             }
+
             const amount = Number(ticket.price);
             branchData[branchId].totalAmount += amount;
+            branchData[branchId].totalCount += 1;
+
             if (ticket.fromRouteStopId == stopId) {
                 branchData[branchId].currentAmount += amount;
+                branchData[branchId].currentCount += 1;
             }
         });
 
         const branchesArr = Object.values(branchData);
-        const totalCurrent = branchesArr.reduce((sum, b) => sum + b.currentAmount, 0);
-        const totalAmount = branchesArr.reduce((sum, b) => sum + b.totalAmount, 0);
+        const totals = branchesArr.reduce((acc, b) => {
+            acc.currentAmount += b.currentAmount;
+            acc.currentCount += b.currentCount;
+            acc.totalAmount += b.totalAmount;
+            acc.totalCount += b.totalCount;
+            return acc;
+        }, { currentAmount: 0, currentCount: 0, totalAmount: 0, totalCount: 0 });
 
-        res.json({ branches: branchesArr, totals: { current: totalCurrent, total: totalAmount } });
+        res.json({ branches: branchesArr, totals });
     } catch (err) {
         console.error("getTripRevenues error:", err);
         res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
