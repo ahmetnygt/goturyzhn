@@ -387,7 +387,7 @@ exports.getTripTable = async (req, res, next) => {
     const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-    const tickets = await Ticket.findAll({ where: { tripId: trip.id,status:{[Op.notIn]:["pending"]} }, order: [["seatNo", "ASC"]] })
+    const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ["pending"] } }, order: [["seatNo", "ASC"]] })
     const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
     const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
 
@@ -502,6 +502,11 @@ exports.postBusAccountCut = async (req, res, next) => {
         const payedAmount = parse(req.body.payedAmount);
         const description = req.body.description || "";
 
+        const trip = await Trip.findOne({ where: { id: tripId } })
+        const bus = await Bus.findOne({ where: { id: trip.busId } })
+        const routeStops = await RouteStop.findAll({ where: { tripId: trip.id } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+
         const data = await calculateBusAccountData(tripId, stopId, req.session.user);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
         const needToPay = data.allTotal - comissionAmount - d1 - d2 - d3 - d4 - d5 - tip;
@@ -521,6 +526,20 @@ exports.postBusAccountCut = async (req, res, next) => {
             needToPayAmount: needToPay,
             payedAmount
         });
+
+        await Transaction.create({
+            userId: req.session.user.id,
+            type: "expense",
+            category: "payed_to_bus",
+            amount: payedAmount,
+            description: `${bus.licensePlate} | ${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId)} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId)}`
+        });
+
+        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        if (register) {
+            register.cash_balance = (register.cash_balance || 0) - (payedAmount || 0);
+            await register.save();
+        }
 
         res.json({ message: "OK" });
     } catch (err) {
@@ -562,7 +581,27 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
 exports.postDeleteBusAccountCut = async (req, res, next) => {
     try {
         const { id } = req.body;
-        await BusAccountCut.destroy({ where: { id } });
+        const accountCut = await BusAccountCut.findOne({ where: { id } });
+
+        const trip = await Trip.findOne({ where: { id: accountCut.tripId } })
+        const bus = await Bus.findOne({ where: { id: trip.busId } })
+        const routeStops = await RouteStop.findAll({ where: { tripId: trip.id } })
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+
+        await Transaction.create({
+            userId: req.session.user.id,
+            type: "income",
+            category: "payed_to_bus",
+            amount: accountCut.payedAmount,
+            description: `Hesap kesimi geri alındı | ${bus.licensePlate} | ${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId)} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId)}`
+        });
+
+        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        if (register) {
+            register.cash_balance = (register.cash_balance || 0) - (payedAmount || 0);
+            await register.save();
+        }
+
         res.json({ message: "OK" });
     } catch (err) {
         console.error("postDeleteBusAccountCut error:", err);
@@ -1056,10 +1095,8 @@ exports.postTickets = async (req, res, next) => {
             console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id })
             const pendingTicket = await Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id } })
             const pendingTicketGroup = await TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
-            await pendingTicket.destroy()
-            console.log("pending silindi")
-            await pendingTicketGroup.destroy()
-            console.log("pending grup silindi")
+            await pendingTicket?.destroy().then(r => console.log("pending silindi"))
+            await pendingTicketGroup?.destroy().then(r => console.log("pending grup silindi"))
 
             const ticket = await Ticket.create({
                 seatNo: t.seatNumber,

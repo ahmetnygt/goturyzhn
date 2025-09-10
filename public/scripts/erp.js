@@ -94,6 +94,7 @@ window.fetch = async (...args) => {
 
 $(document).ajaxSend(showLoading);
 $(document).ajaxComplete(hideLoading);
+$(document).ajaxError(hideLoading)
 
 window.permissions = [];
 const hasPermission = code => window.permissions.includes(code);
@@ -1490,7 +1491,7 @@ $(".ticket-button-action").on("click", async e => {
             await $.ajax({
                 url: "/erp/post-tickets",
                 type: "POST",
-                data: { pendingIds: JSON.stringify($("#pendingIds").val()), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+                data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
                 success: async function (response) {
                     ticketClose()
                     loadTrip(currentTripDate, currentTripTime, currentTripId)

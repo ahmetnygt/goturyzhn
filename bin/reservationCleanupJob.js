@@ -39,7 +39,7 @@ async function cancelExpiredReservations() {
       // 1) reservation → cancelled
       if (reservationIds.length) {
         await Ticket.update(
-          { status: 'cancelled' },      // NOT: Modeliniz "canceled" kullanıyorsa burayı ona göre değiştirin.
+          { status: 'canceled' },      // NOT: Modeliniz "canceled" kullanıyorsa burayı ona göre değiştirin.
           { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
         );
 
