@@ -1778,11 +1778,11 @@ $(document).on("click", ".passenger-table tbody tr", function (e) {
 
     // Popup'ı mouse konumuna yerleştir
     let left = e.pageX + 10;
-    let top  = e.pageY + 10;
+    let top = e.pageY + 10;
 
-    const popupWidth  = $popup.outerWidth();
+    const popupWidth = $popup.outerWidth();
     const popupHeight = $popup.outerHeight();
-    const viewportWidth  = $(window).width();
+    const viewportWidth = $(window).width();
     const viewportHeight = $(window).height();
 
     // Sağ kenarı taşmasın
@@ -4553,6 +4553,37 @@ $(".pending-collections-close").on("click", e => {
     $(".blackout").css("display", "none");
 });
 
+const popupQueue = [];
+const shownPopupIds = new Set();
+let showingPopup = false;
+
+function showNextPopup() {
+    if (!popupQueue.length) {
+        showingPopup = false;
+        $(".blackout").hide();
+        return;
+    }
+    showingPopup = true;
+    const a = popupQueue.shift();
+    const pop = $("<div>").addClass("announcement-pop-up");
+    const header = $("<div>").addClass("gtr-header").append($("<span>").text("DUYURU"));
+    const close = $("<div>").addClass("announcement-pop-up-close").append($("<i>").addClass("fa-solid fa-x"));
+    close.on("click", async () => {
+        await $.ajax({ url: "/erp/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
+        pop.remove();
+        showNextPopup();
+    });
+    const body = $("<div>").addClass("p-3");
+    body.append($("<p>").text(a.message));
+    if (a.senderName) {
+        body.append($("<p>").addClass("mt-2 mb-0 text-end text-muted").text(a.senderName));
+    }
+    pop.append(header, close, body);
+    $("body").append(pop);
+    $(".blackout").show();
+    pop.show();
+}
+
 async function loadAnnouncements() {
     try {
         const data = await $.ajax({
@@ -4566,24 +4597,13 @@ async function loadAnnouncements() {
         }
 
         const popups = data.popup || [];
-        const showPopup = index => {
-            if (index >= popups.length) return;
-            const a = popups[index];
-            const pop = $("<div>").addClass("announcement-pop-up p-3");
-            pop.append($("<p>").text(a.message));
-            const btn = $("<button>").addClass("btn btn-primary btn-sm mt-2").text("Kapat");
-            btn.on("click", async () => {
-                await $.ajax({ url: "/erp/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
-                pop.remove();
-                $(".blackout").hide();
-                showPopup(index + 1);
-            });
-            pop.append(btn);
-            $("body").append(pop);
-            $(".blackout").show();
-            pop.show();
-        };
-        showPopup(0);
+        popups.forEach(a => {
+            if (!shownPopupIds.has(a.id)) {
+                popupQueue.push(a);
+                shownPopupIds.add(a.id);
+            }
+        });
+        if (!showingPopup) showNextPopup();
     } catch (err) {
         console.error("Announcement error:", err);
     }
