@@ -49,12 +49,12 @@
             label.form-label Fiyat 
                 span.customer-point.ms-1
             if !permissions.includes('ENTER_FREE_PRICE')
-                if seatTypes[i] == "single"
+                if seatTypes &&seatTypes[i] == "single"
                     input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
                 else
                     input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.price1)
             else 
-                if seatTypes[i] == "single"
+                if seatTypes &&seatTypes[i] == "single"
                     input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
                 else
                     input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.price1)

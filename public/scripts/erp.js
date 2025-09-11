@@ -2043,7 +2043,7 @@ $(".taken-ticket-op").on("click", async e => {
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
                 $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İADE")
-                $(".ticket-cancel-refund-open .tickets").prepend(response)
+                $(".ticket-cancel-refund-open .tickets").html(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
 
@@ -2184,13 +2184,13 @@ $(".taken-ticket-op").on("click", async e => {
             type: "POST",
             data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
-                selectedTakenSeats = []
-                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
             }
         });
+        selectedTakenSeats = []
+        loadTrip(currentTripDate, currentTripTime, currentTripId)
     }
 })
 
@@ -2572,17 +2572,28 @@ $(document).on("click", ".searched-table tbody tr", function (e) {
 
     const rect = this.getBoundingClientRect();
     const $popup = $(".search-ticket-ops-pop-up");
-    let left = rect.right + window.scrollX + 10;
-    let top = rect.top + window.scrollY + 25;
-    $popup.css({ left: left + "px", top: top + "px", display: "block" });
 
+    // Popup'ı mouse konumuna yerleştir
+    let left = e.pageX + 10;
+    let top = e.pageY + 10;
+
+    const popupWidth = $popup.outerWidth();
     const popupHeight = $popup.outerHeight();
-    const viewportBottom = window.scrollY + window.innerHeight;
-    if (top + popupHeight > viewportBottom) {
-        top = rect.top + window.scrollY - popupHeight - 10;
-        if (top < 0) top = 0;
-        $popup.css("top", top + "px");
+    const viewportWidth = $(window).width();
+    const viewportHeight = $(window).height();
+
+    // Sağ kenarı taşmasın
+    if (left + popupWidth > viewportWidth) {
+        left = e.pageX - popupWidth - 10;
+        if (left < 0) left = 0;
     }
+
+    // Alt kenarı taşmasın
+    if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
+        top = e.pageY - popupHeight - 10;
+        if (top < 0) top = 0;
+    }
+    $popup.css({ left: left + "px", top: top + "px", display: "block" });
 });
 
 $(document).on("click", ".searched-ticket-op[data-action='go_trip']", async e => {
@@ -2616,11 +2627,9 @@ $(".register-nav").on("click", async e => {
                     const inSum = cashSales + cardSales + transferIn + otherIn
                     const outSum = cashRefund + cardRefund + payedToBus + transferOut + otherOut
                     const balance = inSum - outSum
-                    console.log(response)
-                    console.log(inSum)
-                    console.log(outSum)
-                    console.log(balance)
                     $(".balance").val(balance)
+                    $(".card-balance").val(Number(response.card_balance))
+                    $(".cash-balance").val(Number(response.cash_balance))
                     $(".income-summary").val(inSum)
                     $(".expense-summary").val(outSum)
                     $(".cash-sales").val(cashSales)
@@ -4552,38 +4561,48 @@ $(".payment-send-button").on("click", async e => {
 });
 
 async function loadPendingPayments() {
-    const list = await $.ajax({
+    await $.ajax({
         url: "/erp/get-pending-payments",
         type: "GET",
-        global: false
-    });
-    if (!list || list.length === 0) return;
-    let arr = [];
-    for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        const row = $("<div>").addClass("d-flex justify-content-between align-items-center gap-2");
-        row.append($("<span>").text(p.userName));
-        row.append($("<span>").text(p.amount));
-        if (p.canConfirm) {
-            const btn = $("<button>").addClass("btn btn-sm btn-outline-primary").html("Onayla").attr("data-id", p.id);
-            btn.on("click", async e2 => {
-                await $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e2.currentTarget).attr("data-id") } });
-                $(e2.currentTarget).parent().remove();
-            });
-            row.append(btn);
+        success: function (response) {
+            $(".pending-payments-list").html(response)
+            $(".blackout").css("display", "block");
+            $(".pending-payments").css("display", "block");
+            $(".payment-button").on("click", e => {
+                $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
+                $(e.currentTarget).closest(".payment").remove()
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
         }
-        arr.push(row);
-    }
-    $(".pending-payments-list").html(arr);
-    $(".blackout").css("display", "block");
-    $(".pending-payments").css("display", "block");
+    });
+}
+
+async function loadPendingCollections() {
+    await $.ajax({
+        url: "/erp/get-pending-collections",
+        type: "GET",
+        success: function (response) {
+            $(".pending-collections-list").html(response)
+            $(".blackout").css("display", "block");
+            $(".pending-collections").css("display", "block");
+            $(".payment-button").on("click", e => {
+                $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
+                $(e.currentTarget).closest(".payment").remove()
+            })
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
 }
 
 $(".pending-payments-nav").on("click", loadPendingPayments);
 
 setInterval(async () => {
-    if ($(".pending-payments").css("display") === "none") {
-        await loadPendingPayments();
+    if ($(".pending-collections").css("display") === "none") {
+        await loadPendingCollections();
     }
 }, 60000);
 
@@ -4592,31 +4611,7 @@ $(".pending-payments-close").on("click", e => {
     $(".blackout").css("display", "none");
 });
 
-$(".pending-collections-nav").on("click", async e => {
-    const list = await $.ajax({
-        url: "/erp/get-pending-collections",
-        type: "GET"
-    });
-    let arr = [];
-    for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        const row = $("<div>").addClass("d-flex justify-content-between align-items-center gap-2");
-        row.append($("<span>").text(p.userName));
-        row.append($("<span>").text(p.amount));
-        if (p.canConfirm) {
-            const btn = $("<button>").addClass("btn btn-sm btn-outline-primary").html("Onayla").attr("data-id", p.id);
-            btn.on("click", async e2 => {
-                await $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e2.currentTarget).attr("data-id") } });
-                $(e2.currentTarget).parent().remove();
-            });
-            row.append(btn);
-        }
-        arr.push(row);
-    }
-    $(".pending-collections-list").html(arr);
-    $(".blackout").css("display", "block");
-    $(".pending-collections").css("display", "block");
-});
+$(".pending-collections-nav").on("click", loadPendingCollections)
 
 $(".pending-collections-close").on("click", e => {
     $(".pending-collections").css("display", "none");

@@ -23,6 +23,14 @@ const Payment = sequelize.define("payment", {
         type: Sequelize.DECIMAL(12, 2),
         allowNull: false
     },
+    cash_amount: {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: true
+    },
+    card_amount: {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: true
+    },
     status: {
         type: Sequelize.ENUM("pending", "approved", "rejected"),
         defaultValue: "pending",

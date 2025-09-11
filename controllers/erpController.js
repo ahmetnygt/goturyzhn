@@ -1175,9 +1175,9 @@ exports.postTickets = async (req, res, next) => {
                 const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
                 if (register) {
                     if (ticket.payment === "cash") {
-                        register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
+                        register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
                     } else if (ticket.payment === "card") {
-                        register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
+                        register.card_balance = Number(register.card_balance) + (Number(ticket.price) || 0);
                     }
                     await register.save();
                 }
@@ -1300,9 +1300,9 @@ exports.postCompleteTickets = async (req, res, next) => {
             const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
             if (register) {
                 if (ticket.payment === "cash") {
-                    register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
+                    register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
                 } else if (ticket.payment === "card") {
-                    register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
+                    register.card_balance = Number(register.card_balance) + (Number(ticket.price) || 0);
                 }
                 await register.save();
             }
@@ -1401,9 +1401,9 @@ exports.postSellOpenTickets = async (req, res, next) => {
             const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
             if (register) {
                 if (ticket.payment === "cash") {
-                    register.cash_balance = (register.cash_balance || 0) + (ticket.price || 0);
+                    register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
                 } else if (ticket.payment === "card") {
-                    register.card_balance = (register.card_balance || 0) + (ticket.price || 0);
+                    register.card_balance = Number(register.card_balance) + (Number(ticket.price) || 0);
                 }
                 await register.save();
             }
@@ -1512,9 +1512,9 @@ exports.postCancelTicket = async (req, res, next) => {
                     const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
                     if (register) {
                         if (ticket.payment === "cash") {
-                            register.cash_balance = (register.cash_balance || 0) - (ticket.price || 0);
+                            register.cash_balance = Number(register.cash_balance) - (Number(ticket.price) || 0);
                         } else if (ticket.payment === "card") {
-                            register.card_balance = (register.card_balance || 0) - (ticket.price || 0);
+                            register.card_balance = Number(register.card_balance) - (Number(ticket.price) || 0);
                         }
                         await register.save();
                     }
@@ -2802,7 +2802,9 @@ exports.getTransactions = async (req, res, next) => {
             order: [["createdAt", "DESC"]]
         });
 
-        transactions[0].amount = ""
+        if (transactions.length) {
+            transactions[transactions.length - 1].amount = ""
+        }
 
         // Ticket bilgilerini Promise.all ile ekle
         await Promise.all(transactions.map(async (t) => {
@@ -2887,7 +2889,9 @@ exports.getTransactionData = async (req, res, next) => {
             transferOut,
             payedToBus,
             otherIn,
-            otherOut
+            otherOut,
+            card_balance: register.card_balance,
+            cash_balance: register.cash_balance
         });
 
     } catch (err) {
@@ -2932,7 +2936,11 @@ exports.postAddTransaction = async (req, res, next) => {
             throw new Error("Kasa kaydı bulunamadı.");
         }
 
-        register.cash_balance = Number(register.cash_balance) + Number(amount);
+        if (type === "income") {
+            register.cash_balance = Number(register.cash_balance) + Number(amount);
+        } else if (type === "expense") {
+            register.cash_balance = Number(register.cash_balance) - Number(amount);
+        }
         await register.save();
 
         res.status(200).json({ success: true, transactionId: transaction.id });
@@ -2981,46 +2989,18 @@ exports.postTransferRegister = async (req, res, next) => {
         const receiver = users.find(u => u.id == targetUserId);
 
         const senderRegister = await CashRegister.findOne({ where: { userId: senderId } });
-        const receiverRegister = await CashRegister.findOne({ where: { userId: targetUserId } });
-
-        if (!senderRegister || !receiverRegister) {
-            return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
-        }
 
         const cashBalance = Number(senderRegister.cash_balance) || 0;
         const cardBalance = Number(senderRegister.card_balance) || 0;
         const total = cashBalance + cardBalance;
 
-        // await Transaction.create({
-        //     userId: receiver.id,
-        //     type: "income",
-        //     category: "transfer_in",
-        //     amount: total,
-        //     description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa. Devir: ${total}₺`
-        // });
-
-        // await Transaction.create({
-        //     userId: sender.id,
-        //     type: "expense",
-        //     category: "transfer_out",
-        //     amount: total,
-        //     description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa. Devir: ${total}₺`
-        // });
-
-        // receiverRegister.cash_balance = Number(receiverRegister.cash_balance) + cashBalance;
-        // receiverRegister.card_balance = Number(receiverRegister.card_balance) + cardBalance;
-        // await receiverRegister.save();
-
-        // senderRegister.cash_balance = 0;
-        // senderRegister.card_balance = 0;
-        // senderRegister.reset_date_time = new Date();
-        // await senderRegister.save();
-
         await Payment.create({
-            initiatorId: sender.id,
-            payerId: receiver.id,
-            receiverId: sender.id,
+            initiatorId: receiver.id,
+            payerId: sender.id,
+            receiverId: receiver.id,
             amount: total,
+            card_amount: cardBalance,
+            cash_amount: cashBalance,
             isWholeTransfer: true
         });
         console.log(senderRegister.cash_balance)
@@ -3036,10 +3016,11 @@ exports.postRequestPayment = async (req, res, next) => {
     try {
         const { userId, amount } = req.body;
         await Payment.create({
-            initiatorId: req.session.user.id,
+            initiatorId: userId,
             payerId: userId,
             receiverId: req.session.user.id,
             amount,
+            cash_amount: amount,
             isWholeTransfer: false
         });
         res.json({ success: true });
@@ -3053,10 +3034,11 @@ exports.postSendPayment = async (req, res, next) => {
     try {
         const { userId, amount } = req.body;
         await Payment.create({
-            initiatorId: req.session.user.id,
+            initiatorId: userId,
             payerId: req.session.user.id,
             receiverId: userId,
             amount,
+            cash_amount: amount,
             isWholeTransfer: false
         });
         res.json({ success: true });
@@ -3070,13 +3052,17 @@ exports.getPendingPayments = async (req, res, next) => {
     try {
         const payments = await Payment.findAll({ where: { payerId: req.session.user.id, status: "pending" } });
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.receiverId))] } } });
+        if (!payments.length) {
+            res.status(404);
+        }
         const result = payments.map(p => ({
             id: p.id,
             amount: p.amount,
             userName: users.find(u => u.id == p.receiverId)?.name || "",
-            canConfirm: p.initiatorId !== req.session.user.id
+            canConfirm: p.initiatorId == req.session.user.id,
+            type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
         }));
-        res.json(result);
+        res.render("mixins/paymentsList", { payments: result });
     } catch (err) {
         console.error("Pending payments error:", err);
         res.status(500).json({ message: err.message });
@@ -3087,14 +3073,18 @@ exports.getPendingCollections = async (req, res, next) => {
     try {
         console.log(req.session.user.id)
         const payments = await Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
+        if (!payments.length) {
+            res.status(404);
+        }
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.payerId))] } } });
         const result = payments.map(p => ({
             id: p.id,
             amount: p.amount,
             userName: users.find(u => u.id == p.payerId)?.name || "",
-            canConfirm: p.initiatorId !== req.session.user.id
+            canConfirm: p.initiatorId == req.session.user.id,
+            type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
         }));
-        res.json(result);
+        res.render("mixins/paymentsList", { payments: result });
     } catch (err) {
         console.error("Pending collections error:", err);
         res.status(500).json({ message: err.message });
@@ -3103,59 +3093,61 @@ exports.getPendingCollections = async (req, res, next) => {
 
 exports.postConfirmPayment = async (req, res, next) => {
     try {
-        const { id } = req.body;
+        const { id, action } = req.body;
         const payment = await Payment.findOne({ where: { id } });
         const users = await FirmUser.findAll({ where: { id: { [Op.in]: [payment.payerId, payment.receiverId] } } })
 
         if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
         if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
-        if (payment.initiatorId === req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
+        if (payment.initiatorId !== req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
 
         if (Number(payment.amount) === 0) {
-            payment.status = "approved";
+            payment.status = action == "approve" ? "approved" : "rejected";
             await payment.save();
             return res.json({ success: true });
         }
 
-        payment.status = "approved";
+        payment.status = action == "approve" ? "approved" : "rejected";
         await payment.save();
 
-        await Transaction.create({
-            userId: users.find(u => u.id == payment.receiverId).id,
-            type: "income",
-            category: "transfer_in",
-            amount: Number(payment.amount),
-            description: payment.isWholeTransfer?
-            `${users.find(u => u.id == payment.payerId).name}  isimli kullanıcıdan devralınan kasa.`:`${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
-        })
+        if (action == "approve") {
+            await Transaction.create({
+                userId: users.find(u => u.id == payment.receiverId).id,
+                type: "income",
+                category: "transfer_in",
+                amount: Number(payment.amount),
+                description: payment.isWholeTransfer ?
+                    `${users.find(u => u.id == payment.payerId).name}  isimli kullanıcıdan devralınan kasa.` : `${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
+            })
 
-        await Transaction.create({
-            userId: users.find(u => u.id == payment.payerId).id,
-            type: "expense",
-            category: "transfer_out",
-            amount: Number(payment.amount),
-            description: payment.isWholeTransfer?
-            `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya devredilen kasa. Devir: ${payment.amount}₺`:
-            `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`
-        })
+            await Transaction.create({
+                userId: users.find(u => u.id == payment.payerId).id,
+                type: "expense",
+                category: "transfer_out",
+                amount: Number(payment.amount),
+                description: payment.isWholeTransfer ?
+                    `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya devredilen kasa. Devir: ${payment.amount}₺` :
+                    `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`
+            })
 
-        await CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
-            if (cr) {
-                cr.cash_balance = Number(cr.cash_balance) + Number(payment.amount);
-                await cr.save();
-            }
-        })
+            await CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
+                if (cr) {
+                    cr.cash_balance = Number(cr.cash_balance) + Number(payment.cash_amount);
+                    cr.card_balance = Number(cr.card_balance) + Number(payment.card_amount);
+                    await cr.save();
+                }
+            })
 
-        await CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
-            if (cr) {
-                cr.cash_balance = Number(cr.cash_balance) - Number(payment.amount);
-                if(payment.isWholeTransfer)
-                    cr.reset_date_time = new Date()
-                await cr.save();
-            }
-        })
-
-
+            await CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
+                if (cr) {
+                    cr.cash_balance = Number(cr.cash_balance) - Number(payment.cash_amount);
+                    cr.card_balance = Number(cr.card_balance) - Number(payment.card_amount);
+                    if (payment.isWholeTransfer)
+                        cr.reset_date_time = new Date()
+                    await cr.save();
+                }
+            })
+        }
         res.json({ success: true });
     } catch (err) {
         console.error("Confirm payment error:", err);

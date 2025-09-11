@@ -1,10 +1,10 @@
 .trip-info-settings
     if !trip.isActive
         p.inactiveTripText SEFER İPTAL
-    if !trip.isAccountCut
+    if !trip.isAccountCut && trip.isActive
         if permissions.includes('CUT_ACCOUNT')
             button.btn.btn-primary.btn-sm.account-cut Araç Kaldır
-    else
+    else if trip.isActive
         if permissions.includes('REVERT_ACCOUNT_CUT')
             button.btn.btn-danger.btn-sm.account-cut-undo Hesap Kesildi
     .trip-helper-buttons

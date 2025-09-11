@@ -79,13 +79,36 @@ block content
             span BEKLEYEN ÖDEMELERİM
         .pending-payments-close
             i.fa-solid.fa-x
+        .d-flex.p-3.pb-0
+            .col-3 
+                p.text-center.m-0 
+                    b İsim
+            .col-3 
+                p.text-center.m-0 
+                    b Tip
+            .col-3 
+                p.text-center.m-0 
+                    b Miktar
+            .col-3
         .p-3.pending-payments-list.d-flex.flex-column.gap-2
+
 
     .pending-collections
         .gtr-header
             span BEKLEYEN TAHSİLATLARIM
         .pending-collections-close
             i.fa-solid.fa-x
+        .d-flex.p-3.pb-0
+            .col-3 
+                p.text-center.m-0 
+                    b İsim
+            .col-3 
+                p.text-center.m-0 
+                    b Tip
+            .col-3 
+                p.text-center.m-0 
+                    b Miktar
+            .col-3
         .p-3.pending-collections-list.d-flex.flex-column.gap-2
 
     .add-announcement
@@ -209,8 +232,14 @@ block content
         .d-flex.flex-column.gap-3.p-3
             .d-flex.gap-2
                 .input-group.register-data-input
-                    span.input-group-text Bakiye
+                    span.input-group-text(style="background-color: #2660ff;color: white;") Toplam Bakiye
                     input.form-control.balance(type="text" readonly)
+                .input-group.register-data-input
+                    span.input-group-text Toplam Nakit Bakiye
+                    input.form-control.cash-balance(type="text" readonly)
+                .input-group.register-data-input
+                    span.input-group-text Toplam Kredi Bakiye
+                    input.form-control.card-balance(type="text" readonly)
                 .input-group.register-data-input
                     span.input-group-text Toplam Gelir
                     input.form-control.income-summary(type="text" readonly)
