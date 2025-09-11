@@ -776,6 +776,7 @@ async function loadTrip(date, time, tripId) {
             $(document).off("click", ".trip-option-cancel-trip");
             $(document).on("click", ".trip-option-cancel-trip", async function (e) {
                 e.stopPropagation();
+                if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
                 try {
                     await $.post("/erp/post-trip-active", { tripId: currentTripId, isActive: false });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
@@ -788,6 +789,7 @@ async function loadTrip(date, time, tripId) {
             $(document).off("click", ".trip-option-active-trip");
             $(document).on("click", ".trip-option-active-trip", async function (e) {
                 e.stopPropagation();
+                if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
                 try {
                     await $.post("/erp/post-trip-active", { tripId: currentTripId, isActive: true });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
