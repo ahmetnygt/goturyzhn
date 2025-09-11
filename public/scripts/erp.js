@@ -1815,6 +1815,7 @@ $(document).on("click", ".passenger-table tbody tr", function (e) {
 
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
+    $(".search-ticket-ops-pop-up").hide();
 
     if (action == "complete") {
         for (let i = 0; i < selectedTakenSeats.length; i++) {
@@ -2557,6 +2558,37 @@ $(".ticket-search-button").on("click", async e => {
         }
     })
 })
+
+$(document).on("click", ".searched-table tbody tr", function (e) {
+    const $row = $(this);
+    selectedTakenSeats = [$row.data("seat-number")];
+    currentGroupId = $row.data("group-id");
+    selectedTicketStopId = $row.data("stop-id");
+    currentTripId = $row.data("trip-id");
+    currentTripDate = $row.data("trip-date");
+    currentTripTime = $row.data("trip-time");
+
+    updateTakenTicketOpsVisibility($row);
+
+    const rect = this.getBoundingClientRect();
+    const $popup = $(".search-ticket-ops-pop-up");
+    let left = rect.right + window.scrollX + 10;
+    let top = rect.top + window.scrollY + 25;
+    $popup.css({ left: left + "px", top: top + "px", display: "block" });
+
+    const popupHeight = $popup.outerHeight();
+    const viewportBottom = window.scrollY + window.innerHeight;
+    if (top + popupHeight > viewportBottom) {
+        top = rect.top + window.scrollY - popupHeight - 10;
+        if (top < 0) top = 0;
+        $popup.css("top", top + "px");
+    }
+});
+
+$(document).on("click", ".searched-ticket-op[data-action='go_trip']", async e => {
+    $(".search-ticket-ops-pop-up").hide();
+    await loadTrip(currentTripDate, currentTripTime, currentTripId);
+});
 
 let isRegisterShown = false
 $(".register-nav").on("click", async e => {
