@@ -2988,37 +2988,39 @@ exports.postTransferRegister = async (req, res, next) => {
         const cardBalance = Number(senderRegister.card_balance) || 0;
         const total = cashBalance + cardBalance;
 
-        await Transaction.create({
-            userId: receiver.id,
-            type: "income",
-            category: "transfer_in",
-            amount: total,
-            description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa. Devir: ${total}₺`
-        });
+        // await Transaction.create({
+        //     userId: receiver.id,
+        //     type: "income",
+        //     category: "transfer_in",
+        //     amount: total,
+        //     description: `${sender?.name || ""} isimli kullanıcıdan devralınan kasa. Devir: ${total}₺`
+        // });
 
-        await Transaction.create({
-            userId: sender.id,
-            type: "expense",
-            category: "transfer_out",
-            amount: total,
-            description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa. Devir: ${total}₺`
-        });
+        // await Transaction.create({
+        //     userId: sender.id,
+        //     type: "expense",
+        //     category: "transfer_out",
+        //     amount: total,
+        //     description: `${receiver?.name || ""} isimli kullanıcıya devredilen kasa. Devir: ${total}₺`
+        // });
 
-        receiverRegister.cash_balance = Number(receiverRegister.cash_balance) + cashBalance;
-        receiverRegister.card_balance = Number(receiverRegister.card_balance) + cardBalance;
-        await receiverRegister.save();
+        // receiverRegister.cash_balance = Number(receiverRegister.cash_balance) + cashBalance;
+        // receiverRegister.card_balance = Number(receiverRegister.card_balance) + cardBalance;
+        // await receiverRegister.save();
 
-        senderRegister.cash_balance = 0;
-        senderRegister.card_balance = 0;
-        senderRegister.reset_date_time = new Date();
-        await senderRegister.save();
+        // senderRegister.cash_balance = 0;
+        // senderRegister.card_balance = 0;
+        // senderRegister.reset_date_time = new Date();
+        // await senderRegister.save();
 
         await Payment.create({
             initiatorId: sender.id,
             payerId: receiver.id,
             receiverId: sender.id,
-            amount: 0
+            amount: total,
+            isWholeTransfer: true
         });
+        console.log(senderRegister.cash_balance)
 
         res.json({ success: true });
     } catch (err) {
@@ -3034,7 +3036,8 @@ exports.postRequestPayment = async (req, res, next) => {
             initiatorId: req.session.user.id,
             payerId: userId,
             receiverId: req.session.user.id,
-            amount
+            amount,
+            isWholeTransfer: false
         });
         res.json({ success: true });
     } catch (err) {
@@ -3050,7 +3053,8 @@ exports.postSendPayment = async (req, res, next) => {
             initiatorId: req.session.user.id,
             payerId: req.session.user.id,
             receiverId: userId,
-            amount
+            amount,
+            isWholeTransfer: false
         });
         res.json({ success: true });
     } catch (err) {
@@ -3118,7 +3122,8 @@ exports.postConfirmPayment = async (req, res, next) => {
             type: "income",
             category: "transfer_in",
             amount: Number(payment.amount),
-            description: `${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
+            description: payment.isWholeTransfer?
+            `${users.find(u => u.id == payment.payerId).name}  isimli kullanıcıdan devralınan kasa.`:`${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
         })
 
         await Transaction.create({
@@ -3126,7 +3131,9 @@ exports.postConfirmPayment = async (req, res, next) => {
             type: "expense",
             category: "transfer_out",
             amount: Number(payment.amount),
-            description: `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`,
+            description: payment.isWholeTransfer?
+            `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya devredilen kasa. Devir: ${payment.amount}₺`:
+            `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`
         })
 
         await CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
@@ -3139,6 +3146,8 @@ exports.postConfirmPayment = async (req, res, next) => {
         await CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
             if (cr) {
                 cr.cash_balance = Number(cr.cash_balance) - Number(payment.amount);
+                if(payment.isWholeTransfer)
+                    cr.reset_date_time = new Date()
                 await cr.save();
             }
         })

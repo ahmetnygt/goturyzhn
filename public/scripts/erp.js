@@ -661,36 +661,35 @@ async function loadTrip(date, time, tripId) {
                 console.log(err)
             }
 
-            if (isMovingActive) {
-
-                await $.ajax({
-                    url: "/erp/get-route-stops-list-moving",
-                    type: "GET",
-                    data: { date: date, time: time, tripId: tripId, stopId: currentStop },
-                    success: function (response) {
-                        console.log(response)
-                        let arr = []
-                        const opt = $("<option>").html("").val("")
-                        arr.push(opt)
-                        for (let i = 0; i < response.length; i++) {
-                            const rs = response[i];
-                            const opt = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId)
-                            if (rs.isRestricted) {
-                                opt.addClass("restricted")
-                                opt.prop("disabled", true)
-                            }
-                            arr.push(opt)
+            await $.ajax({
+                url: "/erp/get-route-stops-list-moving",
+                type: "GET",
+                data: { date: date, time: time, tripId: tripId, stopId: currentStop },
+                success: function (response) {
+                    console.log(response)
+                    let arr = []
+                    const opt = $("<option>").html("").val("")
+                    arr.push(opt)
+                    for (let i = 0; i < response.length; i++) {
+                        const rs = response[i];
+                        const opt = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId)
+                        if (rs.isRestricted) {
+                            opt.addClass("restricted")
+                            opt.prop("disabled", true)
                         }
-                        $(".move-to-trip-place-select").html(arr)
+                        arr.push(opt)
+                    }
+                    $(".move-to-trip-place-select").html(arr)
+                    if (isMovingActive) {
                         $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
                         $(".move-to-trip-place").html(`${currentStopStr}`)
                         $(".move-to").css("display", "flex")
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
                     }
-                })
-            }
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            })
 
             // $(document).on("click", function () {
             //     $(".ticket-ops-pop-up").hide();
@@ -1004,6 +1003,9 @@ async function loadTrip(date, time, tripId) {
 
                 // ---- Taşıma modu ----
                 if (isMovingActive) {
+                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
+                    $(".move-to-trip-place").html(`${currentStopStr}`)
+                    $(".move-to").css("display", "flex")
                     // DOLU koltuklarda (grup) davranış
                     if (isTaken) {
                         if (selectedTakenSeats.length > 0) {
@@ -4520,7 +4522,8 @@ $(".payment-send-button").on("click", async e => {
 async function loadPendingPayments() {
     const list = await $.ajax({
         url: "/erp/get-pending-payments",
-        type: "GET"
+        type: "GET",
+        global: false
     });
     if (!list || list.length === 0) return;
     let arr = [];

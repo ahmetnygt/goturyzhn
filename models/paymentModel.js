@@ -27,6 +27,10 @@ const Payment = sequelize.define("payment", {
         type: Sequelize.ENUM("pending", "approved", "rejected"),
         defaultValue: "pending",
         allowNull: false
+    },
+    isWholeTransfer:{
+        type: Sequelize.BOOLEAN,
+        allowNull: false
     }
 });
 
