@@ -4581,10 +4581,11 @@ async function loadPendingPayments() {
     });
 }
 
-async function loadPendingCollections() {
+async function loadPendingCollections(global = true) {
     await $.ajax({
         url: "/erp/get-pending-collections",
         type: "GET",
+        global: global,
         success: function (response) {
             $(".pending-collections-list").html(response)
             $(".blackout").css("display", "block");
@@ -4604,7 +4605,7 @@ $(".pending-payments-nav").on("click", loadPendingPayments);
 
 setInterval(async () => {
     if ($(".pending-collections").css("display") === "none") {
-        await loadPendingCollections();
+        await loadPendingCollections(global = false);
     }
 }, 60000);
 
