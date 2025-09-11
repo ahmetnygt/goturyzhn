@@ -1546,8 +1546,19 @@ div.ticket-cancel-refund-open-close {
     display: none;
 }
 
+.search-ticket-ops-pop-up {
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
+    border-radius: .3rem;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    display: none;
+}
+
 .ticket-op,
-.taken-ticket-op {
+.taken-ticket-op,
+.searched-ticket-op {
     background-color: white;
     border-bottom: 1px solid #dee2e6;
     padding: .5rem;
