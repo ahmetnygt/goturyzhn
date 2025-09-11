@@ -61,7 +61,7 @@ const showError = message => {
 
 window.showError = showError;
 
-$(document).on("click", ".error-close", () => $(".error-popup").hide());
+$(document).off("click", ".error-close").on("click", ".error-close", () => $(".error-popup").hide());
 
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
@@ -882,7 +882,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).on("click", () => {
+            $(document).off("click").on("click", () => {
                 $(".ticket-op ul").css("display", "none");
             });
 
@@ -1424,7 +1424,7 @@ $(".ticket-op").on("click", e => {
 });
 
 // Başka yere tıklandığında boş koltuk menüsü kapanır
-$(document).on("click", () => {
+$(document).off("click").on("click", () => {
     $(".ticket-op ul").css("display", "none");
 });
 
@@ -1759,7 +1759,7 @@ let isMovingActive = false
 let movingSeatPNR = null
 let movingSelectedSeats = []
 
-$(document).on("click", ".passenger-table tbody tr", function (e) {
+$(document).off("click", ".passenger-table tbody tr").on("click", ".passenger-table tbody tr", function (e) {
     const $row = $(this);
     if (!$row.closest('#activeTickets').length) return;
 
@@ -2239,7 +2239,7 @@ function closeTripStopRestriction() {
     tripStopRestrictionDirty = false;
 }
 
-$(document).on("click", ".trip-stop-restriction-close", () => {
+$(document).off("click", ".trip-stop-restriction-close").on("click", ".trip-stop-restriction-close", () => {
     closeTripStopRestriction();
 });
 
@@ -2348,7 +2348,7 @@ $(".trip-note-close").on("click", e => {
     $(".add-trip-note").css("display", "none")
 })
 
-$(document).on("click", ".note-edit", e => {
+$(document).off("click", ".note-edit").on("click", ".note-edit", e => {
     const noteEl = $(e.currentTarget).closest(".note");
     editingNoteId = noteEl.data("id");
     const text = noteEl.find(".note-text").text();
@@ -2359,7 +2359,7 @@ $(document).on("click", ".note-edit", e => {
     $(".add-trip-note").css("display", "flex");
 })
 
-$(document).on("click", ".note-delete", async e => {
+$(document).off("click", ".note-delete").on("click", ".note-delete", async e => {
     const noteEl = $(e.currentTarget).closest(".note");
     const noteId = noteEl.data("id");
     if (confirm("Notu silmek istediğinize emin misiniz?")) {
@@ -2561,7 +2561,7 @@ $(".ticket-search-button").on("click", async e => {
     })
 })
 
-$(document).on("click", ".searched-table tbody tr", function (e) {
+$(document).off("click", ".searched-table tbody tr").on("click", ".searched-table tbody tr", function (e) {
     const $row = $(this);
     selectedTakenSeats = [$row.data("seat-number")];
     currentGroupId = $row.data("group-id");
@@ -2598,7 +2598,7 @@ $(document).on("click", ".searched-table tbody tr", function (e) {
     $popup.css({ left: left + "px", top: top + "px", display: "block" });
 });
 
-$(document).on("click", ".searched-ticket-op[data-action='go_trip']", async e => {
+$(document).off("click", ".searched-ticket-op[data-action='go_trip']").on("click", ".searched-ticket-op[data-action='go_trip']", async e => {
     $(".search-ticket-ops-pop-up").hide();
     await loadTrip(currentTripDate, currentTripTime, currentTripId);
 });
@@ -2863,7 +2863,7 @@ $(".bus-plans-close").on("click", e => {
 })
 
 let editingBusPlanId = null
-$(document).on("click", ".bus-plan-button", async e => {
+$(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", async e => {
     const id = e.currentTarget.dataset.id
     editingBusPlanId = id
 
@@ -3649,7 +3649,7 @@ $(".price-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(document).on("click", ".price-list-nodes .d-flex.btn, .price-add-row", function () {
+$(document).off("click", ".price-list-nodes .d-flex.btn, .price-add-row").on("click", ".price-list-nodes .d-flex.btn, .price-add-row", function () {
     const row = $(this);
     if (row.hasClass("price-button-inputs")) return;
     row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
@@ -4189,7 +4189,7 @@ $(".customer-blacklist-btn").on("click", async e => {
     })
 })
 
-$(document).on("click", ".customer-blacklist-open", function (e) {
+$(document).off("click", ".customer-blacklist-open").on("click", ".customer-blacklist-open", function (e) {
     const id = $(this).data("id");
     $(".customer-blacklist-pop-up").data("id", id);
     $(".customer-blacklist-description").val("");
@@ -4245,7 +4245,7 @@ $(".members-close").on("click", e => {
     $(".members").css("display", "none")
 })
 
-$(document).on("click", ".member-row", function () {
+$(document).off("click", ".member-row").on("click", ".member-row", function () {
     const idNumber = $(this).data("idnumber");
     const name = $(this).data("name");
     const surname = $(this).data("surname");

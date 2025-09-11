@@ -23,6 +23,7 @@
     "nodemon": "^3.1.9",
     "pdfkit": "^0.17.2",
     "pug": "2.0.0-beta11",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "pdfkit": "^0.13.0"
   }
 }
