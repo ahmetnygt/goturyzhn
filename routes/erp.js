@@ -10,6 +10,8 @@ const erpController = require("../controllers/erpController")
 
 router.get('/', auth, erpController.getErp);
 
+router.get('/test', erpController.test);
+
 router.get('/login', erpController.getErpLogin);
 router.post('/login', erpController.postErpLogin);
 

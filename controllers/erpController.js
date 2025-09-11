@@ -27,7 +27,8 @@ const FirmUserPermission = require("../models/firmUserPermissionModel")
 const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
-const AnnouncementUser = require("../models/announcementUserModel")
+const AnnouncementUser = require("../models/announcementUserModel");
+const generateTicket = require('../utilities/ticketPdf');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -156,6 +157,9 @@ function getSeatTypes(planBinary) {
 
 exports.getSeatTypes = getSeatTypes;
 
+exports.test = async (req, res, next) => {
+    generateTicket("bilet.pdf")
+}
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
