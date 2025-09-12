@@ -3230,15 +3230,27 @@ exports.getAnnouncements = async (req, res, next) => {
 
 exports.getSalesRefundsReport = async (req, res, next) => {
     try {
-        const { startDate, endDate, type } = req.query;
+        const { startDate, endDate, type, status } = req.query;
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
         end.setHours(23, 59, 59, 999);
 
+        let statuses;
+        switch ((status || '').toLowerCase()) {
+            case 'sales':
+                statuses = ['completed', 'web', 'gotur'];
+                break;
+            case 'returns':
+                statuses = ['refund'];
+                break;
+            default:
+                statuses = ['completed', 'web', 'gotur', 'refund'];
+        }
+
         const tickets = await Ticket.findAll({
             where: {
                 createdAt: { [Op.between]: [start, end] },
-                status: { [Op.in]: ['completed', 'refund'] }
+                status: { [Op.in]: statuses }
             },
             order: [['createdAt', 'ASC']]
         });
