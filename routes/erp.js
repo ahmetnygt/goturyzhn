@@ -35,6 +35,7 @@ router.get('/get-bus-account-cut', auth, erpController.getBusAccountCutData);
 router.post('/post-bus-account-cut', auth, erpController.postBusAccountCut);
 router.get('/get-bus-account-cut-record', auth, erpController.getBusAccountCutRecord);
 router.post('/post-delete-bus-account-cut', auth, erpController.postDeleteBusAccountCut);
+router.get('/get-bus-account-cut-receipt', auth, erpController.getBusAccountCutReceipt);
 
 router.get('/get-ticketops-popup', erpController.getTicketOpsPopUp);
 

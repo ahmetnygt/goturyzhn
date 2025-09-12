@@ -1194,6 +1194,11 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "block");
             });
 
+            $(".accountCut").on("click", e => {
+                e.preventDefault();
+                window.open(`/erp/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
+            });
+
             $(".account-cut-undo").on("click", async () => {
                 try {
                     const data = await $.ajax({

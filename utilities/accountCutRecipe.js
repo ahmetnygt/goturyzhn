@@ -14,11 +14,16 @@ const Staff = require('../models/staffModel');
 /**
  * Generate an account receipt PDF using supplied data.
  * @param {Object} data - Receipt information
- * @param {string} outputPath - Output file path
+ * @param {string|stream.Writable} output - Output file path or writable stream
+ * @returns {Promise<void>} resolves when writing finishes
  */
-function generateAccountReceipt(data, outputPath) {
+function generateAccountReceipt(data, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
-  doc.pipe(fs.createWriteStream(outputPath, { flags: "w" }));
+  const stream = typeof output === 'string'
+    ? fs.createWriteStream(output, { flags: "w" })
+    : output;
+
+  doc.pipe(stream);
 
   const availableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
@@ -170,6 +175,10 @@ function generateAccountReceipt(data, outputPath) {
   });
 
   doc.end();
+  return new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+  });
 }
 
 function addTime(baseTime, addTime) {
@@ -191,7 +200,7 @@ function addTime(baseTime, addTime) {
   return `${hh}:${mm}:${ss}`;
 }
 
-async function generateAccountReceiptFromDb(tripId, stopId, outputPath) {
+async function generateAccountReceiptFromDb(tripId, stopId, output) {
   const trip = await Trip.findOne({ where: { id: tripId } });
   if (!trip) throw new Error('Trip not found');
 
@@ -255,19 +264,20 @@ async function generateAccountReceiptFromDb(tripId, stopId, outputPath) {
     passengers
   };
 
-  generateAccountReceipt(data, outputPath);
+  return generateAccountReceipt(data, output);
 }
 
 module.exports = { generateAccountReceipt, generateAccountReceiptFromDb };
 
 if (require.main === module) {
   const tripId = process.argv[2];
-  if (!tripId) {
-    console.error('Usage: node utilities/accountReceiptPdf.js <tripId>');
+  const stopId = process.argv[3];
+  if (!tripId || !stopId) {
+    console.error('Usage: node utilities/accountReceiptPdf.js <tripId> <stopId>');
     process.exit(1);
   }
 
-  generateAccountReceiptFromDb(tripId, 'account_receipt.pdf')
+  generateAccountReceiptFromDb(tripId, stopId, 'account_receipt.pdf')
     .then(() => console.log('account_receipt.pdf created'))
     .catch(err => console.error('Error generating receipt:', err));
 }

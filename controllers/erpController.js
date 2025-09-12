@@ -620,6 +620,18 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
     }
 };
 
+exports.getBusAccountCutReceipt = async (req, res, next) => {
+    try {
+        const { tripId, stopId } = req.query;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="account_receipt.pdf"');
+        await generateAccountReceiptFromDb(tripId, stopId, res);
+    } catch (err) {
+        console.error("getBusAccountCutReceipt error:", err);
+        res.status(500).json({ message: "Hesap fişi oluşturulamadı." });
+    }
+};
+
 exports.postEditTripNote = async (req, res, next) => {
     try {
         const noteId = req.body.id;
