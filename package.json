@@ -21,9 +21,8 @@
     "mysql2": "^3.14.0",
     "node-cron": "^3.0.3",
     "nodemon": "^3.1.9",
-    "pdfkit": "^0.17.2",
+    "pdfkit": "^0.13.0",
     "pug": "2.0.0-beta11",
-    "sequelize": "^6.37.7",
-    "pdfkit": "^0.13.0"
+    "sequelize": "^6.37.7"
   }
 }
