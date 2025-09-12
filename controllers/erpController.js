@@ -28,7 +28,7 @@ const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
-const generateTicket = require('../utilities/ticketPdf');
+const generateAccountReceipt = require('../utilities/accountReceiptPdf');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -158,8 +158,38 @@ function getSeatTypes(planBinary) {
 exports.getSeatTypes = getSeatTypes;
 
 exports.test = async (req, res, next) => {
-    generateTicket("bilet.pdf")
-}
+    const data = {
+        header: {
+            stop: 'ÇANAKKALE',
+            printedAt: '12.09.2050 06:12:31',
+            route: '1202S ÇANAKKALE - BURSA 05:01',
+            departure: '12.09.2050 05:00',
+            arrival: 'BURSA',
+            bus: '18 BCH 859'
+        },
+        summary: {
+            ticketCount: 4,
+            ticketTotal: '2399',
+            commission: '59.75',
+            cut: '0',
+            ticketNumber: 4,
+            personCount: 4,
+            turnover: '2399',
+            ticketSum: '2399',
+            totalPassenger: 4,
+            sentTotal: '1799.25',
+            remainingTotal: '599.75'
+        },
+        passengers: [
+            { no: 1, price: '599.75', from: 'ÇANAKKALE', to: 'BURSA', name: 'Sefaya Canger', gender: 'K' },
+            { no: 2, price: '599.75', from: 'ÇANAKKALE', to: 'BURSA', name: 'Ali Nurdahan Canger', gender: 'E' },
+            { no: 3, price: '599.75', from: 'ÇANAKKALE', to: 'BURSA', name: 'Cem Canger', gender: 'E' },
+            { no: 4, price: '599.75', from: 'ÇANAKKALE', to: 'BURSA', name: 'Eren Canger', gender: 'E' }
+        ]
+    };
+    generateAccountReceipt(data, 'bilet.pdf');
+    res.send('bilet.pdf created');
+};
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
