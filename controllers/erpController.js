@@ -28,7 +28,7 @@ const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
-const generateTicket = require('../utilities/ticketPdf');
+const { generateAccountReceiptFromDb } = require('../utilities/accountReceiptPdf');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -158,8 +158,15 @@ function getSeatTypes(planBinary) {
 exports.getSeatTypes = getSeatTypes;
 
 exports.test = async (req, res, next) => {
-    generateTicket("bilet.pdf")
-}
+    try {
+        const { tripId } = req.query;
+        await generateAccountReceiptFromDb(tripId, 'bilet.pdf');
+        res.send('bilet.pdf created');
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
