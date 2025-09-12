@@ -25,6 +25,90 @@ function generateSalesRefundReport(rows, output) {
 
   doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
   doc.moveDown();
+  
+  const xStart = doc.page.margins.left;
+  const fullWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  // summary calculations
+  const paymentTypes = ['cash', 'card', 'spcs', 'nws', 'point'];
+  const totals = {};
+  paymentTypes.forEach(p => totals[p] = { sale: 0, refund: 0 });
+
+  let salesCount = 0;
+  let refundCount = 0;
+  let gidisKomisyon = 0;
+  let donusKomisyon = 0;
+
+  rows.forEach(r => {
+    const pay = r.payment || 'other';
+    const amount = Number(r.price) || 0;
+    const isRefund = (r.action || '').toLowerCase().startsWith('iade');
+    if (!totals[pay]) totals[pay] = { sale: 0, refund: 0 };
+    if (isRefund) {
+      totals[pay].refund += amount;
+      refundCount++;
+    } else {
+      totals[pay].sale += amount;
+      salesCount++;
+    }
+    gidisKomisyon += Number(r.goCommission || r.gidisKomisyon || 0);
+    donusKomisyon += Number(r.returnCommission || r.donusKomisyon || 0);
+  });
+
+  const passengerCount = salesCount - refundCount;
+  const netTotal = Object.values(totals).reduce((sum, t) => sum + t.sale - t.refund, 0);
+
+  const fmt = n => Number(n || 0).toFixed(2);
+
+  doc.font('Regular').fontSize(9);
+
+  const drawSummaryRow = items => {
+    const colWidth = fullWidth / items.length;
+    items.forEach((it, idx) => {
+      doc.text(`${it.label} ${it.value}`, xStart + idx * colWidth, doc.y, { width: colWidth });
+    });
+    doc.moveDown(0.5);
+  };
+
+  drawSummaryRow([
+    { label: 'Toplam Nakit Satış:', value: fmt(totals.cash.sale) },
+    { label: 'Toplam Nakit İade:', value: fmt(totals.cash.refund) },
+    { label: 'Toplam Net Nakit:', value: fmt(totals.cash.sale - totals.cash.refund) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam KK Satış:', value: fmt(totals.card.sale) },
+    { label: 'Toplam KK İade:', value: fmt(totals.card.refund) },
+    { label: 'Toplam Net KK:', value: fmt(totals.card.sale - totals.card.refund) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam SPCS Satış:', value: fmt(totals.spcs.sale) },
+    { label: 'Toplam SPCS İade:', value: fmt(totals.spcs.refund) },
+    { label: 'Toplam Net SPCS:', value: fmt(totals.spcs.sale - totals.spcs.refund) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam NWS Satış:', value: fmt(totals.nws.sale) },
+    { label: 'Toplam NWS İade:', value: fmt(totals.nws.refund) },
+    { label: 'Toplam Net NWS:', value: fmt(totals.nws.sale - totals.nws.refund) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam Puanlı Satış:', value: fmt(totals.point.sale) },
+    { label: 'Toplam Puanlı İade:', value: fmt(totals.point.refund) },
+    { label: 'Toplam Net Puanlı:', value: fmt(totals.point.sale - totals.point.refund) },
+  ]);
+  drawSummaryRow([
+    { label: 'Gidiş Biletler Komisyon:', value: fmt(gidisKomisyon) },
+    { label: 'Dönüş Biletler Komisyon:', value: fmt(donusKomisyon) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam Satış Adedi:', value: salesCount },
+    { label: 'Toplam İade Adedi:', value: refundCount },
+    { label: 'Toplam Net Tutar:', value: fmt(netTotal) },
+  ]);
+  drawSummaryRow([
+    { label: 'Toplam Yolcu Adedi:', value: passengerCount },
+  ]);
+
+  doc.moveDown();
 
   const columns = [
     { key: 'user', header: 'Kullanıcı', w: 70 },
@@ -40,20 +124,24 @@ function generateSalesRefundReport(rows, output) {
   ];
 
   let y = doc.y;
-  const xStart = doc.page.margins.left;
+  const headerHeight = 16;
+  const rowHeight = 14;
 
-  // table header
-  doc.font('Bold').fontSize(9);
-  let x = xStart;
-  columns.forEach(col => {
-    doc.text(col.header, x, y, { width: col.w, align: col.align || 'left' });
-    x += col.w;
-  });
-  y += 16;
-  doc.moveTo(xStart, y - 4).lineTo(doc.page.width - doc.page.margins.right, y - 4).stroke();
+  const drawHeader = () => {
+    doc.font('Bold').fontSize(9);
+    let x = xStart;
+    columns.forEach(col => {
+      doc.rect(x, y, col.w, headerHeight).stroke();
+      doc.text(col.header, x + 2, y + 4, { width: col.w - 4, align: col.align || 'left' });
+      x += col.w;
+    });
+    y += headerHeight;
+    doc.font('Regular').fontSize(8);
+  };
+
+  drawHeader();
 
   // table rows
-  doc.font('Regular').fontSize(8);
   rows.forEach(row => {
     const rowValues = {
       user: row.user || '',
@@ -67,27 +155,19 @@ function generateSalesRefundReport(rows, output) {
       pnr: row.pnr || '',
       price: (row.price != null ? Number(row.price).toFixed(2) : ''),
     };
-
-    if (y + 14 > doc.page.height - doc.page.margins.bottom) {
+    if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       y = doc.page.margins.top;
-      x = xStart;
-      doc.font('Bold');
-      columns.forEach(col => {
-        doc.text(col.header, x, y, { width: col.w, align: col.align || 'left' });
-        x += col.w;
-      });
-      y += 16;
-      doc.moveTo(xStart, y - 4).lineTo(doc.page.width - doc.page.margins.right, y - 4).stroke();
-      doc.font('Regular');
+      drawHeader();
     }
 
-    x = xStart;
+    let x = xStart;
     columns.forEach(col => {
-      doc.text(rowValues[col.key], x, y, { width: col.w, align: col.align || 'left' });
+      doc.rect(x, y, col.w, rowHeight).stroke();
+      doc.text(rowValues[col.key], x + 2, y + 3, { width: col.w - 4, align: col.align || 'left' });
       x += col.w;
     });
-    y += 14;
+    y += rowHeight;
   });
 
   doc.end();
