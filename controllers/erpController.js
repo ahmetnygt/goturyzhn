@@ -1277,6 +1277,7 @@ exports.postCompleteTickets = async (req, res, next) => {
             ticket.price = tickets[i].price
             ticket.payment = tickets[i].payment
             ticket.status = "completed"
+            ticket.createdAt = new Date()
 
 
             // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
