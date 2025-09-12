@@ -29,6 +29,7 @@ const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
 const { generateAccountReceiptFromDb } = require('../utilities/accountCutRecipe');
+const generateSalesRefundReport = require('../utilities/salesRefundReport');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3223,6 +3224,55 @@ exports.getAnnouncements = async (req, res, next) => {
     } catch (err) {
         console.error("Get announcements error:", err);
         res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getSalesRefundsReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate, type } = req.query;
+        const start = startDate ? new Date(startDate) : new Date('1970-01-01');
+        const end = endDate ? new Date(endDate) : new Date();
+        end.setHours(23, 59, 59, 999);
+
+        const tickets = await Ticket.findAll({
+            where: {
+                createdAt: { [Op.between]: [start, end] },
+                status: { [Op.in]: ['completed', 'refund'] }
+            },
+            order: [['createdAt', 'ASC']]
+        });
+
+        const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
+        const stopIds = [...new Set(tickets.flatMap(t => [t.fromRouteStopId, t.toRouteStopId]).filter(Boolean))];
+
+        const [users, stops] = await Promise.all([
+            FirmUser.findAll({ where: { id: { [Op.in]: userIds } }, attributes: ['id', 'name'] }),
+            Stop.findAll({ where: { id: { [Op.in]: stopIds } }, attributes: ['id', 'title'] })
+        ]);
+
+        const rows = tickets.map(t => ({
+            user: users.find(u => u.id === t.userId)?.name || '',
+            time: t.createdAt,
+            from: stops.find(s => s.id === t.fromRouteStopId)?.title || '',
+            to: stops.find(s => s.id === t.toRouteStopId)?.title || '',
+            payment: t.payment,
+            action: t.status === 'refund' ? 'İade' : 'Satış',
+            seat: t.seatNo,
+            gender: t.gender === 'f' ? 'K' : 'E',
+            pnr: t.pnr,
+            price: t.price
+        }));
+
+        if ((type || '').toLowerCase() === 'detaylı' || (type || '').toLowerCase() === 'detayli' || (type || '').toLowerCase() === 'detailed') {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline; filename="sales_refunds.pdf"');
+            await generateSalesRefundReport(rows, res);
+        } else {
+            res.json(rows);
+        }
+    } catch (err) {
+        console.error('getSalesRefundsReport error:', err);
+        res.status(500).json({ message: 'Satışlar ve iadeler raporu oluşturulamadı.' });
     }
 };
 
