@@ -4,11 +4,89 @@ block content
     .add-trip-note
         .gtr-header
             span SEFERE NOT EKLE
-        .trip-note-close 
+        .trip-note-close
             i.fa-solid.fa-x
         .p-3
             textarea.form-control.trip-note-text.mb-3
             button.save-trip-note.btn.btn-outline-primary EKLE
+
+    .reports-popup
+        .gtr-header
+            span RAPORLAR
+        .reports-close
+            i.fa-solid.fa-x
+        .p-3
+            ul.list-group
+                li.list-group-item.report-item(data-report="sales") Satışlar
+                li.list-group-item.report-item(data-report="returns") İadeler
+
+    .sales-report-popup.report-popup
+        .gtr-header
+            span SATIŞ RAPORU
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Başlangıç
+                input.form-control(type="date")
+            .input-group
+                span.input-group-text Bitiş
+                input.form-control(type="date")
+            .input-group
+                span.input-group-text Şube
+                select.form-select
+                    option(value="") Seçiniz
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select
+                    option(value="") Seçiniz
+            .input-group
+                span.input-group-text Nereden
+                input.form-control(type="text")
+            .input-group
+                span.input-group-text Nereye
+                input.form-control(type="text")
+            .input-group
+                span.input-group-text Tip
+                select.form-select
+                    option(value="summary") Özet
+                    option(value="detail") Detaylı
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button(data-report="sales") OLUŞTUR
+
+    .returns-report-popup.report-popup
+        .gtr-header
+            span İADE RAPORU
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Başlangıç
+                input.form-control(type="date")
+            .input-group
+                span.input-group-text Bitiş
+                input.form-control(type="date")
+            .input-group
+                span.input-group-text Şube
+                select.form-select
+                    option(value="") Seçiniz
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select
+                    option(value="") Seçiniz
+            .input-group
+                span.input-group-text Nereden
+                input.form-control(type="text")
+            .input-group
+                span.input-group-text Nereye
+                input.form-control(type="text")
+            .input-group
+                span.input-group-text Tip
+                select.form-select
+                    option(value="summary") Özet
+                    option(value="detail") Detaylı
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button(data-report="returns") OLUŞTUR
 
     .add-transaction
         .gtr-header
