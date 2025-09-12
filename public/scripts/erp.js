@@ -4268,7 +4268,18 @@ $(".report-close").on("click", e => {
 
 $(".report-create-button").on("click", e => {
     const report = $(e.currentTarget).data("report");
-    console.log(report + " report will be generated");
+    const popup = $(e.currentTarget).closest(".report-popup");
+    const startDate = popup.find(".report-start").val();
+    const endDate = popup.find(".report-end").val();
+    const type = popup.find(".report-type").val();
+
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    if (type) params.set("type", type);
+    params.set("status", report);
+
+    window.open(`/erp/get-sales-refunds-report?${params.toString()}`, "_blank");
 });
 
 $(".members-close").on("click", e => {
