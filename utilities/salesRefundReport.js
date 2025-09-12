@@ -25,7 +25,7 @@ function generateSalesRefundReport(rows, output) {
 
   doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
   doc.moveDown();
-
+  
   const xStart = doc.page.margins.left;
   const fullWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
@@ -155,7 +155,6 @@ function generateSalesRefundReport(rows, output) {
       pnr: row.pnr || '',
       price: (row.price != null ? Number(row.price).toFixed(2) : ''),
     };
-
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       y = doc.page.margins.top;

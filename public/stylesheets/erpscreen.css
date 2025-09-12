@@ -347,7 +347,9 @@ div.trip-note-close,
 div.open-ticket-close,
 div.error-close,
 div.announcement-add-close,
-div.announcement-pop-up-close {
+div.announcement-pop-up-close,
+div.reports-close,
+div.report-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
@@ -963,7 +965,21 @@ div.ticket-cancel-refund-open-close {
     background-color: #dc3545;
 }
 
-.reports-popup,
+.reports-popup {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    display: none;
+    flex-direction: column;
+    gap: .5rem;
+    overflow: hidden;
+    width: 50vw;
+}
 .report-popup {
     position: fixed;
     left: 50%;
@@ -977,7 +993,7 @@ div.ticket-cancel-refund-open-close {
     flex-direction: column;
     gap: .5rem;
     overflow: hidden;
-    max-width: 80vw;
+    width: 20vw;
 }
 
 .notes-stops {
@@ -1331,6 +1347,20 @@ div.ticket-cancel-refund-open-close {
     justify-content: flex-end;
     gap: .25rem;
     right: .75rem;
+}
+
+.trip-documents-button {
+    width: 1.5rem;
+    border-radius: 4px;
+    background-color: #bb6400;
+    color: white;
+    cursor: pointer;
+    height: 1.5rem;
+    text-align: center;
+}
+
+.trip-documents-button.dropdown-toggle::after {
+    display: none !important;
 }
 
 .trip-options-button {
