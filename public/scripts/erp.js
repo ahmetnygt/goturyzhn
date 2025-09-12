@@ -4245,6 +4245,32 @@ $(".member-nav").on("click", async e => {
     })
 })
 
+$(".reports-nav").on("click", e => {
+    $(".blackout").css("display", "block");
+    $(".reports-popup").css("display", "flex");
+});
+
+$(".reports-close").on("click", e => {
+    $(".blackout").css("display", "none");
+    $(".reports-popup").css("display", "none");
+});
+
+$(".report-item").on("click", e => {
+    const report = $(e.currentTarget).data("report");
+    $(".reports-popup").css("display", "none");
+    $(`.${report}-report-popup`).css("display", "flex");
+});
+
+$(".report-close").on("click", e => {
+    $(e.currentTarget).closest(".report-popup").css("display", "none");
+    $(".reports-popup").css("display", "flex");
+});
+
+$(".report-create-button").on("click", e => {
+    const report = $(e.currentTarget).data("report");
+    console.log(report + " report will be generated");
+});
+
 $(".members-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".members").css("display", "none")

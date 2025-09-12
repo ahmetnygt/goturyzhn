@@ -963,6 +963,23 @@ div.ticket-cancel-refund-open-close {
     background-color: #dc3545;
 }
 
+.reports-popup,
+.report-popup {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    display: none;
+    flex-direction: column;
+    gap: .5rem;
+    overflow: hidden;
+    max-width: 80vw;
+}
+
 .notes-stops {
     height: 30vh;
     display: flex;
