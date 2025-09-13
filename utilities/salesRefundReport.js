@@ -22,12 +22,47 @@ function generateSalesRefundReport(rows, query, output) {
   } catch (e) {
     console.warn('Font yüklenemedi, varsayılan font kullanılacak:', e.message);
   }
-
-  doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
-  doc.moveDown();
-
   const xStart = doc.page.margins.left;
   const fullWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  doc.font('Regular').fontSize(9);
+
+  const drawSummaryRow = items => {
+    const colWidth = fullWidth / items.length;
+    const rowY = doc.y;
+
+    items.forEach((it, idx) => {
+      const x = xStart + idx * colWidth;
+
+      doc.font('Bold').text(it.label, x, rowY, {
+        width: colWidth,
+        continued: true
+      });
+
+      doc.font('Regular').text(it.value, {
+        width: colWidth
+      });
+    });
+
+    doc.moveDown(0.8);
+  };
+
+  // place query information above the title and margins
+  doc.y = doc.page.margins.top - 25;
+  drawSummaryRow([
+    { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
+    { label: 'Tip: ', value: query.type=="detailed"?"Detaylı":"Özet" },
+  ]);
+  drawSummaryRow([
+    { label: 'Şube: ', value: query.branch },
+    { label: 'Kullanıcı: ', value: query.user },
+    { label: 'Durak: ', value: `${query.from} - ${query.to}` },
+  ]);
+
+  // reset position for title
+  doc.y = doc.page.margins.top;
+  doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
+  doc.moveDown();
 
   let salesCount = 0;
   let refundCount = 0;
@@ -68,36 +103,6 @@ function generateSalesRefundReport(rows, query, output) {
   const fmt = n => Number(n || 0).toFixed(2);
 
   doc.font('Regular').fontSize(9);
-
-  const drawSummaryRow = items => {
-    const colWidth = fullWidth / items.length;
-    const rowY = doc.y;
-
-    items.forEach((it, idx) => {
-      const x = xStart + idx * colWidth;
-
-      doc.font('Bold').text(it.label, x, rowY, {
-        width: colWidth,
-        continued: true
-      });
-
-      doc.font('Regular').text(it.value, {
-        width: colWidth
-      });
-    });
-
-    doc.moveDown(0.8);
-  };
-
-  drawSummaryRow([
-    { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
-    { label: 'Tip: ', value: query.type=="detailed"?"Detaylı":"Özet" },
-  ]);
-  drawSummaryRow([
-    { label: 'Şube: ', value: query.branch },
-    { label: 'Kullanıcı: ', value: query.user },
-    { label: 'Durak: ', value: `${query.from} - ${query.to}` },
-  ]);
 
   drawSummaryRow([
     { label: 'Toplam Satış Adedi: ', value: salesCount },
