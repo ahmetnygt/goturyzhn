@@ -3270,23 +3270,34 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
         const stopIds = [...new Set(tickets.flatMap(t => [t.fromRouteStopId, t.toRouteStopId]).filter(Boolean))];
 
-        const [users, stops] = await Promise.all([
-            FirmUser.findAll({ where: { id: { [Op.in]: userIds } }, attributes: ['id', 'name'] }),
-            Stop.findAll({ where: { id: { [Op.in]: stopIds } }, attributes: ['id', 'title'] })
+        const users = await FirmUser.findAll({
+            where: { id: { [Op.in]: userIds } },
+            attributes: ['id', 'name', 'branchId']
+        });
+
+        const branchIds = [...new Set(users.map(u => u.branchId).filter(Boolean))];
+
+        const [stops, branches] = await Promise.all([
+            Stop.findAll({ where: { id: { [Op.in]: stopIds } }, attributes: ['id', 'title'] }),
+            Branch.findAll({ where: { id: { [Op.in]: branchIds } }, attributes: ['id', 'title'] })
         ]);
 
-        const rows = tickets.map(t => ({
-            user: users.find(u => u.id === t.userId)?.name || '',
-            time: t.createdAt,
-            from: stops.find(s => s.id === t.fromRouteStopId)?.title || '',
-            to: stops.find(s => s.id === t.toRouteStopId)?.title || '',
-            payment: t.payment,
-            status: t.status,
-            seat: t.seatNo,
-            gender: t.gender === 'f' ? 'K' : 'E',
-            pnr: t.pnr,
-            price: t.price
-        }));
+        const rows = tickets.map(t => {
+            const user = users.find(u => u.id === t.userId);
+            return {
+                user: user?.name || '',
+                branch: branches.find(b => b.id === user?.branchId)?.title || '',
+                time: t.createdAt,
+                from: stops.find(s => s.id === t.fromRouteStopId)?.title || '',
+                to: stops.find(s => s.id === t.toRouteStopId)?.title || '',
+                payment: t.payment,
+                status: t.status,
+                seat: t.seatNo,
+                gender: t.gender === 'f' ? 'K' : 'E',
+                pnr: t.pnr,
+                price: t.price
+            };
+        });
 
         if ((type || '').toLowerCase() === 'detaylı' || (type || '').toLowerCase() === 'detayli' || (type || '').toLowerCase() === 'detailed') {
             res.setHeader('Content-Type', 'application/pdf');
