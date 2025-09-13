@@ -29,7 +29,7 @@ const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
 const { generateAccountReceiptFromDb } = require('../utilities/accountCutRecipe');
-const generateSalesRefundReport = require('../utilities/salesRefundReport');
+const generateSalesRefundReportDetailed = require('../utilities/salesRefundReportDetailed');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3289,9 +3289,12 @@ exports.getSalesRefundsReport = async (req, res, next) => {
 
         if ((type || '').toLowerCase() === 'detaylı' || (type || '').toLowerCase() === 'detayli' || (type || '').toLowerCase() === 'detailed') {
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'inline; filename="sales_refunds.pdf"');
-            await generateSalesRefundReport(rows, query, res);
+            res.setHeader('Content-Disposition', 'inline; filename="sales_refunds_detailed.pdf"');
+            await generateSalesRefundReportDetailed(rows, query, res);
         } else {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline; filename="sales_refunds_summary.pdf"');
+            await generateSalesRefundReportSummary(rows, query, res);
             res.json(rows);
         }
     } catch (err) {

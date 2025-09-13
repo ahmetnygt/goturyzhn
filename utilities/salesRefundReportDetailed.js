@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateSalesRefundReport(rows, query, output) {
+function generateSalesRefundReportDetailed(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -48,20 +48,26 @@ function generateSalesRefundReport(rows, query, output) {
   };
 
   // place query information above the title and margins
-  doc.y = doc.page.margins.top - 25;
-  drawSummaryRow([
-    { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
-    { label: 'Tip: ', value: query.type=="detailed"?"Detaylı":"Özet" },
-  ]);
-  drawSummaryRow([
-    { label: 'Şube: ', value: query.branch },
-    { label: 'Kullanıcı: ', value: query.user },
-    { label: 'Durak: ', value: `${query.from} - ${query.to}` },
-  ]);
+  // doc.y = doc.page.margins.top - 25;
+  // drawSummaryRow([
+  //   { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
+  // ]);
+  // drawSummaryRow([
+  //   { label: 'Tip: ', value: query.type == "detailed" ? "Detaylı" : "Özet" },
+  //   { label: 'Şube: ', value: query.branch },
+  //   { label: 'Kullanıcı: ', value: query.user },
+  //   { label: 'Durak: ', value: `${query.from} - ${query.to}` },
+  // ]);
 
   // reset position for title
   doc.y = doc.page.margins.top;
-  doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
+  doc.moveDown();
+  const title = 'Satışlar ve İadeler Raporu'.toLocaleUpperCase();
+  doc.font('Bold').fontSize(14);
+
+  const textWidth = doc.widthOfString(title);
+  const centerX = (doc.page.width - textWidth) / 2; // sayfa ortası
+  doc.text(title, centerX, doc.y);
   doc.moveDown();
 
   let salesCount = 0;
@@ -229,7 +235,7 @@ function generateSalesRefundReport(rows, query, output) {
   });
 }
 
-module.exports = generateSalesRefundReport;
+module.exports = generateSalesRefundReportDetailed;
 
 if (require.main === module) {
   const sample = [
