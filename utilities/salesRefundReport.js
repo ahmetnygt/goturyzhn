@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateSalesRefundReport(rows, output) {
+function generateSalesRefundReport(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -90,6 +90,16 @@ function generateSalesRefundReport(rows, output) {
   };
 
   drawSummaryRow([
+    { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
+    { label: 'Tip: ', value: query.type=="detailed"?"Detaylı":"Özet" },
+  ]);
+  drawSummaryRow([
+    { label: 'Şube: ', value: query.branch },
+    { label: 'Kullanıcı: ', value: query.user },
+    { label: 'Durak: ', value: `${query.from} - ${query.to}` },
+  ]);
+
+  drawSummaryRow([
     { label: 'Toplam Satış Adedi: ', value: salesCount },
     { label: 'Toplam İade Adedi: ', value: refundCount },
     { label: 'Toplam Yolcu Adedi: ', value: salesCount - refundCount },
@@ -132,7 +142,7 @@ function generateSalesRefundReport(rows, output) {
     { key: 'seat', header: 'Koltuk', w: 40 },
     { key: 'gender', header: 'C', w: 20 },
     { key: 'pnr', header: 'PNR', w: 60 },
-    { key: 'price', header: 'Ücret', w: 40},
+    { key: 'price', header: 'Ücret', w: 40 },
   ];
 
   let y = doc.y;

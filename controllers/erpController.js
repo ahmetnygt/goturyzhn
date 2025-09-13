@@ -3233,8 +3233,19 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const { startDate, endDate, type, branchId, userId, fromStopId, toStopId } = req.query;
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
-        end.setHours(23, 59, 59, 999);
 
+        const query = {
+            type: type,
+            startDate: startDate,
+            endDate: endDate,
+            branch: branchId ? await Branch.findOne({ where: { id: branchId } }).title : "Tümü",
+            user: userId ? await FirmUser.findOne({ where: { id: userId } }).title : "Tümü",
+            from: fromStopId ? await Stop.findOne({ where: { id: fromStopId } }).title : "Tümü",
+            to: toStopId ? await Stop.findOne({ where: { id: toStopId } }).title : "Tümü",
+        }
+
+        console.log(start)
+        console.log(end)
         const where = {
             createdAt: { [Op.between]: [start, end] },
             status: { [Op.in]: ['completed', 'web', 'gotur', 'refund'] }
@@ -3279,7 +3290,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         if ((type || '').toLowerCase() === 'detaylı' || (type || '').toLowerCase() === 'detayli' || (type || '').toLowerCase() === 'detailed') {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline; filename="sales_refunds.pdf"');
-            await generateSalesRefundReport(rows, res);
+            await generateSalesRefundReport(rows, query, res);
         } else {
             res.json(rows);
         }
