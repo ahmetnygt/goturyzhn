@@ -4255,10 +4255,41 @@ $(".reports-close").on("click", e => {
     $(".reports-popup").css("display", "none");
 });
 
-$(".report-item").on("click", e => {
+$(".report-item").on("click", async e => {
     const report = $(e.currentTarget).data("report");
     $(".reports-popup").css("display", "none");
-    $(`.${report}-report-popup`).css("display", "flex");
+    const popup = $(`.${report}-report-popup`).css("display", "flex");
+
+    if (report === "salesAndRefunds" && !popup.data("initialized")) {
+        const [branches, stops] = await Promise.all([
+            fetch("/erp/get-branches-list?onlyData=true").then(r => r.json()),
+            fetch("/erp/get-stops-list?onlyData=true").then(r => r.json())
+        ]);
+
+        const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+        branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
+
+        const fromSel = popup.find(".report-from").empty().append('<option value="">Seçiniz</option>');
+        const toSel = popup.find(".report-to").empty().append('<option value="">Seçiniz</option>');
+        stops.forEach(s => {
+            fromSel.append(`<option value="${s.id}">${s.title}</option>`);
+            toSel.append(`<option value="${s.id}">${s.title}</option>`);
+        });
+
+        branchSel.off("change").on("change", async function () {
+            const id = $(this).val();
+            const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+            if (id) {
+                const users = await fetch(`/erp/get-users-by-branch?id=${id}`).then(r => r.json());
+                users.forEach(u => userSel.append(`<option value="${u.id}">${u.name}</option>`));
+            }
+        });
+
+        flatpickr(popup.find(".report-start")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+        flatpickr(popup.find(".report-end")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+
+        popup.data("initialized", true);
+    }
 });
 
 $(".report-close").on("click", e => {
@@ -4267,17 +4298,23 @@ $(".report-close").on("click", e => {
 });
 
 $(".report-create-button").on("click", e => {
-    const report = $(e.currentTarget).data("report");
     const popup = $(e.currentTarget).closest(".report-popup");
     const startDate = popup.find(".report-start").val();
     const endDate = popup.find(".report-end").val();
     const type = popup.find(".report-type").val();
+    const branchId = popup.find(".report-branch").val();
+    const userId = popup.find(".report-user").val();
+    const fromStopId = popup.find(".report-from").val();
+    const toStopId = popup.find(".report-to").val();
 
     const params = new URLSearchParams();
     if (startDate) params.set("startDate", startDate);
     if (endDate) params.set("endDate", endDate);
     if (type) params.set("type", type);
-    params.set("status", report);
+    if (branchId) params.set("branchId", branchId);
+    if (userId) params.set("userId", userId);
+    if (fromStopId) params.set("fromStopId", fromStopId);
+    if (toStopId) params.set("toStopId", toStopId);
 
     window.open(`/erp/get-sales-refunds-report?${params.toString()}`, "_blank");
 });

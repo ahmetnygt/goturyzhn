@@ -27,10 +27,10 @@ block content
         .d-flex.flex-column.gap-3.p-3
             .input-group
                 span.input-group-text Başlangıç
-                input.form-control.report-start(type="date")
+                input.form-control.report-start(type="text")
             .input-group
                 span.input-group-text Bitiş
-                input.form-control.report-end(type="date")
+                input.form-control.report-end(type="text")
             .input-group
                 span.input-group-text Şube
                 select.form-select.report-branch
@@ -41,51 +41,19 @@ block content
                     option(value="") Seçiniz
             .input-group
                 span.input-group-text Nereden
-                input.form-control.report-from(type="text")
+                select.form-select.report-from
+                    option(value="") Seçiniz
             .input-group
                 span.input-group-text Nereye
-                input.form-control.report-to(type="text")
+                select.form-select.report-to
+                    option(value="") Seçiniz
             .input-group
                 span.input-group-text Tip
                 select.form-select.report-type
                     option(value="summary") Özet
                     option(value="detailed") Detaylı
             .d-flex.gap-3.justify-content-end
-                button.btn.btn-outline-primary.report-create-button(data-report="sales") OLUŞTUR
-
-    .returns-report-popup.report-popup
-        .gtr-header
-            span İADE RAPORU
-        .report-close
-            i.fa-solid.fa-x
-        .d-flex.flex-column.gap-3.p-3
-            .input-group
-                span.input-group-text Başlangıç
-                input.form-control.report-start(type="date")
-            .input-group
-                span.input-group-text Bitiş
-                input.form-control.report-end(type="date")
-            .input-group
-                span.input-group-text Şube
-                select.form-select.report-branch
-                    option(value="") Seçiniz
-            .input-group
-                span.input-group-text Kullanıcı
-                select.form-select.report-user
-                    option(value="") Seçiniz
-            .input-group
-                span.input-group-text Nereden
-                input.form-control.report-from(type="text")
-            .input-group
-                span.input-group-text Nereye
-                input.form-control.report-to(type="text")
-            .input-group
-                span.input-group-text Tip
-                select.form-select.report-type
-                    option(value="summary") Özet
-                    option(value="detailed") Detaylı
-            .d-flex.gap-3.justify-content-end
-                button.btn.btn-outline-primary.report-create-button(data-report="returns") OLUŞTUR
+                button.btn.btn-outline-primary.report-create-button OLUŞTUR
 
     .add-transaction
         .gtr-header
