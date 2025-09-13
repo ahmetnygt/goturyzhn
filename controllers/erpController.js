@@ -3230,20 +3230,30 @@ exports.getAnnouncements = async (req, res, next) => {
 
 exports.getSalesRefundsReport = async (req, res, next) => {
     try {
-        const { startDate, endDate, type, status } = req.query;
+        const { startDate, endDate, type, branchId, userId, fromStopId, toStopId } = req.query;
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
         end.setHours(23, 59, 59, 999);
 
-        let statuses = ['completed', 'web', 'gotur', 'refund'];
+        const where = {
+            createdAt: { [Op.between]: [start, end] },
+            status: { [Op.in]: ['completed', 'web', 'gotur', 'refund'] }
+        };
 
-        const tickets = await Ticket.findAll({
-            where: {
-                createdAt: { [Op.between]: [start, end] },
-                status: { [Op.in]: statuses }
-            },
+        if (userId) where.userId = userId;
+        if (fromStopId) where.fromRouteStopId = fromStopId;
+        if (toStopId) where.toRouteStopId = toStopId;
+
+        let tickets = await Ticket.findAll({
+            where,
             order: [['createdAt', 'ASC']]
         });
+
+        if (branchId) {
+            const branchUsers = await FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
+            const branchUserIds = branchUsers.map(u => u.id);
+            tickets = tickets.filter(t => branchUserIds.includes(t.userId));
+        }
 
         const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
         const stopIds = [...new Set(tickets.flatMap(t => [t.fromRouteStopId, t.toRouteStopId]).filter(Boolean))];
