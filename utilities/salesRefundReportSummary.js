@@ -180,21 +180,20 @@ function generateSalesRefundReportSummary(rows, query, output) {
   });
 
   const columns = [
-    { key: 'user', header: 'Kullanıcı', w: 60 },
-    { key: 'salesCount', header: 'Satış Adedi', w: 45 },
-    { key: 'refundCount', header: 'İade Adedi', w: 45 },
-    { key: 'sale', header: 'Satış', w: 45 },
-    { key: 'refund', header: 'İade', w: 45 },
-    { key: 'cash', header: 'Nakit', w: 45 },
-    { key: 'card', header: 'Kredi Kartı', w: 45 },
-    { key: 'point', header: 'Pos', w: 45 },
-    { key: 'web', header: 'Sanal Pos', w: 45 },
-    { key: 'net', header: 'Net Satış', w: 45 },
-    { key: 'commission', header: 'Komisyon', w: 45 },
+    { key: 'user', header: 'Kullanıcı Adı', w: 60 },
+    { key: 'salesCount', header: 'Satış Adedi', w: 50 },
+    { key: 'refundCount', header: 'İade Adedi', w: 50 },
+    { key: 'sale', header: 'Satış', w: 50 },
+    { key: 'cash', header: 'Nakit', w: 50 },
+    { key: 'card', header: 'Kredi Kartı', w: 50 },
+    { key: 'point', header: 'Puan', w: 50 },
+    { key: 'net', header: 'Net Satış', w: 50 },
+    { key: 'refund', header: 'İade', w: 50 },
+    { key: 'commission', header: 'Komisyon', w: 50 },
   ];
 
   let y = doc.y;
-  const headerHeight = 16;
+  const headerHeight = 32;
   const rowHeight = 14;
 
   const drawHeader = () => {
@@ -204,7 +203,7 @@ function generateSalesRefundReportSummary(rows, query, output) {
       doc.rect(x, y, col.w, headerHeight).stroke();
       doc.text(col.header, x, y + 4, {
         width: col.w,
-        align: 'center'
+        align: 'center',
       });
       x += col.w;
     });
@@ -225,7 +224,6 @@ function generateSalesRefundReportSummary(rows, query, output) {
       cash: fmt(u.cash) + '₺',
       card: fmt(u.card) + '₺',
       point: fmt(u.point) + '₺',
-      web: fmt(u.web) + '₺',
       net: fmt(u.sale - u.refund) + '₺',
       commission: fmt(u.commission) + '₺',
     };
