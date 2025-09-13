@@ -143,12 +143,29 @@ function generateSalesRefundReportSummary(rows, query, output) {
 
   doc.moveDown();
 
-  // aggregate rows by user
-  const userMap = {};
+  // aggregate rows by branch and user
+  const branchMap = {};
   rows.forEach(r => {
-    const key = r.user || '';
-    if (!userMap[key]) {
-      userMap[key] = {
+    const branchKey = r.branch || '';
+    const userKey = r.user || '';
+    if (!branchMap[branchKey]) {
+      branchMap[branchKey] = {
+        totals: {
+          salesCount: 0,
+          refundCount: 0,
+          sale: 0,
+          refund: 0,
+          cash: 0,
+          card: 0,
+          point: 0,
+          web: 0,
+          commission: 0,
+        },
+        users: {}
+      };
+    }
+    if (!branchMap[branchKey].users[userKey]) {
+      branchMap[branchKey].users[userKey] = {
         salesCount: 0,
         refundCount: 0,
         sale: 0,
@@ -162,20 +179,26 @@ function generateSalesRefundReportSummary(rows, query, output) {
     }
     const amount = Number(r.price) || 0;
     const isRefund = r.status === 'refund' || r.status === 'web_refund';
+    const userRec = branchMap[branchKey].users[userKey];
+    const branchTotals = branchMap[branchKey].totals;
     if (isRefund) {
-      userMap[key].refundCount++;
-      userMap[key].refund += amount;
-      if (r.payment === 'cash') userMap[key].cash -= amount;
-      else if (r.payment === 'card') userMap[key].card -= amount;
-      else if (r.payment === 'point') userMap[key].point -= amount;
-      else if (r.payment === 'web') userMap[key].web -= amount;
+      userRec.refundCount++;
+      userRec.refund += amount;
+      branchTotals.refundCount++;
+      branchTotals.refund += amount;
+      if (r.payment === 'cash') { userRec.cash -= amount; branchTotals.cash -= amount; }
+      else if (r.payment === 'card') { userRec.card -= amount; branchTotals.card -= amount; }
+      else if (r.payment === 'point') { userRec.point -= amount; branchTotals.point -= amount; }
+      else if (r.payment === 'web') { userRec.web -= amount; branchTotals.web -= amount; }
     } else {
-      userMap[key].salesCount++;
-      userMap[key].sale += amount;
-      if (r.payment === 'cash') userMap[key].cash += amount;
-      else if (r.payment === 'card') userMap[key].card += amount;
-      else if (r.payment === 'point') userMap[key].point += amount;
-      else if (r.payment === 'web') userMap[key].web += amount;
+      userRec.salesCount++;
+      userRec.sale += amount;
+      branchTotals.salesCount++;
+      branchTotals.sale += amount;
+      if (r.payment === 'cash') { userRec.cash += amount; branchTotals.cash += amount; }
+      else if (r.payment === 'card') { userRec.card += amount; branchTotals.card += amount; }
+      else if (r.payment === 'point') { userRec.point += amount; branchTotals.point += amount; }
+      else if (r.payment === 'web') { userRec.web += amount; branchTotals.web += amount; }
     }
   });
 
@@ -213,19 +236,52 @@ function generateSalesRefundReportSummary(rows, query, output) {
 
   drawHeader();
 
-  Object.keys(userMap).forEach(user => {
-    const u = userMap[user];
-    const rowValues = {
-      user,
-      salesCount: u.salesCount,
-      refundCount: u.refundCount,
-      sale: fmt(u.sale) + '₺',
-      refund: fmt(u.refund) + '₺',
-      cash: fmt(u.cash) + '₺',
-      card: fmt(u.card) + '₺',
-      point: fmt(u.point) + '₺',
-      net: fmt(u.sale - u.refund) + '₺',
-      commission: fmt(u.commission) + '₺',
+  Object.keys(branchMap).forEach(branch => {
+    const b = branchMap[branch];
+    Object.keys(b.users).forEach(user => {
+      const u = b.users[user];
+      const rowValues = {
+        user,
+        salesCount: u.salesCount,
+        refundCount: u.refundCount,
+        sale: fmt(u.sale) + '₺',
+        refund: fmt(u.refund) + '₺',
+        cash: fmt(u.cash) + '₺',
+        card: fmt(u.card) + '₺',
+        point: fmt(u.point) + '₺',
+        net: fmt(u.sale - u.refund) + '₺',
+        commission: fmt(u.commission) + '₺',
+      };
+
+      if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage();
+        y = doc.page.margins.top;
+        drawHeader();
+      }
+
+      let x = xStart;
+      columns.forEach(col => {
+        doc.text(rowValues[col.key], x, y + 3, {
+          width: col.w,
+          align: 'center'
+        });
+        x += col.w;
+      });
+      y += rowHeight + 10;
+    });
+
+    const t = b.totals;
+    const totalValues = {
+      user: `${branch} Toplamı`,
+      salesCount: t.salesCount,
+      refundCount: t.refundCount,
+      sale: fmt(t.sale) + '₺',
+      refund: fmt(t.refund) + '₺',
+      cash: fmt(t.cash) + '₺',
+      card: fmt(t.card) + '₺',
+      point: fmt(t.point) + '₺',
+      net: fmt(t.sale - t.refund) + '₺',
+      commission: fmt(t.commission) + '₺',
     };
 
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -234,14 +290,16 @@ function generateSalesRefundReportSummary(rows, query, output) {
       drawHeader();
     }
 
+    doc.font('Bold');
     let x = xStart;
     columns.forEach(col => {
-      doc.text(rowValues[col.key], x, y + 3, {
+      doc.text(totalValues[col.key], x, y + 3, {
         width: col.w,
         align: 'center'
       });
       x += col.w;
     });
+    doc.font('Regular');
     y += rowHeight + 10;
   });
 
