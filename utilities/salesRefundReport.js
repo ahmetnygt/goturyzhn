@@ -25,38 +25,45 @@ function generateSalesRefundReport(rows, output) {
 
   doc.font('Bold').fontSize(14).text('Satışlar ve İadeler Raporu', { align: 'center' });
   doc.moveDown();
-  
+
   const xStart = doc.page.margins.left;
   const fullWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // summary calculations
-  const paymentTypes = ['cash', 'card', 'spcs', 'nws', 'point'];
-  const totals = {};
-  paymentTypes.forEach(p => totals[p] = { sale: 0, refund: 0 });
-
   let salesCount = 0;
   let refundCount = 0;
-  let gidisKomisyon = 0;
-  let donusKomisyon = 0;
+  let cashSale = 0;
+  let cashRefund = 0;
+  let cardSale = 0;
+  let cardRefund = 0;
+  let webSale = 0;
+  let webRefund = 0;
+  let pointSale = 0;
+  let pointRefund = 0;
+  let outboundComission = 0;
+  let returnComission = 0;
 
   rows.forEach(r => {
-    const pay = r.payment || 'other';
     const amount = Number(r.price) || 0;
-    const isRefund = (r.action || '').toLowerCase().startsWith('iade');
-    if (!totals[pay]) totals[pay] = { sale: 0, refund: 0 };
-    if (isRefund) {
-      totals[pay].refund += amount;
-      refundCount++;
-    } else {
-      totals[pay].sale += amount;
-      salesCount++;
-    }
-    gidisKomisyon += Number(r.goCommission || r.gidisKomisyon || 0);
-    donusKomisyon += Number(r.returnCommission || r.donusKomisyon || 0);
-  });
+    if (r.status !== "refund") salesCount++;
+    else refundCount++;
 
-  const passengerCount = salesCount - refundCount;
-  const netTotal = Object.values(totals).reduce((sum, t) => sum + t.sale - t.refund, 0);
+    if (r.payment == "cash") {
+      if (r.status == "completed") cashSale += amount;
+      else if (r.status == "refund") cashRefund += amount;
+    }
+    else if (r.payment == "card") {
+      if (r.status == "completed") cardSale += amount;
+      else if (r.status == "refund") cardRefund += amount;
+    }
+    else if (r.payment == "web") {
+      if (r.status == "completed") webSale += amount;
+      else if (r.status == "refund") webRefund += amount;
+    }
+    else if (r.payment == "point") {
+      if (r.status == "completed") pointSale += amount;
+      else if (r.status == "refund") pointRefund += amount;
+    }
+  });
 
   const fmt = n => Number(n || 0).toFixed(2);
 
@@ -64,55 +71,60 @@ function generateSalesRefundReport(rows, output) {
 
   const drawSummaryRow = items => {
     const colWidth = fullWidth / items.length;
+    const rowY = doc.y;
+
     items.forEach((it, idx) => {
-      doc.text(`${it.label} ${it.value}`, xStart + idx * colWidth, doc.y, { width: colWidth });
+      const x = xStart + idx * colWidth;
+
+      doc.font('Bold').text(it.label, x, rowY, {
+        width: colWidth,
+        continued: true
+      });
+
+      doc.font('Regular').text(it.value, {
+        width: colWidth
+      });
     });
-    doc.moveDown(0.5);
+
+    doc.moveDown(0.8);
   };
 
   drawSummaryRow([
-    { label: 'Toplam Nakit Satış:', value: fmt(totals.cash.sale) },
-    { label: 'Toplam Nakit İade:', value: fmt(totals.cash.refund) },
-    { label: 'Toplam Net Nakit:', value: fmt(totals.cash.sale - totals.cash.refund) },
+    { label: 'Toplam Satış Adedi: ', value: salesCount },
+    { label: 'Toplam İade Adedi: ', value: refundCount },
+    { label: 'Toplam Yolcu Adedi: ', value: salesCount - refundCount },
   ]);
   drawSummaryRow([
-    { label: 'Toplam KK Satış:', value: fmt(totals.card.sale) },
-    { label: 'Toplam KK İade:', value: fmt(totals.card.refund) },
-    { label: 'Toplam Net KK:', value: fmt(totals.card.sale - totals.card.refund) },
+    { label: 'Toplam Nakit Satış: ', value: fmt(cashSale) + "₺" },
+    { label: 'Toplam Nakit İade: ', value: fmt(cashRefund) + "₺" },
+    { label: 'Toplam Net Nakit: ', value: fmt(cashSale - cashRefund) + "₺" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam SPCS Satış:', value: fmt(totals.spcs.sale) },
-    { label: 'Toplam SPCS İade:', value: fmt(totals.spcs.refund) },
-    { label: 'Toplam Net SPCS:', value: fmt(totals.spcs.sale - totals.spcs.refund) },
+    { label: 'Toplam KK Satış: ', value: fmt(cardSale) + "₺" },
+    { label: 'Toplam KK İade: ', value: fmt(cardRefund) + "₺" },
+    { label: 'Toplam Net KK: ', value: fmt(cardSale - cardRefund) + "₺" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam NWS Satış:', value: fmt(totals.nws.sale) },
-    { label: 'Toplam NWS İade:', value: fmt(totals.nws.refund) },
-    { label: 'Toplam Net NWS:', value: fmt(totals.nws.sale - totals.nws.refund) },
+    { label: 'Toplam WEB Satış: ', value: fmt(webSale) + "₺" },
+    { label: 'Toplam WEB İade: ', value: fmt(webRefund) + "₺" },
+    { label: 'Toplam Net WEB: ', value: fmt(webSale - webRefund) + "₺" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Puanlı Satış:', value: fmt(totals.point.sale) },
-    { label: 'Toplam Puanlı İade:', value: fmt(totals.point.refund) },
-    { label: 'Toplam Net Puanlı:', value: fmt(totals.point.sale - totals.point.refund) },
+    { label: 'Toplam Puanlı Satış: ', value: fmt(pointSale) + "₺" },
+    { label: 'Toplam Puanlı İade: ', value: fmt(pointRefund) + "₺" },
+    { label: 'Toplam Net Puanlı: ', value: fmt(pointSale - pointRefund) + "₺" },
   ]);
   drawSummaryRow([
-    { label: 'Gidiş Biletler Komisyon:', value: fmt(gidisKomisyon) },
-    { label: 'Dönüş Biletler Komisyon:', value: fmt(donusKomisyon) },
-  ]);
-  drawSummaryRow([
-    { label: 'Toplam Satış Adedi:', value: salesCount },
-    { label: 'Toplam İade Adedi:', value: refundCount },
-    { label: 'Toplam Net Tutar:', value: fmt(netTotal) },
-  ]);
-  drawSummaryRow([
-    { label: 'Toplam Yolcu Adedi:', value: passengerCount },
+    { label: 'Gidiş Biletler Komisyonu: ', value: fmt(outboundComission) + "₺" },
+    { label: 'Dönüş Biletler Komisyonu: ', value: fmt(returnComission) + "₺" },
+    { label: 'Toplam Net Tutar: ', value: fmt((cashSale - cashRefund) + (cardSale - cardRefund) + (webSale - webRefund) + (pointSale - pointRefund)) + "₺" },
   ]);
 
   doc.moveDown();
 
   const columns = [
     { key: 'user', header: 'Kullanıcı', w: 70 },
-    { key: 'time', header: 'Zaman', w: 80 },
+    { key: 'time', header: 'Zaman', w: 60 },
     { key: 'from', header: 'Nereden', w: 60 },
     { key: 'to', header: 'Nereye', w: 60 },
     { key: 'payment', header: 'Tahsilat', w: 50 },
@@ -120,7 +132,7 @@ function generateSalesRefundReport(rows, output) {
     { key: 'seat', header: 'Koltuk', w: 40 },
     { key: 'gender', header: 'C', w: 20 },
     { key: 'pnr', header: 'PNR', w: 60 },
-    { key: 'price', header: 'Ücret', w: 30, align: 'right' },
+    { key: 'price', header: 'Ücret', w: 40},
   ];
 
   let y = doc.y;
@@ -132,7 +144,10 @@ function generateSalesRefundReport(rows, output) {
     let x = xStart;
     columns.forEach(col => {
       doc.rect(x, y, col.w, headerHeight).stroke();
-      doc.text(col.header, x + 2, y + 4, { width: col.w - 4, align: col.align || 'left' });
+      doc.text(col.header, x, y + 4, {
+        width: col.w,
+        align: 'center'
+      });
       x += col.w;
     });
     y += headerHeight;
@@ -143,18 +158,38 @@ function generateSalesRefundReport(rows, output) {
 
   // table rows
   rows.forEach(row => {
+    let action;
+
+    switch (row.status) {
+      case "completed":
+        action = "Satış";
+        break;
+      case "refund":
+        action = "İade";
+        break;
+      case "web":
+        action = "İnt. Satış";
+        break;
+      case "web_refund":
+        action = "İnt. İade";
+        break;
+      default:
+        break;
+    }
+
     const rowValues = {
       user: row.user || '',
       time: new Date(row.time).toLocaleString('tr-TR'),
       from: row.from || '',
       to: row.to || '',
-      payment: row.payment || '',
-      action: row.action || '',
+      payment: row.payment == "cash" ? "Nakit" : row.payment == "card" ? "K.Kartı" : row.payment == "point" ? "Puan" : row.payment == "web" ? "Web" : "",
+      action: action || '',
       seat: row.seat != null ? String(row.seat) : '',
       gender: row.gender || '',
       pnr: row.pnr || '',
-      price: (row.price != null ? Number(row.price).toFixed(2) : ''),
+      price: (row.price != null ? Number(row.price).toFixed(2) + "₺" : ''),
     };
+
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       y = doc.page.margins.top;
@@ -163,11 +198,13 @@ function generateSalesRefundReport(rows, output) {
 
     let x = xStart;
     columns.forEach(col => {
-      doc.rect(x, y, col.w, rowHeight).stroke();
-      doc.text(rowValues[col.key], x + 2, y + 3, { width: col.w - 4, align: col.align || 'left' });
+      doc.text(rowValues[col.key], x, y + 3, {
+        width: col.w,
+        align: 'center'
+      });
       x += col.w;
     });
-    y += rowHeight;
+    y += rowHeight + 10;
   });
 
   doc.end();
@@ -181,8 +218,8 @@ module.exports = generateSalesRefundReport;
 
 if (require.main === module) {
   const sample = [
-    { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', action: 'Satış', seat: 1, gender: 'E', pnr: 'ABC123', price: 100 },
-    { user: 'Ayşe', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', action: 'İade', seat: 2, gender: 'K', pnr: 'XYZ789', price: 120 },
+    { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', status: 'completed', seat: 1, gender: 'E', pnr: 'ABC123', price: 100 },
+    { user: 'Ayşe', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', status: 'refund', seat: 2, gender: 'K', pnr: 'XYZ789', price: 120 },
   ];
   generateSalesRefundReport(sample, 'sales_refunds.pdf').then(() => console.log('sales_refunds.pdf created'));
 }

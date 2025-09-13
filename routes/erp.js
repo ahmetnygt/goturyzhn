@@ -111,7 +111,6 @@ router.post('/post-customer-blacklist', erpController.postCustomerBlacklist);
 
 router.get('/get-transactions-list', auth, erpController.getTransactions);
 router.get('/get-transaction-data', auth, erpController.getTransactionData);
-router.get('/get-sales-refunds-report', auth, erpController.getSalesRefundsReport);
 router.get('/get-user-register-balance', auth, erpController.getUserRegisterBalance);
 router.post('/post-add-transaction', auth, erpController.postAddTransaction);
 router.post('/post-reset-register', auth, erpController.postResetRegister);
@@ -126,5 +125,7 @@ router.post('/post-confirm-payment', auth, erpController.postConfirmPayment);
 router.get('/get-announcements', auth, erpController.getAnnouncements);
 router.post('/post-save-announcement', auth, erpController.postSaveAnnouncement);
 router.post('/post-announcement-seen', auth, erpController.postAnnouncementSeen);
+
+router.get('/get-sales-refunds-report', auth, erpController.getSalesRefundsReport);
 
 module.exports = router;

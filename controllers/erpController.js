@@ -3235,17 +3235,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const end = endDate ? new Date(endDate) : new Date();
         end.setHours(23, 59, 59, 999);
 
-        let statuses;
-        switch ((status || '').toLowerCase()) {
-            case 'sales':
-                statuses = ['completed', 'web', 'gotur'];
-                break;
-            case 'returns':
-                statuses = ['refund'];
-                break;
-            default:
-                statuses = ['completed', 'web', 'gotur', 'refund'];
-        }
+        let statuses = ['completed', 'web', 'gotur', 'refund'];
 
         const tickets = await Ticket.findAll({
             where: {
@@ -3269,7 +3259,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
             from: stops.find(s => s.id === t.fromRouteStopId)?.title || '',
             to: stops.find(s => s.id === t.toRouteStopId)?.title || '',
             payment: t.payment,
-            action: t.status === 'refund' ? 'İade' : 'Satış',
+            status: t.status,
             seat: t.seatNo,
             gender: t.gender === 'f' ? 'K' : 'E',
             pnr: t.pnr,
