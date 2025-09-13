@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateSalesRefundReportDetailed(rows, query, output) {
+function generateSalesRefundReportSummary(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -143,17 +143,54 @@ function generateSalesRefundReportDetailed(rows, query, output) {
 
   doc.moveDown();
 
+  // aggregate rows by user
+  const userMap = {};
+  rows.forEach(r => {
+    const key = r.user || '';
+    if (!userMap[key]) {
+      userMap[key] = {
+        salesCount: 0,
+        refundCount: 0,
+        sale: 0,
+        refund: 0,
+        cash: 0,
+        card: 0,
+        point: 0,
+        web: 0,
+        commission: 0,
+      };
+    }
+    const amount = Number(r.price) || 0;
+    const isRefund = r.status === 'refund' || r.status === 'web_refund';
+    if (isRefund) {
+      userMap[key].refundCount++;
+      userMap[key].refund += amount;
+      if (r.payment === 'cash') userMap[key].cash -= amount;
+      else if (r.payment === 'card') userMap[key].card -= amount;
+      else if (r.payment === 'point') userMap[key].point -= amount;
+      else if (r.payment === 'web') userMap[key].web -= amount;
+    } else {
+      userMap[key].salesCount++;
+      userMap[key].sale += amount;
+      if (r.payment === 'cash') userMap[key].cash += amount;
+      else if (r.payment === 'card') userMap[key].card += amount;
+      else if (r.payment === 'point') userMap[key].point += amount;
+      else if (r.payment === 'web') userMap[key].web += amount;
+    }
+  });
+
   const columns = [
-    { key: 'user', header: 'Kullanıcı', w: 70 },
-    { key: 'time', header: 'Zaman', w: 60 },
-    { key: 'from', header: 'Nereden', w: 60 },
-    { key: 'to', header: 'Nereye', w: 60 },
-    { key: 'payment', header: 'Tahsilat', w: 50 },
-    { key: 'action', header: 'İşlem', w: 45 },
-    { key: 'seat', header: 'Koltuk', w: 40 },
-    { key: 'gender', header: 'C', w: 20 },
-    { key: 'pnr', header: 'PNR', w: 60 },
-    { key: 'price', header: 'Ücret', w: 40 },
+    { key: 'user', header: 'Kullanıcı', w: 60 },
+    { key: 'salesCount', header: 'Satış Adedi', w: 45 },
+    { key: 'refundCount', header: 'İade Adedi', w: 45 },
+    { key: 'sale', header: 'Satış', w: 45 },
+    { key: 'refund', header: 'İade', w: 45 },
+    { key: 'cash', header: 'Nakit', w: 45 },
+    { key: 'card', header: 'Kredi Kartı', w: 45 },
+    { key: 'point', header: 'Pos', w: 45 },
+    { key: 'web', header: 'Sanal Pos', w: 45 },
+    { key: 'net', header: 'Net Satış', w: 45 },
+    { key: 'commission', header: 'Komisyon', w: 45 },
   ];
 
   let y = doc.y;
@@ -177,38 +214,20 @@ function generateSalesRefundReportDetailed(rows, query, output) {
 
   drawHeader();
 
-  // table rows
-  rows.forEach(row => {
-    let action;
-
-    switch (row.status) {
-      case "completed":
-        action = "Satış";
-        break;
-      case "refund":
-        action = "İade";
-        break;
-      case "web":
-        action = "İnt. Satış";
-        break;
-      case "web_refund":
-        action = "İnt. İade";
-        break;
-      default:
-        break;
-    }
-
+  Object.keys(userMap).forEach(user => {
+    const u = userMap[user];
     const rowValues = {
-      user: row.user || '',
-      time: new Date(row.time).toLocaleString('tr-TR'),
-      from: row.from || '',
-      to: row.to || '',
-      payment: row.payment == "cash" ? "Nakit" : row.payment == "card" ? "K.Kartı" : row.payment == "point" ? "Puan" : row.payment == "web" ? "Web" : "",
-      action: action || '',
-      seat: row.seat != null ? String(row.seat) : '',
-      gender: row.gender || '',
-      pnr: row.pnr || '',
-      price: (row.price != null ? Number(row.price).toFixed(2) + "₺" : ''),
+      user,
+      salesCount: u.salesCount,
+      refundCount: u.refundCount,
+      sale: fmt(u.sale) + '₺',
+      refund: fmt(u.refund) + '₺',
+      cash: fmt(u.cash) + '₺',
+      card: fmt(u.card) + '₺',
+      point: fmt(u.point) + '₺',
+      web: fmt(u.web) + '₺',
+      net: fmt(u.sale - u.refund) + '₺',
+      commission: fmt(u.commission) + '₺',
     };
 
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -235,12 +254,12 @@ function generateSalesRefundReportDetailed(rows, query, output) {
   });
 }
 
-module.exports = generateSalesRefundReportDetailed;
+module.exports = generateSalesRefundReportSummary;
 
 if (require.main === module) {
   const sample = [
     { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', status: 'completed', seat: 1, gender: 'E', pnr: 'ABC123', price: 100 },
     { user: 'Ayşe', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', status: 'refund', seat: 2, gender: 'K', pnr: 'XYZ789', price: 120 },
   ];
-  generateSalesRefundReportDetailed(sample, {}, 'sales_refunds.pdf').then(() => console.log('sales_refunds.pdf created'));
+  generateSalesRefundReportSummary(sample, {}, 'sales_refunds.pdf').then(() => console.log('sales_refunds.pdf created'));
 }

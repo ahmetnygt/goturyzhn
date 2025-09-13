@@ -30,6 +30,7 @@ const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
 const { generateAccountReceiptFromDb } = require('../utilities/accountCutRecipe');
 const generateSalesRefundReportDetailed = require('../utilities/salesRefundReportDetailed');
+const generateSalesRefundReportSummary = require('../utilities/salesRefundReportSummary');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3295,7 +3296,6 @@ exports.getSalesRefundsReport = async (req, res, next) => {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline; filename="sales_refunds_summary.pdf"');
             await generateSalesRefundReportSummary(rows, query, res);
-            res.json(rows);
         }
     } catch (err) {
         console.error('getSalesRefundsReport error:', err);
