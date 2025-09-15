@@ -3318,53 +3318,229 @@ exports.getSalesRefundsReport = async (req, res, next) => {
 
 exports.getWebTicketsReport = async (req, res, next) => {
     try {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename="web_tickets_by_bus.pdf"');
+        const { startDate, endDate, type, branchId, userId, fromStopId, toStopId } = req.query;
 
-        const buses = await Bus.findAll({ attributes: ['id', 'licensePlate'], raw: true });
-        if (!buses.length) {
-            await generateWebTicketsReportByBusSummary([], {}, res);
+        const start = startDate ? new Date(startDate) : new Date('1970-01-01');
+        const end = endDate ? new Date(endDate) : new Date();
+
+        let branchTitle = 'Tümü';
+        if (branchId) {
+            const branch = await Branch.findOne({ where: { id: branchId }, attributes: ['title'], raw: true });
+            if (branch?.title) branchTitle = branch.title;
+        }
+
+        let userName = 'Tümü';
+        if (userId) {
+            const user = await FirmUser.findOne({ where: { id: userId }, attributes: ['name'], raw: true });
+            if (user?.name) userName = user.name;
+        }
+
+        let fromStopTitle = 'Tümü';
+        if (fromStopId) {
+            const fromStop = await Stop.findOne({ where: { id: fromStopId }, attributes: ['title'], raw: true });
+            if (fromStop?.title) fromStopTitle = fromStop.title;
+        }
+
+        let toStopTitle = 'Tümü';
+        if (toStopId) {
+            const toStop = await Stop.findOne({ where: { id: toStopId }, attributes: ['title'], raw: true });
+            if (toStop?.title) toStopTitle = toStop.title;
+        }
+
+        const queryInfo = {
+            type,
+            startDate,
+            endDate,
+            branch: branchTitle,
+            user: userName,
+            from: fromStopTitle,
+            to: toStopTitle,
+        };
+
+        const where = {
+            status: 'web',
+            createdAt: { [Op.between]: [start, end] },
+        };
+
+        if (userId) where.userId = userId;
+        if (fromStopId) where.fromRouteStopId = fromStopId;
+        if (toStopId) where.toRouteStopId = toStopId;
+
+        let tickets = await Ticket.findAll({
+            where,
+            raw: true,
+        });
+
+        if (branchId) {
+            const branchUsers = await FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
+            const branchUserIds = branchUsers.map(u => u.id);
+            tickets = tickets.filter(t => branchUserIds.includes(t.userId));
+        }
+
+        const normalizedType = (type || '').toLowerCase();
+        const isDetailed = normalizedType === 'detailed' || normalizedType === 'detaylı' || normalizedType === 'detayli';
+
+        if (!tickets.length) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : 'web_tickets_by_bus_summary.pdf'}"`);
+            if (isDetailed) {
+                await generateWebTicketsReportByBusDetailed([], queryInfo, res);
+            } else {
+                await generateWebTicketsReportByBusSummary([], queryInfo, res);
+            }
             return;
         }
 
-        const busIds = buses.map(b => b.id);
-        const trips = await Trip.findAll({
-            where: { busId: { [Op.in]: busIds } },
-            attributes: ['id', 'busId'],
-            raw: true
-        });
+        const tripIds = [...new Set(tickets.map(t => t.tripId).filter(Boolean))];
+        const trips = tripIds.length ? await Trip.findAll({
+            where: { id: { [Op.in]: tripIds } },
+            attributes: ['id', 'busId', 'routeId', 'date', 'time'],
+            raw: true,
+        }) : [];
 
-        if (!trips.length) {
-            await generateWebTicketsReportByBusSummary([], {}, res);
-            return;
-        }
+        const busIds = [...new Set(trips.map(t => t.busId).filter(Boolean))];
+        const routeIds = [...new Set(trips.map(t => t.routeId).filter(Boolean))];
 
-        const tripIds = trips.map(t => t.id);
-        const tickets = await Ticket.findAll({
-            where: {
-                status: 'web',
-                tripId: { [Op.in]: tripIds }
-            },
-            attributes: ['tripId', 'price'],
-            raw: true
-        });
+        const [buses, routes] = await Promise.all([
+            busIds.length ? Bus.findAll({ where: { id: { [Op.in]: busIds } }, attributes: ['id', 'licensePlate'], raw: true }) : [],
+            routeIds.length ? Route.findAll({ where: { id: { [Op.in]: routeIds } }, attributes: ['id', 'title'], raw: true }) : [],
+        ]);
+
+        const routeStops = routeIds.length ? await RouteStop.findAll({
+            where: { routeId: { [Op.in]: routeIds } },
+            attributes: ['id', 'routeId', 'stopId', 'duration', 'order'],
+            raw: true,
+        }) : [];
+
+        const stopIdsForRouteStops = routeStops.map(rs => rs.stopId).filter(Boolean);
+        const directStopIds = tickets.map(t => t.fromRouteStopId).filter(Boolean);
+        const combinedStopIds = [...new Set([...stopIdsForRouteStops, ...directStopIds])];
+        const stopsForRouteStops = combinedStopIds.length ? await Stop.findAll({
+            where: { id: { [Op.in]: combinedStopIds } },
+            attributes: ['id', 'title'],
+            raw: true,
+        }) : [];
+
+        const toKey = value => (value === undefined || value === null ? '' : String(value));
 
         const busMap = new Map(buses.map(b => [b.id, b.licensePlate]));
-        const tripMap = new Map(trips.map(t => [t.id, t.busId]));
+        const tripMap = new Map(trips.map(t => [t.id, t]));
+        const routeMap = new Map(routes.map(r => [r.id, r.title]));
+        const routeStopMap = new Map(routeStops.map(rs => [toKey(rs.id), rs]));
+        const stopMap = new Map(stopsForRouteStops.map(s => [toKey(s.id), s.title]));
 
-        const rows = tickets.reduce((acc, ticket) => {
-            const busId = tripMap.get(ticket.tripId);
-            if (!busId) return acc;
-            const licensePlate = busMap.get(busId) || '-';
-            acc.push({
-                price: ticket.price,
-                busId,
-                licensePlate
+        const routeStopsByRoute = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = toKey(rs.routeId);
+            if (!routeStopsByRoute.has(routeKey)) {
+                routeStopsByRoute.set(routeKey, []);
+            }
+            routeStopsByRoute.get(routeKey).push(rs);
+        });
+
+        routeStopsByRoute.forEach(list => {
+            list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        });
+
+        const parseDurationToMs = duration => {
+            if (!duration) return 0;
+            const [rawH = 0, rawM = 0, rawS = 0] = duration.split(':').map(Number);
+            const hours = Number.isFinite(rawH) ? rawH : 0;
+            const minutes = Number.isFinite(rawM) ? rawM : 0;
+            const seconds = Number.isFinite(rawS) ? rawS : 0;
+            return ((hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0)) * 1000;
+        };
+
+        const cumulativeDurationByRouteStopId = new Map();
+        routeStopsByRoute.forEach(list => {
+            let acc = 0;
+            list.forEach(rs => {
+                acc += parseDurationToMs(rs.duration);
+                cumulativeDurationByRouteStopId.set(toKey(rs.id), acc);
             });
-            return acc;
-        }, []);
+        });
 
-        await generateWebTicketsReportByBusSummary(rows, {}, res);
+        const routeStopByRouteAndStop = new Map();
+        routeStops.forEach(rs => {
+            const key = `${toKey(rs.routeId)}|${toKey(rs.stopId)}`;
+            if (!routeStopByRouteAndStop.has(key)) {
+                routeStopByRouteAndStop.set(key, rs);
+            }
+        });
+
+        const combineDateAndTime = (dateStr, timeStr) => {
+            if (!dateStr) return null;
+            const [year, month, day] = dateStr.split('-').map(Number);
+            if (!year || !month || !day) return null;
+            const [hour = 0, minute = 0, second = 0] = (timeStr || '00:00:00').split(':').map(Number);
+            return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+        };
+
+        const summaryRows = [];
+        const detailedGroups = new Map();
+
+        tickets.forEach(ticket => {
+            const trip = ticket.tripId ? tripMap.get(ticket.tripId) : undefined;
+            const busId = trip?.busId;
+            const busKey = busId ?? 'unknown';
+            const licensePlate = busMap.get(busId) || '-';
+            const priceValue = Number(ticket.price) || 0;
+
+            summaryRows.push({
+                price: priceValue,
+                busId: busKey,
+                licensePlate,
+            });
+
+            const routeStopKey = toKey(ticket.fromRouteStopId);
+            const routeStop = routeStopMap.get(routeStopKey)
+                || (trip ? routeStopByRouteAndStop.get(`${toKey(trip.routeId)}|${routeStopKey}`) : undefined);
+            const stopTitle = routeStop
+                ? (stopMap.get(toKey(routeStop.stopId)) || '')
+                : (routeStopKey ? (stopMap.get(routeStopKey) || '') : '');
+            const baseDate = combineDateAndTime(trip?.date, trip?.time);
+            let departureDate = baseDate;
+            if (routeStop && baseDate) {
+                const cumulativeMs = cumulativeDurationByRouteStopId.get(toKey(routeStop.id));
+                if (typeof cumulativeMs === 'number') {
+                    departureDate = new Date(baseDate.getTime() + cumulativeMs);
+                }
+            }
+            const routeTitle = trip?.routeId ? (routeMap.get(trip.routeId) || '') : '';
+
+            const groupKey = `${busKey}|${trip?.id || 'unknown'}|${routeStopKey || 'unknown'}`;
+
+            if (!detailedGroups.has(groupKey)) {
+                detailedGroups.set(groupKey, {
+                    busId: busKey,
+                    licensePlate,
+                    stopTitle,
+                    routeTitle,
+                    departure: departureDate,
+                    salesTotal: 0,
+                    ticketCount: 0,
+                });
+            }
+
+            const group = detailedGroups.get(groupKey);
+            group.salesTotal += priceValue;
+            group.ticketCount += 1;
+            if (!group.stopTitle && stopTitle) group.stopTitle = stopTitle;
+            if (!group.routeTitle && routeTitle) group.routeTitle = routeTitle;
+            if (!group.licensePlate && licensePlate) group.licensePlate = licensePlate;
+            if (!group.departure && departureDate) group.departure = departureDate;
+        });
+
+        const detailedRows = Array.from(detailedGroups.values());
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : 'web_tickets_by_bus_summary.pdf'}"`);
+
+        if (isDetailed) {
+            await generateWebTicketsReportByBusDetailed(detailedRows, queryInfo, res);
+        } else {
+            await generateWebTicketsReportByBusSummary(summaryRows, queryInfo, res);
+        }
     } catch (err) {
         console.error('getWebTicketsReport error:', err);
         res.status(500).json({ message: 'Web bilet raporu oluşturulamadı.' });
