@@ -9,7 +9,7 @@ const path = require('path');
  * @returns {Promise<void>} resolves when writing finishes
  */
 function generateWebTicketsReportByBusDetailed(rows, query, output) {
-  const doc = new PDFDocument({ size: 'A4', margin: 40 });
+  const doc = new PDFDocument({ size: 'A4', margin: 40, layout: "landscape" });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
 
@@ -165,7 +165,6 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
         },
       });
     }
-
     const bucket = groupedMap.get(busKey);
     if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
       bucket.licensePlate = row.licensePlate;
@@ -238,8 +237,8 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     { key: 'firmIncome', header: 'Firma Payı', percent: 0.08, align: 'right' },
     { key: 'branchIncome', header: 'Şube Payı', percent: 0.08, align: 'right' },
     { key: 'busIncome', header: 'Otobüs Payı', percent: 0.08, align: 'right' },
-    { key: 'salesTotal', header: 'T. Satış Tutarı', percent: 0.09, align: 'right' },
-    { key: 'ticketCount', header: 'T. Bilet Adedi', percent: 0.05, align: 'right' },
+    { key: 'salesTotal', header: 'Satış Tutarı', percent: 0.09, align: 'right' },
+    { key: 'ticketCount', header: 'Bilet Adedi', percent: 0.1, align: 'right' },
   ];
 
   let y = doc.y;
@@ -263,14 +262,14 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     doc.font('Bold').fontSize(9);
     let x = xStart;
     columns.forEach(col => {
-      doc.rect(x, y, col.w, headerHeight).stroke();
+      doc.rect(x, y, col.w, headerHeight * 1.8).stroke();
       doc.text(col.header, x + cellPaddingX, y + 4, {
         width: Math.max(col.w - cellPaddingX * 2, 0),
         align: 'center',
       });
       x += col.w;
     });
-    y += headerHeight;
+    y += headerHeight * 2;
     doc.font('Regular').fontSize(8);
   };
 

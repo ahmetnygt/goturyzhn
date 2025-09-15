@@ -3475,7 +3475,6 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const [hour = 0, minute = 0, second = 0] = (timeStr || '00:00:00').split(':').map(Number);
             return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
         };
-
         const summaryRows = [];
         const detailedGroups = new Map();
 
