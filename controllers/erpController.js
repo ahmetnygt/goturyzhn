@@ -3413,9 +3413,11 @@ exports.getWebTicketsReport = async (req, res, next) => {
             raw: true,
         }) : [];
 
-        const stopIdsForRouteStops = [...new Set(routeStops.map(rs => rs.stopId).filter(Boolean))];
-        const stopsForRouteStops = stopIdsForRouteStops.length ? await Stop.findAll({
-            where: { id: { [Op.in]: stopIdsForRouteStops } },
+        const stopIdsForRouteStops = routeStops.map(rs => rs.stopId).filter(Boolean);
+        const directStopIds = tickets.map(t => t.fromRouteStopId).filter(Boolean);
+        const combinedStopIds = [...new Set([...stopIdsForRouteStops, ...directStopIds])];
+        const stopsForRouteStops = combinedStopIds.length ? await Stop.findAll({
+            where: { id: { [Op.in]: combinedStopIds } },
             attributes: ['id', 'title'],
             raw: true,
         }) : [];
@@ -3458,7 +3460,9 @@ exports.getWebTicketsReport = async (req, res, next) => {
             });
 
             const routeStop = ticket.fromRouteStopId ? routeStopMap.get(ticket.fromRouteStopId) : undefined;
-            const stopTitle = routeStop ? (stopMap.get(routeStop.stopId) || '') : '';
+            const stopTitle = routeStop
+                ? (stopMap.get(routeStop.stopId) || '')
+                : (ticket.fromRouteStopId ? (stopMap.get(ticket.fromRouteStopId) || '') : '');
             const baseDate = combineDateAndTime(trip?.date, trip?.time);
             const departureDate = routeStop ? addDurationToDate(baseDate, routeStop.duration) : baseDate;
             const routeTitle = trip?.routeId ? (routeMap.get(trip.routeId) || '') : '';

@@ -132,8 +132,7 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     };
   });
 
-  const groupedMap = new Map();
-  const totals = {
+  const createTotals = () => ({
     ticketCount: 0,
     salesTotal: 0,
     goturIncome: 0,
@@ -141,6 +140,46 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     branchIncome: 0,
     busIncome: 0,
   };
+
+  preparedRows.forEach(row => {
+    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
+    if (!groupedMap.has(busKey)) {
+      groupedMap.set(busKey, {
+        busId: busKey,
+        licensePlate: row.licensePlate || '-',
+        rows: [],
+        totals: {
+          ticketCount: 0,
+          salesTotal: 0,
+          goturIncome: 0,
+          firmIncome: 0,
+          branchIncome: 0,
+          busIncome: 0,
+        },
+      });
+    }
+
+    const bucket = groupedMap.get(busKey);
+    if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
+      bucket.licensePlate = row.licensePlate;
+    }
+    bucket.rows.push(row);
+    bucket.totals.ticketCount += row.ticketCount;
+    bucket.totals.salesTotal += row.salesTotal;
+    bucket.totals.goturIncome += row.goturIncome;
+    bucket.totals.firmIncome += row.firmIncome;
+    bucket.totals.branchIncome += row.branchIncome;
+    bucket.totals.busIncome += row.busIncome;
+
+    totals.ticketCount += row.ticketCount;
+    totals.salesTotal += row.salesTotal;
+    totals.goturIncome += row.goturIncome;
+    totals.firmIncome += row.firmIncome;
+    totals.branchIncome += row.branchIncome;
+    totals.busIncome += row.busIncome;
+  });
+  const groupedMap = new Map();
+  const totals = createTotals();
 
   preparedRows.forEach(row => {
     const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
@@ -188,15 +227,19 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
 
   groupedData.forEach(group => {
     group.rows.sort((a, b) => {
-      if (a.departure && b.departure) {
-        return a.departure.getTime() - b.departure.getTime();
-      }
-      if (a.departure && !b.departure) return -1;
-      if (!a.departure && b.departure) return 1;
       const stopA = (a.stopTitle || '').toLocaleUpperCase('tr-TR');
       const stopB = (b.stopTitle || '').toLocaleUpperCase('tr-TR');
       const stopCompare = stopA.localeCompare(stopB, 'tr-TR');
       if (stopCompare !== 0) return stopCompare;
+
+      if (a.departure && b.departure) {
+        const timeDiff = a.departure.getTime() - b.departure.getTime();
+        if (timeDiff !== 0) return timeDiff;
+      } else if (a.departure && !b.departure) {
+        return -1;
+      } else if (!a.departure && b.departure) {
+        return 1;
+      }
       const routeA = (a.routeTitle || '').toLocaleUpperCase('tr-TR');
       const routeB = (b.routeTitle || '').toLocaleUpperCase('tr-TR');
       return routeA.localeCompare(routeB, 'tr-TR');
@@ -314,11 +357,53 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     doc.font('Regular');
   } else {
     groupedData.forEach((group, groupIndex) => {
-      group.rows.forEach((row, rowIndex) => {
+      let isFirstRowOfBus = true;
+      let currentStopTitle = null;
+      let currentStopTotals = createTotals();
+      let stopRowIndex = 0;
+
+      const flushCurrentStopTotals = () => {
+        if (currentStopTitle === null) return;
+        const label = currentStopTitle ? `${currentStopTitle} TOPLAMI` : 'DURAK TOPLAMI';
+        doc.font('Bold').fontSize(8);
+        drawRow({
+          licensePlate: '',
+          stopTitle: label,
+          departure: '',
+          routeTitle: '',
+          goturIncome: currency(currentStopTotals.goturIncome),
+          firmIncome: currency(currentStopTotals.firmIncome),
+          branchIncome: currency(currentStopTotals.branchIncome),
+          busIncome: currency(currentStopTotals.busIncome),
+          salesTotal: currency(currentStopTotals.salesTotal),
+          ticketCount: formatCount(currentStopTotals.ticketCount),
+        });
+        doc.font('Regular').fontSize(8);
+        currentStopTotals = createTotals();
+        stopRowIndex = 0;
+        currentStopTitle = null;
+      };
+
+      group.rows.forEach(row => {
+        const stopTitle = row.stopTitle || '';
+        if (currentStopTitle === null) {
+          currentStopTitle = stopTitle;
+        } else if (stopTitle !== currentStopTitle) {
+          flushCurrentStopTotals();
+          currentStopTitle = stopTitle;
+        }
+
+        currentStopTotals.ticketCount += row.ticketCount;
+        currentStopTotals.salesTotal += row.salesTotal;
+        currentStopTotals.goturIncome += row.goturIncome;
+        currentStopTotals.firmIncome += row.firmIncome;
+        currentStopTotals.branchIncome += row.branchIncome;
+        currentStopTotals.busIncome += row.busIncome;
+
         doc.font('Regular').fontSize(8);
         drawRow({
-          licensePlate: rowIndex === 0 ? (group.licensePlate || '-') : '',
-          stopTitle: row.stopTitle || '',
+          licensePlate: isFirstRowOfBus ? (group.licensePlate || '-') : '',
+          stopTitle: stopRowIndex === 0 ? (stopTitle || '') : '',
           departure: formatDateTime(row.departure),
           routeTitle: row.routeTitle || '',
           goturIncome: currency(row.goturIncome),
@@ -328,7 +413,12 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
           salesTotal: currency(row.salesTotal),
           ticketCount: formatCount(row.ticketCount),
         });
+
+        isFirstRowOfBus = false;
+        stopRowIndex += 1;
       });
+
+      flushCurrentStopTotals();
 
       doc.font('Bold').fontSize(8);
       drawRow({
@@ -343,7 +433,7 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
         salesTotal: currency(group.totals.salesTotal),
         ticketCount: formatCount(group.totals.ticketCount),
       });
-      doc.font('Regular');
+      doc.font('Regular').fontSize(8);
 
       if (groupIndex < groupedData.length - 1) {
         drawSeparator();
