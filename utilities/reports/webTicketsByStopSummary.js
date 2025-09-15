@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateWebTicketsReportByStopSummary(rows, query, output) {
+function generateWebTicketsReportByBusSummary(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -67,7 +67,7 @@ function generateWebTicketsReportByStopSummary(rows, query, output) {
   // reset position for title
   doc.y = doc.page.margins.top;
   doc.moveDown();
-  const title = 'Duraklara Göre Web Biletleri'.toLocaleUpperCase();
+  const title = 'Otobüslere Göre Web Biletleri'.toLocaleUpperCase();
   doc.font('Bold').fontSize(14);
 
   const textWidth = doc.widthOfString(title);
@@ -253,7 +253,7 @@ function generateWebTicketsReportByStopSummary(rows, query, output) {
   });
 }
 
-module.exports = generateWebTicketsReportByStopSummary;
+module.exports = generateWebTicketsReportByBusSummary;
 
 if (require.main === module) {
   const sample = [
@@ -261,5 +261,5 @@ if (require.main === module) {
     { busId: 1, licensePlate: '34 ABC 123', price: 150 },
     { busId: 2, licensePlate: '06 XYZ 456', price: 200 },
   ];
-  generateWebTicketsReportByStopSummary(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
+  generateWebTicketsReportByBusSummary(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
 }

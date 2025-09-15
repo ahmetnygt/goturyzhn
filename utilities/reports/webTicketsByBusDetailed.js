@@ -9,7 +9,7 @@ const path = require('path');
  * @returns {Promise<void>} resolves when writing finishes
  */
 function generateWebTicketsReportByBusDetailed(rows, query, output) {
-  const doc = new PDFDocument({ size: 'A4', margin: 40 });
+  const doc = new PDFDocument({ size: 'A4', margin: 40, layout: "landscape" });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
 
@@ -139,65 +139,7 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     firmIncome: 0,
     branchIncome: 0,
     busIncome: 0,
-  };
-
-  preparedRows.forEach(row => {
-    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
-    if (!groupedMap.has(busKey)) {
-      groupedMap.set(busKey, {
-        busId: busKey,
-        licensePlate: row.licensePlate || '-',
-        rows: [],
-        totals: {
-          ticketCount: 0,
-          salesTotal: 0,
-          goturIncome: 0,
-          firmIncome: 0,
-          branchIncome: 0,
-          busIncome: 0,
-        },
-      });
-    }
-
-    const bucket = groupedMap.get(busKey);
-    if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
-      bucket.licensePlate = row.licensePlate;
-    }
-    bucket.rows.push(row);
-    bucket.totals.ticketCount += row.ticketCount;
-    bucket.totals.salesTotal += row.salesTotal;
-    bucket.totals.goturIncome += row.goturIncome;
-    bucket.totals.firmIncome += row.firmIncome;
-    bucket.totals.branchIncome += row.branchIncome;
-    bucket.totals.busIncome += row.busIncome;
-
-    totals.ticketCount += row.ticketCount;
-    totals.salesTotal += row.salesTotal;
-    totals.goturIncome += row.goturIncome;
-    totals.firmIncome += row.firmIncome;
-    totals.branchIncome += row.branchIncome;
-    totals.busIncome += row.busIncome;
   });
-  const groupedMap = new Map();
-  const totals = createTotals();
-
-  preparedRows.forEach(row => {
-    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
-    if (!groupedMap.has(busKey)) {
-      groupedMap.set(busKey, {
-        busId: busKey,
-        licensePlate: row.licensePlate || '-',
-        rows: [],
-        totals: {
-          ticketCount: 0,
-          salesTotal: 0,
-          goturIncome: 0,
-          firmIncome: 0,
-          branchIncome: 0,
-          busIncome: 0,
-        },
-      });
-    }
 
   const groupedMap = new Map();
   const totals = createTotals();
@@ -291,8 +233,8 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     { key: 'firmIncome', header: 'Firma Payı', percent: 0.08, align: 'right' },
     { key: 'branchIncome', header: 'Şube Payı', percent: 0.08, align: 'right' },
     { key: 'busIncome', header: 'Otobüs Payı', percent: 0.08, align: 'right' },
-    { key: 'salesTotal', header: 'T. Satış Tutarı', percent: 0.09, align: 'right' },
-    { key: 'ticketCount', header: 'T. Bilet Adedi', percent: 0.05, align: 'right' },
+    { key: 'salesTotal', header: 'Satış Tutarı', percent: 0.09, align: 'right' },
+    { key: 'ticketCount', header: 'Bilet Adedi', percent: 0.1, align: 'right' },
   ];
 
   let y = doc.y;
@@ -316,14 +258,14 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     doc.font('Bold').fontSize(9);
     let x = xStart;
     columns.forEach(col => {
-      doc.rect(x, y, col.w, headerHeight).stroke();
+      doc.rect(x, y, col.w, headerHeight * 1.8).stroke();
       doc.text(col.header, x + cellPaddingX, y + 4, {
         width: Math.max(col.w - cellPaddingX * 2, 0),
         align: 'center',
       });
       x += col.w;
     });
-    y += headerHeight;
+    y += headerHeight * 2;
     doc.font('Regular').fontSize(8);
   };
 
