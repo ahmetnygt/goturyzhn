@@ -1,15 +1,15 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
-const Trip = require('../models/tripModel');
-const Route = require('../models/routeModel');
-const Ticket = require('../models/ticketModel');
-const Bus = require('../models/busModel');
-const Stop = require('../models/stopModel');
-const RouteStop = require('../models/routeStopModel');
+const Trip = require('../../models/tripModel');
+const Route = require('../../models/routeModel');
+const Ticket = require('../../models/ticketModel');
+const Bus = require('../../models/busModel');
+const Stop = require('../../models/stopModel');
+const RouteStop = require('../../models/routeStopModel');
 const path = require('path');
 const { Op } = require('sequelize');
-const BusAccountCut = require('../models/busAccountCutModel');
-const Staff = require('../models/staffModel');
+const BusAccountCut = require('../../models/busAccountCutModel');
+const Staff = require('../../models/staffModel');
 
 /**
  * Generate an account receipt PDF using supplied data.

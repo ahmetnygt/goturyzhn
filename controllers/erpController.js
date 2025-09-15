@@ -28,9 +28,10 @@ const Permission = require("../models/permissionModel")
 const BusAccountCut = require("../models/busAccountCutModel")
 const Announcement = require("../models/announcementModel")
 const AnnouncementUser = require("../models/announcementUserModel");
-const { generateAccountReceiptFromDb } = require('../utilities/accountCutRecipe');
-const generateSalesRefundReportDetailed = require('../utilities/salesRefundReportDetailed');
-const generateSalesRefundReportSummary = require('../utilities/salesRefundReportSummary');
+const { generateAccountReceiptFromDb } = require('../utilities/reports/accountCutRecipe');
+const generateSalesRefundReportDetailed = require('../utilities/reports/salesRefundReportDetailed');
+const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
+const generateWebTicketsReport = require('../utilities/reports/webTicketsByBus');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3313,6 +3314,26 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         res.status(500).json({ message: 'Satışlar ve iadeler raporu oluşturulamadı.' });
     }
 };
+
+exports.getWebTicketsReport = async (req, res, next) => {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="web_tickets_by_bus.pdf"');
+
+    const buses = await Bus.findAll()
+    const trips = await Trip.findAll({ where: { busId: { [Op.in]: [...new Set(buses.map(b => b.id))] } } })
+    const tickets = await Ticket.findAll({ where: { status: "web", tripId: { [Op.in]: [...new Set(trips.map(t => t.id))] } } })
+
+    const rows = tickets.map(t => {
+        const tripId = t.tripId
+        return {
+            price: t.price,
+            busId: trips.find(t => t.id == tripId).busId,
+            licensePlate: buses.find(b => b.id == trips.find(t => t.id == tripId).busId).licensePlate
+        }
+    })
+
+    await generateWebTicketsReport(rows, {}, res);
+}
 
 exports.postAnnouncementSeen = async (req, res, next) => {
     try {

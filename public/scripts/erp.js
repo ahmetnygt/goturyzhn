@@ -4255,8 +4255,9 @@ $(".reports-close").on("click", e => {
     $(".reports-popup").css("display", "none");
 });
 
+var report = null;
 $(".report-item").on("click", async e => {
-    const report = $(e.currentTarget).data("report");
+    report = $(e.currentTarget).data("report");
     $(".reports-popup").css("display", "none");
     const popup = $(`.${report}-report-popup`).css("display", "flex");
 
@@ -4316,7 +4317,7 @@ $(".report-create-button").on("click", e => {
     if (fromStopId) params.set("fromStopId", fromStopId);
     if (toStopId) params.set("toStopId", toStopId);
 
-    window.open(`/erp/get-sales-refunds-report?${params.toString()}`, "_blank");
+    window.open(`/erp/${report}?${params.toString()}`, "_blank");
 });
 
 $(".members-close").on("click", e => {

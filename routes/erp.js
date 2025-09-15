@@ -126,6 +126,7 @@ router.get('/get-announcements', auth, erpController.getAnnouncements);
 router.post('/post-save-announcement', auth, erpController.postSaveAnnouncement);
 router.post('/post-announcement-seen', auth, erpController.postAnnouncementSeen);
 
-router.get('/get-sales-refunds-report', auth, erpController.getSalesRefundsReport);
+router.get('/salesAndRefunds', auth, erpController.getSalesRefundsReport);
+router.get('/webTickets', auth, erpController.getWebTicketsReport);
 
 module.exports = router;
