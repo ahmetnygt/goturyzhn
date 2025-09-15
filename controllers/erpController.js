@@ -31,7 +31,8 @@ const AnnouncementUser = require("../models/announcementUserModel");
 const { generateAccountReceiptFromDb } = require('../utilities/reports/accountCutRecipe');
 const generateSalesRefundReportDetailed = require('../utilities/reports/salesRefundReportDetailed');
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
-const generateWebTicketsReport = require('../utilities/reports/webTicketsByBus');
+const generateWebTicketsReportByBusSummary = require('../utilities/reports/webTicketsByBusSummary');
+const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webTicketsByBusDetailed');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3322,7 +3323,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
 
         const buses = await Bus.findAll({ attributes: ['id', 'licensePlate'], raw: true });
         if (!buses.length) {
-            await generateWebTicketsReport([], {}, res);
+            await generateWebTicketsReportByBusSummary([], {}, res);
             return;
         }
 
@@ -3334,7 +3335,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
         });
 
         if (!trips.length) {
-            await generateWebTicketsReport([], {}, res);
+            await generateWebTicketsReportByBusSummary([], {}, res);
             return;
         }
 
@@ -3363,7 +3364,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
             return acc;
         }, []);
 
-        await generateWebTicketsReport(rows, {}, res);
+        await generateWebTicketsReportByBusSummary(rows, {}, res);
     } catch (err) {
         console.error('getWebTicketsReport error:', err);
         res.status(500).json({ message: 'Web bilet raporu oluşturulamadı.' });

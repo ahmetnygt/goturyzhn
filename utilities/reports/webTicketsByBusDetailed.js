@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateWebTicketsReport(rows, query, output) {
+function generateWebTicketsReportByBusDetailed(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -139,12 +139,11 @@ function generateWebTicketsReport(rows, query, output) {
   doc.font('Regular').fontSize(9);
 
   drawSummaryRow([
-    { label: 'Toplam Otobüs: ', value: busCount },
     { label: 'Toplam Bilet Adedi: ', value: totals.ticketCount },
     { label: 'Toplam Satış Tutarı: ', value: fmt(totals.salesSummary) + '₺' },
+    { label: 'Toplam Götür Hakedişi: ', value: fmt(totals.goturIncome) + '₺' },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Götür Hakedişi: ', value: fmt(totals.goturIncome) + '₺' },
     { label: 'Toplam Firma Hakedişi: ', value: fmt(totals.firmIncome) + '₺' },
     { label: 'Toplam Şube Hakedişi: ', value: fmt(totals.branchIncome) + '₺' },
     { label: 'Toplam Otobüs Hakedişi: ', value: fmt(totals.busIncome) + '₺' },
@@ -217,35 +216,35 @@ function generateWebTicketsReport(rows, query, output) {
     y += rowHeight + 10;
   });
 
-  if (aggregatedRows.length) {
-    const totalRowValues = {
-      licensePlate: 'GENEL TOPLAM',
-      ticketCount: totals.ticketCount,
-      salesTotal: fmt(totals.salesSummary) + '₺',
-      goturIncome: fmt(totals.goturIncome) + '₺',
-      firmIncome: fmt(totals.firmIncome) + '₺',
-      branchIncome: fmt(totals.branchIncome) + '₺',
-      busIncome: fmt(totals.busIncome) + '₺',
-    };
+  // if (aggregatedRows.length) {
+  //   const totalRowValues = {
+  //     licensePlate: 'GENEL TOPLAM',
+  //     ticketCount: totals.ticketCount,
+  //     salesTotal: fmt(totals.salesSummary) + '₺',
+  //     goturIncome: fmt(totals.goturIncome) + '₺',
+  //     firmIncome: fmt(totals.firmIncome) + '₺',
+  //     branchIncome: fmt(totals.branchIncome) + '₺',
+  //     busIncome: fmt(totals.busIncome) + '₺',
+  //   };
 
-    if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
-      doc.addPage();
-      y = doc.page.margins.top;
-      drawHeader();
-    }
+  //   if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+  //     doc.addPage();
+  //     y = doc.page.margins.top;
+  //     drawHeader();
+  //   }
 
-    doc.font('Bold');
-    let x = xStart;
-    columns.forEach(col => {
-      doc.text(totalRowValues[col.key], x, y + 3, {
-        width: col.w,
-        align: 'center',
-      });
-      x += col.w;
-    });
-    doc.font('Regular');
-    y += rowHeight + 10;
-  }
+  //   doc.font('Bold');
+  //   let x = xStart;
+  //   columns.forEach(col => {
+  //     doc.text(totalRowValues[col.key], x, y + 3, {
+  //       width: col.w,
+  //       align: 'center',
+  //     });
+  //     x += col.w;
+  //   });
+  //   doc.font('Regular');
+  //   y += rowHeight + 10;
+  // }
 
   doc.end();
   return new Promise((resolve, reject) => {
@@ -254,7 +253,7 @@ function generateWebTicketsReport(rows, query, output) {
   });
 }
 
-module.exports = generateWebTicketsReport;
+module.exports = generateWebTicketsReportByBusDetailed;
 
 if (require.main === module) {
   const sample = [
@@ -262,5 +261,5 @@ if (require.main === module) {
     { busId: 1, licensePlate: '34 ABC 123', price: 150 },
     { busId: 2, licensePlate: '06 XYZ 456', price: 200 },
   ];
-  generateWebTicketsReport(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
+  generateWebTicketsReportByBusDetailed(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
 }
