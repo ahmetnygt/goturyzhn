@@ -139,8 +139,45 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     firmIncome: 0,
     branchIncome: 0,
     busIncome: 0,
-  });
+  };
 
+  preparedRows.forEach(row => {
+    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
+    if (!groupedMap.has(busKey)) {
+      groupedMap.set(busKey, {
+        busId: busKey,
+        licensePlate: row.licensePlate || '-',
+        rows: [],
+        totals: {
+          ticketCount: 0,
+          salesTotal: 0,
+          goturIncome: 0,
+          firmIncome: 0,
+          branchIncome: 0,
+          busIncome: 0,
+        },
+      });
+    }
+
+    const bucket = groupedMap.get(busKey);
+    if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
+      bucket.licensePlate = row.licensePlate;
+    }
+    bucket.rows.push(row);
+    bucket.totals.ticketCount += row.ticketCount;
+    bucket.totals.salesTotal += row.salesTotal;
+    bucket.totals.goturIncome += row.goturIncome;
+    bucket.totals.firmIncome += row.firmIncome;
+    bucket.totals.branchIncome += row.branchIncome;
+    bucket.totals.busIncome += row.busIncome;
+
+    totals.ticketCount += row.ticketCount;
+    totals.salesTotal += row.salesTotal;
+    totals.goturIncome += row.goturIncome;
+    totals.firmIncome += row.firmIncome;
+    totals.branchIncome += row.branchIncome;
+    totals.busIncome += row.busIncome;
+  });
   const groupedMap = new Map();
   const totals = createTotals();
 
@@ -162,6 +199,26 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
       });
     }
 
+  const groupedMap = new Map();
+  const totals = createTotals();
+
+  preparedRows.forEach(row => {
+    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
+    if (!groupedMap.has(busKey)) {
+      groupedMap.set(busKey, {
+        busId: busKey,
+        licensePlate: row.licensePlate || '-',
+        rows: [],
+        totals: {
+          ticketCount: 0,
+          salesTotal: 0,
+          goturIncome: 0,
+          firmIncome: 0,
+          branchIncome: 0,
+          busIncome: 0,
+        },
+      });
+    }
     const bucket = groupedMap.get(busKey);
     if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
       bucket.licensePlate = row.licensePlate;
