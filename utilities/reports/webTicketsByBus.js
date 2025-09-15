@@ -75,56 +75,91 @@ function generateWebTicketsReport(rows, query, output) {
   doc.text(title, centerX, doc.y);
   doc.moveDown();
 
-  let salesCount = 0;
-  let salesSummary = 0;
-  let goturIncome = 0;
-  let firmIncome = 0;
-  let branchIncome = 0;
-  let busIncome = 0;
-
-  let buses = []
+  const aggregateMap = new Map();
 
   rows.forEach(r => {
+    const busId = r.busId || 'unknown';
+    const licensePlate = r.licensePlate || '-';
     const amount = Number(r.price) || 0;
 
-    salesCount++;
-    salesSummary += amount;
-    goturIncome = amount * goturCut;
-    firmIncome = amount * firmCut;
-    branchIncome = amount * branchCut;
-    busIncome = amount - goturIncome - firmIncome - branchIncome
+    if (!aggregateMap.has(busId)) {
+      aggregateMap.set(busId, {
+        busId,
+        licensePlate,
+        ticketCount: 0,
+        salesTotal: 0,
+        goturIncome: 0,
+        firmIncome: 0,
+        branchIncome: 0,
+        busIncome: 0,
+      });
+    }
 
-    if (!buses.includes(r.busId))
-      buses.push(r.busId)
+    const bucket = aggregateMap.get(busId);
+    bucket.licensePlate = licensePlate; // ensure latest label if missing previously
+    bucket.ticketCount += 1;
+    bucket.salesTotal += amount;
+    const goturShare = amount * goturCut;
+    const firmShare = amount * firmCut;
+    const branchShare = amount * branchCut;
+    const busShare = amount - goturShare - firmShare - branchShare;
+    bucket.goturIncome += goturShare;
+    bucket.firmIncome += firmShare;
+    bucket.branchIncome += branchShare;
+    bucket.busIncome += busShare;
   });
 
-  console.log(rows)
+  const aggregatedRows = Array.from(aggregateMap.values()).sort((a, b) => {
+    const plateA = (a.licensePlate || '').toString().toLocaleUpperCase('tr-TR');
+    const plateB = (b.licensePlate || '').toString().toLocaleUpperCase('tr-TR');
+    return plateA.localeCompare(plateB, 'tr-TR');
+  });
+
+  const totals = aggregatedRows.reduce((acc, row) => {
+    acc.ticketCount += row.ticketCount;
+    acc.salesSummary += row.salesTotal;
+    acc.goturIncome += row.goturIncome;
+    acc.firmIncome += row.firmIncome;
+    acc.branchIncome += row.branchIncome;
+    acc.busIncome += row.busIncome;
+    return acc;
+  }, {
+    ticketCount: 0,
+    salesSummary: 0,
+    goturIncome: 0,
+    firmIncome: 0,
+    branchIncome: 0,
+    busIncome: 0,
+  });
+
+  const busCount = aggregatedRows.length;
 
   const fmt = n => Number(n || 0).toFixed(2);
 
   doc.font('Regular').fontSize(9);
 
   drawSummaryRow([
-    { label: 'Toplam Bilet Adedi: ', value: salesCount },
-    { label: 'Toplam Satış Tutar: ', value: salesSummary },
-    { label: 'Toplam Götür Hakedişi: ', value: fmt(goturIncome) + "₺" },
+    { label: 'Toplam Otobüs: ', value: busCount },
+    { label: 'Toplam Bilet Adedi: ', value: totals.ticketCount },
+    { label: 'Toplam Satış Tutarı: ', value: fmt(totals.salesSummary) + '₺' },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Firma Hakedişi: ', value: fmt(firmIncome) + "₺" },
-    { label: 'Toplam Şube Hakedişi: ', value: fmt(branchIncome) + "₺" },
-    { label: 'Toplam Otobüs Hakedişi: ', value: fmt(busIncome) + "₺" },
+    { label: 'Toplam Götür Hakedişi: ', value: fmt(totals.goturIncome) + '₺' },
+    { label: 'Toplam Firma Hakedişi: ', value: fmt(totals.firmIncome) + '₺' },
+    { label: 'Toplam Şube Hakedişi: ', value: fmt(totals.branchIncome) + '₺' },
+    { label: 'Toplam Otobüs Hakedişi: ', value: fmt(totals.busIncome) + '₺' },
   ]);
 
   doc.moveDown();
 
   const columns = [
-    { key: 'license_plate', header: 'Plaka', w: 55 },
-    { key: 'ticket_count', header: 'Bilet Adedi', w: 75 },
-    { key: 'sales_summary', header: 'Satış Tutarı', w: 75 },
-    { key: 'gotur_income', header: 'Götür Payı', w: 75 },
-    { key: 'firm_income', header: 'Firma Payı', w: 75 },
-    { key: 'branch_income', header: 'Şube Payı', w: 75 },
-    { key: 'bus_income', header: 'Otobüs Payı', w: 75 },
+    { key: 'licensePlate', header: 'Plaka', w: 60 },
+    { key: 'ticketCount', header: 'Bilet Adedi', w: 70 },
+    { key: 'salesTotal', header: 'Satış Tutarı', w: 70 },
+    { key: 'goturIncome', header: 'Götür Payı', w: 70 },
+    { key: 'firmIncome', header: 'Firma Payı', w: 70 },
+    { key: 'branchIncome', header: 'Şube Payı', w: 70 },
+    { key: 'busIncome', header: 'Otobüs Payı', w: 70 },
   ];
 
   let y = doc.y;
@@ -149,11 +184,20 @@ function generateWebTicketsReport(rows, query, output) {
   drawHeader();
 
   // table rows
-  rows.forEach(row => {
+  if (aggregatedRows.length === 0) {
+    doc.font('Bold').text('Kayıt bulunamadı.', xStart, y + 10);
+    doc.font('Regular');
+  }
+
+  aggregatedRows.forEach(row => {
     const rowValues = {
-      price: row.price,
-      busId: row.busId,
-      licensePlate: row.licensePlate
+      licensePlate: row.licensePlate,
+      ticketCount: row.ticketCount,
+      salesTotal: fmt(row.salesTotal) + '₺',
+      goturIncome: fmt(row.goturIncome) + '₺',
+      firmIncome: fmt(row.firmIncome) + '₺',
+      branchIncome: fmt(row.branchIncome) + '₺',
+      busIncome: fmt(row.busIncome) + '₺',
     };
 
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -173,6 +217,36 @@ function generateWebTicketsReport(rows, query, output) {
     y += rowHeight + 10;
   });
 
+  if (aggregatedRows.length) {
+    const totalRowValues = {
+      licensePlate: 'GENEL TOPLAM',
+      ticketCount: totals.ticketCount,
+      salesTotal: fmt(totals.salesSummary) + '₺',
+      goturIncome: fmt(totals.goturIncome) + '₺',
+      firmIncome: fmt(totals.firmIncome) + '₺',
+      branchIncome: fmt(totals.branchIncome) + '₺',
+      busIncome: fmt(totals.busIncome) + '₺',
+    };
+
+    if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+      y = doc.page.margins.top;
+      drawHeader();
+    }
+
+    doc.font('Bold');
+    let x = xStart;
+    columns.forEach(col => {
+      doc.text(totalRowValues[col.key], x, y + 3, {
+        width: col.w,
+        align: 'center',
+      });
+      x += col.w;
+    });
+    doc.font('Regular');
+    y += rowHeight + 10;
+  }
+
   doc.end();
   return new Promise((resolve, reject) => {
     stream.on('finish', resolve);
@@ -184,8 +258,9 @@ module.exports = generateWebTicketsReport;
 
 if (require.main === module) {
   const sample = [
-    { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', status: 'completed', seat: 1, gender: 'E', pnr: 'ABC123', price: 100 },
-    { user: 'Ayşe', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', status: 'refund', seat: 2, gender: 'K', pnr: 'XYZ789', price: 120 },
+    { busId: 1, licensePlate: '34 ABC 123', price: 100 },
+    { busId: 1, licensePlate: '34 ABC 123', price: 150 },
+    { busId: 2, licensePlate: '06 XYZ 456', price: 200 },
   ];
   generateWebTicketsReport(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
 }

@@ -58,7 +58,7 @@ async function generatePNR(fromId, toId, stops) {
     }
 
     return pnr;
-}
+};
 
 function emptyLikeToNull(value) {
     if (
@@ -1342,7 +1342,7 @@ exports.postCompleteTickets = async (req, res, next) => {
         console.error("Kayıt hatası:", err);
         return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
-}
+};
 
 exports.postSellOpenTickets = async (req, res, next) => {
     try {
@@ -3316,24 +3316,59 @@ exports.getSalesRefundsReport = async (req, res, next) => {
 };
 
 exports.getWebTicketsReport = async (req, res, next) => {
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="web_tickets_by_bus.pdf"');
+    try {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="web_tickets_by_bus.pdf"');
 
-    const buses = await Bus.findAll()
-    const trips = await Trip.findAll({ where: { busId: { [Op.in]: [...new Set(buses.map(b => b.id))] } } })
-    const tickets = await Ticket.findAll({ where: { status: "web", tripId: { [Op.in]: [...new Set(trips.map(t => t.id))] } } })
-
-    const rows = tickets.map(t => {
-        const tripId = t.tripId
-        return {
-            price: t.price,
-            busId: trips.find(t => t.id == tripId).busId,
-            licensePlate: buses.find(b => b.id == trips.find(t => t.id == tripId).busId).licensePlate
+        const buses = await Bus.findAll({ attributes: ['id', 'licensePlate'], raw: true });
+        if (!buses.length) {
+            await generateWebTicketsReport([], {}, res);
+            return;
         }
-    })
 
-    await generateWebTicketsReport(rows, {}, res);
-}
+        const busIds = buses.map(b => b.id);
+        const trips = await Trip.findAll({
+            where: { busId: { [Op.in]: busIds } },
+            attributes: ['id', 'busId'],
+            raw: true
+        });
+
+        if (!trips.length) {
+            await generateWebTicketsReport([], {}, res);
+            return;
+        }
+
+        const tripIds = trips.map(t => t.id);
+        const tickets = await Ticket.findAll({
+            where: {
+                status: 'web',
+                tripId: { [Op.in]: tripIds }
+            },
+            attributes: ['tripId', 'price'],
+            raw: true
+        });
+
+        const busMap = new Map(buses.map(b => [b.id, b.licensePlate]));
+        const tripMap = new Map(trips.map(t => [t.id, t.busId]));
+
+        const rows = tickets.reduce((acc, ticket) => {
+            const busId = tripMap.get(ticket.tripId);
+            if (!busId) return acc;
+            const licensePlate = busMap.get(busId) || '-';
+            acc.push({
+                price: ticket.price,
+                busId,
+                licensePlate
+            });
+            return acc;
+        }, []);
+
+        await generateWebTicketsReport(rows, {}, res);
+    } catch (err) {
+        console.error('getWebTicketsReport error:', err);
+        res.status(500).json({ message: 'Web bilet raporu oluşturulamadı.' });
+    }
+};
 
 exports.postAnnouncementSeen = async (req, res, next) => {
     try {
