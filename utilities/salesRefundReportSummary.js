@@ -272,7 +272,7 @@ function generateSalesRefundReportSummary(rows, query, output) {
 
     const t = b.totals;
     const totalValues = {
-      user: `${branch} Toplamı`,
+      user: `${branch}`,
       salesCount: t.salesCount,
       refundCount: t.refundCount,
       sale: fmt(t.sale) + '₺',
