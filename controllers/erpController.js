@@ -3406,10 +3406,9 @@ exports.getWebTicketsReport = async (req, res, next) => {
             routeIds.length ? Route.findAll({ where: { id: { [Op.in]: routeIds } }, attributes: ['id', 'title'], raw: true }) : [],
         ]);
 
-        const fromRouteStopIds = [...new Set(tickets.map(t => t.fromRouteStopId).filter(Boolean))];
-        const routeStops = fromRouteStopIds.length ? await RouteStop.findAll({
-            where: { id: { [Op.in]: fromRouteStopIds } },
-            attributes: ['id', 'stopId', 'duration'],
+        const routeStops = routeIds.length ? await RouteStop.findAll({
+            where: { routeId: { [Op.in]: routeIds } },
+            attributes: ['id', 'routeId', 'stopId', 'duration', 'order'],
             raw: true,
         }) : [];
 
@@ -3422,11 +3421,52 @@ exports.getWebTicketsReport = async (req, res, next) => {
             raw: true,
         }) : [];
 
+        const toKey = value => (value === undefined || value === null ? '' : String(value));
+
         const busMap = new Map(buses.map(b => [b.id, b.licensePlate]));
         const tripMap = new Map(trips.map(t => [t.id, t]));
         const routeMap = new Map(routes.map(r => [r.id, r.title]));
-        const routeStopMap = new Map(routeStops.map(rs => [rs.id, rs]));
-        const stopMap = new Map(stopsForRouteStops.map(s => [s.id, s.title]));
+        const routeStopMap = new Map(routeStops.map(rs => [toKey(rs.id), rs]));
+        const stopMap = new Map(stopsForRouteStops.map(s => [toKey(s.id), s.title]));
+
+        const routeStopsByRoute = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = toKey(rs.routeId);
+            if (!routeStopsByRoute.has(routeKey)) {
+                routeStopsByRoute.set(routeKey, []);
+            }
+            routeStopsByRoute.get(routeKey).push(rs);
+        });
+
+        routeStopsByRoute.forEach(list => {
+            list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        });
+
+        const parseDurationToMs = duration => {
+            if (!duration) return 0;
+            const [rawH = 0, rawM = 0, rawS = 0] = duration.split(':').map(Number);
+            const hours = Number.isFinite(rawH) ? rawH : 0;
+            const minutes = Number.isFinite(rawM) ? rawM : 0;
+            const seconds = Number.isFinite(rawS) ? rawS : 0;
+            return ((hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0)) * 1000;
+        };
+
+        const cumulativeDurationByRouteStopId = new Map();
+        routeStopsByRoute.forEach(list => {
+            let acc = 0;
+            list.forEach(rs => {
+                acc += parseDurationToMs(rs.duration);
+                cumulativeDurationByRouteStopId.set(toKey(rs.id), acc);
+            });
+        });
+
+        const routeStopByRouteAndStop = new Map();
+        routeStops.forEach(rs => {
+            const key = `${toKey(rs.routeId)}|${toKey(rs.stopId)}`;
+            if (!routeStopByRouteAndStop.has(key)) {
+                routeStopByRouteAndStop.set(key, rs);
+            }
+        });
 
         const combineDateAndTime = (dateStr, timeStr) => {
             if (!dateStr) return null;
@@ -3435,15 +3475,6 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const [hour = 0, minute = 0, second = 0] = (timeStr || '00:00:00').split(':').map(Number);
             return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
         };
-
-        const addDurationToDate = (baseDate, duration) => {
-            if (!baseDate) return null;
-            if (!duration) return new Date(baseDate.getTime());
-            const [hours = 0, minutes = 0, seconds = 0] = duration.split(':').map(Number);
-            const totalMs = ((hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0)) * 1000;
-            return new Date(baseDate.getTime() + totalMs);
-        };
-
         const summaryRows = [];
         const detailedGroups = new Map();
 
@@ -3460,15 +3491,23 @@ exports.getWebTicketsReport = async (req, res, next) => {
                 licensePlate,
             });
 
-            const routeStop = ticket.fromRouteStopId ? routeStopMap.get(ticket.fromRouteStopId) : undefined;
+            const routeStopKey = toKey(ticket.fromRouteStopId);
+            const routeStop = routeStopMap.get(routeStopKey)
+                || (trip ? routeStopByRouteAndStop.get(`${toKey(trip.routeId)}|${routeStopKey}`) : undefined);
             const stopTitle = routeStop
-                ? (stopMap.get(routeStop.stopId) || '')
-                : (ticket.fromRouteStopId ? (stopMap.get(ticket.fromRouteStopId) || '') : '');
+                ? (stopMap.get(toKey(routeStop.stopId)) || '')
+                : (routeStopKey ? (stopMap.get(routeStopKey) || '') : '');
             const baseDate = combineDateAndTime(trip?.date, trip?.time);
-            const departureDate = routeStop ? addDurationToDate(baseDate, routeStop.duration) : baseDate;
+            let departureDate = baseDate;
+            if (routeStop && baseDate) {
+                const cumulativeMs = cumulativeDurationByRouteStopId.get(toKey(routeStop.id));
+                if (typeof cumulativeMs === 'number') {
+                    departureDate = new Date(baseDate.getTime() + cumulativeMs);
+                }
+            }
             const routeTitle = trip?.routeId ? (routeMap.get(trip.routeId) || '') : '';
 
-            const groupKey = `${busKey}|${trip?.id || 'unknown'}|${ticket.fromRouteStopId || 'unknown'}`;
+            const groupKey = `${busKey}|${trip?.id || 'unknown'}|${routeStopKey || 'unknown'}`;
 
             if (!detailedGroups.has(groupKey)) {
                 detailedGroups.set(groupKey, {

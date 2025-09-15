@@ -89,15 +89,19 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   };
 
+  const dateTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
   const formatDateTime = value => {
     const date = normalizeDateValue(value);
     if (!date) return '';
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    const hh = String(date.getHours()).padStart(2, '0');
-    const mins = String(date.getMinutes()).padStart(2, '0');
-    return `${dd}-${mm}-${yyyy} ${hh}:${mins}`;
+    return dateTimeFormatter.format(date);
   };
 
   const fmt = value => safeNumber(value).toFixed(2);
