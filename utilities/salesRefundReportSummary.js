@@ -145,6 +145,16 @@ function generateSalesRefundReportSummary(rows, query, output) {
 
   // aggregate rows by branch and user
   const branchMap = {};
+  const overallTotals = {
+    salesCount: 0,
+    refundCount: 0,
+    sale: 0,
+    refund: 0,
+    cash: 0,
+    card: 0,
+    point: 0,
+    commission: 0,
+  };
   rows.forEach(r => {
     const branchKey = r.branch || '';
     const userKey = r.user || '';
@@ -218,6 +228,7 @@ function generateSalesRefundReportSummary(rows, query, output) {
   let y = doc.y;
   const headerHeight = 32;
   const rowHeight = 14;
+  const tableWidth = columns.reduce((sum, col) => sum + col.w, 0);
 
   const drawHeader = () => {
     doc.font('Bold').fontSize(9);
@@ -284,6 +295,15 @@ function generateSalesRefundReportSummary(rows, query, output) {
       commission: fmt(t.commission) + '₺',
     };
 
+    overallTotals.salesCount += t.salesCount;
+    overallTotals.refundCount += t.refundCount;
+    overallTotals.sale += t.sale;
+    overallTotals.refund += t.refund;
+    overallTotals.cash += t.cash;
+    overallTotals.card += t.card;
+    overallTotals.point += t.point;
+    overallTotals.commission += t.commission;
+
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       y = doc.page.margins.top;
@@ -302,6 +322,40 @@ function generateSalesRefundReportSummary(rows, query, output) {
     doc.font('Regular');
     y += rowHeight + 10;
   });
+
+  if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+    doc.addPage();
+    y = doc.page.margins.top;
+    drawHeader();
+  }
+
+  const overallValues = {
+    user: 'GENEL TOPLAM',
+    salesCount: overallTotals.salesCount,
+    refundCount: overallTotals.refundCount,
+    sale: fmt(overallTotals.sale) + '₺',
+    refund: fmt(overallTotals.refund) + '₺',
+    cash: fmt(overallTotals.cash) + '₺',
+    card: fmt(overallTotals.card) + '₺',
+    point: fmt(overallTotals.point) + '₺',
+    net: fmt(overallTotals.sale - overallTotals.refund) + '₺',
+    commission: fmt(overallTotals.commission) + '₺',
+  };
+
+  const lineY = Math.max(doc.page.margins.top + headerHeight, y - 5);
+  doc.moveTo(xStart, lineY).lineTo(xStart + tableWidth, lineY).stroke();
+
+  doc.font('Bold');
+  let x = xStart;
+  columns.forEach(col => {
+    doc.text(overallValues[col.key], x, y + 3, {
+      width: col.w,
+      align: 'center'
+    });
+    x += col.w;
+  });
+  doc.font('Regular');
+  y += rowHeight + 10;
 
   doc.end();
   return new Promise((resolve, reject) => {
