@@ -3452,9 +3452,10 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const busId = trip?.busId;
             const busKey = busId ?? 'unknown';
             const licensePlate = busMap.get(busId) || '-';
+            const priceValue = Number(ticket.price) || 0;
 
             summaryRows.push({
-                price: ticket.price ?? Number(ticket.price) || 0,
+                price: priceValue,
                 busId: busKey,
                 licensePlate,
             });
@@ -3482,7 +3483,6 @@ exports.getWebTicketsReport = async (req, res, next) => {
             }
 
             const group = detailedGroups.get(groupKey);
-            const priceValue = Number(ticket.price) || 0;
             group.salesTotal += priceValue;
             group.ticketCount += 1;
             if (!group.stopTitle && stopTitle) group.stopTitle = stopTitle;

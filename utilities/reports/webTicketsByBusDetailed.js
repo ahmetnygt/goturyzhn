@@ -199,6 +199,26 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
       });
     }
 
+  const groupedMap = new Map();
+  const totals = createTotals();
+
+  preparedRows.forEach(row => {
+    const busKey = row.busId != null ? row.busId : (row.licensePlate ? `plate:${row.licensePlate}` : 'unknown');
+    if (!groupedMap.has(busKey)) {
+      groupedMap.set(busKey, {
+        busId: busKey,
+        licensePlate: row.licensePlate || '-',
+        rows: [],
+        totals: {
+          ticketCount: 0,
+          salesTotal: 0,
+          goturIncome: 0,
+          firmIncome: 0,
+          branchIncome: 0,
+          busIncome: 0,
+        },
+      });
+    }
     const bucket = groupedMap.get(busKey);
     if ((bucket.licensePlate === '-' || !bucket.licensePlate) && row.licensePlate) {
       bucket.licensePlate = row.licensePlate;
@@ -240,6 +260,7 @@ function generateWebTicketsReportByBusDetailed(rows, query, output) {
       } else if (!a.departure && b.departure) {
         return 1;
       }
+
       const routeA = (a.routeTitle || '').toLocaleUpperCase('tr-TR');
       const routeB = (b.routeTitle || '').toLocaleUpperCase('tr-TR');
       return routeA.localeCompare(routeB, 'tr-TR');
