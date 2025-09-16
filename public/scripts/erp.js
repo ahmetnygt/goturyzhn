@@ -51,6 +51,23 @@ const hideLoading = () => {
     if (loadingCount === 0) $(".loading").css("display", "none");
 };
 
+const normalizeErpUrl = url => {
+    if (typeof url !== "string" || !url.startsWith("/")) {
+        return url;
+    }
+
+    let normalized = url.replace(/^\/erp(?=\/|\?|$)/, "");
+    if (normalized === "") {
+        return "/";
+    }
+
+    if (!normalized.startsWith("/")) {
+        normalized = `/${normalized}`;
+    }
+
+    return normalized;
+};
+
 const showError = message => {
     const msg =
         typeof message === "string"
@@ -68,9 +85,16 @@ $(document).off("click", ".error-close").on("click", ".error-close", () => $(".e
 
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
+    let [input, init] = args;
+    if (typeof input === "string") {
+        input = normalizeErpUrl(input);
+    } else if (typeof Request !== "undefined" && input instanceof Request) {
+        input = new Request(normalizeErpUrl(input.url), input);
+    }
+
     showLoading();
     try {
-        const res = await originalFetch(...args);
+        const res = await originalFetch(input, init);
         if (!res.ok) {
             try {
                 const clone = res.clone();
@@ -98,6 +122,25 @@ window.fetch = async (...args) => {
 $(document).ajaxSend(showLoading);
 $(document).ajaxComplete(hideLoading);
 $(document).ajaxError(hideLoading)
+
+$.ajaxPrefilter((options, originalOptions) => {
+    if (options && typeof options.url === "string") {
+        options.url = normalizeErpUrl(options.url);
+    }
+
+    if (originalOptions && typeof originalOptions.url === "string") {
+        originalOptions.url = normalizeErpUrl(originalOptions.url);
+    }
+});
+
+const originalWindowOpen = window.open;
+window.open = (url, ...rest) => {
+    if (typeof url === "string") {
+        url = normalizeErpUrl(url);
+    }
+
+    return originalWindowOpen.call(window, url, ...rest);
+};
 
 window.permissions = [];
 const hasPermission = code => window.permissions.includes(code);
