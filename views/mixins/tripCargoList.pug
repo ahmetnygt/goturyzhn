@@ -1,7 +1,7 @@
 if cargos.length
     each cargo in cargos
         .btn-group.w-100
-            button.trip-cargo-item.d-flex.btn.btn-outline-primary.align-items-center.gap-2.col-11.w-100(type="button" data-id=cargo.id data-sender-name=cargo.senderName data-sender-phone=cargo.senderPhone data-from-title=cargo.fromTitle data-to-title=cargo.toTitle data-description=cargo.description data-payment=cargo.payment data-payment-label=cargo.paymentLabel data-price=cargo.price)
+            button.trip-cargo-item.d-flex.btn.btn-outline-primary.align-items-center.col-11(type="button" data-id=cargo.id data-sender-name=cargo.senderName data-sender-phone=cargo.senderPhone data-from-title=cargo.fromTitle data-to-title=cargo.toTitle data-description=cargo.description data-payment=cargo.payment data-payment-label=cargo.paymentLabel data-price=cargo.price)
                 .col-3
                     p.text-center.m-0 #{cargo.senderName || '-'}
                 .col-2

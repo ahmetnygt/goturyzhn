@@ -882,7 +882,7 @@ async function loadTrip(date, time, tripId) {
             });
 
             $(document).off("click", ".trip-cargo-list");
-            $(document).on("click", ".trip-cargo-list", async function (e) {
+            $(".trip-cargo-list").on("click", async function (e) {
                 e.preventDefault();
                 if (!currentTripId) {
                     showError("Sefer bilgisi bulunamadı.");
