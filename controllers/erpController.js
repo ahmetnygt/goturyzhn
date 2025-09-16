@@ -33,6 +33,7 @@ const generateSalesRefundReportDetailed = require('../utilities/reports/salesRef
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
 const generateWebTicketsReportByBusSummary = require('../utilities/reports/webTicketsByBusSummary');
 const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webTicketsByBusDetailed');
+const generateWebTicketsReportByStopSummary = require('../utilities/reports/webTicketsByStopSummary');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -3318,7 +3319,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
 
 exports.getWebTicketsReport = async (req, res, next) => {
     try {
-        const { startDate, endDate, type, branchId, userId, fromStopId, toStopId } = req.query;
+        const { startDate, endDate, type, branchId, userId, fromStopId, toStopId, groupBy } = req.query;
 
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
@@ -3356,6 +3357,10 @@ exports.getWebTicketsReport = async (req, res, next) => {
             from: fromStopTitle,
             to: toStopTitle,
         };
+        const normalizedGroup = (groupBy || '').toString().toLowerCase();
+        const isStopRequested = normalizedGroup === 'stop' || normalizedGroup === 'durak';
+        const effectiveGroup = isStopRequested ? 'stop' : 'bus';
+        queryInfo.group = effectiveGroup === 'stop' ? 'Durak' : 'Otobüs';
 
         const where = {
             status: 'web',
@@ -3379,12 +3384,17 @@ exports.getWebTicketsReport = async (req, res, next) => {
 
         const normalizedType = (type || '').toLowerCase();
         const isDetailed = normalizedType === 'detailed' || normalizedType === 'detaylı' || normalizedType === 'detayli';
+        const summaryFileName = effectiveGroup === 'stop'
+            ? 'web_tickets_by_stop_summary.pdf'
+            : 'web_tickets_by_bus_summary.pdf';
 
         if (!tickets.length) {
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : 'web_tickets_by_bus_summary.pdf'}"`);
+            res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : summaryFileName}"`);
             if (isDetailed) {
                 await generateWebTicketsReportByBusDetailed([], queryInfo, res);
+            } else if (effectiveGroup === 'stop') {
+                await generateWebTicketsReportByStopSummary([], queryInfo, res);
             } else {
                 await generateWebTicketsReportByBusSummary([], queryInfo, res);
             }
@@ -3475,7 +3485,8 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const [hour = 0, minute = 0, second = 0] = (timeStr || '00:00:00').split(':').map(Number);
             return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
         };
-        const summaryRows = [];
+        const busSummaryRows = [];
+        const stopSummaryRows = [];
         const detailedGroups = new Map();
 
         tickets.forEach(ticket => {
@@ -3485,7 +3496,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const licensePlate = busMap.get(busId) || '-';
             const priceValue = Number(ticket.price) || 0;
 
-            summaryRows.push({
+            busSummaryRows.push({
                 price: priceValue,
                 busId: busKey,
                 licensePlate,
@@ -3494,9 +3505,21 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const routeStopKey = toKey(ticket.fromRouteStopId);
             const routeStop = routeStopMap.get(routeStopKey)
                 || (trip ? routeStopByRouteAndStop.get(`${toKey(trip.routeId)}|${routeStopKey}`) : undefined);
-            const stopTitle = routeStop
-                ? (stopMap.get(toKey(routeStop.stopId)) || '')
-                : (routeStopKey ? (stopMap.get(routeStopKey) || '') : '');
+            const resolvedStopId = routeStop?.stopId ?? ticket.fromStopId ?? ticket.fromRouteStopId ?? null;
+            const stopTitleFromRoute = routeStop ? (stopMap.get(toKey(routeStop.stopId)) || '') : '';
+            const stopTitleFromDirect = resolvedStopId ? (stopMap.get(toKey(resolvedStopId)) || '') : '';
+            const stopTitle = stopTitleFromRoute || stopTitleFromDirect || routeStopKey || '';
+
+            stopSummaryRows.push({
+                price: priceValue,
+                salesTotal: priceValue,
+                ticketCount: 1,
+                stopId: resolvedStopId,
+                routeStopId: routeStop?.id ?? ticket.fromRouteStopId ?? null,
+                fromRouteStopId: ticket.fromRouteStopId,
+                stopKey: resolvedStopId ?? ticket.fromRouteStopId ?? null,
+                stopTitle,
+            });
             const baseDate = combineDateAndTime(trip?.date, trip?.time);
             let departureDate = baseDate;
             if (routeStop && baseDate) {
@@ -3533,12 +3556,14 @@ exports.getWebTicketsReport = async (req, res, next) => {
         const detailedRows = Array.from(detailedGroups.values());
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : 'web_tickets_by_bus_summary.pdf'}"`);
+        res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : summaryFileName}"`);
 
         if (isDetailed) {
             await generateWebTicketsReportByBusDetailed(detailedRows, queryInfo, res);
+        } else if (effectiveGroup === 'stop') {
+            await generateWebTicketsReportByStopSummary(stopSummaryRows, queryInfo, res);
         } else {
-            await generateWebTicketsReportByBusSummary(summaryRows, queryInfo, res);
+            await generateWebTicketsReportByBusSummary(busSummaryRows, queryInfo, res);
         }
     } catch (err) {
         console.error('getWebTicketsReport error:', err);

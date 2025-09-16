@@ -4261,7 +4261,7 @@ $(".report-item").on("click", async e => {
     $(".reports-popup").css("display", "none");
     const popup = $(`.${report}-report-popup`).css("display", "flex");
 
-    if (report === "salesAndRefunds" && !popup.data("initialized")) {
+    if ((report === "salesAndRefunds" || report === "webTickets") && !popup.data("initialized")) {
         const [branches, stops] = await Promise.all([
             fetch("/erp/get-branches-list?onlyData=true").then(r => r.json()),
             fetch("/erp/get-stops-list?onlyData=true").then(r => r.json())
@@ -4289,6 +4289,20 @@ $(".report-item").on("click", async e => {
         flatpickr(popup.find(".report-start")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
         flatpickr(popup.find(".report-end")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
 
+        const typeSelect = popup.find(".report-type");
+        const groupSelect = popup.find(".report-group");
+        if (groupSelect.length) {
+            const syncGroupState = () => {
+                const isDetailed = typeSelect.val() === "detailed";
+                groupSelect.prop("disabled", isDetailed);
+                if (isDetailed) {
+                    groupSelect.val("bus");
+                }
+            };
+            syncGroupState();
+            typeSelect.on("change", syncGroupState);
+        }
+
         popup.data("initialized", true);
     }
 });
@@ -4307,6 +4321,8 @@ $(".report-create-button").on("click", e => {
     const userId = popup.find(".report-user").val();
     const fromStopId = popup.find(".report-from").val();
     const toStopId = popup.find(".report-to").val();
+    const groupSelect = popup.find(".report-group");
+    const groupBy = groupSelect.length && !groupSelect.prop("disabled") ? groupSelect.val() : null;
 
     const params = new URLSearchParams();
     if (startDate) params.set("startDate", startDate);
@@ -4316,6 +4332,7 @@ $(".report-create-button").on("click", e => {
     if (userId) params.set("userId", userId);
     if (fromStopId) params.set("fromStopId", fromStopId);
     if (toStopId) params.set("toStopId", toStopId);
+    if (groupBy) params.set("groupBy", groupBy);
 
     window.open(`/erp/${report}?${params.toString()}`, "_blank");
 });
