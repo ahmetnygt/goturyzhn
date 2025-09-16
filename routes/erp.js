@@ -20,6 +20,7 @@ router.get('/permissions', auth, erpController.getPermissions);
 router.get('/get-day-trips-list', erpController.getDayTripsList);
 
 router.get('/get-trip', erpController.getTrip);
+router.get('/get-trip-stops', erpController.getTripStops);
 router.get('/get-passengers-table', erpController.getTripTable);
 router.get('/get-route-stops-time-list', erpController.getRouteStopsTimeList);
 router.get('/get-trip-revenues', erpController.getTripRevenues);
@@ -68,6 +69,7 @@ router.post('/post-trip-bus', erpController.postTripBus);
 router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
 router.post('/post-trip-staff', erpController.postTripStaff);
 router.post('/post-trip-active', erpController.postTripActive);
+router.post('/post-add-cargo', erpController.postAddCargo);
 
 router.get('/get-staffs-list', erpController.getStaffsList);
 router.get('/get-staff', erpController.getStaff);

@@ -869,6 +869,44 @@ block content
                     input.form-control.trip-staff-hostess(type="text" readonly)
                     input.form-control.trip-staff-hostess-phone(type="text" readonly)
 
+    .trip-cargo-pop-up
+        .gtr-header
+            span KARGO EKLE
+        .trip-cargo-close
+            i.fa-solid.fa-x
+        .trip-cargo-form.p-3.d-flex.flex-column.gap-3
+            .input-group
+                span.input-group-text Nereden
+                select.form-select.trip-cargo-from
+                    option(value="" selected disabled) Seçiniz
+            .input-group
+                span.input-group-text Nereye
+                select.form-select.trip-cargo-to
+                    option(value="" selected disabled) Seçiniz
+            .input-group
+                span.input-group-text Gönderen Adı Soyadı
+                input.form-control.trip-cargo-sender-name(type="text")
+            .input-group
+                span.input-group-text Gönderen Telefon
+                input.form-control.trip-cargo-sender-phone(type="text")
+            .input-group
+                span.input-group-text Gönderen TC
+                input.form-control.trip-cargo-sender-identity(type="text")
+            .input-group
+                span.input-group-text Açıklama
+                textarea.form-control.trip-cargo-description(rows="2")
+            .input-group
+                span.input-group-text Ödeme Tipi
+                select.form-select.trip-cargo-payment
+                    option(value="cash" selected) Nakit
+                    option(value="card") Kart
+            .input-group
+                span.input-group-text Ücret
+                input.form-control.trip-cargo-price(type="number" min="0" step="0.01")
+        .p-3.d-flex.gap-3.justify-content-end
+            button.btn.btn-outline-primary.trip-cargo-save(type="button") KAYDET
+            button.btn.btn-outline-primary.trip-cargo-close(type="button") İPTAL
+
     .trip-revenue-pop-up
         .gtr-header
             span SEFER HASILATI

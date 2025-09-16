@@ -12,6 +12,7 @@ const RouteStopRestriction = require("../models/routeStopRestrictionModel");
 const Stop = require("../models/stopModel")
 const Trip = require('../models/tripModel');
 const Ticket = require('../models/ticketModel');
+const Cargo = require("../models/cargoModel");
 const Customer = require('../models/customerModel');
 const TicketGroup = require('../models/ticketGroupModel');
 const TripNote = require("../models/tripNoteModel")
@@ -394,6 +395,40 @@ exports.getTrip = async (req, res, next) => {
     }
 
 }
+
+exports.getTripStops = async (req, res, next) => {
+    try {
+        const tripId = Number(req.query.tripId);
+        if (!tripId) {
+            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+        }
+
+        const trip = await Trip.findOne({ where: { id: tripId } });
+        if (!trip) {
+            return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        const routeStops = await RouteStop.findAll({
+            where: { routeId: trip.routeId },
+            order: [["order", "ASC"]]
+        });
+
+        const stopIds = [...new Set(routeStops.map(rs => rs.stopId))];
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        const stopMap = new Map(stops.map(stop => [stop.id, stop.title]));
+
+        const result = routeStops.map(rs => ({
+            id: rs.stopId,
+            order: rs.order,
+            title: stopMap.get(rs.stopId) || ""
+        }));
+
+        res.json(result);
+    } catch (err) {
+        console.error("Trip stops error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
 
 exports.getTripTable = async (req, res, next) => {
     const tripDate = req.query.date
@@ -833,6 +868,87 @@ exports.getTripRevenues = async (req, res, next) => {
     } catch (err) {
         console.error("getTripRevenues error:", err);
         res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
+    }
+};
+
+exports.postAddCargo = async (req, res, next) => {
+    try {
+        const tripId = Number(req.body.tripId);
+        const fromStopId = Number(req.body.fromStopId);
+        const toStopId = Number(req.body.toStopId);
+        const senderName = (req.body.senderName || "").trim();
+        const senderPhone = (req.body.senderPhone || "").trim();
+        const senderIdentity = (req.body.senderIdentity || "").trim();
+        const description = (req.body.description || "").trim();
+        const payment = req.body.payment;
+        const price = Number(req.body.price);
+
+        if (!tripId) {
+            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+        }
+        if (!fromStopId || !toStopId) {
+            return res.status(400).json({ message: "Durak bilgisi eksik." });
+        }
+        if (!senderName) {
+            return res.status(400).json({ message: "Gönderen adı gereklidir." });
+        }
+        if (!senderPhone) {
+            return res.status(400).json({ message: "Gönderen telefon bilgisi gereklidir." });
+        }
+        if (!senderIdentity) {
+            return res.status(400).json({ message: "Gönderen TC bilgisi gereklidir." });
+        }
+        if (!payment || !["cash", "card"].includes(payment)) {
+            return res.status(400).json({ message: "Geçersiz ödeme tipi." });
+        }
+        if (!price || Number.isNaN(price) || price <= 0) {
+            return res.status(400).json({ message: "Geçerli bir ücret giriniz." });
+        }
+
+        const trip = await Trip.findOne({ where: { id: tripId } });
+        if (!trip) {
+            return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        const cargo = await Cargo.create({
+            userId: req.session.user.id,
+            tripId,
+            fromStopId,
+            toStopId,
+            senderName,
+            senderPhone,
+            senderIdentity,
+            description,
+            payment,
+            price
+        });
+
+        const stops = await Stop.findAll({ where: { id: { [Op.in]: [fromStopId, toStopId] } } });
+        const fromStop = stops.find(s => s.id == fromStopId);
+        const toStop = stops.find(s => s.id == toStopId);
+
+        await Transaction.create({
+            userId: req.session.user.id,
+            type: "income",
+            category: payment === "cash" ? "cash_sale" : "card_sale",
+            amount: price,
+            description: `Kargo | ${trip.date} ${trip.time} | ${(fromStop ? fromStop.title : "")} - ${(toStop ? toStop.title : "")}`
+        });
+
+        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        if (register) {
+            if (payment === "cash") {
+                register.cash_balance = Number(register.cash_balance) + price;
+            } else {
+                register.card_balance = Number(register.card_balance) + price;
+            }
+            await register.save();
+        }
+
+        res.json({ success: true, cargoId: cargo.id });
+    } catch (err) {
+        console.error("Cargo add error:", err);
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
