@@ -333,7 +333,7 @@ $(document).off("change", ".trip-cargo-from").on("change", ".trip-cargo-from", (
 
 $(function () {
     hideLoading();
-    $.get('/erp/permissions')
+    $.get('/permissions')
         .done(perms => {
             window.permissions = perms;
         })
@@ -583,7 +583,7 @@ function initTcknInputs(selector, opts = {}) {
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
     await $.ajax({
-        url: "/erp/get-trip",
+        url: "/get-trip",
         type: "GET",
         data: { date: date, time: time, stopId: currentStop, tripId: tripId },
         success: async function (response) {
@@ -591,7 +591,7 @@ async function loadTrip(date, time, tripId) {
             console.log(time)
             console.log(tripId)
             await $.ajax({
-                url: "/erp/get-passengers-table",
+                url: "/get-passengers-table",
                 type: "GET",
                 data: { date: date, time: time, tripId, stopId: currentStop },
                 success: function (response) {
@@ -658,7 +658,7 @@ async function loadTrip(date, time, tripId) {
             })
 
             await $.ajax({
-                url: "/erp/get-ticketops-popup",
+                url: "/get-ticketops-popup",
                 type: "GET",
                 data: { date: date, time: time, tripId, stopId: currentStop },
                 success: function (response) {
@@ -670,7 +670,7 @@ async function loadTrip(date, time, tripId) {
             })
 
             await $.ajax({
-                url: "/erp/get-trip-notes",
+                url: "/get-trip-notes",
                 type: "GET",
                 data: { date: date, time: time, tripId },
                 success: function (response) {
@@ -682,7 +682,7 @@ async function loadTrip(date, time, tripId) {
             })
 
             await $.ajax({
-                url: "/erp/get-route-stops-time-list",
+                url: "/get-route-stops-time-list",
                 type: "GET",
                 data: { date: date, time: time, tripId: tripId },
                 success: function (response) {
@@ -760,8 +760,8 @@ async function loadTrip(date, time, tripId) {
 
             try {
                 const [busModels, buses] = await Promise.all([
-                    $.get("/erp/get-bus-models-data"),
-                    $.get("/erp/get-buses-data")
+                    $.get("/get-bus-models-data"),
+                    $.get("/get-buses-data")
                 ])
 
                 const $planEl = $(".trip-bus-plan")
@@ -782,7 +782,7 @@ async function loadTrip(date, time, tripId) {
                             $(".captain-phone").html("")
 
                             try {
-                                await $.post("/erp/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
+                                await $.post("/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
                                 loadTrip(currentTripDate, currentTripTime, currentTripId)
                             } catch (err) {
                                 console.log(err)
@@ -829,7 +829,7 @@ async function loadTrip(date, time, tripId) {
                             $(".captain-phone").html(captainPhone || "")
 
                             try {
-                                await $.post("/erp/post-trip-bus", { tripId: currentTripId, busId: busId })
+                                await $.post("/post-trip-bus", { tripId: currentTripId, busId: busId })
                                 loadTrip(currentTripDate, currentTripTime, currentTripId)
                             } catch (err) {
                                 console.log(err)
@@ -855,7 +855,7 @@ async function loadTrip(date, time, tripId) {
             }
 
             await $.ajax({
-                url: "/erp/get-route-stops-list-moving",
+                url: "/get-route-stops-list-moving",
                 type: "GET",
                 data: { date: date, time: time, tripId: tripId, stopId: currentStop },
                 success: function (response) {
@@ -894,7 +894,7 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", ".trip-option-revenues", async function (e) {
                 e.stopPropagation();
                 try {
-                    const revenues = await $.get("/erp/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
+                    const revenues = await $.get("/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
                     const rows = [];
                     revenues.branches.forEach(b => {
                         rows.push(`
@@ -922,7 +922,7 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", ".trip-option-staff", async function (e) {
                 e.stopPropagation();
                 try {
-                    const staffs = await $.get("/erp/get-staffs-list", { onlyData: true });
+                    const staffs = await $.get("/get-staffs-list", { onlyData: true });
                     tripStaffList = staffs;
                     if ($(".trip-staff-captain").is("select")) {
                         const drivers = staffs.filter(s => s.duty === "driver");
@@ -969,7 +969,7 @@ async function loadTrip(date, time, tripId) {
             $(document).off("click", ".trip-cargo-add");
             $(".trip-cargo-add").on("click", async function (e) {
                 try {
-                    const stops = await $.get("/erp/get-trip-stops", { tripId: currentTripId });
+                    const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
                     resetTripCargoForm();
                     populateTripCargoStops(stops, { fromStopId: fromId, toStopId: toId });
                     $(".trip-cargo-pop-up").css("display", "block");
@@ -992,7 +992,7 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "block");
 
                 try {
-                    const html = await $.get("/erp/get-trip-cargo-list", { tripId: currentTripId });
+                    const html = await $.get("/get-trip-cargo-list", { tripId: currentTripId });
                     $(".trip-cargo-list-nodes").html(html);
                     $(document).off("click", ".trip-cargo-refund");
                     $(".trip-cargo-refund").on("click", async function (e) {
@@ -1019,7 +1019,7 @@ async function loadTrip(date, time, tripId) {
                             .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
 
                         try {
-                            await $.post("/erp/post-refund-cargo", { cargoId });
+                            await $.post("/post-refund-cargo", { cargoId });
                         } catch (err) {
                             const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
                             showError(message);
@@ -1047,7 +1047,7 @@ async function loadTrip(date, time, tripId) {
                 e.stopPropagation();
                 if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
                 try {
-                    await $.post("/erp/post-trip-active", { tripId: currentTripId, isActive: false });
+                    await $.post("/post-trip-active", { tripId: currentTripId, isActive: false });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
                     loadTripsList(calendar.val())
                 } catch (err) {
@@ -1060,7 +1060,7 @@ async function loadTrip(date, time, tripId) {
                 e.stopPropagation();
                 if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
                 try {
-                    await $.post("/erp/post-trip-active", { tripId: currentTripId, isActive: true });
+                    await $.post("/post-trip-active", { tripId: currentTripId, isActive: true });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
                     loadTripsList(calendar.val())
                 } catch (err) {
@@ -1072,7 +1072,7 @@ async function loadTrip(date, time, tripId) {
             $(document).on("click", ".trip-option-stop-restriction", function (e) {
                 e.stopPropagation();
                 $.ajax({
-                    url: "/erp/get-trip-stop-restriction",
+                    url: "/get-trip-stop-restriction",
                     type: "GET",
                     data: { tripId: currentTripId },
                     success: function (response) {
@@ -1113,7 +1113,7 @@ async function loadTrip(date, time, tripId) {
                 try {
                     await Promise.all(entries.map(([key, isAllowed]) => {
                         const [fromId, toId] = key.split("-");
-                        return $.post("/erp/post-trip-stop-restriction", {
+                        return $.post("/post-trip-stop-restriction", {
                             tripId: currentTripId,
                             fromId,
                             toId,
@@ -1168,7 +1168,7 @@ async function loadTrip(date, time, tripId) {
 
                 $(".ticket-ops-pop-up").hide()
                 await $.ajax({
-                    url: "/erp/get-ticket-row",
+                    url: "/get-ticket-row",
                     type: "GET",
                     data: { action: e.currentTarget.dataset.action, gender: button.dataset.gender, seats: selectedSeats, seatTypes: seatTypes, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
                     success: function (response) {
@@ -1189,7 +1189,7 @@ async function loadTrip(date, time, tripId) {
                             originalPrices[i] = Number($(".ticket-row").find(".price").find("input").val())
                         })
                         $(".identity input").on("blur", async e => {
-                            const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                            const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                             if (customer) {
                                 const row = e.currentTarget.parentElement.parentElement
                                 const rows = [...document.querySelectorAll('.ticket-row')];
@@ -1442,7 +1442,7 @@ async function loadTrip(date, time, tripId) {
                 accountCutId = null;
                 try {
                     accountCutData = await $.ajax({
-                        url: "/erp/get-bus-account-cut",
+                        url: "/get-bus-account-cut",
                         type: "GET",
                         data: { tripId: currentTripId, stopId: currentStop }
                     });
@@ -1465,13 +1465,13 @@ async function loadTrip(date, time, tripId) {
 
             $(".accountCut").on("click", e => {
                 e.preventDefault();
-                window.open(`/erp/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
+                window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
             });
 
             $(".account-cut-undo").on("click", async () => {
                 try {
                     const data = await $.ajax({
-                        url: "/erp/get-bus-account-cut-record",
+                        url: "/get-bus-account-cut-record",
                         type: "GET",
                         data: { tripId: currentTripId, stopId: currentStop }
                     });
@@ -1501,7 +1501,7 @@ async function loadTrip(date, time, tripId) {
             $(".account-cut-undo-btn").on("click", async () => {
                 if (!accountCutId) return;
                 try {
-                    await $.ajax({ url: "/erp/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
+                    await $.ajax({ url: "/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
                 } catch (err) {
                     console.log(err);
@@ -1547,7 +1547,7 @@ async function loadTrip(date, time, tripId) {
                     payedAmount: $(".account-cut-popup .account-payed").val()
                 };
                 try {
-                    await $.ajax({ url: "/erp/post-bus-account-cut", type: "POST", data });
+                    await $.ajax({ url: "/post-bus-account-cut", type: "POST", data });
                     loadTrip(currentTripDate, currentTripTime, currentTripId);
                 } catch (err) {
                     console.log(err);
@@ -1585,7 +1585,7 @@ $(document).ready(function () {
 // Sefer listesini yükler
 async function loadTripsList(dateStr) {
     await $.ajax({
-        url: "/erp/get-day-trips-list",
+        url: "/get-day-trips-list",
         type: "GET",
         data: { date: dateStr, stopId: currentStop, tripId: currentTripId },
         success: function (response) {
@@ -1630,7 +1630,7 @@ flatpickr(tripCalendar, {
     onChange: async function (selectedDates, dateStr, instance) {
         const date = dateStr
         await $.ajax({
-            url: "/erp/get-trips-list",
+            url: "/get-trips-list",
             type: "GET",
             data: { date },
             success: function (response) {
@@ -1641,7 +1641,7 @@ flatpickr(tripCalendar, {
                     const time = e.currentTarget.dataset.time
                     editingTripId = id
                     // await $.ajax({
-                    //     url: "/erp/get-trip",
+                    //     url: "/get-trip",
                     //     type: "GET",
                     //     data: { id: id, time: time },
                     //     success: async function (response) {
@@ -1708,7 +1708,7 @@ $("#currentStop").on("change", async (e) => {
     currentStopStr = $sel.find("option:selected").text().trim(); // seçilen option'un text'i
 
     const response = await $.ajax({
-        url: "/erp/get-day-trips-list",
+        url: "/get-day-trips-list",
         type: "GET",
         data: { date: calendar.val(), stopId: currentStop }
     });
@@ -1776,7 +1776,7 @@ $(".ticket-button-action").on("click", async e => {
             const ticketsStr = JSON.stringify(tickets)
 
             await $.ajax({
-                url: "/erp/post-tickets",
+                url: "/post-tickets",
                 type: "POST",
                 data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
                 success: async function (response) {
@@ -1819,7 +1819,7 @@ $(".ticket-button-action").on("click", async e => {
         console.log(ticketsStr)
 
         await $.ajax({
-            url: "/erp/post-complete-tickets",
+            url: "/post-complete-tickets",
             type: "POST",
             data: { tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: selectedTicketStopId, groupId: currentGroupId, toId, tripId: currentTripId, status: "completed" },
             success: async function (response) {
@@ -1862,7 +1862,7 @@ $(".ticket-button-action").on("click", async e => {
         const ticketsStr = JSON.stringify(tickets)
 
         await $.ajax({
-            url: "/erp/post-sell-open-tickets",
+            url: "/post-sell-open-tickets",
             type: "POST",
             data: { tickets: ticketsStr, fromId: fromId, toId: toId, status: "open" },
             success: async function (response) {
@@ -1901,7 +1901,7 @@ $(".ticket-button-action").on("click", async e => {
         const ticketStr = JSON.stringify(ticketArray)
 
         await $.ajax({
-            url: "/erp/post-edit-ticket",
+            url: "/post-edit-ticket",
             type: "POST",
             data: { tickets: ticketStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: selectedTicketStopId, toId },
             success: async function (response) {
@@ -1943,7 +1943,7 @@ $(".ticket-button-action").on("click", async e => {
         console.log(pendingIds)
 
         await $.ajax({
-            url: "/erp/post-tickets",
+            url: "/post-tickets",
             type: "POST",
             data: { pendingIds, tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "reservation" },
             success: async function (response) {
@@ -1961,7 +1961,7 @@ $(".ticket-button-action").on("click", async e => {
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
             await $.ajax({
-                url: "/erp/post-cancel-ticket",
+                url: "/post-cancel-ticket",
                 type: "POST",
                 data: { seats: json, pnr: cancelingSeatPNR, date: currentTripDate, time: currentTripTime },
                 success: async function (response) {
@@ -1984,7 +1984,7 @@ $(".ticket-button-action").on("click", async e => {
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
             await $.ajax({
-                url: "/erp/post-cancel-ticket",
+                url: "/post-cancel-ticket",
                 type: "POST",
                 data: { seats: json, pnr: cancelingSeatPNR, date: currentTripDate, time: currentTripTime },
                 success: async function (response) {
@@ -2007,7 +2007,7 @@ $(".ticket-button-action").on("click", async e => {
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
             await $.ajax({
-                url: "/erp/post-open-ticket",
+                url: "/post-open-ticket",
                 type: "POST",
                 data: { seats: json, pnr: cancelingSeatPNR, date: currentTripDate, time: currentTripTime },
                 success: async function (response) {
@@ -2046,7 +2046,7 @@ $(".taken-ticket-op").on("click", async e => {
         $(".ticket-button-action").attr("data-action", "complete")
         $(".ticket-button-action").html("SAT")
         await $.ajax({
-            url: "/erp/get-ticket-row",
+            url: "/get-ticket-row",
             type: "GET",
             data: { action: "complete", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
             success: function (response) {
@@ -2065,7 +2065,7 @@ $(".taken-ticket-op").on("click", async e => {
                 initPhoneInput(".phone input")
 
                 $(".identity input").on("blur", async e => {
-                    const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                    const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                     if (customer) {
                         const row = e.currentTarget.parentElement.parentElement
                         $(row).find(".name").find("input").val(customer.name)
@@ -2125,7 +2125,7 @@ $(".taken-ticket-op").on("click", async e => {
         $(".ticket-button-action").attr("data-action", "edit")
         $(".ticket-button-action").html("KAYDET")
         await $.ajax({
-            url: "/erp/get-ticket-row",
+            url: "/get-ticket-row",
             type: "GET",
             data: { action: "edit", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
             success: function (response) {
@@ -2144,7 +2144,7 @@ $(".taken-ticket-op").on("click", async e => {
                 initPhoneInput(".phone input")
 
                 $(".identity input").on("blur", async e => {
-                    const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                    const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                     if (customer) {
                         const row = e.currentTarget.parentElement.parentElement
                         $(row).find(".name").find("input").val(customer.name)
@@ -2204,7 +2204,7 @@ $(".taken-ticket-op").on("click", async e => {
         cancelingSeatPNR = pnr
 
         await $.ajax({
-            url: "/erp/get-cancel-open-ticket",
+            url: "/get-cancel-open-ticket",
             type: "GET",
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
@@ -2258,7 +2258,7 @@ $(".taken-ticket-op").on("click", async e => {
         cancelingSeatPNR = pnr
 
         await $.ajax({
-            url: "/erp/get-cancel-open-ticket",
+            url: "/get-cancel-open-ticket",
             type: "GET",
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
@@ -2312,7 +2312,7 @@ $(".taken-ticket-op").on("click", async e => {
         cancelingSeatPNR = pnr
 
         await $.ajax({
-            url: "/erp/get-cancel-open-ticket",
+            url: "/get-cancel-open-ticket",
             type: "GET",
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
@@ -2359,7 +2359,7 @@ $(".taken-ticket-op").on("click", async e => {
     else if (action == "move") {
         movingSeatPNR = $(`.seat.seat-${selectedTakenSeats[0]}`).data("pnr")
         await $.ajax({
-            url: "/erp/get-move-ticket",
+            url: "/get-move-ticket",
             type: "GET",
             data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: selectedTicketStopId },
             success: async function (response) {
@@ -2400,7 +2400,7 @@ $(".taken-ticket-op").on("click", async e => {
         let jsonPendingIds = JSON.stringify(pendingIds)
 
         await $.ajax({
-            url: "/erp/post-delete-pending-tickets",
+            url: "/post-delete-pending-tickets",
             type: "POST",
             data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
@@ -2416,7 +2416,7 @@ $(".taken-ticket-op").on("click", async e => {
 
 $(".moving-confirm").on("click", async e => {
     await $.ajax({
-        url: "/erp/post-move-tickets",
+        url: "/post-move-tickets",
         type: "POST",
         data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: selectedTicketStopId, toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId },
         success: async function (response) {
@@ -2471,7 +2471,7 @@ $(".trip-staff-save").on("click", async e => {
         hostessId: $(".trip-staff-hostess").val()
     };
     try {
-        await $.post("/erp/post-trip-staff", data);
+        await $.post("/post-trip-staff", data);
         await loadTrip(currentTripDate, currentTripTime, currentTripId)
         $("#captainId").val(data.captainId);
         $("#driver2Id").val(data.driver2Id);
@@ -2564,7 +2564,7 @@ $(".trip-cargo-save").on("click", async e => {
     }
 
     try {
-        await $.post("/erp/post-add-cargo", {
+        await $.post("/post-add-cargo", {
             ...data,
             price: priceValue
         });
@@ -2581,7 +2581,7 @@ $(".ticket-close").on("click", async e => {
         let jsonSeats = JSON.stringify(selectedSeats)
 
         await $.ajax({
-            url: "/erp/post-delete-pending-tickets",
+            url: "/post-delete-pending-tickets",
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
@@ -2602,7 +2602,7 @@ $(".ticket-button-cancel").on("click", async e => {
         let jsonSeats = JSON.stringify(selectedSeats)
 
         await $.ajax({
-            url: "/erp/post-delete-pending-tickets",
+            url: "/post-delete-pending-tickets",
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
@@ -2650,12 +2650,12 @@ $(document).off("click", ".note-delete").on("click", ".note-delete", async e => 
     const noteId = noteEl.data("id");
     if (confirm("Notu silmek istediğinize emin misiniz?")) {
         await $.ajax({
-            url: "/erp/post-delete-trip-note",
+            url: "/post-delete-trip-note",
             type: "POST",
             data: { id: noteId },
             success: async function () {
                 await $.ajax({
-                    url: "/erp/get-trip-notes",
+                    url: "/get-trip-notes",
                     type: "GET",
                     data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
                     success: function (response) {
@@ -2678,12 +2678,12 @@ $(".save-trip-note").on("click", async e => {
         const text = $(".trip-note-text").val()
         if (editingNoteId) {
             await $.ajax({
-                url: "/erp/post-edit-trip-note",
+                url: "/post-edit-trip-note",
                 type: "POST",
                 data: { id: editingNoteId, text },
                 success: async function (response) {
                     await $.ajax({
-                        url: "/erp/get-trip-notes",
+                        url: "/get-trip-notes",
                         type: "GET",
                         data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
                         success: function (response) {
@@ -2704,12 +2704,12 @@ $(".save-trip-note").on("click", async e => {
             })
         } else {
             await $.ajax({
-                url: "/erp/post-trip-note",
+                url: "/post-trip-note",
                 type: "POST",
                 data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, text },
                 success: async function (response) {
                     await $.ajax({
-                        url: "/erp/get-trip-notes",
+                        url: "/get-trip-notes",
                         type: "GET",
                         data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
                         success: function (response) {
@@ -2742,7 +2742,7 @@ $("a.open-ticket-nav").on("click", async e => {
     fromSelect.empty()
     toSelect.empty()
     await $.ajax({
-        url: "/erp/get-stops-data",
+        url: "/get-stops-data",
         type: "GET",
         success: function (stops) {
             fromSelect.append(`<option value="" selected>Seçiniz</option>`)
@@ -2771,7 +2771,7 @@ $(".open-ticket-next").on("click", async e => {
     const count = $(".open-ticket-count").val()
 
     await $.ajax({
-        url: "/erp/get-ticket-row",
+        url: "/get-ticket-row",
         type: "GET",
         data: { fromId, toId, count, isOpen: true, action: "sell" },
         success: function (response) {
@@ -2781,7 +2781,7 @@ $(".open-ticket-next").on("click", async e => {
             initTcknInputs(".identity input")
             initPhoneInput(".phone input")
             $(".identity input").on("blur", async e => {
-                const customer = await $.ajax({ url: "/erp/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
+                const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                 if (customer) {
                     const row = e.currentTarget.parentElement.parentElement
                     $(row).find(".name").find("input").val(customer.name)
@@ -2835,7 +2835,7 @@ $(".ticket-search-button").on("click", async e => {
     const status = $(".search-status").val()
 
     await $.ajax({
-        url: "/erp/get-search-table",
+        url: "/get-search-table",
         type: "GET",
         data: { name, surname, idnum, phone, pnr, status },
         success: function (response) {
@@ -2892,14 +2892,14 @@ $(document).off("click", ".searched-ticket-op[data-action='go_trip']").on("click
 let isRegisterShown = false
 $(".register-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-transactions-list",
+        url: "/get-transactions-list",
         type: "GET",
         data: {},
         success: async function (response) {
             $(".transaction-list").html(response)
 
             await $.ajax({
-                url: "/erp/get-transaction-data",
+                url: "/get-transaction-data",
                 type: "GET",
                 data: {},
                 success: function (response) {
@@ -2961,7 +2961,7 @@ $(".other-register-nav").on("click", async e => {
     const branchSelect = $(".other-register-branch")
     branchSelect.empty()
     await $.ajax({
-        url: "/erp/get-branches-list",
+        url: "/get-branches-list",
         type: "GET",
         data: { onlyData: true },
         success: function (branches) {
@@ -2989,7 +2989,7 @@ $(".other-register-branch").on("change", async e => {
     $(".other-transaction-list").empty()
     if (branchId) {
         await $.ajax({
-            url: "/erp/get-users-by-branch",
+            url: "/get-users-by-branch",
             type: "GET",
             data: { id: branchId },
             success: function (response) {
@@ -3008,7 +3008,7 @@ $(".other-register-user").on("change", async e => {
     $(".other-transaction-list").empty()
     if (userId) {
         await $.ajax({
-            url: "/erp/get-user-register-balance",
+            url: "/get-user-register-balance",
             type: "GET",
             data: { userId },
             success: function (response) {
@@ -3016,7 +3016,7 @@ $(".other-register-user").on("change", async e => {
             }
         })
         await $.ajax({
-            url: "/erp/get-transactions-list",
+            url: "/get-transactions-list",
             type: "GET",
             data: { userId },
             success: function (response) {
@@ -3050,7 +3050,7 @@ $(".add-transaction-button").on("click", async e => {
     const amount = $(".transaction-amount").val()
     const description = $(".transaction-description").val()
     await $.ajax({
-        url: "/erp/post-add-transaction",
+        url: "/post-add-transaction",
         type: "POST",
         data: { transactionType, amount, description },
         success: async function (response) {
@@ -3062,14 +3062,14 @@ $(".add-transaction-button").on("click", async e => {
                 $(".blackout").css("display", "none")
             if (isRegisterShown) {
                 await $.ajax({
-                    url: "/erp/get-transactions-list",
+                    url: "/get-transactions-list",
                     type: "GET",
                     data: {},
                     success: async function (response) {
                         $(".transaction-list").html(response)
 
                         await $.ajax({
-                            url: "/erp/get-transaction-data",
+                            url: "/get-transaction-data",
                             type: "GET",
                             data: {},
                             success: function (response) {
@@ -3128,7 +3128,7 @@ $(".bus-plans-nav").on("click", async e => {
     const list = $(".bus-plan-list")
     list.empty()
     await $.ajax({
-        url: "/erp/get-bus-models-data",
+        url: "/get-bus-models-data",
         type: "GET",
         success: function (busModels) {
             busModels.forEach(b => {
@@ -3154,7 +3154,7 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
     editingBusPlanId = id
 
     await $.ajax({
-        url: "/erp/get-bus-plan-panel",
+        url: "/get-bus-plan-panel",
         type: "GET",
         data: { id: id },
         success: function (response) {
@@ -3200,7 +3200,7 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
                 const planJSON = JSON.stringify(plan)
 
                 await $.ajax({
-                    url: "/erp/post-save-bus-plan",
+                    url: "/post-save-bus-plan",
                     type: "POST",
                     data: { id, title, description, plan: planJSON, planBinary },
                     success: function (response) {
@@ -3224,7 +3224,7 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
 $(".add-bus-plan").on("click", async e => {
     editingBusPlanId = null
     await $.ajax({
-        url: "/erp/get-bus-plan-panel",
+        url: "/get-bus-plan-panel",
         type: "GET",
         data: {},
         success: function (response) {
@@ -3270,7 +3270,7 @@ $(".add-bus-plan").on("click", async e => {
                 const planJSON = JSON.stringify(plan)
 
                 await $.ajax({
-                    url: "/erp/post-save-bus-plan",
+                    url: "/post-save-bus-plan",
                     type: "POST",
                     data: { title, description, plan: planJSON, planBinary },
                     success: function (response) {
@@ -3299,7 +3299,7 @@ $(".bus-nav").on("click", async e => {
     captainSelect.empty()
 
     await $.ajax({
-        url: "/erp/get-bus-models-data",
+        url: "/get-bus-models-data",
         type: "GET",
         success: function (models) {
             modelSelect.append(`<option value="" selected></option>`)
@@ -3310,7 +3310,7 @@ $(".bus-nav").on("click", async e => {
     })
 
     await $.ajax({
-        url: "/erp/get-staffs-list",
+        url: "/get-staffs-list",
         type: "GET",
         data: { onlyData: true },
         success: function (staff) {
@@ -3322,7 +3322,7 @@ $(".bus-nav").on("click", async e => {
     })
 
     await $.ajax({
-        url: "/erp/get-buses-list",
+        url: "/get-buses-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -3333,7 +3333,7 @@ $(".bus-nav").on("click", async e => {
                 const licensePlate = e.currentTarget.dataset.licensePlate
                 editingBusId = id
                 await $.ajax({
-                    url: "/erp/get-bus",
+                    url: "/get-bus",
                     type: "GET",
                     data: { id: id, licensePlate: licensePlate },
                     success: function (response) {
@@ -3397,7 +3397,7 @@ $(".save-bus").on("click", async e => {
     const owner = $(".bus-owner").val()
 
     await $.ajax({
-        url: "/erp/post-save-bus",
+        url: "/post-save-bus",
         type: "POST",
         data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner },
         success: function (response) {
@@ -3423,7 +3423,7 @@ $(".save-bus").on("click", async e => {
 let editingStaffId = null
 $(".staff-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-staffs-list",
+        url: "/get-staffs-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -3433,7 +3433,7 @@ $(".staff-nav").on("click", async e => {
                 const id = e.currentTarget.dataset.id
                 editingStaffId = id
                 await $.ajax({
-                    url: "/erp/get-staff",
+                    url: "/get-staff",
                     type: "GET",
                     data: { id },
                     success: function (res) {
@@ -3494,7 +3494,7 @@ $(".save-staff").on("click", async e => {
     const nationality = $(".staff-nationality").val()
 
     await $.ajax({
-        url: "/erp/post-save-staff",
+        url: "/post-save-staff",
         type: "POST",
         data: { id: editingStaffId, idNumber, duty, name, surname, address, phoneNumber, gender, nationality },
         success: function (response) {
@@ -3513,7 +3513,7 @@ $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
     placeSelect.empty()
     await $.ajax({
-        url: "/erp/get-places-data",
+        url: "/get-places-data",
         type: "GET",
         success: function (places) {
             placeSelect.append(`<option value="" selected></option>`)
@@ -3527,7 +3527,7 @@ $(".stops-nav").on("click", async e => {
     })
 
     await $.ajax({
-        url: "/erp/get-stops-list",
+        url: "/get-stops-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -3537,7 +3537,7 @@ $(".stops-nav").on("click", async e => {
                 const id = e.currentTarget.dataset.id
                 editingStopId = id
                 await $.ajax({
-                    url: "/erp/get-stop",
+                    url: "/get-stop",
                     type: "GET",
                     data: { id },
                     success: function (response) {
@@ -3592,7 +3592,7 @@ $(".save-stop").on("click", async e => {
     const isActive = $(".stop-active").is(":checked")
 
     await $.ajax({
-        url: "/erp/post-save-stop",
+        url: "/post-save-stop",
         type: "POST",
         data: { id: editingStopId, title, webTitle, placeId, UETDS_code, isServiceArea, isActive },
         success: function (response) {
@@ -3611,14 +3611,14 @@ let routeStops = []
 $(".route-nav").on("click", async e => {
     routeStops = []
     await $.ajax({
-        url: "/erp/get-routes-list",
+        url: "/get-routes-list",
         type: "GET",
         data: {},
         success: function (response) {
             $(".route-list-nodes").html(response)
 
             $.ajax({
-                url: "/erp/get-stops-data",
+                url: "/get-stops-data",
                 type: "GET",
                 success: function (stops) {
                     const opts = ['<option value="" selected></option>']
@@ -3637,7 +3637,7 @@ $(".route-nav").on("click", async e => {
                 const title = e.currentTarget.dataset.title
                 editingRouteId = id
                 await $.ajax({
-                    url: "/erp/get-route",
+                    url: "/get-route",
                     type: "GET",
                     data: { id: id, title: title },
                     success: async function (response) {
@@ -3649,7 +3649,7 @@ $(".route-nav").on("click", async e => {
                         $(".route-description").val(response.description)
 
                         await $.ajax({
-                            url: "/erp/get-route-stops-list",
+                            url: "/get-route-stops-list",
                             type: "GET",
                             data: { id },
                             success: function (response) {
@@ -3747,7 +3747,7 @@ $(".add-route-stop-button").on("click", async e => {
 
     if (stopId)
         await $.ajax({
-            url: "/erp/get-route-stop",
+            url: "/get-route-stop",
             type: "GET",
             data: { stopId, duration, isFirst },
             success: function (response) {
@@ -3827,7 +3827,7 @@ $(".save-route").on("click", async e => {
     const routeStopsSTR = JSON.stringify(routeStops)
 
     await $.ajax({
-        url: "/erp/post-save-route",
+        url: "/post-save-route",
         type: "POST",
         data: { id: editingRouteId, routeCode, routeDescription, routeTitle, routeFrom, routeTo, routeStopsSTR },
         success: function (response) {
@@ -3853,7 +3853,7 @@ let editingTripId = null
 $(".trip-nav").on("click", async e => {
     const date = $(".trip-settings-calendar").val()
     await $.ajax({
-        url: "/erp/get-trips-list",
+        url: "/get-trips-list",
         type: "GET",
         data: { date },
         success: function (response) {
@@ -3864,7 +3864,7 @@ $(".trip-nav").on("click", async e => {
                 const time = e.currentTarget.dataset.time
                 editingTripId = id
                 // await $.ajax({
-                //     url: "/erp/get-trip",
+                //     url: "/get-trip",
                 //     type: "GET",
                 //     data: { id: id, time: time },
                 //     success: async function (response) {
@@ -3910,7 +3910,7 @@ const resetPriceAddRow = () => {
 
 $(".price-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-prices-list",
+        url: "/get-prices-list",
         type: "GET",
         success: function (response) {
             $(".price-list-nodes").html(response);
@@ -3994,7 +3994,7 @@ $(".price-save").on("click", async function () {
     if (!data.length) return;
 
     await $.ajax({
-        url: "/erp/post-save-prices",
+        url: "/post-save-prices",
         type: "POST",
         contentType: "application/json",
         data: JSON.stringify({ prices: data }),
@@ -4045,7 +4045,7 @@ const savePriceAdd = async closeAfterSave => {
     };
 
     await $.ajax({
-        url: "/erp/post-add-price",
+        url: "/post-add-price",
         type: "POST",
         contentType: "application/json",
         data: JSON.stringify(data),
@@ -4079,9 +4079,9 @@ $(".add-trip").on("click", async e => {
 
     try {
         const [routes, busModels, buses] = await Promise.all([
-            $.get("/erp/get-routes-data"),
-            $.get("/erp/get-bus-models-data"),
-            $.get("/erp/get-buses-data")
+            $.get("/get-routes-data"),
+            $.get("/get-bus-models-data"),
+            $.get("/get-buses-data")
         ])
 
         const routeSelect = $(".trip-route")
@@ -4109,7 +4109,7 @@ $(".save-trip").on("click", async e => {
     const busId = $(".trip-bus").val()
 
     await $.ajax({
-        url: "/erp/post-save-trip",
+        url: "/post-save-trip",
         type: "POST",
         data: {
             routeId, firstDate, lastDate, departureTime, busModelId, busId
@@ -4141,7 +4141,7 @@ let editingBranchId = null
 
 async function loadBranchOptions() {
     const stops = await $.ajax({
-        url: "/erp/get-stops-list",
+        url: "/get-stops-list",
         type: "GET",
         data: { onlyData: true }
     });
@@ -4153,7 +4153,7 @@ async function loadBranchOptions() {
     $(".branch-place").html(stopOptions);
 
     const branches = await $.ajax({
-        url: "/erp/get-branches-list",
+        url: "/get-branches-list",
         type: "GET",
         data: { onlyData: true }
     });
@@ -4168,7 +4168,7 @@ async function loadBranchOptions() {
 }
 $(".branch-settings-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-branches-list",
+        url: "/get-branches-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -4180,7 +4180,7 @@ $(".branch-settings-nav").on("click", async e => {
                 const title = e.currentTarget.dataset.title
                 editingBranchId = id
                 await $.ajax({
-                    url: "/erp/get-branch",
+                    url: "/get-branch",
                     type: "GET",
                     data: { id: id, title: title },
                     success: function (response) {
@@ -4253,7 +4253,7 @@ $(".save-branch").on("click", async e => {
     const mainBranch = $(".branch-main-branch").val()
 
     await $.ajax({
-        url: "/erp/post-save-branch",
+        url: "/post-save-branch",
         type: "POST",
         data: { id: editingBranchId, isActive, isMainBranch, title, stop, mainBranch },
         success: function (response) {
@@ -4294,7 +4294,7 @@ $(".user-settings-nav").on("click", async e => {
     const branchSelect = $(".user-branches")
     branchSelect.empty()
     await $.ajax({
-        url: "/erp/get-branches-list",
+        url: "/get-branches-list",
         type: "GET",
         data: { onlyData: true, isJustActives: false },
         success: function (branches) {
@@ -4309,7 +4309,7 @@ $(".user-settings-nav").on("click", async e => {
     })
 
     await $.ajax({
-        url: "/erp/get-users-list",
+        url: "/get-users-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -4320,7 +4320,7 @@ $(".user-settings-nav").on("click", async e => {
                 const username = e.currentTarget.dataset.username
                 editingUserId = id
                 await $.ajax({
-                    url: "/erp/get-user",
+                    url: "/get-user",
                     type: "GET",
                     data: { id: id, username: username },
                     success: function (response) {
@@ -4360,7 +4360,7 @@ $(".users-close").on("click", e => {
 
 $(".customer-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-customers-list",
+        url: "/get-customers-list",
         type: "GET",
         data: { blacklist: false },
         success: function (response) {
@@ -4380,7 +4380,7 @@ $(".announcement-add-nav").on("click", async e => {
     branchSelect.empty()
     branchSelect.append(`<option value="" selected>Herkes</option>`)
     try {
-        const branches = await $.ajax({ url: "/erp/get-branches-list", type: "GET", data: { onlyData: true, isJustActives: false } })
+        const branches = await $.ajax({ url: "/get-branches-list", type: "GET", data: { onlyData: true, isJustActives: false } })
         branches.forEach(b => branchSelect.append(`<option value="${b.id}">${b.title}</option>`))
     } catch (err) {
         console.log(err)
@@ -4403,7 +4403,7 @@ $(".announcement-add-button").on("click", async e => {
     const showTicker = $(".announcement-show-ticker").is(":checked")
     const showPopup = $(".announcement-show-popup").is(":checked")
     await $.ajax({
-        url: "/erp/post-save-announcement",
+        url: "/post-save-announcement",
         type: "POST",
         contentType: "application/json",
         data: JSON.stringify({ message, branchId, showTicker, showPopup }),
@@ -4423,7 +4423,7 @@ $(".customer-search-btn").on("click", async e => {
     const phone = $(".customer-search-phone").val();
 
     await $.ajax({
-        url: "/erp/get-customers-list",
+        url: "/get-customers-list",
         type: "GET",
         data: { idNumber, name, surname, phone, blacklist: false },
         success: function (response) {
@@ -4445,7 +4445,7 @@ $(".customer-blacklist-btn").on("click", async e => {
     const phone = $(".customer-search-phone").val();
 
     await $.ajax({
-        url: "/erp/get-customers-list",
+        url: "/get-customers-list",
         type: "GET",
         data: { idNumber, name, surname, phone, blacklist: true },
         success: function (response) {
@@ -4453,7 +4453,7 @@ $(".customer-blacklist-btn").on("click", async e => {
             $(".customer-blacklist-remove").on("click", async e => {
                 const id = e.currentTarget.dataset.id
                 await $.ajax({
-                    url: "/erp/post-customer-blacklist",
+                    url: "/post-customer-blacklist",
                     type: "POST",
                     data: { id, isRemove: true },
                     success: function () {
@@ -4492,7 +4492,7 @@ $(".customer-blacklist-add").on("click", async e => {
     const id = $(".customer-blacklist-pop-up").data("id");
     const description = $(".customer-blacklist-description").val();
     await $.ajax({
-        url: "/erp/post-customer-blacklist",
+        url: "/post-customer-blacklist",
         type: "POST",
         data: { id, description },
         success: function () {
@@ -4512,7 +4512,7 @@ $(".customers-close").on("click", e => {
 
 $(".member-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-members-list",
+        url: "/get-members-list",
         type: "GET",
         data: {},
         success: function (response) {
@@ -4544,8 +4544,8 @@ $(".report-item").on("click", async e => {
 
     if ((report === "salesAndRefunds" || report === "webTickets") && !popup.data("initialized")) {
         const [branches, stops] = await Promise.all([
-            fetch("/erp/get-branches-list?onlyData=true").then(r => r.json()),
-            fetch("/erp/get-stops-list?onlyData=true").then(r => r.json())
+            fetch("/get-branches-list?onlyData=true").then(r => r.json()),
+            fetch("/get-stops-list?onlyData=true").then(r => r.json())
         ]);
 
         const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
@@ -4562,7 +4562,7 @@ $(".report-item").on("click", async e => {
             const id = $(this).val();
             const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
             if (id) {
-                const users = await fetch(`/erp/get-users-by-branch?id=${id}`).then(r => r.json());
+                const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
                 users.forEach(u => userSel.append(`<option value="${u.id}">${u.name}</option>`));
             }
         });
@@ -4575,7 +4575,7 @@ $(".report-item").on("click", async e => {
 
     if (report === "dailyUserAccount" && !popup.data("initialized")) {
         try {
-            const users = await fetch("/erp/get-users-list?onlyData=true").then(r => r.json());
+            const users = await fetch("/get-users-list?onlyData=true").then(r => r.json());
             const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
             users.forEach(u => {
                 userSel.append(`<option value="${u.id}">${u.name}</option>`);
@@ -4612,7 +4612,7 @@ $(".report-item").on("click", async e => {
 
     if (report === "dailyUserAccount" && !popup.data("initialized")) {
         try {
-            const users = await fetch("/erp/get-users-list?onlyData=true").then(r => r.json());
+            const users = await fetch("/get-users-list?onlyData=true").then(r => r.json());
             const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
             users.forEach(u => {
                 userSel.append(`<option value="${u.id}">${u.name}</option>`);
@@ -4675,7 +4675,7 @@ $(".report-create-button").on("click", e => {
     if (toStopId) params.set("toStopId", toStopId);
     if (groupBy) params.set("groupBy", groupBy);
 
-    window.open(`/erp/${report}?${params.toString()}`, "_blank");
+    window.open(`/${report}?${params.toString()}`, "_blank");
 });
 
 $(".members-close").on("click", e => {
@@ -4711,7 +4711,7 @@ $(document).off("click", ".member-row").on("click", ".member-row", function () {
     $(".blackout").css("display", "block");
 
     $.ajax({
-        url: "/erp/get-member-tickets",
+        url: "/get-member-tickets",
         type: "GET",
         data: { idNumber },
         success: function (resp) {
@@ -4735,7 +4735,7 @@ function searchMembers() {
     const phone = $(".member-search-phone").val()
 
     $.ajax({
-        url: "/erp/get-members-list",
+        url: "/get-members-list",
         type: "GET",
         data: { idNumber, name, surname, phone },
         success: function (resp) {
@@ -4757,7 +4757,7 @@ $(".member-add-btn").on("click", async e => {
 
     if (idNumber && name && surname && phone) {
         await $.ajax({
-            url: "/erp/post-add-member",
+            url: "/post-add-member",
             type: "POST",
             data: {
                 idNumber: idNumber,
@@ -4789,7 +4789,7 @@ $(".add-user").on("click", async e => {
     $(".user-settings").css("display", "block")
     $(".save-user").html("EKLE")
     await $.ajax({
-        url: "/erp/get-user",
+        url: "/get-user",
         type: "GET",
         data: {},
         success: function (response) {
@@ -4811,7 +4811,7 @@ $(".save-user").on("click", async e => {
     const permissions = $(".permission-checkbox:checked").map((_, el) => $(el).val()).get()
 
     await $.ajax({
-        url: "/erp/post-save-user",
+        url: "/post-save-user",
         type: "POST",
         data: { id: editingUserId, isActive, name, username, password, phone, branchId, permissions: JSON.stringify(permissions) },
         success: function (response) {
@@ -4836,7 +4836,7 @@ $(".save-user").on("click", async e => {
 $(".register-reset-nav").on("click", async e => {
     if (!confirm("Kasayı sıfırlamak istediğinize emin misiniz?")) return
     await $.ajax({
-        url: "/erp/post-reset-register",
+        url: "/post-reset-register",
         type: "POST",
         data: {},
         success: function (response) {
@@ -4851,7 +4851,7 @@ $(".register-reset-nav").on("click", async e => {
 
 $(".transaction-transfer-nav").on("click", async e => {
     await $.ajax({
-        url: "/erp/get-branches-list",
+        url: "/get-branches-list",
         type: "GET",
         data: { onlyData: true },
         success: function (response) {
@@ -4875,7 +4875,7 @@ $(".transaction-transfer-nav").on("click", async e => {
 
 $(".transfer-branch").on("change", async e => {
     await $.ajax({
-        url: "/erp/get-users-by-branch",
+        url: "/get-users-by-branch",
         type: "GET",
         data: { onlyData: true, id: e.currentTarget.value },
         success: function (response) {
@@ -4900,7 +4900,7 @@ $(".transaction-transfer-button").on("click", async e => {
     const user = $(".transfer-user").val()
 
     await $.ajax({
-        url: "/erp/post-transfer-register",
+        url: "/post-transfer-register",
         type: "POST",
         data: { branch, user },
         success: function (response) {
@@ -4922,7 +4922,7 @@ $(".transaction-transfer-close").on("click", e => {
 
 $(".payment-request-nav").on("click", async e => {
     const users = await $.ajax({
-        url: "/erp/get-users-list",
+        url: "/get-users-list",
         type: "GET",
         data: { onlyData: true }
     });
@@ -4948,7 +4948,7 @@ $(".payment-request-button").on("click", async e => {
     const userId = $(".payment-request-user").val();
     const amount = $(".payment-request-amount").val();
     await $.ajax({
-        url: "/erp/post-request-payment",
+        url: "/post-request-payment",
         type: "POST",
         data: { userId, amount },
         success: function () {
@@ -4962,7 +4962,7 @@ $(".payment-request-button").on("click", async e => {
 
 $(".payment-send-nav").on("click", async e => {
     const users = await $.ajax({
-        url: "/erp/get-users-list",
+        url: "/get-users-list",
         type: "GET",
         data: { onlyData: true }
     });
@@ -4988,7 +4988,7 @@ $(".payment-send-button").on("click", async e => {
     const userId = $(".payment-send-user").val();
     const amount = $(".payment-send-amount").val();
     await $.ajax({
-        url: "/erp/post-send-payment",
+        url: "/post-send-payment",
         type: "POST",
         data: { userId, amount },
         success: function () {
@@ -5002,14 +5002,14 @@ $(".payment-send-button").on("click", async e => {
 
 async function loadPendingPayments() {
     await $.ajax({
-        url: "/erp/get-pending-payments",
+        url: "/get-pending-payments",
         type: "GET",
         success: function (response) {
             $(".pending-payments-list").html(response)
             $(".blackout").css("display", "block");
             $(".pending-payments").css("display", "block");
             $(".payment-button").on("click", e => {
-                $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
+                $.ajax({ url: "/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
                 $(e.currentTarget).closest(".payment").remove()
             })
         },
@@ -5021,7 +5021,7 @@ async function loadPendingPayments() {
 
 async function loadPendingCollections(global = true) {
     await $.ajax({
-        url: "/erp/get-pending-collections",
+        url: "/get-pending-collections",
         type: "GET",
         global: global,
         success: function (response) {
@@ -5029,7 +5029,7 @@ async function loadPendingCollections(global = true) {
             $(".blackout").css("display", "block");
             $(".pending-collections").css("display", "block");
             $(".payment-button").on("click", e => {
-                $.ajax({ url: "/erp/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
+                $.ajax({ url: "/post-confirm-payment", type: "POST", data: { id: $(e.currentTarget).attr("data-id"), action: $(e.currentTarget).attr("data-action") } });
                 $(e.currentTarget).closest(".payment").remove()
             })
         },
@@ -5075,7 +5075,7 @@ function showNextPopup() {
     const header = $("<div>").addClass("gtr-header").append($("<span>").text("DUYURU"));
     const close = $("<div>").addClass("announcement-pop-up-close").append($("<i>").addClass("fa-solid fa-x"));
     close.on("click", async () => {
-        await $.ajax({ url: "/erp/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
+        await $.ajax({ url: "/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
         pop.remove();
         showNextPopup();
     });
@@ -5093,7 +5093,7 @@ function showNextPopup() {
 async function loadAnnouncements() {
     try {
         const data = await $.ajax({
-            url: "/erp/get-announcements",
+            url: "/get-announcements",
             type: "GET"
         });
 
