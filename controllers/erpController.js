@@ -37,6 +37,7 @@ const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webT
 const generateWebTicketsReportByStopDetailed = require('../utilities/reports/webTicketsByStopDetailed');
 const generateWebTicketsReportByStopSummary = require('../utilities/reports/webTicketsByStopSummary');
 const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
+const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTicketsReport");
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -4084,6 +4085,238 @@ exports.getWebTicketsReport = async (req, res, next) => {
     } catch (err) {
         console.error('getWebTicketsReport error:', err);
         res.status(500).json({ message: 'Web bilet raporu oluşturulamadı.' });
+    }
+};
+
+exports.getUpcomingTicketsReport = async (req, res, next) => {
+    try {
+        const now = new Date();
+        const activeStatuses = ["completed", "web", "gotur"];
+
+        const tickets = await Ticket.findAll({
+            where: {
+                status: { [Op.in]: activeStatuses },
+                tripId: { [Op.ne]: null },
+                fromRouteStopId: { [Op.ne]: null }
+            },
+            raw: true
+        });
+
+        const tripIds = [...new Set(tickets.map(t => t.tripId).filter(Boolean))];
+        const trips = tripIds.length ? await Trip.findAll({
+            where: { id: { [Op.in]: tripIds } },
+            raw: true
+        }) : [];
+
+        const routeIds = [...new Set(trips.map(t => t.routeId).filter(Boolean))];
+        const routeStops = routeIds.length ? await RouteStop.findAll({
+            where: { routeId: { [Op.in]: routeIds } },
+            order: [["routeId", "ASC"], ["order", "ASC"]],
+            raw: true
+        }) : [];
+
+        const stopIds = [...new Set(routeStops.map(rs => rs.stopId).filter(Boolean))];
+        const stops = stopIds.length ? await Stop.findAll({
+            where: { id: { [Op.in]: stopIds } },
+            raw: true
+        }) : [];
+
+        const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
+        const users = userIds.length ? await FirmUser.findAll({
+            where: { id: { [Op.in]: userIds } },
+            raw: true
+        }) : [];
+
+        const branchIds = [...new Set(users.map(u => u.branchId).filter(Boolean))];
+        const branches = branchIds.length ? await Branch.findAll({
+            where: { id: { [Op.in]: branchIds } },
+            raw: true
+        }) : [];
+
+        const toKey = value => (value === undefined || value === null) ? "" : String(value);
+
+        const tripMap = new Map(trips.map(trip => [toKey(trip.id), trip]));
+        const routeStopsByRoute = new Map();
+        const routeStopMap = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = toKey(rs.routeId);
+            if (!routeStopsByRoute.has(routeKey)) {
+                routeStopsByRoute.set(routeKey, []);
+            }
+            routeStopsByRoute.get(routeKey).push(rs);
+            routeStopMap.set(toKey(rs.id), rs);
+        });
+
+        const stopMap = new Map(stops.map(stop => [toKey(stop.id), stop.title]));
+        const userMap = new Map(users.map(user => [toKey(user.id), user]));
+        const branchMap = new Map(branches.map(branch => [toKey(branch.id), branch]));
+
+        const parseDurationToSeconds = duration => {
+            if (!duration) return 0;
+            const [rawH = 0, rawM = 0, rawS = 0] = duration.split(":").map(Number);
+            const hours = Number.isFinite(rawH) ? rawH : 0;
+            const minutes = Number.isFinite(rawM) ? rawM : 0;
+            const seconds = Number.isFinite(rawS) ? rawS : 0;
+            return hours * 3600 + minutes * 60 + seconds;
+        };
+
+        const combineDateAndTime = (dateStr, timeStr) => {
+            if (!dateStr) return null;
+            const [year, month, day] = dateStr.split("-").map(Number);
+            if (!year || !month || !day) return null;
+            const [hour = 0, minute = 0, second = 0] = (timeStr || "00:00:00").split(":").map(Number);
+            return new Date(year, (month || 1) - 1, day || 1, hour || 0, minute || 0, second || 0);
+        };
+
+        const formatRouteTitle = (fromTitle, toTitle) => {
+            const safeFrom = fromTitle || "-";
+            const safeTo = toTitle || "";
+            return safeTo ? `${safeFrom} - ${safeTo}` : safeFrom;
+        };
+
+        const normalizePayment = payment => {
+            const lowered = (payment || "").toLowerCase();
+            if (lowered === "cash") return "cash";
+            if (lowered === "card") return "card";
+            if (lowered === "point") return "point";
+            return "other";
+        };
+
+        const paymentLabel = type => {
+            if (type === "cash") return "Nakit";
+            if (type === "card") return "K.K.";
+            if (type === "point") return "Puan";
+            return "-";
+        };
+
+        const branchBuckets = new Map();
+        const totals = {
+            count: 0,
+            amount: 0,
+            payments: { cash: 0, card: 0, point: 0, other: 0 }
+        };
+
+        tickets.forEach(ticket => {
+            const trip = tripMap.get(toKey(ticket.tripId));
+            if (!trip) return;
+
+            const baseDate = combineDateAndTime(trip.date, trip.time);
+            if (!baseDate) return;
+
+            const routeList = routeStopsByRoute.get(toKey(trip.routeId));
+            if (!routeList || !routeList.length) return;
+
+            let cumulativeSeconds = 0;
+            let matchedStop = false;
+            for (const rs of routeList) {
+                cumulativeSeconds += parseDurationToSeconds(rs.duration);
+                if (toKey(rs.id) === toKey(ticket.fromRouteStopId)) {
+                    matchedStop = true;
+                    break;
+                }
+            }
+            if (!matchedStop) return;
+
+            const departure = new Date(baseDate.getTime() + cumulativeSeconds * 1000);
+            if (!(departure > now)) {
+                return;
+            }
+
+            const fromRouteStop = routeStopMap.get(toKey(ticket.fromRouteStopId));
+            const toRouteStop = ticket.toRouteStopId ? routeStopMap.get(toKey(ticket.toRouteStopId)) : null;
+
+            const fromStopTitle = fromRouteStop ? (stopMap.get(toKey(fromRouteStop.stopId)) || "-") : "-";
+            const toStopTitle = toRouteStop ? (stopMap.get(toKey(toRouteStop.stopId)) || "") : "";
+
+            const user = ticket.userId ? userMap.get(toKey(ticket.userId)) : null;
+            const branch = user?.branchId ? branchMap.get(toKey(user.branchId)) : null;
+
+            const branchKey = branch ? toKey(branch.id) : "none";
+            if (!branchBuckets.has(branchKey)) {
+                branchBuckets.set(branchKey, {
+                    id: branch?.id ?? null,
+                    title: branch?.title || "Belirtilmemiş Şube",
+                    users: new Map(),
+                    totals: { count: 0, amount: 0, payments: { cash: 0, card: 0, point: 0, other: 0 } }
+                });
+            }
+            const branchBucket = branchBuckets.get(branchKey);
+
+            const userKey = user ? toKey(user.id) : `none-${branchKey}`;
+            if (!branchBucket.users.has(userKey)) {
+                branchBucket.users.set(userKey, {
+                    id: user?.id ?? null,
+                    name: user?.name || "Belirtilmemiş Kullanıcı",
+                    tickets: [],
+                    totals: { count: 0, amount: 0, payments: { cash: 0, card: 0, point: 0, other: 0 } }
+                });
+            }
+            const userBucket = branchBucket.users.get(userKey);
+
+            const price = Number(ticket.price) || 0;
+            const paymentType = normalizePayment(ticket.payment);
+            const label = paymentType === "other"
+                ? (ticket.payment ? ticket.payment.toUpperCase() : "-")
+                : paymentLabel(paymentType);
+
+            userBucket.tickets.push({
+                pnr: ticket.pnr || "-",
+                departure,
+                route: formatRouteTitle(fromStopTitle, toStopTitle),
+                seat: ticket.seatNo !== undefined && ticket.seatNo !== null ? String(ticket.seatNo) : "-",
+                payment: label,
+                price
+            });
+
+            userBucket.totals.count += 1;
+            userBucket.totals.amount += price;
+            userBucket.totals.payments[paymentType] += price;
+
+            branchBucket.totals.count += 1;
+            branchBucket.totals.amount += price;
+            branchBucket.totals.payments[paymentType] += price;
+
+            totals.count += 1;
+            totals.amount += price;
+            totals.payments[paymentType] += price;
+        });
+
+        const preparedBranches = Array.from(branchBuckets.values()).map(branch => {
+            const usersArray = Array.from(branch.users.values()).map(user => {
+                user.tickets.sort((a, b) => a.departure - b.departure);
+                return {
+                    id: user.id,
+                    name: user.name,
+                    tickets: user.tickets,
+                    totals: user.totals
+                };
+            }).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"));
+
+            return {
+                id: branch.id,
+                title: branch.title,
+                users: usersArray,
+                totals: branch.totals
+            };
+        }).sort((a, b) => a.title.localeCompare(b.title, "tr-TR"));
+
+        const totalUsers = preparedBranches.reduce((acc, branch) => acc + branch.users.length, 0);
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline; filename=\"upcoming_tickets.pdf\"");
+
+        await generateUpcomingTicketsReport({
+            generatedAt: now,
+            branches: preparedBranches,
+            totals,
+            summary: {
+                branchCount: preparedBranches.length,
+                userCount: totalUsers
+            }
+        }, res);
+    } catch (err) {
+        console.error("getUpcomingTicketsReport error:", err);
+        res.status(500).json({ message: "İleri tarihli satışlar raporu oluşturulamadı." });
     }
 };
 

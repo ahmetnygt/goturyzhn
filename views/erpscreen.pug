@@ -20,6 +20,7 @@ block content
                 li.list-group-item.report-item(data-report="salesAndRefunds") Satışlar ve İadeler
                 li.list-group-item.report-item(data-report="webTickets") Web Biletleri
                 li.list-group-item.report-item(data-report="dailyUserAccount") Günlük Kullanıcı Hesabı
+                li.list-group-item.report-item(data-report="upcomingTickets") İleri Tarihli Satışlar
 
     .salesAndRefunds-report-popup.report-popup
         .gtr-header
@@ -114,6 +115,16 @@ block content
                 span.input-group-text Kullanıcı
                 select.form-select.report-user
                     option(value="") Seçiniz
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button OLUŞTUR
+
+    .upcomingTickets-report-popup.report-popup
+        .gtr-header
+            span İLERİ TARİHLİ SATIŞLAR
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            p.text-muted.mb-2 Bu rapor, raporun oluşturulduğu andan sonraki kalkışlara ait satışları listeler.
             .d-flex.gap-3.justify-content-end
                 button.btn.btn-outline-primary.report-create-button OLUŞTUR
 
