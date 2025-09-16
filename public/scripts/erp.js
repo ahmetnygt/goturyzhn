@@ -903,6 +903,65 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            $(document).off("click", ".trip-cargo-refund");
+            $(document).on("click", ".trip-cargo-refund", async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const $button = $(this);
+                const cargoId = Number($button.data("id"));
+
+                if (!cargoId) {
+                    showError("Kargo bilgisi bulunamadı.");
+                    return;
+                }
+
+                const $item = $button.siblings(".trip-cargo-item");
+                const senderName = ($item.data("senderName") || "-").toString();
+                const fromTitle = ($item.data("fromTitle") || "-").toString();
+                const toTitle = ($item.data("toTitle") || "-").toString();
+                const paymentLabel = ($item.data("paymentLabel") || "-").toString();
+                const priceData = $item.data("price");
+                const priceNumber = Number(priceData);
+                const priceText = !Number.isNaN(priceNumber)
+                    ? `${priceNumber.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`
+                    : "-";
+
+                const confirmMessage = [
+                    "Bu kargo kaydını iade etmek istediğinize emin misiniz?",
+                    `Gönderen: ${senderName || "-"}`,
+                    `Güzergah: ${fromTitle || "-"} - ${toTitle || "-"}`,
+                    `Tutar: ${priceText}`,
+                    `Ödeme Tipi: ${paymentLabel || "-"}`
+                ].join("\n");
+
+                if (!window.confirm(confirmMessage)) {
+                    return;
+                }
+
+                const originalHtml = $button.html();
+                $button
+                    .prop("disabled", true)
+                    .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                try {
+                    await $.post("/erp/post-refund-cargo", { cargoId });
+                } catch (err) {
+                    const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
+                    showError(message);
+                    $button.prop("disabled", false).html(originalHtml);
+                    return;
+                }
+
+                const $group = $button.closest(".btn-group");
+                const $container = $group.closest(".trip-cargo-list-nodes");
+                $group.remove();
+
+                if (!$container.find(".btn-group").length) {
+                    $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
+                }
+            });
+
             $(document).off("click", ".trip-option-cancel-trip");
             $(document).on("click", ".trip-option-cancel-trip", async function (e) {
                 e.stopPropagation();

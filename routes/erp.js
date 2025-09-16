@@ -71,6 +71,7 @@ router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
 router.post('/post-trip-staff', erpController.postTripStaff);
 router.post('/post-trip-active', erpController.postTripActive);
 router.post('/post-add-cargo', erpController.postAddCargo);
+router.post('/post-refund-cargo', erpController.postRefundCargo);
 
 router.get('/get-staffs-list', erpController.getStaffsList);
 router.get('/get-staff', erpController.getStaff);
