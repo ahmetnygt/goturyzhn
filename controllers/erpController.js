@@ -3376,7 +3376,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         };
 
         const now = new Date();
-        let start = parseDate(startDate) || (register?.reset_date_time ? new Date(register.reset_date_time) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
+        let start = parseDate(startDate) || parseDate("1970-01-01 00:00:00");
         let end = parseDate(endDate) || now;
 
         if (start > end) {
@@ -3390,7 +3390,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
                 userId: targetUserId,
                 createdAt: { [Op.between]: [start, end] }
             },
-            order: [["createdAt", "ASC"]],
+            order: [["createdAt", "DESC"]],
             raw: true,
         });
 
@@ -3405,11 +3405,10 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         const ticketMap = new Map(tickets.map(t => [t.id, t]));
 
         const categoryLabels = {
-            cash_sale: 'Nakit bilet satış',
-            card_sale: 'K.K. bilet satış',
-            point_sale: 'Sanal POS bilet satış',
-            cash_refund: 'Nakit bilet iade',
-            card_refund: 'K.K. bilet iade',
+            cash_sale: 'Nakit satış',
+            card_sale: 'K.Kartı satış',
+            cash_refund: 'Nakit iade',
+            card_refund: 'K.Kartı iade',
             payed_to_bus: 'Otobüse ödenen',
             income: 'Gelir',
             expense: 'Gider',
@@ -3425,8 +3424,6 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             cashRefundTotal: 0,
             cardSalesTotal: 0,
             cardRefundTotal: 0,
-            pointSalesTotal: 0,
-            pointRefundTotal: 0,
             payedToBusTotal: 0,
             otherIncomeTotal: 0,
             otherExpenseTotal: 0,
@@ -3460,10 +3457,6 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
                 case 'card_sale':
                     summaryTotals.ticketSalesCount += 1;
                     summaryTotals.cardSalesTotal += amount;
-                    break;
-                case 'point_sale':
-                    summaryTotals.ticketSalesCount += 1;
-                    summaryTotals.pointSalesTotal += amount;
                     break;
                 case 'cash_refund':
                     summaryTotals.ticketRefundCount += 1;
@@ -3521,12 +3514,11 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             - summaryTotals.otherExpenseTotal
             - summaryTotals.registerResetTotal;
         const netCard = summaryTotals.cardSalesTotal - summaryTotals.cardRefundTotal;
-        const netPoint = summaryTotals.pointSalesTotal - summaryTotals.pointRefundTotal;
-        const netTotal = netCash + netCard + netPoint;
+        const netTotal = netCash + netCard;
 
         const summaryItems = [
-            { label: 'Satılan Bilet Adedi', value: String(summaryTotals.ticketSalesCount) },
-            { label: 'İade Bilet Adedi', value: String(summaryTotals.ticketRefundCount) },
+            { label: 'Satış Adedi', value: String(summaryTotals.ticketSalesCount) },
+            { label: 'İade Adedi', value: String(summaryTotals.ticketRefundCount) },
             { label: 'Nakit Satış Tutarı', value: formatDailyCurrency(summaryTotals.cashSalesTotal) },
             { label: 'Nakit İade Tutarı', value: formatDailyCurrency(summaryTotals.cashRefundTotal) },
             { label: 'K.K. Satış Tutarı', value: formatDailyCurrency(summaryTotals.cardSalesTotal) },
