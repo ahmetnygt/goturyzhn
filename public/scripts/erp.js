@@ -25,6 +25,8 @@ let tripStaffList = [];
 let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
+let tripCargoStops = [];
+
 function updateClock() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -192,6 +194,92 @@ function updateTakenTicketOpsVisibility($el) {
         $(".taken-ticket-op[data-action='move']").css("display", "none");
     }
 }
+
+function resetTripCargoForm() {
+    $(".trip-cargo-sender-name").val("");
+    $(".trip-cargo-sender-phone").val("");
+    $(".trip-cargo-sender-identity").val("");
+    $(".trip-cargo-description").val("");
+    $(".trip-cargo-price").val("");
+    $(".trip-cargo-payment").val("cash");
+}
+
+function updateTripCargoToOptions(defaultTo) {
+    const $to = $(".trip-cargo-to");
+    if (!$to.length) return;
+
+    const placeholder = $("<option>")
+        .val("")
+        .text("Seçiniz")
+        .prop("disabled", true);
+
+    const selectedFrom = $(".trip-cargo-from").val();
+    const fromStop = tripCargoStops.find(stop => String(stop.id) === String(selectedFrom));
+    const fromOrder = fromStop ? Number(fromStop.order) : -Infinity;
+
+    const availableStops = tripCargoStops.filter(stop => Number(stop.order) > fromOrder);
+
+    $to.empty().append(placeholder);
+
+    availableStops.forEach(stop => {
+        $to.append($("<option>").val(String(stop.id)).text(stop.title));
+    });
+
+    const desiredTo = defaultTo ? String(defaultTo) : "";
+    if (desiredTo && $to.find(`option[value="${desiredTo}"]`).length) {
+        $to.val(desiredTo);
+    } else if (availableStops.length === 1) {
+        $to.val(String(availableStops[0].id));
+    } else {
+        $to.val("");
+    }
+
+    if (!$to.val()) {
+        placeholder.prop("selected", true);
+    }
+}
+
+function populateTripCargoStops(stops, defaults = {}) {
+    tripCargoStops = Array.isArray(stops) ? stops : [];
+
+    const $from = $(".trip-cargo-from");
+    if (!$from.length) return;
+
+    const placeholder = $("<option>")
+        .val("")
+        .text("Seçiniz")
+        .prop("disabled", true);
+
+    $from.empty().append(placeholder);
+
+    tripCargoStops.forEach(stop => {
+        $from.append($("<option>").val(String(stop.id)).text(stop.title));
+    });
+
+    const desiredFrom = defaults.fromStopId ? String(defaults.fromStopId) : "";
+    if (desiredFrom && $from.find(`option[value="${desiredFrom}"]`).length) {
+        $from.val(desiredFrom);
+    } else {
+        $from.val("");
+    }
+
+    if (!$from.val()) {
+        placeholder.prop("selected", true);
+    }
+
+    const desiredTo = defaults.toStopId ? String(defaults.toStopId) : undefined;
+    updateTripCargoToOptions(desiredTo);
+}
+
+function closeTripCargoPopup() {
+    resetTripCargoForm();
+    $(".trip-cargo-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
+}
+
+$(document).off("change", ".trip-cargo-from").on("change", ".trip-cargo-from", () => {
+    updateTripCargoToOptions();
+});
 
 $(function () {
     hideLoading();
@@ -767,6 +855,21 @@ async function loadTrip(date, time, tripId) {
                         hostessId: $(".trip-staff-hostess").val() || ""
                     };
                     $(".trip-staff-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                }
+            });
+
+            $(document).off("click", ".trip-cargo-add");
+            $(document).on("click", ".trip-cargo-add", async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                    const stops = await $.get("/erp/get-trip-stops", { tripId: currentTripId });
+                    resetTripCargoForm();
+                    populateTripCargoStops(stops, { fromStopId: fromId, toStopId: toId });
+                    $(".trip-cargo-pop-up").css("display", "block");
                     $(".blackout").css("display", "block");
                 } catch (err) {
                     console.log(err);
@@ -2292,6 +2395,69 @@ $(".trip-staff-close").on("click", e => {
     }
     $(".trip-staff-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
+});
+
+$(".trip-cargo-close").on("click", e => {
+    e.preventDefault();
+    closeTripCargoPopup();
+});
+
+$(".trip-cargo-save").on("click", async e => {
+    e.preventDefault();
+    if (!currentTripId) {
+        showError("Sefer bilgisi bulunamadı.");
+        return;
+    }
+
+    const data = {
+        tripId: currentTripId,
+        fromStopId: $(".trip-cargo-from").val(),
+        toStopId: $(".trip-cargo-to").val(),
+        senderName: ($(".trip-cargo-sender-name").val() || "").trim(),
+        senderPhone: ($(".trip-cargo-sender-phone").val() || "").trim(),
+        senderIdentity: ($(".trip-cargo-sender-identity").val() || "").trim(),
+        description: ($(".trip-cargo-description").val() || "").trim(),
+        payment: $(".trip-cargo-payment").val(),
+        price: ($(".trip-cargo-price").val() || "").trim()
+    };
+
+    if (!data.fromStopId || !data.toStopId) {
+        showError("Lütfen nereden ve nereye bilgilerini seçiniz.");
+        return;
+    }
+    if (!data.senderName) {
+        showError("Gönderen adını giriniz.");
+        return;
+    }
+    if (!data.senderPhone) {
+        showError("Gönderen telefonunu giriniz.");
+        return;
+    }
+    if (!data.senderIdentity) {
+        showError("Gönderen TC bilgisini giriniz.");
+        return;
+    }
+    if (!data.payment) {
+        showError("Ödeme tipini seçiniz.");
+        return;
+    }
+
+    const priceValue = Number(data.price);
+    if (!data.price || Number.isNaN(priceValue) || priceValue <= 0) {
+        showError("Geçerli bir ücret giriniz.");
+        return;
+    }
+
+    try {
+        await $.post("/erp/post-add-cargo", {
+            ...data,
+            price: priceValue
+        });
+        closeTripCargoPopup();
+        await loadTrip(currentTripDate, currentTripTime, currentTripId);
+    } catch (err) {
+        console.log(err);
+    }
 });
 
 $(".ticket-close").on("click", async e => {
