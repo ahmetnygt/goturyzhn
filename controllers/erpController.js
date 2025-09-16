@@ -4090,7 +4090,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
 
 exports.getUpcomingTicketsReport = async (req, res, next) => {
     try {
-        const now = new Date();
+        const now = new Date("1970-01-01 00:00:00");
         const activeStatuses = ["completed", "web", "gotur"];
 
         const tickets = await Ticket.findAll({
@@ -4114,6 +4114,8 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
             order: [["routeId", "ASC"], ["order", "ASC"]],
             raw: true
         }) : [];
+
+        console.log([...new Set(routeStops.map(rs => rs.id).filter(Boolean))])
 
         const stopIds = [...new Set(routeStops.map(rs => rs.stopId).filter(Boolean))];
         const stops = stopIds.length ? await Stop.findAll({
@@ -4218,7 +4220,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
             if (!matchedStop) return;
 
             const departure = new Date(baseDate.getTime() + cumulativeSeconds * 1000);
-            if (!(departure > now)) {
+            if (departure < now) {
                 return;
             }
 

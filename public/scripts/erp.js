@@ -553,6 +553,61 @@ async function loadTrip(date, time, tripId) {
                 data: { date: date, time: time, tripId, stopId: currentStop },
                 success: function (response) {
                     $(".passenger-table").html(response)
+                    $(document).off("click", ".passenger-table tbody tr")
+                    $(".passenger-table tbody tr").on("click", function (e) {
+                        const $row = $(this);
+                        if (!$row.closest('#activeTickets').length) return;
+
+                        const $popup = $(".taken-ticket-ops-pop-up");
+
+                        // Eğer aynı satıra tıklandıysa popup kapat
+                        if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
+                            $popup.hide();
+                            currentPassengerRow = null;
+                            selectedTakenSeats = [];
+                            $(".passenger-table tbody tr").removeClass("selected");
+                            return;
+                        }
+
+                        currentPassengerRow = $row;
+                        $(".seat").removeClass("selected");
+                        $(".passenger-table tbody tr").removeClass("selected");
+
+                        currentGroupId = $row.data("group-id");
+                        selectedTicketStopId = $row.data("stop-id");
+
+                        const seatNumbers = [];
+                        $(`.passenger-table tbody tr[data-group-id='${currentGroupId}']`).each(function () {
+                            seatNumbers.push($(this).data("seat-number"));
+                            $(this).addClass("selected");
+                        });
+                        selectedTakenSeats = seatNumbers;
+
+                        updateTakenTicketOpsVisibility($row);
+
+                        // Popup'ı mouse konumuna yerleştir
+                        let left = e.pageX + 10;
+                        let top = e.pageY + 10;
+
+                        const popupWidth = $popup.outerWidth();
+                        const popupHeight = $popup.outerHeight();
+                        const viewportWidth = $(window).width();
+                        const viewportHeight = $(window).height();
+
+                        // Sağ kenarı taşmasın
+                        if (left + popupWidth > viewportWidth) {
+                            left = e.pageX - popupWidth - 10;
+                            if (left < 0) left = 0;
+                        }
+
+                        // Alt kenarı taşmasın
+                        if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
+                            top = e.pageY - popupHeight - 10;
+                            if (top < 0) top = 0;
+                        }
+
+                        $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
+                    });
                 },
                 error: function (xhr, status, error) {
                     console.log(error);
@@ -896,69 +951,51 @@ async function loadTrip(date, time, tripId) {
                 try {
                     const html = await $.get("/erp/get-trip-cargo-list", { tripId: currentTripId });
                     $(".trip-cargo-list-nodes").html(html);
+                    $(document).off("click", ".trip-cargo-refund");
+                    $(".trip-cargo-refund").on("click", async function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const $button = $(this);
+                        const cargoId = Number($button.data("id"));
+
+                        if (!cargoId) {
+                            showError("Kargo bilgisi bulunamadı.");
+                            return;
+                        }
+
+                        const confirmMessage = "Bu kargo kaydını iade etmek istediğinize emin misiniz?";
+
+                        if (!window.confirm(confirmMessage)) {
+                            return;
+                        }
+
+                        const originalHtml = $button.html();
+                        $button
+                            .prop("disabled", true)
+                            .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                        try {
+                            await $.post("/erp/post-refund-cargo", { cargoId });
+                        } catch (err) {
+                            const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
+                            showError(message);
+                            $button.prop("disabled", false).html(originalHtml);
+                            return;
+                        }
+
+                        const $group = $button.closest(".btn-group");
+                        const $container = $group.closest(".trip-cargo-list-nodes");
+                        $group.remove();
+
+                        if (!$container.find(".btn-group").length) {
+                            $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
+                        }
+                    });
                 } catch (err) {
                     console.log(err);
                     showError("Kargo listesi alınamadı.");
                     $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Kargo listesi alınamadı.</p>');
-                }
-            });
-
-            $(document).off("click", ".trip-cargo-refund");
-            $(document).on("click", ".trip-cargo-refund", async function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const $button = $(this);
-                const cargoId = Number($button.data("id"));
-
-                if (!cargoId) {
-                    showError("Kargo bilgisi bulunamadı.");
-                    return;
-                }
-
-                const $item = $button.siblings(".trip-cargo-item");
-                const senderName = ($item.data("senderName") || "-").toString();
-                const fromTitle = ($item.data("fromTitle") || "-").toString();
-                const toTitle = ($item.data("toTitle") || "-").toString();
-                const paymentLabel = ($item.data("paymentLabel") || "-").toString();
-                const priceData = $item.data("price");
-                const priceNumber = Number(priceData);
-                const priceText = !Number.isNaN(priceNumber)
-                    ? `${priceNumber.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`
-                    : "-";
-
-                const confirmMessage = [
-                    "Bu kargo kaydını iade etmek istediğinize emin misiniz?",
-                    `Gönderen: ${senderName || "-"}`,
-                    `Güzergah: ${fromTitle || "-"} - ${toTitle || "-"}`,
-                    `Tutar: ${priceText}`,
-                    `Ödeme Tipi: ${paymentLabel || "-"}`
-                ].join("\n");
-
-                if (!window.confirm(confirmMessage)) {
-                    return;
-                }
-
-                const originalHtml = $button.html();
-                $button
-                    .prop("disabled", true)
-                    .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
-
-                try {
-                    await $.post("/erp/post-refund-cargo", { cargoId });
-                } catch (err) {
-                    const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
-                    showError(message);
-                    $button.prop("disabled", false).html(originalHtml);
-                    return;
-                }
-
-                const $group = $button.closest(".btn-group");
-                const $container = $group.closest(".trip-cargo-list-nodes");
-                $group.remove();
-
-                if (!$container.find(".btn-group").length) {
-                    $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
                 }
             });
 
@@ -1953,62 +1990,6 @@ let isMovingActive = false
 let movingSeatPNR = null
 let movingSelectedSeats = []
 
-$(document).off("click", ".passenger-table tbody tr").on("click", ".passenger-table tbody tr", function (e) {
-    const $row = $(this);
-    if (!$row.closest('#activeTickets').length) return;
-
-    const $popup = $(".taken-ticket-ops-pop-up");
-
-    // Eğer aynı satıra tıklandıysa popup kapat
-    if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
-        $popup.hide();
-        currentPassengerRow = null;
-        selectedTakenSeats = [];
-        $(".passenger-table tbody tr").removeClass("selected");
-        return;
-    }
-
-    currentPassengerRow = $row;
-    $(".seat").removeClass("selected");
-    $(".passenger-table tbody tr").removeClass("selected");
-
-    currentGroupId = $row.data("group-id");
-    selectedTicketStopId = $row.data("stop-id");
-
-    const seatNumbers = [];
-    $(`.passenger-table tbody tr[data-group-id='${currentGroupId}']`).each(function () {
-        seatNumbers.push($(this).data("seat-number"));
-        $(this).addClass("selected");
-    });
-    selectedTakenSeats = seatNumbers;
-
-    updateTakenTicketOpsVisibility($row);
-
-    // Popup'ı mouse konumuna yerleştir
-    let left = e.pageX + 10;
-    let top = e.pageY + 10;
-
-    const popupWidth = $popup.outerWidth();
-    const popupHeight = $popup.outerHeight();
-    const viewportWidth = $(window).width();
-    const viewportHeight = $(window).height();
-
-    // Sağ kenarı taşmasın
-    if (left + popupWidth > viewportWidth) {
-        left = e.pageX - popupWidth - 10;
-        if (left < 0) left = 0;
-    }
-
-    // Alt kenarı taşmasın
-    if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
-        top = e.pageY - popupHeight - 10;
-        if (top < 0) top = 0;
-    }
-
-    $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
-});
-
-
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
     $(".search-ticket-ops-pop-up").hide();
@@ -2293,7 +2274,7 @@ $(".taken-ticket-op").on("click", async e => {
             data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
             success: function (response) {
                 $(".ticket-cancel-refund-open .gtr-header span").html("BİLET AÇIĞA AL")
-                $(".ticket-cancel-refund-open .tickets").prepend(response)
+                $(".ticket-cancel-refund-open .tickets").html(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
 
@@ -4545,20 +4526,6 @@ $(".report-item").on("click", async e => {
 
         flatpickr(popup.find(".report-start")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
         flatpickr(popup.find(".report-end")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-
-        const typeSelect = popup.find(".report-type");
-        const groupSelect = popup.find(".report-group");
-        if (groupSelect.length) {
-            const syncGroupState = () => {
-                const isDetailed = typeSelect.val() === "detailed";
-                groupSelect.prop("disabled", isDetailed);
-                if (isDetailed) {
-                    groupSelect.val("bus");
-                }
-            };
-            syncGroupState();
-            typeSelect.on("change", syncGroupState);
-        }
 
         popup.data("initialized", true);
     }

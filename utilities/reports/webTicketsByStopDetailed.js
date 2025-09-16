@@ -205,6 +205,8 @@ function generateWebTicketsReportByStopDetailed(rows, query, output) {
     });
   });
 
+  doc.font('Regular').fontSize(9);
+
   drawSummaryRow([
     { label: 'Toplam Bilet Adedi: ', value: formatCount(totals.ticketCount) },
     { label: 'Toplam Satış Tutarı: ', value: currency(totals.salesTotal) },
@@ -219,8 +221,8 @@ function generateWebTicketsReportByStopDetailed(rows, query, output) {
   doc.moveDown();
 
   const columns = [
-    { key: 'licensePlate', header: 'Plaka', percent: 0.1, align: 'left' },
     { key: 'stopTitle', header: 'Durak', percent: 0.14, align: 'left' },
+    { key: 'licensePlate', header: 'Plaka', percent: 0.1, align: 'left' },
     { key: 'departure', header: 'Hareket', percent: 0.12, align: 'left' },
     { key: 'routeTitle', header: 'Sefer', percent: 0.18, align: 'left' },
     { key: 'goturIncome', header: 'Götür Payı', percent: 0.08, align: 'right' },
@@ -366,7 +368,6 @@ function generateWebTicketsReportByStopDetailed(rows, query, output) {
           salesTotal: currency(row.salesTotal),
           ticketCount: formatCount(row.ticketCount),
         });
-
         isFirstRowOfStop = false;
         plateRowIndex += 1;
       });
