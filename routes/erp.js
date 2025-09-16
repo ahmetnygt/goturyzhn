@@ -24,6 +24,7 @@ router.get('/get-trip-stops', erpController.getTripStops);
 router.get('/get-passengers-table', erpController.getTripTable);
 router.get('/get-route-stops-time-list', erpController.getRouteStopsTimeList);
 router.get('/get-trip-revenues', erpController.getTripRevenues);
+router.get('/get-trip-cargo-list', erpController.getTripCargoList);
 router.get('/get-trip-stop-restriction', erpController.getTripStopRestriction);
 router.post('/post-trip-stop-restriction', erpController.postTripStopRestriction);
 
