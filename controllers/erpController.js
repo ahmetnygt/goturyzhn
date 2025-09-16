@@ -33,6 +33,7 @@ const generateSalesRefundReportDetailed = require('../utilities/reports/salesRef
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
 const generateWebTicketsReportByBusSummary = require('../utilities/reports/webTicketsByBusSummary');
 const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webTicketsByBusDetailed');
+const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 const generateWebTicketsReportByStopSummary = require('../utilities/reports/webTicketsByStopSummary');
 
 async function generatePNR(fromId, toId, stops) {
@@ -3229,6 +3230,229 @@ exports.getAnnouncements = async (req, res, next) => {
     } catch (err) {
         console.error("Get announcements error:", err);
         res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getDailyUserAccountReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate, userId } = req.query;
+        const targetUserId = userId || req.session.user?.id;
+
+        if (!targetUserId) {
+            return res.status(400).json({ message: 'Kullanıcı bilgisi eksik.' });
+        }
+
+        const user = await FirmUser.findOne({ where: { id: targetUserId }, attributes: ['name', 'branchId'], raw: true });
+        if (!user) {
+            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const branch = user.branchId
+            ? await Branch.findOne({ where: { id: user.branchId }, attributes: ['title'], raw: true })
+            : null;
+
+        const register = await CashRegister.findOne({ where: { userId: targetUserId }, raw: true });
+
+        const parseDate = (value) => {
+            if (!value) return null;
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        const now = new Date();
+        let start = parseDate(startDate) || (register?.reset_date_time ? new Date(register.reset_date_time) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
+        let end = parseDate(endDate) || now;
+
+        if (start > end) {
+            const tmp = start;
+            start = end;
+            end = tmp;
+        }
+
+        const transactions = await Transaction.findAll({
+            where: {
+                userId: targetUserId,
+                createdAt: { [Op.between]: [start, end] }
+            },
+            order: [["createdAt", "ASC"]],
+            raw: true,
+        });
+
+        const ticketIds = transactions.map(t => t.ticketId).filter(Boolean);
+        const tickets = ticketIds.length
+            ? await Ticket.findAll({
+                where: { id: { [Op.in]: ticketIds } },
+                attributes: ['id', 'pnr', 'seatNo'],
+                raw: true,
+            })
+            : [];
+        const ticketMap = new Map(tickets.map(t => [t.id, t]));
+
+        const categoryLabels = {
+            cash_sale: 'Nakit bilet satış',
+            card_sale: 'K.K. bilet satış',
+            point_sale: 'Sanal POS bilet satış',
+            cash_refund: 'Nakit bilet iade',
+            card_refund: 'K.K. bilet iade',
+            payed_to_bus: 'Otobüse ödenen',
+            income: 'Gelir',
+            expense: 'Gider',
+            transfer_in: 'Devir alındı',
+            transfer_out: 'Devir verildi',
+            register_reset: 'Kasa sıfırlama',
+        };
+
+        const summaryTotals = {
+            ticketSalesCount: 0,
+            ticketRefundCount: 0,
+            cashSalesTotal: 0,
+            cashRefundTotal: 0,
+            cardSalesTotal: 0,
+            cardRefundTotal: 0,
+            pointSalesTotal: 0,
+            pointRefundTotal: 0,
+            payedToBusTotal: 0,
+            otherIncomeTotal: 0,
+            otherExpenseTotal: 0,
+            transferInTotal: 0,
+            transferOutTotal: 0,
+            registerResetTotal: 0,
+        };
+
+        const formatDateTime = (value) => {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return new Intl.DateTimeFormat('tr-TR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'Europe/Istanbul',
+            }).format(date);
+        };
+
+        const rows = transactions.map(t => {
+            const amount = Number(t.amount) || 0;
+            switch (t.category) {
+                case 'cash_sale':
+                    summaryTotals.ticketSalesCount += 1;
+                    summaryTotals.cashSalesTotal += amount;
+                    break;
+                case 'card_sale':
+                    summaryTotals.ticketSalesCount += 1;
+                    summaryTotals.cardSalesTotal += amount;
+                    break;
+                case 'point_sale':
+                    summaryTotals.ticketSalesCount += 1;
+                    summaryTotals.pointSalesTotal += amount;
+                    break;
+                case 'cash_refund':
+                    summaryTotals.ticketRefundCount += 1;
+                    summaryTotals.cashRefundTotal += amount;
+                    break;
+                case 'card_refund':
+                    summaryTotals.ticketRefundCount += 1;
+                    summaryTotals.cardRefundTotal += amount;
+                    break;
+                case 'payed_to_bus':
+                    summaryTotals.payedToBusTotal += amount;
+                    break;
+                case 'income':
+                    summaryTotals.otherIncomeTotal += amount;
+                    break;
+                case 'expense':
+                    summaryTotals.otherExpenseTotal += amount;
+                    break;
+                case 'transfer_in':
+                    summaryTotals.transferInTotal += amount;
+                    break;
+                case 'transfer_out':
+                    summaryTotals.transferOutTotal += amount;
+                    break;
+                case 'register_reset':
+                    summaryTotals.registerResetTotal += amount;
+                    break;
+                default:
+                    break;
+            }
+
+            const ticket = t.ticketId ? ticketMap.get(t.ticketId) : null;
+            const documentParts = [];
+            if (ticket?.seatNo) documentParts.push(`KN: ${ticket.seatNo}`);
+            if (ticket?.pnr) documentParts.push(`PNR: ${ticket.pnr}`);
+
+            return {
+                date: formatDateTime(t.createdAt),
+                type: categoryLabels[t.category] || t.category,
+                description: t.description || '',
+                document: documentParts.join(' '),
+                income: t.type === 'income' ? formatDailyCurrency(amount) : '',
+                expense: t.type === 'expense' ? formatDailyCurrency(amount) : '',
+            };
+        });
+
+        const totalSales = summaryTotals.cashSalesTotal + summaryTotals.cardSalesTotal + summaryTotals.pointSalesTotal;
+        const totalRefunds = summaryTotals.cashRefundTotal + summaryTotals.cardRefundTotal + summaryTotals.pointRefundTotal;
+        const netTransfer = summaryTotals.transferInTotal - summaryTotals.transferOutTotal;
+        const netCash = (summaryTotals.cashSalesTotal - summaryTotals.cashRefundTotal)
+            + summaryTotals.otherIncomeTotal
+            + summaryTotals.transferInTotal
+            - summaryTotals.transferOutTotal
+            - summaryTotals.payedToBusTotal
+            - summaryTotals.otherExpenseTotal
+            - summaryTotals.registerResetTotal;
+        const netCard = summaryTotals.cardSalesTotal - summaryTotals.cardRefundTotal;
+        const netPoint = summaryTotals.pointSalesTotal - summaryTotals.pointRefundTotal;
+        const netTotal = netCash + netCard + netPoint;
+
+        const summaryItems = [
+            { label: 'Satılan Bilet Adedi', value: String(summaryTotals.ticketSalesCount) },
+            { label: 'İade Bilet Adedi', value: String(summaryTotals.ticketRefundCount) },
+            { label: 'Nakit Satış Tutarı', value: formatDailyCurrency(summaryTotals.cashSalesTotal) },
+            { label: 'Nakit İade Tutarı', value: formatDailyCurrency(summaryTotals.cashRefundTotal) },
+            { label: 'K.K. Satış Tutarı', value: formatDailyCurrency(summaryTotals.cardSalesTotal) },
+            { label: 'K.K. İade Tutarı', value: formatDailyCurrency(summaryTotals.cardRefundTotal) },
+            { label: 'Sanal POS Satış Tutarı', value: formatDailyCurrency(summaryTotals.pointSalesTotal) },
+            { label: 'Sanal POS İade Tutarı', value: formatDailyCurrency(summaryTotals.pointRefundTotal) },
+            { label: 'Toplam Satış Tutarı', value: formatDailyCurrency(totalSales) },
+            { label: 'Toplam İade Tutarı', value: formatDailyCurrency(totalRefunds) },
+            { label: 'Diğer Gelirler', value: formatDailyCurrency(summaryTotals.otherIncomeTotal) },
+            { label: 'Diğer Giderler', value: formatDailyCurrency(summaryTotals.otherExpenseTotal) },
+            { label: 'Otobüslere Ödemeler', value: formatDailyCurrency(summaryTotals.payedToBusTotal) },
+            { label: 'Transfer Alınan', value: formatDailyCurrency(summaryTotals.transferInTotal) },
+            { label: 'Transfer Verilen', value: formatDailyCurrency(summaryTotals.transferOutTotal) },
+            { label: 'Başka Kull. Net Alınan', value: formatDailyCurrency(netTransfer) },
+        ];
+
+        if (summaryTotals.registerResetTotal) {
+            summaryItems.push({ label: 'Kasa Sıfırlama', value: formatDailyCurrency(summaryTotals.registerResetTotal) });
+        }
+
+        const netSummary = [
+            { label: 'Nakit', value: formatDailyCurrency(netCash) },
+            { label: 'Kredi Kartı', value: formatDailyCurrency(netCard) },
+            { label: 'Toplam', value: formatDailyCurrency(netTotal) },
+        ];
+
+        const formatRange = (date) => formatDateTime(date)?.replace(',', '');
+
+        const queryInfo = {
+            user: user.name,
+            branch: branch?.title || '',
+            startDate: formatRange(start),
+            endDate: formatRange(end),
+            generatedAt: formatRange(now),
+        };
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="daily_user_account_report.pdf"');
+        await generateDailyUserAccountReport({ rows, summaryItems, netSummary, query: queryInfo }, res);
+    } catch (err) {
+        console.error('getDailyUserAccountReport error:', err);
+        res.status(500).json({ message: 'Günlük kullanıcı raporu oluşturulamadı.' });
     }
 };
 

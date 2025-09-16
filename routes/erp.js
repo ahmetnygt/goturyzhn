@@ -128,5 +128,6 @@ router.post('/post-announcement-seen', auth, erpController.postAnnouncementSeen)
 
 router.get('/salesAndRefunds', auth, erpController.getSalesRefundsReport);
 router.get('/webTickets', auth, erpController.getWebTicketsReport);
+router.get('/dailyUserAccount', auth, erpController.getDailyUserAccountReport);
 
 module.exports = router;
