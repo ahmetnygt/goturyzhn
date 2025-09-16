@@ -3,12 +3,13 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Generate sales & refund report as PDF.
+ * Generate web ticket summary grouped by stop as PDF.
  * @param {Array<Object>} rows - ticket rows to print
+ * @param {Object} query - query metadata for report header
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
-function generateWebTicketsReportByBusSummary(rows, query, output) {
+function generateWebTicketsReportByStopSummary(rows, query, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string' ? fs.createWriteStream(output, { flags: 'w' }) : output;
   doc.pipe(stream);
@@ -33,6 +34,7 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
   doc.font('Regular').fontSize(9);
 
   const drawSummaryRow = items => {
+    if (!items.length) return;
     const colWidth = fullWidth / items.length;
     const rowY = doc.y;
 
@@ -41,51 +43,96 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
 
       doc.font('Bold').text(it.label, x, rowY, {
         width: colWidth,
-        continued: true
+        continued: true,
       });
 
       doc.font('Regular').text(it.value, {
-        width: colWidth
+        width: colWidth,
       });
     });
 
     doc.moveDown(0.8);
   };
 
-  // place query information above the title and margins
-  // doc.y = doc.page.margins.top - 25;
-  // drawSummaryRow([
-  //   { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
-  // ]);
-  // drawSummaryRow([
-  //   { label: 'Tip: ', value: query.type == "detailed" ? "Detaylı" : "Özet" },
-  //   { label: 'Şube: ', value: query.branch },
-  //   { label: 'Kullanıcı: ', value: query.user },
-  //   { label: 'Durak: ', value: `${query.from} - ${query.to}` },
-  // ]);
-
-  // reset position for title
   doc.y = doc.page.margins.top;
   doc.moveDown();
-  const title = 'Duraklara Göre Web Biletleri'.toLocaleUpperCase();
+  const title = 'Duraklara Göre Web Biletleri'.toLocaleUpperCase('tr-TR');
   doc.font('Bold').fontSize(14);
 
   const textWidth = doc.widthOfString(title);
-  const centerX = (doc.page.width - textWidth) / 2; // sayfa ortası
+  const centerX = Math.max(xStart, (doc.page.width - textWidth) / 2);
   doc.text(title, centerX, doc.y);
   doc.moveDown();
 
+  const list = Array.isArray(rows) ? rows : [];
   const aggregateMap = new Map();
 
-  rows.forEach(r => {
-    const busId = r.busId || 'unknown';
-    const licensePlate = r.licensePlate || '-';
-    const amount = Number(r.price) || 0;
+  const parseNumber = value => {
+    if (value === undefined || value === null || value === '') return null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  };
 
-    if (!aggregateMap.has(busId)) {
-      aggregateMap.set(busId, {
-        busId,
-        licensePlate,
+  const pickFirstNumber = values => {
+    for (const value of values) {
+      const num = parseNumber(value);
+      if (num !== null) return num;
+    }
+    return null;
+  };
+
+  const extractStopTitle = row => {
+    const candidates = [
+      row.stopTitle,
+      row.stop,
+      row.stopName,
+      row.fromTitle,
+      row.from,
+      row.fromStop,
+      row.fromPlaceString,
+    ];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    const fallbackId = pickFirstNumber([
+      row.stopId,
+      row.routeStopId,
+      row.fromRouteStopId,
+      row.fromStopId,
+    ]);
+    if (fallbackId !== null) return String(fallbackId);
+    return '-';
+  };
+
+  const extractStopKey = row => {
+    const candidates = [
+      row.stopId,
+      row.routeStopId,
+      row.fromRouteStopId,
+      row.fromStopId,
+      row.stopKey,
+      row.stopCode,
+    ];
+    for (const candidate of candidates) {
+      if (candidate === 0) return '0';
+      if (candidate !== undefined && candidate !== null && candidate !== '') {
+        return String(candidate);
+      }
+    }
+    const title = extractStopTitle(row);
+    return title && title !== '-' ? title : 'unknown';
+  };
+
+  list.forEach(row => {
+    const stopKey = extractStopKey(row);
+    const stopTitle = extractStopTitle(row);
+
+    if (!aggregateMap.has(stopKey)) {
+      aggregateMap.set(stopKey, {
+        stopKey,
+        stopTitle: stopTitle || '-',
         ticketCount: 0,
         salesTotal: 0,
         goturIncome: 0,
@@ -95,14 +142,68 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
       });
     }
 
-    const bucket = aggregateMap.get(busId);
-    bucket.licensePlate = licensePlate; // ensure latest label if missing previously
-    bucket.ticketCount += 1;
-    bucket.salesTotal += amount;
-    const goturShare = amount * goturCut;
-    const firmShare = amount * firmCut;
-    const branchShare = amount * branchCut;
-    const busShare = amount - goturShare - firmShare - branchShare;
+    const bucket = aggregateMap.get(stopKey);
+    if ((!bucket.stopTitle || bucket.stopTitle === '-') && stopTitle && stopTitle !== '-') {
+      bucket.stopTitle = stopTitle;
+    }
+
+    const ticketCountValue = pickFirstNumber([
+      row.ticketCount,
+      row.count,
+      row.quantity,
+      row.qty,
+    ]);
+    const ticketCount = ticketCountValue !== null && ticketCountValue > 0 ? ticketCountValue : 1;
+
+    const explicitTotal = pickFirstNumber([
+      row.salesTotal,
+      row.total,
+      row.totalAmount,
+      row.amount,
+      row.grossTotal,
+      row.netTotal,
+    ]);
+
+    let saleAmount = explicitTotal;
+    if (saleAmount === null) {
+      const unitPrice = pickFirstNumber([
+        row.price,
+        row.ticketPrice,
+        row.fare,
+        row.netPrice,
+        row.amountPerTicket,
+      ]);
+      saleAmount = unitPrice !== null ? unitPrice * ticketCount : 0;
+    }
+
+    const goturShareValue = pickFirstNumber([
+      row.goturIncome,
+      row.goturShare,
+      row.goturPay,
+    ]);
+    const firmShareValue = pickFirstNumber([
+      row.firmIncome,
+      row.firmShare,
+      row.firmPay,
+    ]);
+    const branchShareValue = pickFirstNumber([
+      row.branchIncome,
+      row.branchShare,
+      row.branchPay,
+    ]);
+    const busShareValue = pickFirstNumber([
+      row.busIncome,
+      row.busShare,
+      row.busPay,
+    ]);
+
+    const goturShare = goturShareValue !== null ? goturShareValue : saleAmount * goturCut;
+    const firmShare = firmShareValue !== null ? firmShareValue : saleAmount * firmCut;
+    const branchShare = branchShareValue !== null ? branchShareValue : saleAmount * branchCut;
+    const busShare = busShareValue !== null ? busShareValue : saleAmount - goturShare - firmShare - branchShare;
+
+    bucket.ticketCount += ticketCount;
+    bucket.salesTotal += saleAmount;
     bucket.goturIncome += goturShare;
     bucket.firmIncome += firmShare;
     bucket.branchIncome += branchShare;
@@ -110,9 +211,9 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
   });
 
   const aggregatedRows = Array.from(aggregateMap.values()).sort((a, b) => {
-    const plateA = (a.licensePlate || '').toString().toLocaleUpperCase('tr-TR');
-    const plateB = (b.licensePlate || '').toString().toLocaleUpperCase('tr-TR');
-    return plateA.localeCompare(plateB, 'tr-TR');
+    const stopA = (a.stopTitle || '').toString().toLocaleUpperCase('tr-TR');
+    const stopB = (b.stopTitle || '').toString().toLocaleUpperCase('tr-TR');
+    return stopA.localeCompare(stopB, 'tr-TR');
   });
 
   const totals = aggregatedRows.reduce((acc, row) => {
@@ -132,33 +233,37 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
     busIncome: 0,
   });
 
-  const busCount = aggregatedRows.length;
-
-  const fmt = n => Number(n || 0).toFixed(2);
+  const fmtCurrency = value => `${Number(value || 0).toFixed(2)}₺`;
+  const fmtNumber = value => {
+    const num = Number(value);
+    if (Number.isNaN(num)) return '0';
+    if (Number.isInteger(num)) return String(num);
+    return num.toFixed(2);
+  };
 
   doc.font('Regular').fontSize(9);
 
   drawSummaryRow([
-    { label: 'Toplam Bilet Adedi: ', value: totals.ticketCount },
-    { label: 'Toplam Satış Tutarı: ', value: fmt(totals.salesSummary) + '₺' },
-    { label: 'Toplam Götür Hakedişi: ', value: fmt(totals.goturIncome) + '₺' },
+    { label: 'Toplam Bilet Adedi: ', value: fmtNumber(totals.ticketCount) },
+    { label: 'Toplam Satış Tutarı: ', value: fmtCurrency(totals.salesSummary) },
+    { label: 'Toplam Götür Hakedişi: ', value: fmtCurrency(totals.goturIncome) },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Firma Hakedişi: ', value: fmt(totals.firmIncome) + '₺' },
-    { label: 'Toplam Şube Hakedişi: ', value: fmt(totals.branchIncome) + '₺' },
-    { label: 'Toplam Otobüs Hakedişi: ', value: fmt(totals.busIncome) + '₺' },
+    { label: 'Toplam Firma Hakedişi: ', value: fmtCurrency(totals.firmIncome) },
+    { label: 'Toplam Şube Hakedişi: ', value: fmtCurrency(totals.branchIncome) },
+    { label: 'Toplam Otobüs Hakedişi: ', value: fmtCurrency(totals.busIncome) },
   ]);
 
   doc.moveDown();
 
   const columns = [
-    { key: 'licensePlate', header: 'Plaka', w: 60 },
-    { key: 'ticketCount', header: 'Bilet Adedi', w: 70 },
-    { key: 'salesTotal', header: 'Satış Tutarı', w: 70 },
-    { key: 'goturIncome', header: 'Götür Payı', w: 70 },
-    { key: 'firmIncome', header: 'Firma Payı', w: 70 },
-    { key: 'branchIncome', header: 'Şube Payı', w: 70 },
-    { key: 'busIncome', header: 'Otobüs Payı', w: 70 },
+    { key: 'stopTitle', header: 'Durak', w: 120 },
+    { key: 'ticketCount', header: 'Bilet Adedi', w: 60 },
+    { key: 'salesTotal', header: 'Satış Tutarı', w: 65 },
+    { key: 'goturIncome', header: 'Götür Payı', w: 65 },
+    { key: 'firmIncome', header: 'Firma Payı', w: 65 },
+    { key: 'branchIncome', header: 'Şube Payı', w: 65 },
+    { key: 'busIncome', header: 'Otobüs Payı', w: 65 },
   ];
 
   let y = doc.y;
@@ -172,7 +277,7 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
       doc.rect(x, y, col.w, headerHeight).stroke();
       doc.text(col.header, x, y + 4, {
         width: col.w,
-        align: 'center'
+        align: 'center',
       });
       x += col.w;
     });
@@ -182,7 +287,6 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
 
   drawHeader();
 
-  // table rows
   if (aggregatedRows.length === 0) {
     doc.font('Bold').text('Kayıt bulunamadı.', xStart, y + 10);
     doc.font('Regular');
@@ -190,13 +294,13 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
 
   aggregatedRows.forEach(row => {
     const rowValues = {
-      licensePlate: row.licensePlate,
-      ticketCount: row.ticketCount,
-      salesTotal: fmt(row.salesTotal) + '₺',
-      goturIncome: fmt(row.goturIncome) + '₺',
-      firmIncome: fmt(row.firmIncome) + '₺',
-      branchIncome: fmt(row.branchIncome) + '₺',
-      busIncome: fmt(row.busIncome) + '₺',
+      stopTitle: row.stopTitle || '-',
+      ticketCount: fmtNumber(row.ticketCount),
+      salesTotal: fmtCurrency(row.salesTotal),
+      goturIncome: fmtCurrency(row.goturIncome),
+      firmIncome: fmtCurrency(row.firmIncome),
+      branchIncome: fmtCurrency(row.branchIncome),
+      busIncome: fmtCurrency(row.busIncome),
     };
 
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -209,42 +313,12 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
     columns.forEach(col => {
       doc.text(rowValues[col.key], x, y + 3, {
         width: col.w,
-        align: 'center'
+        align: 'center',
       });
       x += col.w;
     });
     y += rowHeight + 10;
   });
-
-  // if (aggregatedRows.length) {
-  //   const totalRowValues = {
-  //     licensePlate: 'GENEL TOPLAM',
-  //     ticketCount: totals.ticketCount,
-  //     salesTotal: fmt(totals.salesSummary) + '₺',
-  //     goturIncome: fmt(totals.goturIncome) + '₺',
-  //     firmIncome: fmt(totals.firmIncome) + '₺',
-  //     branchIncome: fmt(totals.branchIncome) + '₺',
-  //     busIncome: fmt(totals.busIncome) + '₺',
-  //   };
-
-  //   if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
-  //     doc.addPage();
-  //     y = doc.page.margins.top;
-  //     drawHeader();
-  //   }
-
-  //   doc.font('Bold');
-  //   let x = xStart;
-  //   columns.forEach(col => {
-  //     doc.text(totalRowValues[col.key], x, y + 3, {
-  //       width: col.w,
-  //       align: 'center',
-  //     });
-  //     x += col.w;
-  //   });
-  //   doc.font('Regular');
-  //   y += rowHeight + 10;
-  // }
 
   doc.end();
   return new Promise((resolve, reject) => {
@@ -253,13 +327,14 @@ function generateWebTicketsReportByBusSummary(rows, query, output) {
   });
 }
 
-module.exports = generateWebTicketsReportByBusSummary;
+module.exports = generateWebTicketsReportByStopSummary;
 
 if (require.main === module) {
   const sample = [
-    { busId: 1, licensePlate: '34 ABC 123', price: 100 },
-    { busId: 1, licensePlate: '34 ABC 123', price: 150 },
-    { busId: 2, licensePlate: '06 XYZ 456', price: 200 },
+    { stopId: 1, stopTitle: 'Ankara Otogarı', price: 100 },
+    { stopId: 1, stopTitle: 'Ankara Otogarı', price: 150 },
+    { stopId: 2, stopTitle: 'İstanbul Esenler', price: 200 },
   ];
-  generateWebTicketsReportByBusSummary(sample, {}, 'web_tickets.pdf').then(() => console.log('web_tickets.pdf created'));
+  generateWebTicketsReportByStopSummary(sample, {}, 'web_tickets_by_stop.pdf')
+    .then(() => console.log('web_tickets_by_stop.pdf created'));
 }
