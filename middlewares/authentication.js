@@ -8,6 +8,6 @@ module.exports = (req, res, next) => {
     req.session.errorMessage = "Bu sayfayı ziyaret etmek için giriş yapmalısınız.";
     req.session.save(err => {
         if (err) return next(err);
-        res.redirect("erp/login");
+        res.redirect("/login");
     });
 };

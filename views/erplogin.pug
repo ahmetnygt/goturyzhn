@@ -1,7 +1,7 @@
 extends erplayout
 
 block content
-    form(action="/erp/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
+    form(action="/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
         div
             label.form-label Kullanıcı Adı
             input.username.form-control(type="text" name="username" required)
