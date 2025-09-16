@@ -862,9 +862,7 @@ async function loadTrip(date, time, tripId) {
             });
 
             $(document).off("click", ".trip-cargo-add");
-            $(document).on("click", ".trip-cargo-add", async function (e) {
-                e.preventDefault();
-                e.stopPropagation();
+            $(".trip-cargo-add").on("click", async function (e) {
                 try {
                     const stops = await $.get("/erp/get-trip-stops", { tripId: currentTripId });
                     resetTripCargoForm();
