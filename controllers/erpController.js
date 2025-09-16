@@ -952,6 +952,91 @@ exports.postAddCargo = async (req, res, next) => {
     }
 };
 
+exports.postRefundCargo = async (req, res, next) => {
+    try {
+        const cargoId = Number(req.body.cargoId);
+
+        if (!cargoId) {
+            return res.status(400).json({ message: "Geçersiz kargo bilgisi." });
+        }
+
+        if (!req.session.user || !req.session.user.id) {
+            return res.status(401).json({ message: "Oturum bilgisi bulunamadı." });
+        }
+
+        const cargo = await Cargo.findOne({ where: { id: cargoId } });
+        if (!cargo) {
+            return res.status(404).json({ message: "Kargo kaydı bulunamadı." });
+        }
+
+        const amountNum = Number.parseFloat(cargo.price);
+        const amount = Number.isNaN(amountNum) ? 0 : amountNum;
+
+        let tripInfo = "";
+        let routeInfo = "";
+
+        if (cargo.tripId) {
+            const trip = await Trip.findOne({ where: { id: cargo.tripId }, raw: true });
+            if (trip) {
+                const tripParts = [trip.date || "", trip.time || ""].map(part => (part || "").toString().trim()).filter(Boolean);
+                if (tripParts.length) {
+                    tripInfo = tripParts.join(" ");
+                }
+            }
+        }
+
+        const stopIds = [cargo.fromStopId, cargo.toStopId]
+            .map(id => (id === undefined || id === null) ? null : Number(id))
+            .filter(id => id !== null && !Number.isNaN(id));
+
+        const uniqueStopIds = [...new Set(stopIds)];
+
+        if (uniqueStopIds.length) {
+            const stops = await Stop.findAll({
+                where: { id: { [Op.in]: uniqueStopIds } },
+                raw: true
+            });
+
+            const fromTitle = stops.find(s => Number(s.id) === Number(cargo.fromStopId))?.title || "";
+            const toTitle = stops.find(s => Number(s.id) === Number(cargo.toStopId))?.title || "";
+            const routeParts = [fromTitle, toTitle].map(part => (part || "").toString().trim()).filter(Boolean);
+            if (routeParts.length) {
+                routeInfo = routeParts.join(" - ");
+            }
+        }
+
+        const descriptionParts = ["Kargo iade edildi"];
+        if (tripInfo) descriptionParts.push(tripInfo);
+        if (routeInfo) descriptionParts.push(routeInfo);
+        const description = descriptionParts.join(" | ");
+
+        await Transaction.create({
+            userId: req.session.user.id,
+            type: "expense",
+            category: cargo.payment === "card" ? "card_refund" : "cash_refund",
+            amount: amount,
+            description
+        });
+
+        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        if (register && amount > 0) {
+            if (cargo.payment === "cash") {
+                register.cash_balance = Number(register.cash_balance) - amount;
+            } else if (cargo.payment === "card") {
+                register.card_balance = Number(register.card_balance) - amount;
+            }
+            await register.save();
+        }
+
+        await cargo.destroy();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Cargo refund error:", err);
+        res.status(500).json({ success: false, message: "Kargo iadesi sırasında bir hata oluştu." });
+    }
+};
+
 exports.getTripCargoList = async (req, res, next) => {
     try {
         const tripId = Number(req.query.tripId);
