@@ -4342,6 +4342,43 @@ $(".report-item").on("click", async e => {
 
         popup.data("initialized", true);
     }
+
+    if (report === "dailyUserAccount" && !popup.data("initialized")) {
+        try {
+            const users = await fetch("/erp/get-users-list?onlyData=true").then(r => r.json());
+            const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+            users.forEach(u => {
+                userSel.append(`<option value="${u.id}">${u.name}</option>`);
+            });
+        } catch (err) {
+            console.error("dailyUserAccount users load error", err);
+        }
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+
+        const startInput = popup.find(".report-start")[0];
+        if (startInput) {
+            flatpickr(startInput, {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: startOfDay,
+            });
+        }
+
+        const endInput = popup.find(".report-end")[0];
+        if (endInput) {
+            flatpickr(endInput, {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: now,
+            });
+        }
+
+        popup.data("initialized", true);
+    }
 });
 
 $(".report-close").on("click", e => {

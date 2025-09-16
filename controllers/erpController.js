@@ -33,8 +33,8 @@ const generateSalesRefundReportDetailed = require('../utilities/reports/salesRef
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
 const generateWebTicketsReportByBusSummary = require('../utilities/reports/webTicketsByBusSummary');
 const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webTicketsByBusDetailed');
-const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 const generateWebTicketsReportByStopSummary = require('../utilities/reports/webTicketsByStopSummary');
+const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 
 async function generatePNR(fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;

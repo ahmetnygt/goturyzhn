@@ -2,10 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_COLUMNS = 3;
-const BOX_GAP = 10;
-const BOX_HEIGHT = 42;
-const BOX_PADDING = 8;
+const SUMMARY_COLUMNS = 4;
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
@@ -81,41 +78,44 @@ function generateDailyUserAccountReport(data, output) {
     doc.moveDown(0.5);
   }
 
-  const drawSummaryBoxes = (items, columns = DEFAULT_COLUMNS) => {
+  const drawSummaryRow = (items) => {
     if (!items.length) return;
 
-    const colCount = Math.max(1, columns);
-    const boxWidth = (pageWidth - (colCount - 1) * BOX_GAP) / colCount;
-    let y = doc.y;
-    let x = xStart;
+    const colWidth = pageWidth / items.length;
+    const rowY = doc.y;
 
-    chunk(items, colCount).forEach((rowItems) => {
-      ensureVerticalSpace(BOX_HEIGHT + 4);
-      y = doc.y;
-      x = xStart;
+    items.forEach((item, index) => {
+      const label = item.label?.endsWith(':') ? item.label : `${item.label}:`;
+      const x = xStart + index * colWidth;
 
-      rowItems.forEach((item) => {
-        doc.roundedRect(x, y, boxWidth, BOX_HEIGHT, 4).stroke();
-        doc.font('Bold').fontSize(9).text(item.label, x + BOX_PADDING, y + BOX_PADDING, {
-          width: boxWidth - BOX_PADDING * 2,
-        });
-        doc.font('Regular').fontSize(10).text(item.value, x + BOX_PADDING, y + BOX_PADDING + 16, {
-          width: boxWidth - BOX_PADDING * 2,
-        });
-
-        x += boxWidth + BOX_GAP;
+      doc.font('Bold').fontSize(9).text(label, x, rowY, {
+        width: colWidth,
+        continued: true,
       });
 
-      doc.y = y + BOX_HEIGHT + 8;
+      doc.font('Regular').text(item.value ?? '', {
+        width: colWidth,
+      });
     });
 
-    doc.moveDown(0.5);
+    doc.moveDown(0.8);
   };
 
-  drawSummaryBoxes(summaryItems);
+  const drawSummarySections = (items, columns = SUMMARY_COLUMNS) => {
+    if (!items.length) return;
+
+    const perRow = Math.max(1, Math.min(columns, items.length));
+    chunk(items, perRow).forEach((row) => {
+      ensureVerticalSpace(16);
+      drawSummaryRow(row);
+    });
+    doc.moveDown(0.3);
+  };
+
+  drawSummarySections(summaryItems);
 
   if (netSummary.length) {
-    drawSummaryBoxes(netSummary, Math.min(netSummary.length, 3));
+    drawSummarySections(netSummary, Math.min(3, netSummary.length));
   }
 
   doc.moveDown();
@@ -137,25 +137,34 @@ function generateDailyUserAccountReport(data, output) {
     });
   }
 
-  const headerHeight = 20;
-  const paddingX = 6;
-  const paddingY = 6;
+  const paddingX = 4;
+  const paddingY = 4;
+  const rowGap = 6;
+
+  const tableWidth = columns.reduce((acc, c) => acc + c.width, 0);
 
   const drawTableHeader = () => {
-    ensureVerticalSpace(headerHeight + 4);
+    ensureVerticalSpace(18);
+    const headerY = doc.y;
+    let headerBottom = headerY;
     let x = xStart;
+
     doc.font('Bold').fontSize(9);
     columns.forEach((col) => {
-      doc.save();
-      doc.rect(x, doc.y, col.width, headerHeight).fillAndStroke('#f2f2f2', '#000000');
-      doc.restore();
-      doc.fillColor('#000000').text(col.header, x + paddingX, doc.y + paddingY - 2, {
-        width: col.width - paddingX * 2,
+      doc.text(col.header, x, headerY, {
+        width: col.width,
         align: col.align || 'left',
       });
+      headerBottom = Math.max(headerBottom, doc.y);
+      doc.x = xStart;
+      doc.y = headerY;
       x += col.width;
     });
-    doc.y += headerHeight;
+
+    const underlineY = headerBottom + 2;
+    doc.y = underlineY;
+    doc.moveTo(xStart, underlineY).lineTo(xStart + tableWidth, underlineY).stroke();
+    doc.y = underlineY + 4;
     doc.font('Regular').fontSize(8);
   };
 
@@ -166,23 +175,26 @@ function generateDailyUserAccountReport(data, output) {
       const textHeight = doc.heightOfString(String(text), {
         width: col.width - paddingX * 2,
       });
-      rowHeight = Math.max(rowHeight, textHeight + paddingY * 2 - 2);
+      rowHeight = Math.max(rowHeight, textHeight + paddingY * 2);
     });
-    if (rowHeight < headerHeight) rowHeight = headerHeight - 4;
     return rowHeight;
   };
 
   const drawRow = (row, rowHeight) => {
+    const rowY = doc.y;
+    let rowBottom = rowY;
     let x = xStart;
     columns.forEach((col) => {
-      doc.rect(x, doc.y, col.width, rowHeight).stroke();
-      doc.text(row[col.key] || '', x + paddingX, doc.y + paddingY - 2, {
+      doc.text(row[col.key] || '', x + paddingX, rowY + paddingY, {
         width: col.width - paddingX * 2,
         align: col.align || 'left',
       });
+      rowBottom = Math.max(rowBottom, doc.y);
+      doc.x = xStart;
+      doc.y = rowY;
       x += col.width;
     });
-    doc.y += rowHeight;
+    doc.y = Math.max(rowBottom + rowGap, rowY + rowHeight + rowGap);
   };
 
   drawTableHeader();
@@ -194,7 +206,7 @@ function generateDailyUserAccountReport(data, output) {
   } else {
     rows.forEach((row) => {
       const rowHeight = calculateRowHeight(row);
-      if (doc.y + rowHeight + 4 > pageBottom) {
+      if (doc.y + rowHeight + rowGap > pageBottom) {
         doc.addPage();
         drawTableHeader();
       }
