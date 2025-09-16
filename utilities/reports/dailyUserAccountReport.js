@@ -125,8 +125,8 @@ function generateDailyUserAccountReport(data, output) {
     { key: 'type', header: 'Hareket Tipi', width: 95 },
     { key: 'description', header: 'Açıklama', width: 160 },
     { key: 'document', header: 'Belge No', width: 90 },
-    { key: 'incomeOrExpense', header: 'Tür', width: 45, align: 'right' },
-    { key: 'amount', header: 'Miktar', width: 45, align: 'right' },
+    { key: 'incomeOrExpense', header: 'Tür', width: 45 },
+    { key: 'amount', header: 'Miktar', width: 45 },
   ];
 
   const totalWidth = columns.reduce((acc, c) => acc + c.width, 0);
@@ -151,9 +151,10 @@ function generateDailyUserAccountReport(data, output) {
 
     doc.font('Bold').fontSize(9);
     columns.forEach((col) => {
+      doc.rect(x, headerY, col.width, 16).stroke();
       doc.text(col.header, x, headerY, {
         width: col.width,
-        align: col.align || 'left',
+        align: col.align || 'center',
       });
       headerBottom = Math.max(headerBottom, doc.y);
       doc.x = xStart;
@@ -161,10 +162,11 @@ function generateDailyUserAccountReport(data, output) {
       x += col.width;
     });
 
-    const underlineY = headerBottom + 2;
-    doc.y = underlineY;
-    doc.moveTo(xStart, underlineY).lineTo(xStart + tableWidth, underlineY).stroke();
-    doc.y = underlineY + 4;
+    // const underlineY = headerBottom + 2;
+    // doc.y = underlineY;
+    // doc.moveTo(xStart, underlineY).lineTo(xStart + tableWidth, underlineY).stroke();
+    // doc.y = underlineY + 4;
+    doc.moveDown(1.6)
     doc.font('Regular').fontSize(8);
   };
 
@@ -187,7 +189,7 @@ function generateDailyUserAccountReport(data, output) {
     columns.forEach((col) => {
       doc.text(row[col.key] || '', x + paddingX, rowY + paddingY, {
         width: col.width - paddingX * 2,
-        align: col.align || 'left',
+        align: col.align || 'center',
       });
       rowBottom = Math.max(rowBottom, doc.y);
       doc.x = xStart;
