@@ -1195,12 +1195,12 @@ exports.postErpLogin = async (req, res, next) => {
 
         const u = await FirmUser.findOne({ where: { username } });
         if (!u) {
-            return res.redirect("/erp/login?error=1");
+            return res.redirect("/login?error=1");
         }
 
         const success = await bcrypt.compare(password, u.password);
         if (!success) {
-            return res.redirect("/erp/login?error=1");
+            return res.redirect("/login?error=1");
         }
 
         req.session.user = u;
@@ -1223,7 +1223,7 @@ exports.postErpLogin = async (req, res, next) => {
         }
 
         req.session.save(() => {
-            const url = "/erp";
+            const url = "/";
 
             console.log("Giriş yapan kullanıcı:", u.name);
             res.redirect(url);
