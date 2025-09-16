@@ -34,6 +34,7 @@ const generateSalesRefundReportDetailed = require('../utilities/reports/salesRef
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
 const generateWebTicketsReportByBusSummary = require('../utilities/reports/webTicketsByBusSummary');
 const generateWebTicketsReportByBusDetailed = require('../utilities/reports/webTicketsByBusDetailed');
+const generateWebTicketsReportByStopDetailed = require('../utilities/reports/webTicketsByStopDetailed');
 const generateWebTicketsReportByStopSummary = require('../utilities/reports/webTicketsByStopSummary');
 const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 
@@ -3799,12 +3800,19 @@ exports.getWebTicketsReport = async (req, res, next) => {
         const summaryFileName = effectiveGroup === 'stop'
             ? 'web_tickets_by_stop_summary.pdf'
             : 'web_tickets_by_bus_summary.pdf';
+        const detailedFileName = effectiveGroup === 'stop'
+            ? 'web_tickets_by_stop_detailed.pdf'
+            : 'web_tickets_by_bus_detailed.pdf';
 
         if (!tickets.length) {
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : summaryFileName}"`);
+            res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? detailedFileName : summaryFileName}"`);
             if (isDetailed) {
-                await generateWebTicketsReportByBusDetailed([], queryInfo, res);
+                if (effectiveGroup === 'stop') {
+                    await generateWebTicketsReportByStopDetailed([], queryInfo, res);
+                } else {
+                    await generateWebTicketsReportByBusDetailed([], queryInfo, res);
+                }
             } else if (effectiveGroup === 'stop') {
                 await generateWebTicketsReportByStopSummary([], queryInfo, res);
             } else {
@@ -3921,6 +3929,9 @@ exports.getWebTicketsReport = async (req, res, next) => {
             const stopTitleFromRoute = routeStop ? (stopMap.get(toKey(routeStop.stopId)) || '') : '';
             const stopTitleFromDirect = resolvedStopId ? (stopMap.get(toKey(resolvedStopId)) || '') : '';
             const stopTitle = stopTitleFromRoute || stopTitleFromDirect || routeStopKey || '';
+            const stopUniqueKey = resolvedStopId != null
+                ? toKey(resolvedStopId)
+                : (routeStopKey || (stopTitle || 'unknown'));
 
             stopSummaryRows.push({
                 price: priceValue,
@@ -3953,6 +3964,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
                     departure: departureDate,
                     salesTotal: 0,
                     ticketCount: 0,
+                    stopKey: stopUniqueKey,
                 });
             }
 
@@ -3963,15 +3975,22 @@ exports.getWebTicketsReport = async (req, res, next) => {
             if (!group.routeTitle && routeTitle) group.routeTitle = routeTitle;
             if (!group.licensePlate && licensePlate) group.licensePlate = licensePlate;
             if (!group.departure && departureDate) group.departure = departureDate;
+            if ((!group.stopKey || group.stopKey === 'unknown') && stopUniqueKey) {
+                group.stopKey = stopUniqueKey;
+            }
         });
 
         const detailedRows = Array.from(detailedGroups.values());
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? 'web_tickets_by_bus_detailed.pdf' : summaryFileName}"`);
+        res.setHeader('Content-Disposition', `inline; filename="${isDetailed ? detailedFileName : summaryFileName}"`);
 
         if (isDetailed) {
-            await generateWebTicketsReportByBusDetailed(detailedRows, queryInfo, res);
+            if (effectiveGroup === 'stop') {
+                await generateWebTicketsReportByStopDetailed(detailedRows, queryInfo, res);
+            } else {
+                await generateWebTicketsReportByBusDetailed(detailedRows, queryInfo, res);
+            }
         } else if (effectiveGroup === 'stop') {
             await generateWebTicketsReportByStopSummary(stopSummaryRows, queryInfo, res);
         } else {
