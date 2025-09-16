@@ -671,11 +671,6 @@ select.price-button-select {
     flex-wrap: nowrap !important;
 }
 
-.member-info-middle,
-.member-info-right {
-    /* flex: 1; */
-}
-
 .member-info-left,
 .member-info-middle {
     border-right: 1px solid #dee2e6;
