@@ -4090,7 +4090,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
 
 exports.getUpcomingTicketsReport = async (req, res, next) => {
     try {
-        const now = new Date("1970-01-01 00:00:00");
+        const now = new Date();
         const activeStatuses = ["completed", "web", "gotur"];
 
         const tickets = await Ticket.findAll({
@@ -4184,7 +4184,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
 
         const paymentLabel = type => {
             if (type === "cash") return "Nakit";
-            if (type === "card") return "K.K.";
+            if (type === "card") return "K.Kartı";
             if (type === "point") return "Puan";
             return "-";
         };

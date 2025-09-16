@@ -91,9 +91,6 @@ function generateUpcomingTicketsReport(data, output) {
     },
   };
 
-  const branchCount = summary.branchCount ?? branches.length;
-  const userCount = summary.userCount ?? branches.reduce((acc, branch) => acc + ((branch.users || []).length), 0);
-
   const title = 'İleri Tarihli Satışlar Raporu'.toLocaleUpperCase('tr-TR');
   doc.font('Bold').fontSize(14).text(title, xStart, doc.y, { width: usableWidth, align: 'center' });
   doc.moveDown(0.8);
@@ -106,7 +103,7 @@ function generateUpcomingTicketsReport(data, output) {
 
     items.forEach((item, index) => {
       const x = xStart + index * colWidth;
-      const label = item.label?.endsWith(':') ? item.label : `${item.label}:`;
+      const label = item.label?.endsWith(':') ? item.label : `${item.label}: `;
 
       doc.font('Bold').text(label, x, rowY, {
         width: colWidth,
@@ -140,17 +137,15 @@ function generateUpcomingTicketsReport(data, output) {
 
   const summaryItems = [
     { label: 'Rapor Tarihi', value: formatDateTime(generatedAt || new Date()) },
-    { label: 'Toplam Şube', value: formatCount(branchCount) },
-    { label: 'Toplam Kullanıcı', value: formatCount(userCount) },
     { label: 'Toplam Bilet', value: formatCount(overallTotals.count) },
     { label: 'Toplam Tutar', value: formatCurrency(overallTotals.amount) },
   ];
 
-  drawSummarySections(summaryItems, Math.min(3, summaryItems.length));
+  drawSummarySections(summaryItems, summaryItems.length);
 
   const paymentItems = [
     { label: 'Nakit', value: formatCurrency(overallTotals.payments.cash) },
-    { label: 'K.K.', value: formatCurrency(overallTotals.payments.card) },
+    { label: 'K.Kartı', value: formatCurrency(overallTotals.payments.card) },
     { label: 'Puan', value: formatCurrency(overallTotals.payments.point) },
   ];
 
@@ -158,16 +153,16 @@ function generateUpcomingTicketsReport(data, output) {
     paymentItems.push({ label: 'Diğer', value: formatCurrency(overallTotals.payments.other) });
   }
 
-  drawSummarySections(paymentItems, Math.min(4, paymentItems.length));
+  drawSummarySections(paymentItems, paymentItems.length);
   doc.moveDown(0.5);
 
   const columns = [
-    { key: 'pnr', label: 'PNR', width: 65, align: 'left' },
+    { key: 'pnr', label: 'PNR', width: 65, align: 'center' },
     { key: 'departure', label: 'Kalkış', width: 110, align: 'center' },
-    { key: 'route', label: 'Güzergah', width: 190, align: 'left' },
+    { key: 'route', label: 'Güzergah', width: 190, align: 'center' },
     { key: 'seat', label: 'Koltuk', width: 40, align: 'center' },
     { key: 'payment', label: 'Ödeme', width: 50, align: 'center' },
-    { key: 'price', label: 'Tutar', width: 60, align: 'right' },
+    { key: 'price', label: 'Tutar', width: 60, align: 'center' },
   ];
 
   const formatColumnValue = (ticket, key) => {
@@ -205,6 +200,7 @@ function generateUpcomingTicketsReport(data, output) {
 
     doc.font('Bold').fontSize(8);
     columns.forEach((col) => {
+      doc.rect(x, headerY - 2, col.width, 16).stroke();
       doc.text(col.label, x, headerY, {
         width: col.width,
         align: col.align || 'left',
@@ -213,7 +209,7 @@ function generateUpcomingTicketsReport(data, output) {
     });
 
     doc.moveDown(0.3);
-    doc.moveTo(xStart, doc.y).lineTo(xStart + usableWidth, doc.y).stroke();
+    // doc.moveTo(xStart, doc.y).lineTo(xStart + usableWidth, doc.y).stroke();
     doc.moveDown(0.4);
     doc.font('Regular').fontSize(8);
   };
