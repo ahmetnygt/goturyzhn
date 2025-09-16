@@ -3389,8 +3389,8 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
                 type: categoryLabels[t.category] || t.category,
                 description: t.description || '',
                 document: documentParts.join(' '),
-                income: t.type === 'income' ? formatDailyCurrency(amount) : '',
-                expense: t.type === 'expense' ? formatDailyCurrency(amount) : '',
+                amount: t.type === 'income' ? formatDailyCurrency(amount) : "-" + formatDailyCurrency(amount),
+                incomeOrExpense: t.type === 'income' ? "Gelir" : 'Gider',
             };
         });
 
@@ -3415,16 +3415,14 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             { label: 'Nakit İade Tutarı', value: formatDailyCurrency(summaryTotals.cashRefundTotal) },
             { label: 'K.K. Satış Tutarı', value: formatDailyCurrency(summaryTotals.cardSalesTotal) },
             { label: 'K.K. İade Tutarı', value: formatDailyCurrency(summaryTotals.cardRefundTotal) },
-            { label: 'Sanal POS Satış Tutarı', value: formatDailyCurrency(summaryTotals.pointSalesTotal) },
-            { label: 'Sanal POS İade Tutarı', value: formatDailyCurrency(summaryTotals.pointRefundTotal) },
             { label: 'Toplam Satış Tutarı', value: formatDailyCurrency(totalSales) },
             { label: 'Toplam İade Tutarı', value: formatDailyCurrency(totalRefunds) },
             { label: 'Diğer Gelirler', value: formatDailyCurrency(summaryTotals.otherIncomeTotal) },
             { label: 'Diğer Giderler', value: formatDailyCurrency(summaryTotals.otherExpenseTotal) },
-            { label: 'Otobüslere Ödemeler', value: formatDailyCurrency(summaryTotals.payedToBusTotal) },
+            { label: 'Otobüs Ödemeleri', value: formatDailyCurrency(summaryTotals.payedToBusTotal) },
             { label: 'Transfer Alınan', value: formatDailyCurrency(summaryTotals.transferInTotal) },
             { label: 'Transfer Verilen', value: formatDailyCurrency(summaryTotals.transferOutTotal) },
-            { label: 'Başka Kull. Net Alınan', value: formatDailyCurrency(netTransfer) },
+            { label: 'Kullancılardan Alınan', value: formatDailyCurrency(netTransfer) },
         ];
 
         if (summaryTotals.registerResetTotal) {

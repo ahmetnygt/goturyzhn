@@ -2,7 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
-const SUMMARY_COLUMNS = 4;
+const SUMMARY_COLUMNS = 3;
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
@@ -61,22 +61,22 @@ function generateDailyUserAccountReport(data, output) {
   doc.font('Bold').fontSize(14).text(title, xStart, doc.y, { width: pageWidth, align: 'center' });
   doc.moveDown(0.5);
 
-  const metaLines = [];
-  if (query.user) metaLines.push(`Kullanıcı: ${query.user}`);
-  if (query.branch) metaLines.push(`Şube: ${query.branch}`);
-  if (query.startDate || query.endDate) {
-    metaLines.push(`Tarih Aralığı: ${(query.startDate || '-')}${query.endDate ? ` - ${query.endDate}` : ''}`);
-  }
-  if (query.generatedAt) metaLines.push(`Oluşturma: ${query.generatedAt}`);
+  // const metaLines = [];
+  // if (query.user) metaLines.push(`Kullanıcı: ${query.user}`);
+  // if (query.branch) metaLines.push(`Şube: ${query.branch}`);
+  // if (query.startDate || query.endDate) {
+  //   metaLines.push(`Tarih Aralığı: ${(query.startDate || '-')}${query.endDate ? ` - ${query.endDate}` : ''}`);
+  // }
+  // if (query.generatedAt) metaLines.push(`Oluşturma: ${query.generatedAt}`);
 
-  if (metaLines.length) {
-    doc.font('Regular').fontSize(9);
-    metaLines.forEach((line) => {
-      ensureVerticalSpace(12);
-      doc.text(line, xStart, doc.y, { width: pageWidth });
-    });
-    doc.moveDown(0.5);
-  }
+  // if (metaLines.length) {
+  //   doc.font('Regular').fontSize(9);
+  //   metaLines.forEach((line) => {
+  //     ensureVerticalSpace(12);
+  //     doc.text(line, xStart, doc.y, { width: pageWidth });
+  //   });
+  //   doc.moveDown(0.5);
+  // }
 
   const drawSummaryRow = (items) => {
     if (!items.length) return;
@@ -125,8 +125,8 @@ function generateDailyUserAccountReport(data, output) {
     { key: 'type', header: 'Hareket Tipi', width: 95 },
     { key: 'description', header: 'Açıklama', width: 160 },
     { key: 'document', header: 'Belge No', width: 90 },
-    { key: 'income', header: 'Gelir', width: 45, align: 'right' },
-    { key: 'expense', header: 'Gider', width: 45, align: 'right' },
+    { key: 'incomeOrExpense', header: 'Tür', width: 45, align: 'right' },
+    { key: 'amount', header: 'Miktar', width: 45, align: 'right' },
   ];
 
   const totalWidth = columns.reduce((acc, c) => acc + c.width, 0);
