@@ -59,7 +59,7 @@ block content
 
     .webTickets-report-popup.report-popup
         .gtr-header
-            span SATIŞLAR VE İADELER
+            span WEB BİLETLERİ
         .report-close
             i.fa-solid.fa-x
         .d-flex.flex-column.gap-3.p-3
@@ -90,6 +90,30 @@ block content
                 select.form-select.report-type
                     option(value="summary") Özet
                     option(value="detailed") Detaylı
+            .input-group
+                span.input-group-text Gruplama
+                select.form-select.report-group
+                    option(value="bus") Otobüs
+                    option(value="stop") Durak
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button OLUŞTUR
+
+    .dailyUserAccount-report-popup.report-popup
+        .gtr-header
+            span GÜNLÜK KULLANICI HESABI
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Başlangıç
+                input.form-control.report-start(type="text")
+            .input-group
+                span.input-group-text Bitiş
+                input.form-control.report-end(type="text")
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select.report-user
+                    option(value="") Seçiniz
             .d-flex.gap-3.justify-content-end
                 button.btn.btn-outline-primary.report-create-button OLUŞTUR
 

@@ -67,7 +67,7 @@ function generateWebTicketsReportByStopSummary(rows, query, output) {
   // reset position for title
   doc.y = doc.page.margins.top;
   doc.moveDown();
-  const title = 'Duraklara Göre Web Biletleri'.toLocaleUpperCase();
+  const title = 'Otobüslere Göre Web Biletleri'.toLocaleUpperCase();
   doc.font('Bold').fontSize(14);
 
   const textWidth = doc.widthOfString(title);

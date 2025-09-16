@@ -8,6 +8,14 @@
         if permissions.includes('REVERT_ACCOUNT_CUT')
             button.btn.btn-danger.btn-sm.account-cut-undo Hesap Kesildi
     .trip-helper-buttons
+        .trip-cargo.dropdown
+            .trip-cargo-button.dropdown-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false")
+                i.fa-solid.fa-box-open
+            ul.dropdown-menu
+                li
+                    a.dropdown-item.trip-option-staff(href="#") Kargo Ekle
+                li
+                    a.dropdown-item.trip-option-staff(href="#") Kargolar
         if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
             .trip-incomes
                 | ₺
