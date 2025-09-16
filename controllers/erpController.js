@@ -4137,14 +4137,12 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
 
         const tripMap = new Map(trips.map(trip => [toKey(trip.id), trip]));
         const routeStopsByRoute = new Map();
-        const routeStopMap = new Map();
         routeStops.forEach(rs => {
             const routeKey = toKey(rs.routeId);
             if (!routeStopsByRoute.has(routeKey)) {
                 routeStopsByRoute.set(routeKey, []);
             }
             routeStopsByRoute.get(routeKey).push(rs);
-            routeStopMap.set(toKey(rs.id), rs);
         });
 
         const stopMap = new Map(stops.map(stop => [toKey(stop.id), stop.title]));
@@ -4207,26 +4205,23 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
             if (!routeList || !routeList.length) return;
 
             let cumulativeSeconds = 0;
-            let matchedStop = false;
+            let fromRouteStop = null;
             for (const rs of routeList) {
                 cumulativeSeconds += parseDurationToSeconds(rs.duration);
-                if (toKey(rs.id) === toKey(ticket.fromRouteStopId)) {
-                    matchedStop = true;
+                if (toKey(rs.stopId) === toKey(ticket.fromRouteStopId)) {
+                    fromRouteStop = rs;
                     break;
                 }
             }
-            if (!matchedStop) return;
+            if (!fromRouteStop) return;
 
             const departure = new Date(baseDate.getTime() + cumulativeSeconds * 1000);
             if (!(departure > now)) {
                 return;
             }
 
-            const fromRouteStop = routeStopMap.get(toKey(ticket.fromRouteStopId));
-            const toRouteStop = ticket.toRouteStopId ? routeStopMap.get(toKey(ticket.toRouteStopId)) : null;
-
-            const fromStopTitle = fromRouteStop ? (stopMap.get(toKey(fromRouteStop.stopId)) || "-") : "-";
-            const toStopTitle = toRouteStop ? (stopMap.get(toKey(toRouteStop.stopId)) || "") : "";
+            const fromStopTitle = stopMap.get(toKey(ticket.fromRouteStopId)) || "-";
+            const toStopTitle = ticket.toRouteStopId ? (stopMap.get(toKey(ticket.toRouteStopId)) || "") : "";
 
             const user = ticket.userId ? userMap.get(toKey(ticket.userId)) : null;
             const branch = user?.branchId ? branchMap.get(toKey(user.branchId)) : null;
