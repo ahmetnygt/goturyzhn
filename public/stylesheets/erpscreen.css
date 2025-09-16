@@ -1344,6 +1344,20 @@ div.ticket-cancel-refund-open-close {
     right: .75rem;
 }
 
+.trip-cargo {
+    width: 1.5rem;
+    border-radius: 4px;
+    background-color: rgb(231, 171, 3);
+    color: white;
+    cursor: -webkit-zoom-in;
+    height: 1.5rem;
+    text-align: center;
+}
+
+.trip-cargo-button.dropdown-toggle::after {
+    display: none !important;
+}
+
 .trip-documents-button {
     width: 1.5rem;
     border-radius: 4px;
