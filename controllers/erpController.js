@@ -952,6 +952,88 @@ exports.postAddCargo = async (req, res, next) => {
     }
 };
 
+exports.getTripCargoList = async (req, res, next) => {
+    try {
+        const tripId = Number(req.query.tripId);
+
+        if (!tripId) {
+            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+        }
+
+        const cargos = await Cargo.findAll({
+            where: { tripId },
+            order: [["createdAt", "DESC"]],
+            raw: true
+        });
+
+        if (!cargos.length) {
+            return res.render("mixins/tripCargoList", { cargos: [] });
+        }
+
+        const stopIdSet = new Set();
+        cargos.forEach(cargo => {
+            const fromId = Number(cargo.fromStopId);
+            if (!Number.isNaN(fromId)) {
+                stopIdSet.add(fromId);
+            }
+            const toId = Number(cargo.toStopId);
+            if (!Number.isNaN(toId)) {
+                stopIdSet.add(toId);
+            }
+        });
+
+        const stopMap = {};
+        const stopIds = Array.from(stopIdSet);
+        if (stopIds.length) {
+            const stops = await Stop.findAll({
+                where: { id: { [Op.in]: stopIds } },
+                raw: true
+            });
+
+            stops.forEach(stop => {
+                stopMap[String(stop.id)] = stop.title;
+            });
+        }
+
+        const formatAmount = amount => {
+            const num = Number(amount);
+            if (Number.isNaN(num)) {
+                return amount ? String(amount) : "";
+            }
+            return num.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        const formatted = cargos.map(cargo => {
+            const priceNum = Number(cargo.price);
+            const priceValue = Number.isNaN(priceNum) ? cargo.price : priceNum;
+
+            const fromKey = cargo.fromStopId !== undefined && cargo.fromStopId !== null
+                ? String(cargo.fromStopId)
+                : "";
+            const toKey = cargo.toStopId !== undefined && cargo.toStopId !== null
+                ? String(cargo.toStopId)
+                : "";
+
+            return {
+                ...cargo,
+                description: cargo.description || "",
+                senderName: cargo.senderName || "",
+                senderPhone: cargo.senderPhone || "",
+                fromTitle: fromKey ? (stopMap[fromKey] || "") : "",
+                toTitle: toKey ? (stopMap[toKey] || "") : "",
+                price: priceValue,
+                priceFormatted: formatAmount(cargo.price),
+                paymentLabel: cargo.payment === "card" ? "Kart" : "Nakit"
+            };
+        });
+
+        res.render("mixins/tripCargoList", { cargos: formatted });
+    } catch (err) {
+        console.error("getTripCargoList error:", err);
+        res.status(500).json({ message: "Kargo listesi alınamadı." });
+    }
+};
+
 exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time

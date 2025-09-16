@@ -26,6 +26,7 @@ let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
 let tripCargoStops = [];
+const tripCargoListLoadingHtml = '<p class="text-center text-muted m-0 trip-cargo-list-placeholder">Kargolar yükleniyor...</p>';
 
 function updateClock() {
     const now = new Date();
@@ -274,6 +275,12 @@ function populateTripCargoStops(stops, defaults = {}) {
 function closeTripCargoPopup() {
     resetTripCargoForm();
     $(".trip-cargo-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
+}
+
+function closeTripCargoListPopup() {
+    $(".trip-cargo-list-nodes").html(tripCargoListLoadingHtml);
+    $(".trip-cargo-list-pop-up").css("display", "none");
     $(".blackout").css("display", "none");
 }
 
@@ -871,6 +878,28 @@ async function loadTrip(date, time, tripId) {
                     $(".blackout").css("display", "block");
                 } catch (err) {
                     console.log(err);
+                }
+            });
+
+            $(document).off("click", ".trip-cargo-list");
+            $(document).on("click", ".trip-cargo-list", async function (e) {
+                e.preventDefault();
+                if (!currentTripId) {
+                    showError("Sefer bilgisi bulunamadı.");
+                    return;
+                }
+
+                $(".trip-cargo-list-nodes").html(tripCargoListLoadingHtml);
+                $(".trip-cargo-list-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+
+                try {
+                    const html = await $.get("/erp/get-trip-cargo-list", { tripId: currentTripId });
+                    $(".trip-cargo-list-nodes").html(html);
+                } catch (err) {
+                    console.log(err);
+                    showError("Kargo listesi alınamadı.");
+                    $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Kargo listesi alınamadı.</p>');
                 }
             });
 
@@ -2398,6 +2427,11 @@ $(".trip-staff-close").on("click", e => {
 $(".trip-cargo-close").on("click", e => {
     e.preventDefault();
     closeTripCargoPopup();
+});
+
+$(".trip-cargo-list-close").on("click", e => {
+    e.preventDefault();
+    closeTripCargoListPopup();
 });
 
 $(".trip-cargo-save").on("click", async e => {
