@@ -1,45 +1,44 @@
-const Sequelize = require("sequelize");
-const sequelize = require("../utilities/database");
+const { DataTypes } = require("sequelize");
 
-const Payment = sequelize.define("payment", {
+module.exports = (sequelize) => {
+  return sequelize.define("payment", {
     id: {
-        type: Sequelize.BIGINT,
-        autoIncrement: true,
-        primaryKey: true
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
     },
     initiatorId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     payerId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     receiverId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: false
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
     },
     cash_amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: true
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
     },
     card_amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: true
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
     },
     status: {
-        type: Sequelize.ENUM("pending", "approved", "rejected"),
-        defaultValue: "pending",
-        allowNull: false
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      defaultValue: "pending",
+      allowNull: false,
     },
-    isWholeTransfer:{
-        type: Sequelize.BOOLEAN,
-        allowNull: false
-    }
-});
-
-module.exports = Payment;
+    isWholeTransfer: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+    },
+  });
+};

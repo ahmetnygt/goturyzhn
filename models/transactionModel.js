@@ -1,46 +1,45 @@
-const Sequelize = require("sequelize");
-const sequelize = require("../utilities/database");
+const { DataTypes } = require("sequelize");
 
-const Transaction = sequelize.define("transaction", {
+module.exports = (sequelize) => {
+  return sequelize.define("transaction", {
     id: {
-        type: Sequelize.BIGINT,
-        autoIncrement: true,
-        primaryKey: true
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
     },
     userId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     type: {
-        type: Sequelize.ENUM("income", "expense"),
-        allowNull: false
+      type: DataTypes.ENUM("income", "expense"),
+      allowNull: false,
     },
     category: {
-        type: Sequelize.ENUM(
-            "point_sale",
-            "cash_sale",
-            "card_sale",
-            "cash_refund",
-            "card_refund",
-            "payed_to_bus",
-            "income",
-            "expense",
-            "transfer_in",
-            "transfer_out",
-            "register_reset"
-        ),
-        allowNull: false
+      type: DataTypes.ENUM(
+        "point_sale",
+        "cash_sale",
+        "card_sale",
+        "cash_refund",
+        "card_refund",
+        "payed_to_bus",
+        "income",
+        "expense",
+        "transfer_in",
+        "transfer_out",
+        "register_reset"
+      ),
+      allowNull: false,
     },
     amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: false
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
     },
     description: {
-        type: Sequelize.STRING(255)
+      type: DataTypes.STRING(255),
     },
     ticketId: {
-        type: Sequelize.BIGINT
-    }
-});
-
-module.exports = Transaction;
+      type: DataTypes.BIGINT,
+    },
+  });
+};

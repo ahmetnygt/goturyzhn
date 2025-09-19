@@ -1,27 +1,23 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-const FirmUser = require("./firmUserModel");
-const Permission = require("./permissionModel");
-
-const FirmUserPermission = sequelize.define("firmuserpermission", {
+module.exports = (sequelize) => {
+  return sequelize.define("firmuserpermission", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     firmUserId: {
-        type: Sequelize.BIGINT,
-        allowNull: false,
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     permissionId: {
-        type: Sequelize.BIGINT,
-        allowNull: false,
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     allow: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
     },
-});
-
-module.exports = FirmUserPermission;
+  });
+};
