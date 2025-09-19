@@ -1,35 +1,33 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Branch = sequelize.define("branch", {
+module.exports = (sequelize) => {
+  return sequelize.define("branch", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     title: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     stopId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: 1
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 1,
     },
     isMainBranch: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0,
     },
     mainBranchId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
-    }
-});
-
-module.exports = Branch;
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+  });
+};

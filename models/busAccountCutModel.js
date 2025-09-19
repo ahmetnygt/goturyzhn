@@ -1,65 +1,63 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const BusAccountCut = sequelize.define("busaccountcut", {
+module.exports = (sequelize) => {
+  return sequelize.define("busaccountcut", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     tripId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     stopId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     comissionPercent: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     comissionAmount: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     deduction1: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     deduction2: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     deduction3: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     deduction4: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     deduction5: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     tip: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     description: {
-        type: Sequelize.TEXT,
-        allowNull: true
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     needToPayAmount: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
     payedAmount: {
-        type: Sequelize.DECIMAL,
-        allowNull: false
+      type: DataTypes.DECIMAL,
+      allowNull: false,
     },
-});
-
-module.exports = BusAccountCut;
+  });
+};

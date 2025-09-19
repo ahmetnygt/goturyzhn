@@ -1,31 +1,29 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const CashRegister = sequelize.define("cashRegister", {
+module.exports = (sequelize) => {
+  return sequelize.define("cashRegister", {
     id: {
-        type: Sequelize.BIGINT,
-        autoIncrement: true,
-        primaryKey: true
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
     },
     userId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     cash_balance: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
     },
     card_balance: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
     },
     reset_date_time: {
-        type: Sequelize.DATE,
-        allowNull: true,
-    }
-});
-
-module.exports = CashRegister;
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  });
+};

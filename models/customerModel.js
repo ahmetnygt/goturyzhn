@@ -1,69 +1,67 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Customer = sequelize.define("customer", {
+module.exports = (sequelize) => {
+  return sequelize.define("customer", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     idNumber: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     name: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     surname: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     phoneNumber: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     gender: {
-        type: Sequelize.ENUM("m", "f"),
-        allowNull: false
+      type: DataTypes.ENUM("m", "f"),
+      allowNull: false,
     },
     nationality: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     customerType: {
-        type: Sequelize.ENUM("adult", "child", "student", "disabled", "retired"),
-        allowNull: false
+      type: DataTypes.ENUM("adult", "child", "student", "disabled", "retired"),
+      allowNull: false,
     },
     customerCategory: {
-        type: Sequelize.ENUM("normal", "member"),
-        allowNull: false
+      type: DataTypes.ENUM("normal", "member"),
+      allowNull: false,
     },
     pointOrPercent: {
-        type: Sequelize.ENUM("point", "percent"),
+      type: DataTypes.ENUM("point", "percent"),
     },
     point_amount: {
-        type: Sequelize.BIGINT,
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
     percent: {
-        type: Sequelize.BIGINT,
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
     isBlackList: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     blackListDescription: {
-        type: Sequelize.STRING,
-        allowNull: true,
+      type: DataTypes.STRING,
+      allowNull: true,
     },
-});
-
-module.exports = Customer;
+  });
+};
 
 

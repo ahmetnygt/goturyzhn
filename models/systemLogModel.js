@@ -1,44 +1,43 @@
-const Sequelize = require("sequelize");
-const sequelize = require("../utilities/database");
+const { DataTypes } = require("sequelize");
 
-const SystemLog = sequelize.define("systemLog", {
+module.exports = (sequelize) => {
+  return sequelize.define("systemLog", {
     id: {
-        type: Sequelize.BIGINT,
-        autoIncrement: true,
-        primaryKey: true
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
     },
     userId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     branchId: {
-        type: Sequelize.BIGINT,   // hangi yazıhanede oldu
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     module: {
-        type: Sequelize.ENUM("transaction", "ticket", "auth", "report", "user"),
-        allowNull: false
+      type: DataTypes.ENUM("transaction", "ticket", "auth", "report", "user"),
+      allowNull: false,
     },
     action: {
-        type: Sequelize.STRING(50),  // örn: "create", "update", "delete", "refund"
-        allowNull: false
+      type: DataTypes.STRING(50),
+      allowNull: false,
     },
     referenceId: {
-        type: Sequelize.BIGINT,   // ilgili kaydın ID’si (örn. ticketId, cashTransactionId)
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     oldData: {
-        type: Sequelize.JSON,     // işlem öncesi data (update için)
-        allowNull: true
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     newData: {
-        type: Sequelize.JSON,     // işlem sonrası data
-        allowNull: true
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     description: {
-        type: Sequelize.STRING(255), // açıklama
-        allowNull: true
-    }
-});
-
-module.exports = SystemLog;
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+  });
+};
