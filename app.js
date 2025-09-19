@@ -10,7 +10,7 @@ var erpRouter = require("./routes/erp");
 
 const goturDB = require("./utilities/goturDb"); // ortak kullanıcı & session DB
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
-const tenantMiddleware = require("./middleware/tenantMiddleware");
+const tenantMiddleware = require("./middlewares/tenantMiddleware");
 
 var store = new SequelizeStore({
   db: goturDB, // sessionlar "gotur" DB’de tutulacak

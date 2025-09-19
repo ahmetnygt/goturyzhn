@@ -7,10 +7,6 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    firmId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
     branchId: {
       type: DataTypes.BIGINT,
       allowNull: false,

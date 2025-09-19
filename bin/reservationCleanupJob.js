@@ -36,10 +36,10 @@ async function cancelExpiredReservations() {
 
     // İşlemleri atomik yapmak için transaction
     await sequelize.transaction(async (tx) => {
-      // 1) reservation → cancelled
+      // 1) reservation → canceled
       if (reservationIds.length) {
         await Ticket.update(
-          { status: 'canceled' },      // NOT: Modeliniz "canceled" kullanıyorsa burayı ona göre değiştirin.
+          { status: 'canceled' }, // modelde 'canceled' kullanıyoruz
           { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
         );
 
@@ -50,8 +50,8 @@ async function cancelExpiredReservations() {
             module: 'ticket',
             action: 'auto_cancel',
             referenceId: id,
-            newData: { status: 'cancelled' },
-            description: 'Reservation automatically cancelled by scheduler'
+            newData: { status: 'canceled' }, // log da aynı
+            description: 'Reservation automatically canceled by scheduler'
           })),
           { transaction: tx }
         );
@@ -80,7 +80,7 @@ async function cancelExpiredReservations() {
     });
 
     if (reservationIds.length) {
-      console.log(`[Scheduler] Reservations cancelled: ${reservationIds.join(', ')}`);
+      console.log(`[Scheduler] Reservations canceled: ${reservationIds.join(', ')}`);
     }
     if (pendingIds.length) {
       console.log(`[Scheduler] Pending tickets deleted: ${pendingIds.join(', ')}`);
