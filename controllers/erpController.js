@@ -1209,6 +1209,22 @@ exports.postErpLogin = async (req, res, next) => {
     }
 };
 
+exports.postErpLogout = (req, res, next) => {
+    if (!req.session) {
+        return res.redirect("/login");
+    }
+
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Oturum kapatma sırasında hata oluştu:", err);
+            return next(err);
+        }
+
+        res.clearCookie("connect.sid");
+        res.redirect("/login");
+    });
+};
+
 exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
 
 exports.getTicketRow = async (req, res, next) => {
