@@ -29,17 +29,25 @@ let tripCargoStops = [];
 const tripCargoListLoadingHtml = '<p class="text-center text-muted m-0 trip-cargo-list-placeholder">Kargolar yükleniyor...</p>';
 
 function updateClock() {
+    const clockElement = document.getElementById('clock');
+    if (!clockElement) {
+        return false;
+    }
+
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
-    document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+    clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+    return true;
 }
 
 // İlk yüklemede çalıştır
-updateClock();
+const hasClock = updateClock();
 // Her saniyede bir güncelle
-setInterval(updateClock, 1000);
+if (hasClock) {
+    setInterval(updateClock, 1000);
+}
 
 let loadingCount = 0;
 const showLoading = () => {
