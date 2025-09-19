@@ -2,33 +2,6 @@ var express = require('express');
 var router = express.Router();
 const bcrypt = require("bcrypt")
 const { Op } = require('sequelize');
-const BusModel = require("../models/busModelModel")
-const Bus = require("../models/busModel")
-const Staff = require("../models/staffModel")
-const Place = require("../models/placeModel")
-const Route = require("../models/routeModel")
-const RouteStop = require("../models/routeStopModel");
-const RouteStopRestriction = require("../models/routeStopRestrictionModel");
-const Stop = require("../models/stopModel")
-const Trip = require('../models/tripModel');
-const Ticket = require('../models/ticketModel');
-const Cargo = require("../models/cargoModel");
-const Customer = require('../models/customerModel');
-const TicketGroup = require('../models/ticketGroupModel');
-const TripNote = require("../models/tripNoteModel")
-const Firm = require("../models/firmModel")
-const FirmUser = require("../models/firmUserModel")
-const Branch = require("../models/branchModel")
-const CashRegister = require("../models/cashRegisterModel")
-const Transaction = require("../models/transactionModel")
-const Payment = require("../models/paymentModel")
-const SystemLog = require("../models/systemLogModel")
-const Price = require("../models/priceModel")
-const FirmUserPermission = require("../models/firmUserPermissionModel")
-const Permission = require("../models/permissionModel")
-const BusAccountCut = require("../models/busAccountCutModel")
-const Announcement = require("../models/announcementModel")
-const AnnouncementUser = require("../models/announcementUserModel");
 const { generateAccountReceiptFromDb } = require('../utilities/reports/accountCutRecipe');
 const generateSalesRefundReportDetailed = require('../utilities/reports/salesRefundReportDetailed');
 const generateSalesRefundReportSummary = require('../utilities/reports/salesRefundReportSummary');
@@ -39,7 +12,7 @@ const generateWebTicketsReportByStopSummary = require('../utilities/reports/webT
 const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTicketsReport");
 
-async function generatePNR(fromId, toId, stops) {
+async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
     const turkishMap = { "Ç": "C", "Ş": "S", "İ": "I", "Ğ": "G", "Ü": "U", "Ö": "O", "ç": "C", "ş": "S", "ı": "I", "ğ": "G", "ü": "U", "ö": "O" };
@@ -60,7 +33,7 @@ async function generatePNR(fromId, toId, stops) {
     while (exists) {
         const rand = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 karakter
         pnr = `${fromCode}${toCode}${rand}`;
-        exists = await Ticket.findOne({ where: { pnr } }); // Sequelize'de sorgu
+        exists = await models.Ticket.findOne({ where: { pnr } }); // Sequelize'de sorgu
     }
 
     return pnr;
@@ -87,8 +60,8 @@ function convertEmptyFieldsToNull(obj) {
     return result;
 }
 
-async function calculateBusAccountData(tripId, stopId, user) {
-    const tickets = await Ticket.findAll({
+async function calculateBusAccountData(models, tripId, stopId, user) {
+    const tickets = await models.Ticket.findAll({
         where: {
             tripId,
             fromRouteStopId: stopId,
@@ -98,7 +71,7 @@ async function calculateBusAccountData(tripId, stopId, user) {
     });
 
     const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
-    const users = await FirmUser.findAll({
+    const users = await models.FirmUser.findAll({
         where: { id: { [Op.in]: userIds } },
         raw: true
     });
@@ -192,14 +165,14 @@ exports.getDayTripsList = async (req, res, next) => {
             return res.status(400).json({ error: "Geçersiz tarih formatı." });
         }
 
-        const routeStopsByPlace = await RouteStop.findAll({ where: { stopId: stopId } })
+        const routeStopsByPlace = await req.models.RouteStop.findAll({ where: { stopId: stopId } })
         const routeIds = [...new Set(routeStopsByPlace.map(s => s.routeId))];
 
         const isPastPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
         const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
-        const trips = await Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
+        const trips = await req.models.Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
-        const fromStop = await Stop.findOne({ where: { id: stopId } })
+        const fromStop = await req.models.Stop.findOne({ where: { id: stopId } })
 
         var newTrips = []
         for (let i = 0; i < trips.length; i++) {
@@ -222,7 +195,7 @@ exports.getDayTripsList = async (req, res, next) => {
 
             t.modifiedTime = t.time
 
-            const routeStops = await RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
+            const routeStops = await req.models.RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
             const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
             if (routeStopOrder !== routeStops.length - 1) {
@@ -263,16 +236,16 @@ exports.getTrip = async (req, res, next) => {
     const tripId = req.query.tripId
     const stopId = req.query.stopId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
 
     if (trip) {
-        const captain = await Staff.findOne({ where: { id: trip.captainId, duty: "driver" } })
-        const route = await Route.findOne({ where: { id: trip.routeId } })
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
-        const busModel = await BusModel.findOne({ where: { id: trip.busModelId } })
+        const captain = await req.models.Staff.findOne({ where: { id: trip.captainId, duty: "driver" } })
+        const route = await req.models.Route.findOne({ where: { id: trip.routeId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const busModel = await req.models.BusModel.findOne({ where: { id: trip.busModelId } })
         const seatTypes = getSeatTypes(busModel.planBinary)
-        const accountCut = await BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
+        const accountCut = await req.models.BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
@@ -297,9 +270,9 @@ exports.getTrip = async (req, res, next) => {
         trip.dateString = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate);
         trip.timeString = `${hours}.${minutes}`
 
-        const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
-        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
-        const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+        const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
+        const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
+        const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
 
         const routeStopOrderMap = routeStops.reduce((acc, rs) => {
             acc[rs.stopId] = rs.order;
@@ -405,18 +378,18 @@ exports.getTripStops = async (req, res, next) => {
             return res.status(400).json({ message: "Sefer bilgisi eksik." });
         }
 
-        const trip = await Trip.findOne({ where: { id: tripId } });
+        const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
-        const routeStops = await RouteStop.findAll({
+        const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]]
         });
 
         const stopIds = [...new Set(routeStops.map(rs => rs.stopId))];
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
         const stopMap = new Map(stops.map(stop => [stop.id, stop.title]));
 
         const result = routeStops.map(rs => ({
@@ -437,13 +410,13 @@ exports.getTripTable = async (req, res, next) => {
     const tripTime = req.query.time
     const currentStopId = req.query.stopId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-    const tickets = await Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ["pending"] } }, order: [["seatNo", "ASC"]] })
-    const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
-    const branches = await Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+    const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ["pending"] } }, order: [["seatNo", "ASC"]] })
+    const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
+    const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
 
     const userMap = users.reduce((acc, u) => { acc[u.id] = u; return acc }, {})
     const branchMap = branches.reduce((acc, b) => { acc[b.id] = b; return acc }, {})
@@ -478,9 +451,9 @@ exports.getTripTable = async (req, res, next) => {
 exports.getTripNotes = async (req, res, next) => {
     const tripId = req.query.tripId
 
-    const notes = await TripNote.findAll({ where: { tripId: tripId, isActive: true } })
+    const notes = await req.models.TripNote.findAll({ where: { tripId: tripId, isActive: true } })
 
-    const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(notes.map(n => n.userId))] } } })
+    const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(notes.map(n => n.userId))] } } })
 
     for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
@@ -500,7 +473,7 @@ exports.postTripNote = async (req, res, next) => {
         const tripId = req.body.tripId;
         const noteText = req.body.text;
 
-        const trip = await Trip.findOne({
+        const trip = await req.models.Trip.findOne({
             where: { id: tripId, date: tripDate, time: tripTime }
         });
 
@@ -508,7 +481,7 @@ exports.postTripNote = async (req, res, next) => {
             return res.status(404).json({ message: "Trip not found" });
         }
 
-        await TripNote.create({
+        await req.models.TripNote.create({
             tripId: tripId,
             noteText: noteText,
             userId: req.session.user.id
@@ -527,7 +500,7 @@ exports.getBusAccountCutData = async (req, res, next) => {
         const BUS_COMISSION_PERCENT = 20
 
         const { tripId, stopId } = req.query;
-        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
         const needToPay = data.allTotal - comissionAmount;
         res.json({
@@ -556,16 +529,16 @@ exports.postBusAccountCut = async (req, res, next) => {
         const payedAmount = parse(req.body.payedAmount);
         const description = req.body.description || "";
 
-        const trip = await Trip.findOne({ where: { id: tripId } })
-        const bus = await Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const trip = await req.models.Trip.findOne({ where: { id: tripId } })
+        const bus = await req.models.Bus.findOne({ where: { id: trip.busId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
         const needToPay = data.allTotal - comissionAmount - d1 - d2 - d3 - d4 - d5 - tip;
 
-        await BusAccountCut.create({
+        await req.models.BusAccountCut.create({
             tripId,
             stopId,
             comissionPercent: BUS_COMISSION_PERCENT,
@@ -581,7 +554,7 @@ exports.postBusAccountCut = async (req, res, next) => {
             payedAmount
         });
 
-        await Transaction.create({
+        await req.models.Transaction.create({
             userId: req.session.user.id,
             type: "expense",
             category: "payed_to_bus",
@@ -589,7 +562,7 @@ exports.postBusAccountCut = async (req, res, next) => {
             description: `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (register) {
             register.cash_balance = (register.cash_balance || 0) - (payedAmount || 0);
             await register.save();
@@ -605,9 +578,9 @@ exports.postBusAccountCut = async (req, res, next) => {
 exports.getBusAccountCutRecord = async (req, res, next) => {
     try {
         const { tripId, stopId } = req.query;
-        const record = await BusAccountCut.findOne({ where: { tripId, stopId } });
+        const record = await req.models.BusAccountCut.findOne({ where: { tripId, stopId } });
         if (!record) return res.status(404).json({ message: "Hesap bulunamadı." });
-        const data = await calculateBusAccountData(tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
         res.json({
             id: record.id,
             myCash: data.myCash,
@@ -635,14 +608,14 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
 exports.postDeleteBusAccountCut = async (req, res, next) => {
     try {
         const { id } = req.body;
-        const accountCut = await BusAccountCut.findOne({ where: { id } });
+        const accountCut = await req.models.BusAccountCut.findOne({ where: { id } });
 
-        const trip = await Trip.findOne({ where: { id: accountCut.tripId } })
-        const bus = await Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId } })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const trip = await req.models.Trip.findOne({ where: { id: accountCut.tripId } })
+        const bus = await req.models.Bus.findOne({ where: { id: trip.busId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-        await Transaction.create({
+        await req.models.Transaction.create({
             userId: req.session.user.id,
             type: "income",
             category: "payed_to_bus",
@@ -650,7 +623,7 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
             description: `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == accountCut.stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (register) {
             register.cash_balance = (register.cash_balance || 0) + (accountCut.payedAmount || 0);
             await register.save();
@@ -680,7 +653,7 @@ exports.postEditTripNote = async (req, res, next) => {
         const noteId = req.body.id;
         const noteText = req.body.text;
 
-        const note = await TripNote.findOne({ where: { id: noteId } });
+        const note = await req.models.TripNote.findOne({ where: { id: noteId } });
 
         if (!note) {
             return res.status(404).json({ message: "Note not found" });
@@ -703,7 +676,7 @@ exports.postDeleteTripNote = async (req, res, next) => {
     try {
         const noteId = req.body.id;
 
-        const note = await TripNote.findOne({ where: { id: noteId } });
+        const note = await req.models.TripNote.findOne({ where: { id: noteId } });
 
         if (!note) {
             return res.status(404).json({ message: "Note not found" });
@@ -726,9 +699,9 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
     const time = req.query.time
     const tripId = req.query.tripId
 
-    const trip = await Trip.findOne({ where: { id: tripId, date: date, time: time } })
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const trip = await req.models.Trip.findOne({ where: { id: tripId, date: date, time: time } })
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
@@ -754,17 +727,17 @@ exports.getTripStopRestriction = async (req, res, next) => {
             return res.status(400).json({ error: "Trip ID required" });
         }
 
-        const trip = await Trip.findByPk(tripId);
+        const trip = await req.models.Trip.findByPk(tripId);
         if (!trip) {
             return res.status(404).send("Trip not found");
         }
 
-        const routeStops = await RouteStop.findAll({
+        const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]]
         });
         const stopIds = routeStops.map(rs => rs.stopId);
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
         const stopMap = new Map(stops.map(s => [s.id, s.title]));
 
         const rsData = routeStops.map(rs => ({
@@ -773,7 +746,7 @@ exports.getTripStopRestriction = async (req, res, next) => {
             title: stopMap.get(rs.stopId) || ""
         }));
 
-        const restrictions = await RouteStopRestriction.findAll({ where: { tripId } });
+        const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId } });
         res.render("mixins/tripStopRestriction", { routeStops: rsData, restrictions });
     } catch (err) {
         console.log(err);
@@ -787,14 +760,14 @@ exports.postTripStopRestriction = async (req, res, next) => {
 
         const allowed = isAllowed === true || isAllowed === 'true' || isAllowed === 1 || isAllowed === '1';
 
-        const restiction = await RouteStopRestriction.findOne({
+        const restiction = await req.models.RouteStopRestriction.findOne({
             where: { tripId, fromRouteStopId: fromId, toRouteStopId: toId }
         });
 
         if (restiction) {
             await restiction.update({ isAllowed: allowed });
         } else {
-            await RouteStopRestriction.create({
+            await req.models.RouteStopRestriction.create({
                 tripId,
                 fromRouteStopId: fromId,
                 toRouteStopId: toId,
@@ -813,7 +786,7 @@ exports.getTripRevenues = async (req, res, next) => {
     try {
         const { tripId, stopId } = req.query;
 
-        const tickets = await Ticket.findAll({
+        const tickets = await req.models.Ticket.findAll({
             where: {
                 tripId,
                 status: { [Op.in]: ["completed", "reservation", "web"] }
@@ -822,9 +795,9 @@ exports.getTripRevenues = async (req, res, next) => {
         });
 
         const userIds = [...new Set(tickets.map(t => t.userId).filter(id => id))];
-        const users = await FirmUser.findAll({ where: { id: userIds }, raw: true });
+        const users = await req.models.FirmUser.findAll({ where: { id: userIds }, raw: true });
         const branchIds = [...new Set(users.map(u => u.branchId).filter(id => id))];
-        const branches = await Branch.findAll({ where: { id: { [Op.in]: branchIds } }, raw: true });
+        const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: branchIds } }, raw: true });
 
         const userBranch = {};
         users.forEach(u => userBranch[u.id] = u.branchId);
@@ -907,12 +880,12 @@ exports.postAddCargo = async (req, res, next) => {
             return res.status(400).json({ message: "Geçerli bir ücret giriniz." });
         }
 
-        const trip = await Trip.findOne({ where: { id: tripId } });
+        const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
-        const cargo = await Cargo.create({
+        const cargo = await req.models.Cargo.create({
             userId: req.session.user.id,
             tripId,
             fromStopId,
@@ -925,11 +898,11 @@ exports.postAddCargo = async (req, res, next) => {
             price
         });
 
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [fromStopId, toStopId] } } });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [fromStopId, toStopId] } } });
         const fromStop = stops.find(s => s.id == fromStopId);
         const toStop = stops.find(s => s.id == toStopId);
 
-        await Transaction.create({
+        await req.models.Transaction.create({
             userId: req.session.user.id,
             type: "income",
             category: payment === "cash" ? "cash_sale" : "card_sale",
@@ -937,7 +910,7 @@ exports.postAddCargo = async (req, res, next) => {
             description: `Kargo | ${trip.date} ${trip.time} | ${(fromStop ? fromStop.title : "")} - ${(toStop ? toStop.title : "")}`
         });
 
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (register) {
             if (payment === "cash") {
                 register.cash_balance = Number(register.cash_balance) + price;
@@ -966,7 +939,7 @@ exports.postRefundCargo = async (req, res, next) => {
             return res.status(401).json({ message: "Oturum bilgisi bulunamadı." });
         }
 
-        const cargo = await Cargo.findOne({ where: { id: cargoId } });
+        const cargo = await req.models.Cargo.findOne({ where: { id: cargoId } });
         if (!cargo) {
             return res.status(404).json({ message: "Kargo kaydı bulunamadı." });
         }
@@ -978,7 +951,7 @@ exports.postRefundCargo = async (req, res, next) => {
         let routeInfo = "";
 
         if (cargo.tripId) {
-            const trip = await Trip.findOne({ where: { id: cargo.tripId }, raw: true });
+            const trip = await req.models.Trip.findOne({ where: { id: cargo.tripId }, raw: true });
             if (trip) {
                 const tripParts = [trip.date || "", trip.time || ""].map(part => (part || "").toString().trim()).filter(Boolean);
                 if (tripParts.length) {
@@ -994,7 +967,7 @@ exports.postRefundCargo = async (req, res, next) => {
         const uniqueStopIds = [...new Set(stopIds)];
 
         if (uniqueStopIds.length) {
-            const stops = await Stop.findAll({
+            const stops = await req.models.Stop.findAll({
                 where: { id: { [Op.in]: uniqueStopIds } },
                 raw: true
             });
@@ -1012,7 +985,7 @@ exports.postRefundCargo = async (req, res, next) => {
         if (routeInfo) descriptionParts.push(routeInfo);
         const description = descriptionParts.join(" | ");
 
-        await Transaction.create({
+        await req.models.Transaction.create({
             userId: req.session.user.id,
             type: "expense",
             category: cargo.payment === "card" ? "card_refund" : "cash_refund",
@@ -1020,7 +993,7 @@ exports.postRefundCargo = async (req, res, next) => {
             description
         });
 
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (register && amount > 0) {
             if (cargo.payment === "cash") {
                 register.cash_balance = Number(register.cash_balance) - amount;
@@ -1047,7 +1020,7 @@ exports.getTripCargoList = async (req, res, next) => {
             return res.status(400).json({ message: "Sefer bilgisi eksik." });
         }
 
-        const cargos = await Cargo.findAll({
+        const cargos = await req.models.Cargo.findAll({
             where: { tripId },
             order: [["createdAt", "DESC"]],
             raw: true
@@ -1072,7 +1045,7 @@ exports.getTripCargoList = async (req, res, next) => {
         const stopMap = {};
         const stopIds = Array.from(stopIdSet);
         if (stopIds.length) {
-            const stops = await Stop.findAll({
+            const stops = await req.models.Stop.findAll({
                 where: { id: { [Op.in]: stopIds } },
                 raw: true
             });
@@ -1127,17 +1100,17 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripId = req.query.tripId
     const stopId = req.query.stopId
 
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
-    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } })
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
+    const branch = await req.models.Branch.findOne({ where: { id: req.session.user.branchId } })
 
     const isOwnBranchStop = (stopId == branch.stopId).toString()
 
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
     const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
     const placeOrder = currentRouteStop.order
 
-    const restrictions = await RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
+    const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
     const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
 
     let newRouteStopsArray = []
@@ -1156,22 +1129,22 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 }
 
 exports.getErp = async (req, res, next) => {
-    let busModel = await BusModel.findAll()
-    let staff = await Staff.findAll()
-    let firm = await Firm.findOne({ where: { id: req.session.user.firmId } })
-    let branches = await Branch.findAll()
-    let user = await FirmUser.findOne({ where: { id: req.session.user.id } })
-    let places = await Place.findAll()
-    let stops = await Stop.findAll()
+    let busModel = await req.models.BusModel.findAll()
+    let staff = await req.models.Staff.findAll()
+    let firm = await req.models.Firm.findOne({ where: { id: req.session.user.firmId } })
+    let branches = await req.models.Branch.findAll()
+    let user = await req.models.FirmUser.findOne({ where: { id: req.session.user.id } })
+    let places = await req.models.Place.findAll()
+    let stops = await req.models.Stop.findAll()
 
-    const userPerms = await FirmUserPermission.findAll({
+    const userPerms = await req.models.FirmUserPermission.findAll({
         where: { firmUserId: req.session.user.id, allow: true },
         attributes: ["permissionId"],
     });
 
     const permissionIds = userPerms.map(p => p.permissionId);
     if (permissionIds.length) {
-        const permissionRows = await Permission.findAll({
+        const permissionRows = await req.models.Permission.findAll({
             where: { id: { [Op.in]: permissionIds } },
             attributes: ["code"],
         });
@@ -1193,7 +1166,7 @@ exports.postErpLogin = async (req, res, next) => {
     try {
         const { username, password } = req.body;
 
-        const u = await FirmUser.findOne({ where: { username } });
+        const u = await req.models.FirmUser.findOne({ where: { username } });
         if (!u) {
             return res.redirect("/login?error=1");
         }
@@ -1206,14 +1179,14 @@ exports.postErpLogin = async (req, res, next) => {
         req.session.user = u;
         req.session.isAuthenticated = true;
 
-        const userPerms = await FirmUserPermission.findAll({
+        const userPerms = await req.models.FirmUserPermission.findAll({
             where: { firmUserId: u.id, allow: true },
             attributes: ["permissionId"],
         });
 
         const permissionIds = userPerms.map(p => p.permissionId);
         if (permissionIds.length) {
-            const permissionRows = await Permission.findAll({
+            const permissionRows = await req.models.Permission.findAll({
                 where: { id: { [Op.in]: permissionIds } },
                 attributes: ["code"],
             });
@@ -1247,13 +1220,13 @@ exports.getTicketRow = async (req, res, next) => {
     if (tripTime) tripWhere.time = tripTime;
     if (tripId) tripWhere.id = tripId;
 
-    const trip = await Trip.findOne({ where: tripWhere });
+    const trip = await req.models.Trip.findOne({ where: tripWhere });
     if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
 
-    const branch = await Branch.findOne({ where: { id: req.session.user.branchId } });
+    const branch = await req.models.Branch.findOne({ where: { id: req.session.user.branchId } });
     const isOwnBranch = stopId ? branch.stopId == stopId : false;
 
-    const routeStops = await RouteStop.findAll({
+    const routeStops = await req.models.RouteStop.findAll({
         where: { routeId: trip.routeId },
         order: [["order", "ASC"]],
     });
@@ -1276,7 +1249,7 @@ exports.getTicketRow = async (req, res, next) => {
         const { fromId, toId, count } = req.query;
         let price = 0;
         if (fromId && toId) {
-            const p = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+            const p = await req.models.Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
             price = p ? p : 0;
         }
 
@@ -1293,15 +1266,15 @@ exports.getTicketRow = async (req, res, next) => {
     if (isTaken) {
         const { seatNumbers } = req.query;
         const ticket = seatNumbers
-            ? await Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers }, fromRouteStopId: stopId, status: { [Op.notIn]: ["cancelled", "refund"] } } })
+            ? await req.models.Ticket.findAll({ where: { tripId: trip.id, seatNo: { [Op.in]: seatNumbers }, fromRouteStopId: stopId, status: { [Op.notIn]: ["cancelled", "refund"] } } })
             : [];
 
         if (!ticket.length) {
             return res.status(404).json({ message: "Bilet bulunamadı" });
         }
 
-        const user = await FirmUser.findOne({ where: { id: ticket[0].userId } });
-        const ticketUserBranch = user ? await Branch.findOne({ where: { id: user.branchId } }) : null;
+        const user = await req.models.FirmUser.findOne({ where: { id: ticket[0].userId } });
+        const ticketUserBranch = user ? await req.models.Branch.findOne({ where: { id: user.branchId } }) : null;
 
         const gender = ticket.map((t) => t.gender);
         return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action });
@@ -1312,11 +1285,11 @@ exports.getTicketRow = async (req, res, next) => {
     const gender = seats ? seats.map((s) => genderParam) : [];
     let price = 0;
     if (fromId && toId) {
-        const p = await Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+        const p = await req.models.Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
         price = p ? p : 0;
     }
 
-    const group = await TicketGroup.create({ tripId: trip.id });
+    const group = await req.models.TicketGroup.create({ tripId: trip.id });
     const ticketGroupId = group.id;
 
     const now = new Date();
@@ -1329,7 +1302,7 @@ exports.getTicketRow = async (req, res, next) => {
     for (let i = 0; i < seats.length; i++) {
         const seatNumber = seats[i];
 
-        const ticket = await Ticket.create({
+        const ticket = await req.models.Ticket.create({
             seatNo: seatNumber,
             gender: gender[i],
             nationality: "tr",
@@ -1364,7 +1337,7 @@ exports.postTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
-        // --- Trip.where'i dinamik kur ---
+        // --- req.models.Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
@@ -1374,13 +1347,13 @@ exports.postTickets = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
         }
 
-        const trip = await Trip.findOne({ where: tripWhere });
+        const trip = await req.models.Trip.findOne({ where: tripWhere });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
         // --- RouteStops ve Stops (boş dizi korumalı) ---
-        const routeStops = await RouteStop.findAll({
+        const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
         });
@@ -1388,15 +1361,15 @@ exports.postTickets = async (req, res, next) => {
         const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
         let stops = [];
         if (stopIds.length) {
-            stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+            stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
         }
 
         // --- TicketGroup ---
-        const group = await TicketGroup.create({ tripId: trip.id });
+        const group = await req.models.TicketGroup.create({ tripId: trip.id });
         const ticketGroupId = group.id;
 
         // --- PNR (sadece fromId & toId varsa) ---
-        const pnr = (fromId && toId) ? await generatePNR(fromId, toId, stops) : null;
+        const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
 
         const pendingIds = Array.isArray(req.body.pendingIds) ? req.body.pendingIds : JSON.parse(req.body.pendingIds);
         console.log(pendingIds)
@@ -1407,12 +1380,12 @@ exports.postTickets = async (req, res, next) => {
             if (!t) continue;
 
             console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id })
-            const pendingTicket = await Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id } })
-            const pendingTicketGroup = await TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
+            const pendingTicket = await req.models.Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id } })
+            const pendingTicketGroup = await req.models.TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
             await pendingTicket?.destroy().then(r => console.log("pending silindi"))
             await pendingTicketGroup?.destroy().then(r => console.log("pending grup silindi"))
 
-            const ticket = await Ticket.create({
+            const ticket = await req.models.Ticket.create({
                 seatNo: t.seatNumber,
                 gender: t.gender,
                 nationality: t.nationality,
@@ -1445,11 +1418,11 @@ exports.postTickets = async (req, res, next) => {
 
             let existingCustomer = null;
             if (orConds.length) {
-                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+                existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
             }
 
             if (!existingCustomer) {
-                await Customer.create({
+                await req.models.Customer.create({
                     idNumber: t.idNumber || null,
                     name: nameUp || null,
                     surname: surnameUp || null,
@@ -1477,7 +1450,7 @@ exports.postTickets = async (req, res, next) => {
                 const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
                 const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
-                await Transaction.create({
+                await req.models.Transaction.create({
                     userId: req.session.user.id,
                     type: "income",
                     category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
@@ -1486,7 +1459,7 @@ exports.postTickets = async (req, res, next) => {
                     ticketId: ticket.id
                 });
 
-                const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+                const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
                 if (register) {
                     if (ticket.payment === "cash") {
                         register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -1524,7 +1497,7 @@ exports.postCompleteTickets = async (req, res, next) => {
         const pnr = tickets[0].pnr
         const seatNumbers = tickets.map(t => t.seatNumber)
 
-        // --- Trip.where'i dinamik kur ---
+        // --- req.models.Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
@@ -1534,13 +1507,13 @@ exports.postCompleteTickets = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
         }
 
-        const trip = await Trip.findOne({ where: tripWhere });
+        const trip = await req.models.Trip.findOne({ where: tripWhere });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
         // --- RouteStops ve Stops (boş dizi korumalı) ---
-        const routeStops = await RouteStop.findAll({
+        const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
         });
@@ -1548,10 +1521,10 @@ exports.postCompleteTickets = async (req, res, next) => {
         const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
         let stops = [];
         if (stopIds.length) {
-            stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+            stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
         }
 
-        const foundTickets = await Ticket.findAll({ where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } } })
+        const foundTickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } } })
 
         for (let i = 0; i < foundTickets.length; i++) {
             const ticket = foundTickets[i];
@@ -1581,11 +1554,11 @@ exports.postCompleteTickets = async (req, res, next) => {
 
             let existingCustomer = null;
             if (orConds.length) {
-                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+                existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
             }
 
             if (!existingCustomer) {
-                const customer = await Customer.create({
+                const customer = await req.models.Customer.create({
                     idNumber: ticket.idNumber || null,
                     name: nameUp || null,
                     surname: surnameUp || null,
@@ -1603,7 +1576,7 @@ exports.postCompleteTickets = async (req, res, next) => {
             const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
             const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
-            await Transaction.create({
+            await req.models.Transaction.create({
                 userId: req.session.user.id,
                 type: "income",
                 category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
@@ -1612,7 +1585,7 @@ exports.postCompleteTickets = async (req, res, next) => {
                 ticketId: ticket.id
             });
 
-            const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -1640,19 +1613,19 @@ exports.postSellOpenTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [fromId, toId] } } });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [fromId, toId] } } });
 
         // --- TicketGroup ---
-        const group = await TicketGroup.create({ tripId: null });
+        const group = await req.models.TicketGroup.create({ tripId: null });
         const ticketGroupId = group.id;
 
         console.log(req.body.tickets)
         console.log(tickets)
         // --- PNR ---
-        const pnr = (fromId && toId) ? await generatePNR(fromId, toId, stops) : null;
+        const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
 
         for (const t of tickets) {
-            const ticket = await Ticket.create({
+            const ticket = await req.models.Ticket.create({
                 seatNo: 0,
                 gender: t.gender,
                 nationality: t.nationality,
@@ -1684,11 +1657,11 @@ exports.postSellOpenTickets = async (req, res, next) => {
 
             let existingCustomer = null;
             if (orConds.length) {
-                existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+                existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
             }
 
             if (!existingCustomer) {
-                await Customer.create({
+                await req.models.Customer.create({
                     idNumber: t.idNumber || null,
                     name: nameUp || null,
                     surname: surnameUp || null,
@@ -1704,7 +1677,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
             const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
             const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
-            await Transaction.create({
+            await req.models.Transaction.create({
                 userId: req.session.user.id,
                 type: "income",
                 category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
@@ -1713,7 +1686,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
                 ticketId: ticket.id
             });
 
-            const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -1740,12 +1713,12 @@ exports.postEditTicket = async (req, res, next) => {
             return res.status(400).json({ message: "Hiç bilet bilgisi gönderilmedi." });
         }
 
-        const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } });
+        const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
-        const foundTickets = await Ticket.findAll({
+        const foundTickets = await req.models.Ticket.findAll({
             where: { pnr: tickets[0].pnr, tripId: trip.id },
             order: [["seatNo", "ASC"]] // sıralamayı garanti altına al
         });
@@ -1775,10 +1748,10 @@ exports.getCancelOpenTicket = async (req, res, next) => {
     const tripTime = req.query.time
     const pnr = req.query.pnr
     const seats = req.query.seats
-    const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
-    const foundTickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
+    const foundTickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     let tickets = []
 
@@ -1797,12 +1770,12 @@ exports.postCancelTicket = async (req, res, next) => {
     try {
         const tripDate = req.body.date
         const tripTime = req.body.time
-        const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
+        const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
         const seats = JSON.parse(req.body.seats);
         const pnr = req.body.pnr;
 
-        const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.fromRouteStopId)), ...new Set(tickets.map(t => t.toRouteStopId))] } } })
+        const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.fromRouteStopId)), ...new Set(tickets.map(t => t.toRouteStopId))] } } })
 
         for (let i = 0; i < tickets.length; i++) {
             if (tickets[i].tripId == trip.id) {
@@ -1815,7 +1788,7 @@ exports.postCancelTicket = async (req, res, next) => {
                     const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
                     const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
-                    await Transaction.create({
+                    await req.models.Transaction.create({
                         userId: req.session.user.id,
                         type: "expense",
                         category: ticket.payment === "cash" ? "cash_refund" : ticket.payment === "card" ? "card_refund" : "point_refund",
@@ -1824,7 +1797,7 @@ exports.postCancelTicket = async (req, res, next) => {
                         ticketId: ticket.id
                     });
 
-                    const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+                    const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
                     if (register) {
                         if (ticket.payment === "cash") {
                             register.cash_balance = Number(register.cash_balance) - (Number(ticket.price) || 0);
@@ -1844,7 +1817,7 @@ exports.postCancelTicket = async (req, res, next) => {
 
                     let existingCustomer = null;
                     if (orConds.length) {
-                        existingCustomer = await Customer.findOne({ where: { [Op.or]: orConds } });
+                        existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
                     }
 
                     if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
@@ -1871,7 +1844,7 @@ exports.postDeletePendingTickets = async (req, res, next) => {
 
         console.log(pendingIds)
 
-        const trip = await Trip.findOne({
+        const trip = await req.models.Trip.findOne({
             where: {
                 date,
                 time,
@@ -1879,7 +1852,7 @@ exports.postDeletePendingTickets = async (req, res, next) => {
             }
         })
 
-        const deleted = await Ticket.destroy({
+        const deleted = await req.models.Ticket.destroy({
             where: {
                 tripId: trip.id,
                 seatNo: { [Op.in]: seats },
@@ -1905,11 +1878,11 @@ exports.postOpenTicket = async (req, res, next) => {
     try {
         const tripDate = req.body.date
         const tripTime = req.body.time
-        const trip = await Trip.findOne({ where: { date: tripDate, time: tripTime } })
+        const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
         const seats = JSON.parse(req.body.seats);
         const pnr = req.body.pnr;
 
-        const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
+        const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
 
         for (let i = 0; i < tickets.length; i++) {
             if (tickets[i].tripId == trip.id) {
@@ -1933,13 +1906,13 @@ exports.getMoveTicket = async (req, res, next) => {
     const tripId = req.query.tripId
     const stopId = req.query.stopId
 
-    const tickets = await Ticket.findAll({ where: { pnr, tripId }, order: [["seatNo", "ASC"]] })
-    const trip = await Trip.findOne({ where: { id: tickets[0].tripId } })
+    const tickets = await req.models.Ticket.findAll({ where: { pnr, tripId }, order: [["seatNo", "ASC"]] })
+    const trip = await req.models.Trip.findOne({ where: { id: tickets[0].tripId } })
 
 
     trip.modifiedTime = trip.time
 
-    const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
     if (routeStopOrder !== routeStops.length - 1) {
@@ -1959,7 +1932,7 @@ exports.getMoveTicket = async (req, res, next) => {
     trip.dateString = `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`
     trip.timeString = `${hours}.${minutes}`
 
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
     for (let i = 0; i < tickets.length; i++) {
         const t = tickets[i];
 
@@ -1977,13 +1950,13 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         const tripId = req.query.tripId
         const stopId = req.query.stopId
 
-        const trip = await Trip.findOne({ where: { date, time, id: tripId } })
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const trip = await req.models.Trip.findOne({ where: { date, time, id: tripId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
         const routeStopOrder = currentRouteStop.order
 
-        const restrictions = await RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
+        const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
         const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
 
         let newRouteStopsArray = []
@@ -2012,11 +1985,11 @@ exports.postMoveTickets = async (req, res, next) => {
         const fromId = req.body.fromId
         const toId = req.body.toId
 
-        const trip = await Trip.findOne({ where: { id: newTrip } })
+        const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
 
         trip.modifiedTime = trip.time
 
-        const routeStops = await RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const routeStopOrder = routeStops.find(rs => rs.stopId == fromId).order
 
         if (routeStopOrder !== routeStops.length - 1) {
@@ -2032,7 +2005,7 @@ exports.postMoveTickets = async (req, res, next) => {
 
         console.log(`${trip.date} ${trip.modifiedTime}`)
 
-        const tickets = await Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
+        const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
 
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i];
@@ -2068,7 +2041,7 @@ exports.getSearchTable = async (req, res, next) => {
         // Filtre yoksa where göndermeyelim
         const where = Object.keys(filters).length ? filters : undefined;
 
-        const tickets = await Ticket.findAll({
+        const tickets = await req.models.Ticket.findAll({
             ...(where && { where }),
             order: [["seatNo", "ASC"]],
         });
@@ -2085,7 +2058,7 @@ exports.getSearchTable = async (req, res, next) => {
         let tripMap = new Map(); // tripId -> { date, time }
 
         if (tripIds.length) {
-            const trips = await Trip.findAll({
+            const trips = await req.models.Trip.findAll({
                 where: { id: { [Op.in]: tripIds } },
             });
 
@@ -2096,7 +2069,7 @@ exports.getSearchTable = async (req, res, next) => {
             ];
 
             if (routeIds.length) {
-                const routeStops = await RouteStop.findAll({
+                const routeStops = await req.models.RouteStop.findAll({
                     where: { routeId: { [Op.in]: routeIds } },
                     order: [["order", "ASC"]],
                 });
@@ -2106,7 +2079,7 @@ exports.getSearchTable = async (req, res, next) => {
                 ];
 
                 if (stopIds.length) {
-                    const stops = await Stop.findAll({
+                    const stops = await req.models.Stop.findAll({
                         where: { id: { [Op.in]: stopIds } },
                     });
 
@@ -2151,7 +2124,7 @@ exports.getBusPlanPanel = async (req, res, next) => {
     let busModel = null
 
     if (id) {
-        busModel = await BusModel.findOne({ where: { id: id } })
+        busModel = await req.models.BusModel.findOne({ where: { id: id } })
 
         busModel.plan = JSON.parse(busModel.plan)
     }
@@ -2168,7 +2141,7 @@ exports.postSaveBusPlan = async (req, res, next) => {
 
         const { id, title, description, plan, planBinary } = data;
 
-        const [busModel, created] = await BusModel.upsert(
+        const [busModel, created] = await req.models.BusModel.upsert(
             {
                 id,
                 title,
@@ -2191,9 +2164,9 @@ exports.postSaveBusPlan = async (req, res, next) => {
 };
 
 exports.getBusesList = async (req, res, next) => {
-    const buses = await Bus.findAll()
+    const buses = await req.models.Bus.findAll()
 
-    const busModels = await BusModel.findAll()
+    const busModels = await req.models.BusModel.findAll()
 
     for (let i = 0; i < buses.length; i++) {
         const b = buses[i];
@@ -2204,8 +2177,8 @@ exports.getBusesList = async (req, res, next) => {
 }
 
 exports.getPricesList = async (req, res, next) => {
-    const prices = await Price.findAll();
-    const stops = await Stop.findAll();
+    const prices = await req.models.Price.findAll();
+    const stops = await req.models.Stop.findAll();
 
     const stopMap = {};
     for (const s of stops) {
@@ -2258,7 +2231,7 @@ exports.postSavePrices = async (req, res, next) => {
                 validUntil
             } = price;
 
-            await Price.update(
+            await req.models.Price.update(
                 {
                     fromStopId,
                     toStopId,
@@ -2310,7 +2283,7 @@ exports.postAddPrice = async (req, res, next) => {
             return Number.isFinite(num) && num > 0 ? num : null;
         };
 
-        await Price.create({
+        await req.models.Price.create({
             fromStopId,
             toStopId,
             price1: toNullIfNotPositive(price1),
@@ -2338,7 +2311,7 @@ exports.getBus = async (req, res, next) => {
     const id = req.query.id
     const licensePlate = req.query.licensePlate
 
-    const bus = await Bus.findOne({ where: { id: id, licensePlate: licensePlate } })
+    const bus = await req.models.Bus.findOne({ where: { id: id, licensePlate: licensePlate } })
 
     res.json(bus)
 }
@@ -2351,7 +2324,7 @@ exports.postSaveBus = async (req, res, next) => {
 
         const { id, licensePlate, busModelId, captainId, phoneNumber, owner } = data;
 
-        const [bus, created] = await Bus.upsert(
+        const [bus, created] = await req.models.Bus.upsert(
             {
                 id,
                 licensePlate,
@@ -2376,7 +2349,7 @@ exports.postSaveBus = async (req, res, next) => {
 
 exports.getBusModelsData = async (req, res, next) => {
     try {
-        const busModels = await BusModel.findAll();
+        const busModels = await req.models.BusModel.findAll();
         res.json(busModels);
     } catch (err) {
         console.error("Hata:", err);
@@ -2386,8 +2359,8 @@ exports.getBusModelsData = async (req, res, next) => {
 
 exports.getBusesData = async (req, res, next) => {
     try {
-        const buses = await Bus.findAll();
-        const staffs = await Staff.findAll();
+        const buses = await req.models.Bus.findAll();
+        const staffs = await req.models.Staff.findAll();
 
         const staffMap = {};
         for (const s of staffs) {
@@ -2410,18 +2383,18 @@ exports.postTripBus = async (req, res, next) => {
     try {
         const { tripId, busId } = req.body;
 
-        const bus = await Bus.findOne({ where: { id: busId } });
+        const bus = await req.models.Bus.findOne({ where: { id: busId } });
         if (!bus) {
             return res.status(404).json({ message: "Otobüs bulunamadı" });
         }
 
-        await Trip.update({
+        await req.models.Trip.update({
             busId: bus.id,
             busModelId: bus.busModelId,
             captainId: bus.captainId
         }, { where: { id: tripId } });
 
-        const captain = await Staff.findOne({ where: { id: bus.captainId } });
+        const captain = await req.models.Staff.findOne({ where: { id: bus.captainId } });
 
         res.json({ message: "Güncellendi", busModelId: bus.busModelId, captain });
     } catch (err) {
@@ -2434,7 +2407,7 @@ exports.postTripBusPlan = async (req, res, next) => {
     try {
         const { tripId, busModelId } = req.body;
 
-        await Trip.update({
+        await req.models.Trip.update({
             busModelId: busModelId,
             busId: null,
             captainId: null
@@ -2450,7 +2423,7 @@ exports.postTripBusPlan = async (req, res, next) => {
 exports.postTripStaff = async (req, res, next) => {
     try {
         const { tripId, captainId, driver2Id, driver3Id, assistantId, hostessId } = req.body;
-        await Trip.update({
+        await req.models.Trip.update({
             captainId: captainId || null,
             driver2Id: driver2Id || null,
             driver3Id: driver3Id || null,
@@ -2467,7 +2440,7 @@ exports.postTripStaff = async (req, res, next) => {
 exports.postTripActive = async (req, res, next) => {
     try {
         const { tripId, isActive } = req.body;
-        await Trip.update({
+        await req.models.Trip.update({
             isActive: isActive === 'true' || isActive === true,
         }, { where: { id: tripId } });
         res.json({ message: "Güncellendi" });
@@ -2478,7 +2451,7 @@ exports.postTripActive = async (req, res, next) => {
 };
 
 exports.getStaffsList = async (req, res, next) => {
-    const staff = await Staff.findAll({
+    const staff = await req.models.Staff.findAll({
         attributes: ["id", "name", "surname", "duty", "phoneNumber"],
         raw: true,
     });
@@ -2495,7 +2468,7 @@ exports.getStaffsList = async (req, res, next) => {
 
 exports.getStaff = async (req, res, next) => {
     const { id } = req.query;
-    const stf = await Staff.findOne({ where: { id } });
+    const stf = await req.models.Staff.findOne({ where: { id } });
     res.json(stf);
 };
 
@@ -2504,7 +2477,7 @@ exports.postSaveStaff = async (req, res, next) => {
         const data = convertEmptyFieldsToNull(req.body);
         const { id, idNumber, duty, name, surname, address, phoneNumber, gender, nationality } = data;
 
-        const [staff, created] = await Staff.upsert(
+        const [staff, created] = await req.models.Staff.upsert(
             { id, idNumber, duty, name, surname, address, phoneNumber, gender, nationality },
             { returning: true }
         );
@@ -2521,8 +2494,8 @@ exports.postSaveStaff = async (req, res, next) => {
 };
 
 exports.getStopsList = async (req, res, next) => {
-    const stops = await Stop.findAll();
-    const places = await Place.findAll()
+    const stops = await req.models.Stop.findAll();
+    const places = await req.models.Place.findAll()
 
     for (let i = 0; i < stops.length; i++) {
         const s = stops[i];
@@ -2539,13 +2512,13 @@ exports.getStopsList = async (req, res, next) => {
 
 exports.getStop = async (req, res, next) => {
     const { id } = req.query;
-    const stop = await Stop.findOne({ where: { id } });
+    const stop = await req.models.Stop.findOne({ where: { id } });
     res.json(stop);
 };
 
 exports.getStopsData = async (req, res, next) => {
     try {
-        const stops = await Stop.findAll();
+        const stops = await req.models.Stop.findAll();
         res.json(stops);
     } catch (err) {
         console.error("Hata:", err);
@@ -2555,7 +2528,7 @@ exports.getStopsData = async (req, res, next) => {
 
 exports.getPlacesData = async (req, res, next) => {
     try {
-        const places = await Place.findAll();
+        const places = await req.models.Place.findAll();
         res.json(places);
     } catch (err) {
         console.error("Hata:", err);
@@ -2568,7 +2541,7 @@ exports.postSaveStop = async (req, res, next) => {
         const data = convertEmptyFieldsToNull(req.body);
         const { id, title, webTitle, placeId, UETDS_code, isServiceArea, isActive } = data;
 
-        const [stop, created] = await Stop.upsert(
+        const [stop, created] = await req.models.Stop.upsert(
             {
                 id,
                 title,
@@ -2594,7 +2567,7 @@ exports.postSaveStop = async (req, res, next) => {
 
 exports.getRoutesData = async (req, res, next) => {
     try {
-        const routes = await Route.findAll();
+        const routes = await req.models.Route.findAll();
         res.json(routes);
     } catch (err) {
         console.error("Hata:", err);
@@ -2603,9 +2576,9 @@ exports.getRoutesData = async (req, res, next) => {
 };
 
 exports.getRoutesList = async (req, res, next) => {
-    const routes = await Route.findAll()
+    const routes = await req.models.Route.findAll()
     const stopIds = routes.flatMap(route => [route.fromStopId, route.toStopId]);
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
 
     for (let i = 0; i < routes.length; i++) {
         const r = routes[i];
@@ -2620,7 +2593,7 @@ exports.getRoute = async (req, res, next) => {
     const id = req.query.id
     const title = req.query.title
 
-    const route = await Route.findOne({ where: { id: id, title: title } })
+    const route = await req.models.Route.findOne({ where: { id: id, title: title } })
 
     res.json(route)
 }
@@ -2634,7 +2607,7 @@ exports.getRouteStop = async (req, res, next) => {
         routeStop.isFirst = isFirst
         routeStop.duration = duration
         routeStop.stopId = stopId
-        const stop = await Stop.findOne({ where: { id: stopId } })
+        const stop = await req.models.Stop.findOne({ where: { id: stopId } })
         routeStop.stop = stop.title
 
         res.render("mixins/routeStop", { routeStop })
@@ -2647,8 +2620,8 @@ exports.getRouteStop = async (req, res, next) => {
 exports.getRouteStopsList = async (req, res, next) => {
     const { id } = req.query
 
-    const routeStops = await RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]] });
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]] });
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     for (let i = 0; i < routeStops.length; i++) {
         const routeStop = routeStops[i];
@@ -2669,7 +2642,7 @@ exports.postSaveRoute = async (req, res, next) => {
 
         const routeStops = JSON.parse(routeStopsSTR)
 
-        const [route, created] = await Route.upsert(
+        const [route, created] = await req.models.Route.upsert(
             {
                 id,
                 routeCode,
@@ -2684,7 +2657,7 @@ exports.postSaveRoute = async (req, res, next) => {
         for (let i = 0; i < routeStops.length; i++) {
             const rs = routeStops[i];
 
-            await RouteStop.create({
+            await req.models.RouteStop.create({
                 routeId: route.id,
                 stopId: rs.stopId,
                 order: i,
@@ -2705,9 +2678,9 @@ exports.postSaveRoute = async (req, res, next) => {
 
 exports.getTripsList = async (req, res, next) => {
     const date = req.query.date
-    const trips = await Trip.findAll({ where: { date: date } })
-    const routes = await Route.findAll()
-    const bus = await Bus.findAll()
+    const trips = await req.models.Trip.findAll({ where: { date: date } })
+    const routes = await req.models.Route.findAll()
+    const bus = await req.models.Bus.findAll()
 
     for (let i = 0; i < trips.length; i++) {
         const t = trips[i];
@@ -2723,15 +2696,15 @@ exports.postSaveTrip = async (req, res, next) => {
     try {
         const { routeId, firstDate, lastDate, departureTime, busModelId, busId } = convertEmptyFieldsToNull(req.body);
 
-        const route = await Route.findOne({ where: { id: routeId } });
+        const route = await req.models.Route.findOne({ where: { id: routeId } });
         if (!route) {
             return res.status(404).json({ error: "Hat bulunamadı" });
         }
 
-        const routeStops = await RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-        const captainId = await Bus.findOne({ where: { id: busId } })?.captainId
+        const captainId = await req.models.Bus.findOne({ where: { id: busId } })?.captainId
 
         const start = new Date(firstDate);
         const end = new Date(lastDate);
@@ -2765,7 +2738,7 @@ exports.postSaveTrip = async (req, res, next) => {
         }
 
         // topluca insert → performanslı
-        await Trip.bulkCreate(trips);
+        await req.models.Trip.bulkCreate(trips);
 
         return res.status(201).json({ message: `${trips.length} sefer başarıyla eklendi` });
     } catch (err) {
@@ -2780,8 +2753,8 @@ exports.getBranchesList = async (req, res, next) => {
         where.isActive = true
     }
 
-    const branches = await Branch.findAll({ where: where })
-    const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(branches.map(b => b.stopId))] } } })
+    const branches = await req.models.Branch.findAll({ where: where })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(branches.map(b => b.stopId))] } } })
 
     for (let i = 0; i < branches.length; i++) {
         const b = branches[i];
@@ -2800,7 +2773,7 @@ exports.getBranch = async (req, res, next) => {
     const id = req.query.id
     const title = req.query.title
 
-    const branch = await Branch.findOne({ where: { id: id, title: title } })
+    const branch = await req.models.Branch.findOne({ where: { id: id, title: title } })
 
     res.json(branch)
 }
@@ -2813,7 +2786,7 @@ exports.postSaveBranch = async (req, res, next) => {
 
         const { id, isActive, isMainBranch, title, stop, mainBranch } = data;
 
-        const [branch, created] = await Branch.upsert(
+        const [branch, created] = await req.models.Branch.upsert(
             {
                 id,
                 title,
@@ -2837,8 +2810,8 @@ exports.postSaveBranch = async (req, res, next) => {
 };
 
 exports.getUsersList = async (req, res, next) => {
-    const users = await FirmUser.findAll()
-    const branches = await Branch.findAll()
+    const users = await req.models.FirmUser.findAll()
+    const branches = await req.models.Branch.findAll()
 
     for (let i = 0; i < users.length; i++) {
         const u = users[i];
@@ -2864,7 +2837,7 @@ exports.getCustomersList = async (req, res, next) => {
     if (blacklist == 'true') where.isBlackList = true;
     else if (blacklist == 'false') where.isBlackList = false;
 
-    const customers = await Customer.findAll({ where });
+    const customers = await req.models.Customer.findAll({ where });
     res.render("mixins/customersList", { customers, blacklist });
 }
 
@@ -2874,7 +2847,7 @@ exports.getCustomer = async (req, res, next) => {
 
     if (idNumber) where.idNumber = Number(idNumber);
 
-    const customer = await Customer.findOne({ where });
+    const customer = await req.models.Customer.findOne({ where });
     res.json(customer);
 }
 
@@ -2896,7 +2869,7 @@ exports.getMembersList = async (req, res, next) => {
         where.phoneNumber = { [Op.like]: `%${phone}%` };
     }
 
-    const members = await Customer.findAll({ where });
+    const members = await req.models.Customer.findAll({ where });
     res.render("mixins/membersList", { members });
 }
 
@@ -2905,7 +2878,7 @@ exports.postAddMember = async (req, res, next) => {
         const { idNumber, name, surname, phone } = req.body;
         const idNum = Number(idNumber);
 
-        let customer = await Customer.findOne({ where: { idNumber: idNum } });
+        let customer = await req.models.Customer.findOne({ where: { idNumber: idNum } });
 
         if (customer) {
             customer.name = name.toLocaleUpperCase("tr-TR");
@@ -2914,7 +2887,7 @@ exports.postAddMember = async (req, res, next) => {
             customer.customerCategory = 'member';
             await customer.save();
         } else {
-            customer = await Customer.create({
+            customer = await req.models.Customer.create({
                 idNumber: idNum,
                 name: name.toLocaleUpperCase("tr-TR"),
                 surname: surname.toLocaleUpperCase("tr-TR"),
@@ -2939,12 +2912,12 @@ exports.getMemberTickets = async (req, res, next) => {
         if (!idNumber) {
             return res.render("mixins/memberTickets", { tickets: [] });
         }
-        const customer = await Customer.findOne({ where: { idNumber } });
+        const customer = await req.models.Customer.findOne({ where: { idNumber } });
         if (!customer) {
             return res.render("mixins/memberTickets", { tickets: [] });
         }
 
-        const tickets = await Ticket.findAll({
+        const tickets = await req.models.Ticket.findAll({
             where: { customerId: customer.id },
             order: [["createdAt", "DESC"]]
         });
@@ -2955,7 +2928,7 @@ exports.getMemberTickets = async (req, res, next) => {
             if (t.toRouteStopId) stopIds.push(t.toRouteStopId);
         });
         const uniqueStopIds = [...new Set(stopIds)];
-        const stops = await Stop.findAll({ where: { id: { [Op.in]: uniqueStopIds } }, raw: true });
+        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: uniqueStopIds } }, raw: true });
         const stopMap = {};
         stops.forEach(s => stopMap[s.id] = s.title);
 
@@ -2977,7 +2950,7 @@ exports.getMemberTickets = async (req, res, next) => {
 exports.postCustomerBlacklist = async (req, res, next) => {
     try {
         const { id, description, isRemove } = req.body;
-        const customer = await Customer.findByPk(id);
+        const customer = await req.models.Customer.findByPk(id);
         if (!customer) return res.status(404).json({ success: false });
         if (!isRemove) {
             customer.isBlackList = true;
@@ -3001,13 +2974,13 @@ exports.getUser = async (req, res, next) => {
 
     let user = null;
     if (id) {
-        user = await FirmUser.findByPk(id);
+        user = await req.models.FirmUser.findByPk(id);
     } else if (username) {
-        user = await FirmUser.findOne({ where: { username } });
+        user = await req.models.FirmUser.findOne({ where: { username } });
     }
 
-    const permissions = await Permission.findAll({ attributes: ['id', 'description', 'module'] });
-    const userPerms = id ? await FirmUserPermission.findAll({ where: { firmUserId: id } }) : [];
+    const permissions = await req.models.Permission.findAll({ attributes: ['id', 'description', 'module'] });
+    const userPerms = id ? await req.models.FirmUserPermission.findAll({ where: { firmUserId: id } }) : [];
 
     const grouped = { register: [], trip: [], sales: [], account_cut: [] };
     permissions.forEach(p => {
@@ -3035,7 +3008,7 @@ exports.getUser = async (req, res, next) => {
 exports.getUsersByBranch = async (req, res, next) => {
     const branchId = req.query.id
 
-    const users = await FirmUser.findAll({ where: { branchId: branchId } })
+    const users = await req.models.FirmUser.findAll({ where: { branchId: branchId } })
 
     res.json(users)
 }
@@ -3053,14 +3026,14 @@ exports.postSaveUser = async (req, res, next) => {
             hashedPassword = await bcrypt.hash(password, 12);
         } else if (id) {
             // Güncelleme ise ve şifre yoksa eski şifreyi al
-            const existingUser = await FirmUser.findByPk(id);
+            const existingUser = await req.models.FirmUser.findByPk(id);
             hashedPassword = existingUser ? existingUser.password : null;
         } else {
             // Yeni kullanıcı ekleniyor ama şifre yoksa hata döndür
             return res.status(400).json({ message: "Yeni kullanıcı için şifre zorunlu" });
         }
 
-        const [user, created] = await FirmUser.upsert(
+        const [user, created] = await req.models.FirmUser.upsert(
             {
                 id,
                 firmId: req.session.user.firmId,
@@ -3076,19 +3049,19 @@ exports.postSaveUser = async (req, res, next) => {
 
         const permIds = permissions ? (Array.isArray(permissions) ? permissions : [permissions]).map(Number) : [];
 
-        const existingPerms = await FirmUserPermission.findAll({ where: { firmUserId: user.id } });
+        const existingPerms = await req.models.FirmUserPermission.findAll({ where: { firmUserId: user.id } });
         const existingIds = existingPerms.map(p => p.permissionId);
 
         const permsToAdd = permIds.filter(id => !existingIds.includes(id));
         const permsToRemove = existingIds.filter(id => !permIds.includes(id));
 
         if (permsToRemove.length) {
-            await FirmUserPermission.destroy({ where: { firmUserId: user.id, permissionId: permsToRemove } });
+            await req.models.FirmUserPermission.destroy({ where: { firmUserId: user.id, permissionId: permsToRemove } });
         }
 
         if (permsToAdd.length) {
             const rows = permsToAdd.map(p => ({ firmUserId: user.id, permissionId: p, allow: true }));
-            await FirmUserPermission.bulkCreate(rows);
+            await req.models.FirmUserPermission.bulkCreate(rows);
         }
 
         res.json({
@@ -3105,11 +3078,11 @@ exports.postSaveUser = async (req, res, next) => {
 exports.getTransactions = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.user.id;
-        const register = await CashRegister.findOne({ where: { userId } });
+        const register = await req.models.CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
         // Tarihe göre yeni → eski
-        const transactions = await Transaction.findAll({
+        const transactions = await req.models.Transaction.findAll({
             where: {
                 userId,
                 createdAt: { [Op.gte]: register.reset_date_time }
@@ -3124,7 +3097,7 @@ exports.getTransactions = async (req, res, next) => {
         // Ticket bilgilerini Promise.all ile ekle
         await Promise.all(transactions.map(async (t) => {
             if (t.ticketId) {
-                const ticket = await Ticket.findOne({ where: { id: t.ticketId } });
+                const ticket = await req.models.Ticket.findOne({ where: { id: t.ticketId } });
                 if (ticket) {
                     t.pnr = ticket.pnr;
                     t.seatNumber = ticket.seatNo;
@@ -3142,10 +3115,10 @@ exports.getTransactions = async (req, res, next) => {
 exports.getTransactionData = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.user.id;
-        const register = await CashRegister.findOne({ where: { userId } });
+        const register = await req.models.CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
-        const transactions = await Transaction.findAll({
+        const transactions = await req.models.Transaction.findAll({
             where: {
                 userId,
                 createdAt: { [Op.gt]: new Date(register.reset_date_time) }
@@ -3219,7 +3192,7 @@ exports.getUserRegisterBalance = async (req, res, next) => {
     try {
         const userId = req.query.userId;
         if (!userId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
-        const register = await CashRegister.findOne({ where: { userId } });
+        const register = await req.models.CashRegister.findOne({ where: { userId } });
         if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
         const balance = (Number(register.cash_balance) || 0) + (Number(register.card_balance) || 0);
         res.json({ balance });
@@ -3235,7 +3208,7 @@ exports.postAddTransaction = async (req, res, next) => {
         const amount = req.body.amount;
         const description = req.body.description;
 
-        const transaction = new Transaction({
+        const transaction = req.models.Transaction.build({
             userId: req.session.user.id,
             type: type,
             category: type,
@@ -3246,7 +3219,7 @@ exports.postAddTransaction = async (req, res, next) => {
         await transaction.save();
         res.locals.newRecordId = transaction.id;
 
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (!register) {
             throw new Error("Kasa kaydı bulunamadı.");
         }
@@ -3267,12 +3240,12 @@ exports.postAddTransaction = async (req, res, next) => {
 
 exports.postResetRegister = async (req, res, next) => {
     try {
-        const register = await CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
         if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
 
         const total = Number(register.cash_balance) + Number(register.card_balance);
 
-        await Transaction.create({
+        await req.models.Transaction.create({
             userId: req.session.user.id,
             type: "expense",
             category: "register_reset",
@@ -3298,18 +3271,18 @@ exports.postTransferRegister = async (req, res, next) => {
         if (!targetUserId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
 
         const senderId = req.session.user.id;
-        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [senderId, targetUserId] } } });
+        const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [senderId, targetUserId] } } });
 
         const sender = users.find(u => u.id == senderId);
         const receiver = users.find(u => u.id == targetUserId);
 
-        const senderRegister = await CashRegister.findOne({ where: { userId: senderId } });
+        const senderRegister = await req.models.CashRegister.findOne({ where: { userId: senderId } });
 
         const cashBalance = Number(senderRegister.cash_balance) || 0;
         const cardBalance = Number(senderRegister.card_balance) || 0;
         const total = cashBalance + cardBalance;
 
-        await Payment.create({
+        await req.models.Payment.create({
             initiatorId: receiver.id,
             payerId: sender.id,
             receiverId: receiver.id,
@@ -3330,7 +3303,7 @@ exports.postTransferRegister = async (req, res, next) => {
 exports.postRequestPayment = async (req, res, next) => {
     try {
         const { userId, amount } = req.body;
-        await Payment.create({
+        await req.models.Payment.create({
             initiatorId: userId,
             payerId: userId,
             receiverId: req.session.user.id,
@@ -3348,7 +3321,7 @@ exports.postRequestPayment = async (req, res, next) => {
 exports.postSendPayment = async (req, res, next) => {
     try {
         const { userId, amount } = req.body;
-        await Payment.create({
+        await req.models.Payment.create({
             initiatorId: userId,
             payerId: req.session.user.id,
             receiverId: userId,
@@ -3365,8 +3338,8 @@ exports.postSendPayment = async (req, res, next) => {
 
 exports.getPendingPayments = async (req, res, next) => {
     try {
-        const payments = await Payment.findAll({ where: { payerId: req.session.user.id, status: "pending" } });
-        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.receiverId))] } } });
+        const payments = await req.models.Payment.findAll({ where: { payerId: req.session.user.id, status: "pending" } });
+        const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.receiverId))] } } });
         if (!payments.length) {
             res.status(404);
         }
@@ -3387,11 +3360,11 @@ exports.getPendingPayments = async (req, res, next) => {
 exports.getPendingCollections = async (req, res, next) => {
     try {
         console.log(req.session.user.id)
-        const payments = await Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
+        const payments = await req.models.Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
         if (!payments.length) {
             res.status(404);
         }
-        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.payerId))] } } });
+        const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.payerId))] } } });
         const result = payments.map(p => ({
             id: p.id,
             amount: p.amount,
@@ -3409,8 +3382,8 @@ exports.getPendingCollections = async (req, res, next) => {
 exports.postConfirmPayment = async (req, res, next) => {
     try {
         const { id, action } = req.body;
-        const payment = await Payment.findOne({ where: { id } });
-        const users = await FirmUser.findAll({ where: { id: { [Op.in]: [payment.payerId, payment.receiverId] } } })
+        const payment = await req.models.Payment.findOne({ where: { id } });
+        const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [payment.payerId, payment.receiverId] } } })
 
         if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
         if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
@@ -3426,7 +3399,7 @@ exports.postConfirmPayment = async (req, res, next) => {
         await payment.save();
 
         if (action == "approve") {
-            await Transaction.create({
+            await req.models.Transaction.create({
                 userId: users.find(u => u.id == payment.receiverId).id,
                 type: "income",
                 category: "transfer_in",
@@ -3435,7 +3408,7 @@ exports.postConfirmPayment = async (req, res, next) => {
                     `${users.find(u => u.id == payment.payerId).name}  isimli kullanıcıdan devralınan kasa.` : `${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
             })
 
-            await Transaction.create({
+            await req.models.Transaction.create({
                 userId: users.find(u => u.id == payment.payerId).id,
                 type: "expense",
                 category: "transfer_out",
@@ -3445,7 +3418,7 @@ exports.postConfirmPayment = async (req, res, next) => {
                     `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`
             })
 
-            await CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
+            await req.models.CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
                 if (cr) {
                     cr.cash_balance = Number(cr.cash_balance) + Number(payment.cash_amount);
                     cr.card_balance = Number(cr.card_balance) + Number(payment.card_amount);
@@ -3453,7 +3426,7 @@ exports.postConfirmPayment = async (req, res, next) => {
                 }
             })
 
-            await CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
+            await req.models.CashRegister.findOne({ where: { userId: payment.payerId } }).then(async cr => {
                 if (cr) {
                     cr.cash_balance = Number(cr.cash_balance) - Number(payment.cash_amount);
                     cr.card_balance = Number(cr.card_balance) - Number(payment.card_amount);
@@ -3473,7 +3446,7 @@ exports.postConfirmPayment = async (req, res, next) => {
 exports.postSaveAnnouncement = async (req, res, next) => {
     try {
         const { message, branchId, showTicker, showPopup } = req.body;
-        const announcement = await Announcement.create({
+        const announcement = await req.models.Announcement.create({
             message,
             branchId: branchId || null,
             showTicker: showTicker === true || showTicker === 'true',
@@ -3491,7 +3464,7 @@ exports.getAnnouncements = async (req, res, next) => {
         const userId = req.session.user.id;
         const branchId = req.session.user.branchId;
 
-        const announcements = await Announcement.findAll({
+        const announcements = await req.models.Announcement.findAll({
             where: {
                 isActive: true,
                 [Op.or]: [
@@ -3502,7 +3475,7 @@ exports.getAnnouncements = async (req, res, next) => {
             order: [["createdAt", "DESC"]]
         });
 
-        const seenRows = await AnnouncementUser.findAll({
+        const seenRows = await req.models.AnnouncementUser.findAll({
             where: { userId },
             attributes: ["announcementId"]
         });
@@ -3527,16 +3500,16 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             return res.status(400).json({ message: 'Kullanıcı bilgisi eksik.' });
         }
 
-        const user = await FirmUser.findOne({ where: { id: targetUserId }, attributes: ['name', 'branchId'], raw: true });
+        const user = await req.models.FirmUser.findOne({ where: { id: targetUserId }, attributes: ['name', 'branchId'], raw: true });
         if (!user) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
         }
 
         const branch = user.branchId
-            ? await Branch.findOne({ where: { id: user.branchId }, attributes: ['title'], raw: true })
+            ? await req.models.Branch.findOne({ where: { id: user.branchId }, attributes: ['title'], raw: true })
             : null;
 
-        const register = await CashRegister.findOne({ where: { userId: targetUserId }, raw: true });
+        const register = await req.models.CashRegister.findOne({ where: { userId: targetUserId }, raw: true });
 
         const parseDate = (value) => {
             if (!value) return null;
@@ -3554,7 +3527,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             end = tmp;
         }
 
-        const transactions = await Transaction.findAll({
+        const transactions = await req.models.Transaction.findAll({
             where: {
                 userId: targetUserId,
                 createdAt: { [Op.between]: [start, end] }
@@ -3565,7 +3538,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
 
         const ticketIds = transactions.map(t => t.ticketId).filter(Boolean);
         const tickets = ticketIds.length
-            ? await Ticket.findAll({
+            ? await req.models.Ticket.findAll({
                 where: { id: { [Op.in]: ticketIds } },
                 attributes: ['id', 'pnr', 'seatNo'],
                 raw: true,
@@ -3741,10 +3714,10 @@ exports.getSalesRefundsReport = async (req, res, next) => {
             type: type,
             startDate: startDate,
             endDate: endDate,
-            branch: branchId ? await Branch.findOne({ where: { id: branchId } }).title : "Tümü",
-            user: userId ? await FirmUser.findOne({ where: { id: userId } }).title : "Tümü",
-            from: fromStopId ? await Stop.findOne({ where: { id: fromStopId } }).title : "Tümü",
-            to: toStopId ? await Stop.findOne({ where: { id: toStopId } }).title : "Tümü",
+            branch: branchId ? await req.models.Branch.findOne({ where: { id: branchId } }).title : "Tümü",
+            user: userId ? await req.models.FirmUser.findOne({ where: { id: userId } }).title : "Tümü",
+            from: fromStopId ? await req.models.Stop.findOne({ where: { id: fromStopId } }).title : "Tümü",
+            to: toStopId ? await req.models.Stop.findOne({ where: { id: toStopId } }).title : "Tümü",
         }
 
         console.log(start)
@@ -3758,13 +3731,13 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         if (fromStopId) where.fromRouteStopId = fromStopId;
         if (toStopId) where.toRouteStopId = toStopId;
 
-        let tickets = await Ticket.findAll({
+        let tickets = await req.models.Ticket.findAll({
             where,
             order: [['createdAt', 'ASC']]
         });
 
         if (branchId) {
-            const branchUsers = await FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
+            const branchUsers = await req.models.FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
             const branchUserIds = branchUsers.map(u => u.id);
             tickets = tickets.filter(t => branchUserIds.includes(t.userId));
         }
@@ -3772,7 +3745,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
         const stopIds = [...new Set(tickets.flatMap(t => [t.fromRouteStopId, t.toRouteStopId]).filter(Boolean))];
 
-        const users = await FirmUser.findAll({
+        const users = await req.models.FirmUser.findAll({
             where: { id: { [Op.in]: userIds } },
             attributes: ['id', 'name', 'branchId']
         });
@@ -3780,8 +3753,8 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const branchIds = [...new Set(users.map(u => u.branchId).filter(Boolean))];
 
         const [stops, branches] = await Promise.all([
-            Stop.findAll({ where: { id: { [Op.in]: stopIds } }, attributes: ['id', 'title'] }),
-            Branch.findAll({ where: { id: { [Op.in]: branchIds } }, attributes: ['id', 'title'] })
+            req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } }, attributes: ['id', 'title'] }),
+            req.models.Branch.findAll({ where: { id: { [Op.in]: branchIds } }, attributes: ['id', 'title'] })
         ]);
 
         const rows = tickets.map(t => {
@@ -3825,25 +3798,25 @@ exports.getWebTicketsReport = async (req, res, next) => {
 
         let branchTitle = 'Tümü';
         if (branchId) {
-            const branch = await Branch.findOne({ where: { id: branchId }, attributes: ['title'], raw: true });
+            const branch = await req.models.Branch.findOne({ where: { id: branchId }, attributes: ['title'], raw: true });
             if (branch?.title) branchTitle = branch.title;
         }
 
         let userName = 'Tümü';
         if (userId) {
-            const user = await FirmUser.findOne({ where: { id: userId }, attributes: ['name'], raw: true });
+            const user = await req.models.FirmUser.findOne({ where: { id: userId }, attributes: ['name'], raw: true });
             if (user?.name) userName = user.name;
         }
 
         let fromStopTitle = 'Tümü';
         if (fromStopId) {
-            const fromStop = await Stop.findOne({ where: { id: fromStopId }, attributes: ['title'], raw: true });
+            const fromStop = await req.models.Stop.findOne({ where: { id: fromStopId }, attributes: ['title'], raw: true });
             if (fromStop?.title) fromStopTitle = fromStop.title;
         }
 
         let toStopTitle = 'Tümü';
         if (toStopId) {
-            const toStop = await Stop.findOne({ where: { id: toStopId }, attributes: ['title'], raw: true });
+            const toStop = await req.models.Stop.findOne({ where: { id: toStopId }, attributes: ['title'], raw: true });
             if (toStop?.title) toStopTitle = toStop.title;
         }
 
@@ -3870,13 +3843,13 @@ exports.getWebTicketsReport = async (req, res, next) => {
         if (fromStopId) where.fromRouteStopId = fromStopId;
         if (toStopId) where.toRouteStopId = toStopId;
 
-        let tickets = await Ticket.findAll({
+        let tickets = await req.models.Ticket.findAll({
             where,
             raw: true,
         });
 
         if (branchId) {
-            const branchUsers = await FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
+            const branchUsers = await req.models.FirmUser.findAll({ where: { branchId }, attributes: ['id'], raw: true });
             const branchUserIds = branchUsers.map(u => u.id);
             tickets = tickets.filter(t => branchUserIds.includes(t.userId));
         }
@@ -3908,7 +3881,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
         }
 
         const tripIds = [...new Set(tickets.map(t => t.tripId).filter(Boolean))];
-        const trips = tripIds.length ? await Trip.findAll({
+        const trips = tripIds.length ? await req.models.Trip.findAll({
             where: { id: { [Op.in]: tripIds } },
             attributes: ['id', 'busId', 'routeId', 'date', 'time'],
             raw: true,
@@ -3918,11 +3891,11 @@ exports.getWebTicketsReport = async (req, res, next) => {
         const routeIds = [...new Set(trips.map(t => t.routeId).filter(Boolean))];
 
         const [buses, routes] = await Promise.all([
-            busIds.length ? Bus.findAll({ where: { id: { [Op.in]: busIds } }, attributes: ['id', 'licensePlate'], raw: true }) : [],
-            routeIds.length ? Route.findAll({ where: { id: { [Op.in]: routeIds } }, attributes: ['id', 'title'], raw: true }) : [],
+            busIds.length ? req.models.Bus.findAll({ where: { id: { [Op.in]: busIds } }, attributes: ['id', 'licensePlate'], raw: true }) : [],
+            routeIds.length ? req.models.Route.findAll({ where: { id: { [Op.in]: routeIds } }, attributes: ['id', 'title'], raw: true }) : [],
         ]);
 
-        const routeStops = routeIds.length ? await RouteStop.findAll({
+        const routeStops = routeIds.length ? await req.models.RouteStop.findAll({
             where: { routeId: { [Op.in]: routeIds } },
             attributes: ['id', 'routeId', 'stopId', 'duration', 'order'],
             raw: true,
@@ -3931,7 +3904,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
         const stopIdsForRouteStops = routeStops.map(rs => rs.stopId).filter(Boolean);
         const directStopIds = tickets.map(t => t.fromRouteStopId).filter(Boolean);
         const combinedStopIds = [...new Set([...stopIdsForRouteStops, ...directStopIds])];
-        const stopsForRouteStops = combinedStopIds.length ? await Stop.findAll({
+        const stopsForRouteStops = combinedStopIds.length ? await req.models.Stop.findAll({
             where: { id: { [Op.in]: combinedStopIds } },
             attributes: ['id', 'title'],
             raw: true,
@@ -4093,7 +4066,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
         const now = new Date();
         const activeStatuses = ["completed", "web", "gotur"];
 
-        const tickets = await Ticket.findAll({
+        const tickets = await req.models.Ticket.findAll({
             where: {
                 status: { [Op.in]: activeStatuses },
                 tripId: { [Op.ne]: null },
@@ -4103,13 +4076,13 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
         });
 
         const tripIds = [...new Set(tickets.map(t => t.tripId).filter(Boolean))];
-        const trips = tripIds.length ? await Trip.findAll({
+        const trips = tripIds.length ? await req.models.Trip.findAll({
             where: { id: { [Op.in]: tripIds } },
             raw: true
         }) : [];
 
         const routeIds = [...new Set(trips.map(t => t.routeId).filter(Boolean))];
-        const routeStops = routeIds.length ? await RouteStop.findAll({
+        const routeStops = routeIds.length ? await req.models.RouteStop.findAll({
             where: { routeId: { [Op.in]: routeIds } },
             order: [["routeId", "ASC"], ["order", "ASC"]],
             raw: true
@@ -4118,19 +4091,19 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
         console.log([...new Set(routeStops.map(rs => rs.id).filter(Boolean))])
 
         const stopIds = [...new Set(routeStops.map(rs => rs.stopId).filter(Boolean))];
-        const stops = stopIds.length ? await Stop.findAll({
+        const stops = stopIds.length ? await req.models.Stop.findAll({
             where: { id: { [Op.in]: stopIds } },
             raw: true
         }) : [];
 
         const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
-        const users = userIds.length ? await FirmUser.findAll({
+        const users = userIds.length ? await req.models.FirmUser.findAll({
             where: { id: { [Op.in]: userIds } },
             raw: true
         }) : [];
 
         const branchIds = [...new Set(users.map(u => u.branchId).filter(Boolean))];
-        const branches = branchIds.length ? await Branch.findAll({
+        const branches = branchIds.length ? await req.models.Branch.findAll({
             where: { id: { [Op.in]: branchIds } },
             raw: true
         }) : [];
@@ -4321,7 +4294,7 @@ exports.postAnnouncementSeen = async (req, res, next) => {
     try {
         const { announcementId } = req.body;
         const userId = req.session.user.id;
-        await AnnouncementUser.findOrCreate({
+        await req.models.AnnouncementUser.findOrCreate({
             where: { announcementId, userId },
             defaults: { seenAt: new Date() }
         });
