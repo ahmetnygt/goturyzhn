@@ -3,7 +3,9 @@ const { initGoturModels } = require("../utilities/goturDB");
 
 module.exports = async (req, res, next) => {
     try {
-        const subdomain = req.hostname.split(".")[0];
+        //! const subdomain = req.hostname.split(".")[0];
+        const subdomain = "derseturizm"
+        console.log(subdomain)
         if (!subdomain) {
             return res.status(400).json({ error: "Subdomain bulunamadı" });
         }
