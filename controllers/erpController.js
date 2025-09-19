@@ -1131,10 +1131,9 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
 exports.getErp = async (req, res, next) => {
     let busModel = await req.models.BusModel.findAll()
     let staff = await req.models.Staff.findAll()
-    let firm = await req.models.Firm.findOne({ where: { id: req.session.user.firmId } })
     let branches = await req.models.Branch.findAll()
     let user = await req.models.FirmUser.findOne({ where: { id: req.session.user.id } })
-    let places = await req.models.Place.findAll()
+    let places = await req.commonModels.Place.findAll()
     let stops = await req.models.Stop.findAll()
 
     const userPerms = await req.models.FirmUserPermission.findAll({
@@ -1155,7 +1154,7 @@ exports.getErp = async (req, res, next) => {
 
     await req.session.save()
 
-    res.render('erpscreen', { title: 'ERP', busModel, staff, user, firm, places, stops, branches });
+    res.render('erpscreen', { title: 'ERP', busModel, staff, user, places, stops, branches });
 }
 
 exports.getErpLogin = async (req, res, next) => {
@@ -2495,7 +2494,7 @@ exports.postSaveStaff = async (req, res, next) => {
 
 exports.getStopsList = async (req, res, next) => {
     const stops = await req.models.Stop.findAll();
-    const places = await req.models.Place.findAll()
+    const places = await req.commonModels.Place.findAll()
 
     for (let i = 0; i < stops.length; i++) {
         const s = stops[i];
@@ -2528,7 +2527,7 @@ exports.getStopsData = async (req, res, next) => {
 
 exports.getPlacesData = async (req, res, next) => {
     try {
-        const places = await req.models.Place.findAll();
+        const places = await req.commonModels.Place.findAll();
         res.json(places);
     } catch (err) {
         console.error("Hata:", err);

@@ -42,7 +42,6 @@ function initModels(sequelize) {
   const FirmUserPermission = FirmUserPermissionFactory(sequelize);
   const Payment = PaymentFactory(sequelize);
   const Permission = PermissionFactory(sequelize);
-  const Place = PlaceFactory(sequelize);
   const Price = PriceFactory(sequelize);
   const Route = RouteFactory(sequelize);
   const RouteStop = RouteStopFactory(sequelize);
@@ -71,7 +70,6 @@ function initModels(sequelize) {
     FirmUserPermission,
     Payment,
     Permission,
-    Place,
     Price,
     Route,
     RouteStop,

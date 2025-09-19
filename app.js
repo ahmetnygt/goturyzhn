@@ -8,14 +8,16 @@ var logger = require("morgan");
 var usersRouter = require("./routes/users");
 var erpRouter = require("./routes/erp");
 
-const goturDB = require("./utilities/goturDb"); // ortak kullanıcı & session DB
+const { goturDB, initGoturModels } = require("./utilities/goturDB"); // ortak kullanıcı & session DB
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 const tenantMiddleware = require("./middlewares/tenantMiddleware");
 
+// session store (gotur DB üzerinde)
 var store = new SequelizeStore({
-  db: goturDB, // sessionlar "gotur" DB’de tutulacak
+  db: goturDB,
 });
 
+// session tablosunu oluştur
 store.sync();
 
 var app = express();
@@ -31,6 +33,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "node_modules")));
 
+// session middleware
 app.use(
   session({
     secret: "anadolutat",
@@ -43,11 +46,12 @@ app.use(
   })
 );
 
-// tenant middleware (her subdomain kendi DB’sine bağlanacak)
+// tenant middleware (subdomain -> tenant DB)
 app.use(tenantMiddleware);
 
-// session bilgisini viewlara aktar
+// ortak modelleri (gotur DB) request içine ekle
 app.use((req, res, next) => {
+  req.commonModels = initGoturModels(); // Place vs.
   res.locals.user = req.session.user;
   res.locals.permissions = req.session.permissions || [];
   next();

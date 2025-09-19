@@ -1,12 +1,22 @@
 const { getTenantConnection } = require("../utilities/database");
+const { initGoturModels } = require("../utilities/goturDB");
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
     try {
         const subdomain = req.hostname.split(".")[0];
-        const { sequelize, models } = getTenantConnection(subdomain);
+        if (!subdomain) {
+            return res.status(400).json({ error: "Subdomain bulunamadı" });
+        }
+
+        // tenant DB
+        const { sequelize, models } = await getTenantConnection(subdomain);
+
+        // ortak DB (gotur)
+        const commonModels = initGoturModels();
 
         req.db = sequelize;
-        req.models = models;
+        req.models = models;             // tenant modelleri
+        req.commonModels = commonModels; // ortak modeller
         req.tenantKey = subdomain;
 
         next();

@@ -13,11 +13,11 @@ try {
 // Task that cancels expired reservations and deletes expired pendings
 async function cancelExpiredReservations() {
   const now = new Date();
-  const sequelize = Ticket.sequelize; // transaction için
+  const sequelize = req.models.Ticket.sequelize; // transaction için
 
   try {
     // Tek sorgu ile al, sonra ayır
-    const expiredTickets = await Ticket.findAll({
+    const expiredTickets = await req.models.Ticket.findAll({
       where: {
         status: { [Op.in]: ['reservation', 'pending'] },
         optionTime: { [Op.lt]: now }
@@ -38,7 +38,7 @@ async function cancelExpiredReservations() {
     await sequelize.transaction(async (tx) => {
       // 1) reservation → canceled
       if (reservationIds.length) {
-        await Ticket.update(
+        await req.models.Ticket.update(
           { status: 'canceled' }, // modelde 'canceled' kullanıyoruz
           { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
         );
@@ -59,7 +59,7 @@ async function cancelExpiredReservations() {
 
       // 2) pending → destroy
       if (pendingIds.length) {
-        await Ticket.destroy({
+        await req.models.Ticket.destroy({
           where: { id: { [Op.in]: pendingIds } },
           transaction: tx
         });

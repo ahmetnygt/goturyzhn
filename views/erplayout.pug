@@ -100,8 +100,8 @@ html
           if user
             button.btn.btn-outline-success.d-flex.gap-2.align-items-center(type="submit")
               a.navbar-brand(href="#")
-                img.d-inline-block.align-text-top(src="/images/uludag.png" alt="Logo" width="100" height="25")
-              |#{user.name?firm.title+" - "+user.name:"GİRİŞ YAPILMADI"}
+                //- img.d-inline-block.align-text-top(src="/images/uludag.png" alt="Logo" width="100" height="25")
+              |#{user?user.name:"GİRİŞ YAPILMADI"}
     div(style="padding:1rem 1rem 0rem 1rem!important;")
       block content
 
