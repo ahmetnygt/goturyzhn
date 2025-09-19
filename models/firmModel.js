@@ -1,17 +1,15 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Firm = sequelize.define("firm", {
+module.exports = (sequelize) => {
+  return sequelize.define("firm", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    title:{
-        type: Sequelize.STRING,
-        allowNull: false
-    }
-});
-
-module.exports = Firm;
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  });
+};

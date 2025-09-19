@@ -1,96 +1,103 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Ticket = sequelize.define("ticket", {
+module.exports = (sequelize) => {
+  return sequelize.define("ticket", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     tripId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     userId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     ticketGroupId: {
-        type: Sequelize.BIGINT,
-        allowNull: false,
-        defaultValue: 0
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
     customerId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     seatNo: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     price: {
-        type: Sequelize.FLOAT,
-        allowNull: true
+      type: DataTypes.FLOAT,
+      allowNull: true,
     },
     status: {
-        type: Sequelize.ENUM("web", "gotur", "completed", "reservation", "canceled", "refund", "open","pending"),
-        allowNull: false
+      type: DataTypes.ENUM(
+        "web",
+        "gotur",
+        "completed",
+        "reservation",
+        "canceled",
+        "refund",
+        "open",
+        "pending"
+      ),
+      allowNull: false,
     },
     idNumber: {
-        type: Sequelize.STRING,
-        allowNull: true
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     name: {
-        type: Sequelize.STRING,
-        allowNull: true
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     surname: {
-        type: Sequelize.STRING,
-        allowNull: true
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     phoneNumber: {
-        type: Sequelize.STRING,
-        allowNull: true
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     gender: {
-        type: Sequelize.ENUM("m", "f"),
-        allowNull: false
+      type: DataTypes.ENUM("m", "f"),
+      allowNull: false,
     },
     nationality: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     customerType: {
-        type: Sequelize.ENUM("adult", "child", "student", "disabled", "retired"),
-        allowNull: true
+      type: DataTypes.ENUM("adult", "child", "student", "disabled", "retired"),
+      allowNull: true,
     },
     customerCategory: {
-        type: Sequelize.ENUM("normal", "member", "guest"),
-        allowNull: true
+      type: DataTypes.ENUM("normal", "member", "guest"),
+      allowNull: true,
     },
     optionTime: {
-        type: Sequelize.TIME,
+      type: DataTypes.TIME,
     },
     optionDate: {
-        type: Sequelize.DATEONLY,
+      type: DataTypes.DATEONLY,
     },
     fromRouteStopId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     toRouteStopId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     pnr: {
-        type: Sequelize.STRING,
-        allowNull: true,
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     payment: {
-        type: Sequelize.ENUM("cash", "card", "point"),
-        allowNull: true
-    }
-});
-
-module.exports = Ticket;
+      type: DataTypes.ENUM("cash", "card", "point"),
+      allowNull: true,
+    },
+  });
+};

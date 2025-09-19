@@ -1,32 +1,34 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const AnnouncementUser = sequelize.define("announcementuser", {
-    id: {
-        type: Sequelize.BIGINT,
+module.exports = (sequelize) => {
+  return sequelize.define(
+    "announcementuser",
+    {
+      id: {
+        type: DataTypes.BIGINT,
         primaryKey: true,
         autoIncrement: true,
-    },
-    announcementId: {
-        type: Sequelize.BIGINT,
+      },
+      announcementId: {
+        type: DataTypes.BIGINT,
         allowNull: false,
-    },
-    userId: {
-        type: Sequelize.BIGINT,
+      },
+      userId: {
+        type: DataTypes.BIGINT,
         allowNull: false,
-    },
-    seenAt: {
-        type: Sequelize.DATE,
+      },
+      seenAt: {
+        type: DataTypes.DATE,
         allowNull: true,
+      },
     },
-}, {
-    indexes: [
+    {
+      indexes: [
         {
-            unique: true,
-            fields: ["announcementId", "userId"],
-        }
-    ]
-});
-
-module.exports = AnnouncementUser;
+          unique: true,
+          fields: ["announcementId", "userId"],
+        },
+      ],
+    }
+  );
+};

@@ -1,33 +1,31 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Bus = sequelize.define("bus", {
+module.exports = (sequelize) => {
+  return sequelize.define("bus", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     busModelId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     captainId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     licensePlate: {
-        type: Sequelize.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     phoneNumber: {
-        type: Sequelize.STRING,
-        allowNull: true
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     owner: {
-        type: Sequelize.STRING,
-        allowNull: false
-    }
-});
-
-module.exports = Bus;
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  });
+};

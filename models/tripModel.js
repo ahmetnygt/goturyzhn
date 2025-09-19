@@ -1,74 +1,69 @@
-const Sequelize = require("sequelize");
+const { DataTypes } = require("sequelize");
 
-const sequelize = require("../utilities/database");
-
-const Trip = sequelize.define("trip", {
+module.exports = (sequelize) => {
+  return sequelize.define("trip", {
     id: {
-        type: Sequelize.BIGINT,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
     },
     routeId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     busModelId: {
-        type: Sequelize.BIGINT,
-        allowNull: false
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     busId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     captainId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     driver2Id: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     driver3Id: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     assistantId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     hostessId: {
-        type: Sequelize.BIGINT,
-        allowNull: true
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     reservationOptionDate: {
-        type: Sequelize.DATEONLY
+      type: DataTypes.DATEONLY,
     },
     refundOptionDate: {
-        type: Sequelize.DATE
+      type: DataTypes.DATE,
     },
     date: {
-        type: Sequelize.DATE
-    },
-    date: {
-        type: Sequelize.DATEONLY
+      type: DataTypes.DATEONLY,
     },
     time: {
-        type: Sequelize.TIME
+      type: DataTypes.TIME,
     },
     isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     fromPlaceString: {
-        type: Sequelize.STRING
+      type: DataTypes.STRING,
     },
     toPlaceString: {
-        type: Sequelize.STRING
+      type: DataTypes.STRING,
     },
     busPlanString: {
-        type: Sequelize.STRING
-    }
-});
-
-module.exports = Trip;
+      type: DataTypes.STRING,
+    },
+  });
+};
