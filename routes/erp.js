@@ -14,6 +14,7 @@ router.get('/test', erpController.test);
 
 router.get('/login', erpController.getErpLogin);
 router.post('/login', erpController.postErpLogin);
+router.post('/logout', auth, erpController.postErpLogout);
 
 router.get('/permissions', auth, erpController.getPermissions);
 
