@@ -3156,6 +3156,97 @@ $(".bus-plans-close").on("click", e => {
     $(".bus-plans").css("display", "none")
 })
 
+const normalizeBusPlanInputValue = rawValue => {
+    if (rawValue === undefined || rawValue === null) {
+        return ""
+    }
+
+    const trimmedValue = rawValue.toString().trim()
+    if (!trimmedValue) {
+        return ""
+    }
+
+    if (trimmedValue === ">") {
+        return ">"
+    }
+
+    if (trimmedValue.toLowerCase() === "ş") {
+        return "Ş"
+    }
+
+    if (/^\d+$/.test(trimmedValue)) {
+        const numericValue = parseInt(trimmedValue, 10)
+        if (numericValue > 0 && numericValue < 81) {
+            return numericValue.toString()
+        }
+    }
+
+    return ""
+}
+
+const applyNormalizedBusPlanValue = (input, normalizedValue) => {
+    if (normalizedValue === "Ş") {
+        input.value = "Ş"
+        input.className = "bus-plan-create-input captain"
+    }
+    else if (normalizedValue === ">") {
+        input.value = ">"
+        input.className = "bus-plan-create-input doors"
+    }
+    else if (normalizedValue) {
+        input.value = normalizedValue
+        input.className = "bus-plan-create-input taken"
+    }
+    else {
+        input.value = ""
+        input.className = "bus-plan-create-input"
+    }
+}
+
+const isDuplicateBusPlanValue = (currentInput, normalizedValue) => {
+    let hasDuplicate = false
+
+    $(".bus-plan-create-input").each((_, element) => {
+        if (element !== currentInput && normalizeBusPlanInputValue(element.value) === normalizedValue) {
+            hasDuplicate = true
+            return false
+        }
+    })
+
+    return hasDuplicate
+}
+
+const attachBusPlanInputEvents = () => {
+    const inputs = $(".bus-plan-create-input")
+
+    inputs.each((_, element) => {
+        const normalized = normalizeBusPlanInputValue(element.value)
+        element.dataset.lastValidValue = normalized
+        applyNormalizedBusPlanValue(element, normalized)
+    })
+
+    inputs.off("focus.busPlan").on("focus.busPlan", event => {
+        const input = event.currentTarget
+        const normalized = normalizeBusPlanInputValue(input.value)
+        input.dataset.lastValidValue = normalized
+    })
+
+    inputs.off("input.busPlan").on("input.busPlan", event => {
+        const input = event.currentTarget
+        const normalized = normalizeBusPlanInputValue(input.value)
+        const lastValidValue = input.dataset.lastValidValue || ""
+
+        applyNormalizedBusPlanValue(input, normalized)
+
+        if (normalized && normalized !== "Ş" && normalized !== ">" && isDuplicateBusPlanValue(input, normalized)) {
+            applyNormalizedBusPlanValue(input, lastValidValue)
+            return
+        }
+
+        input.dataset.lastValidValue = normalized
+    })
+}
+
 let editingBusPlanId = null
 $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", async e => {
     const id = e.currentTarget.dataset.id
@@ -3168,23 +3259,7 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
         success: function (response) {
             $(".bus-plan-panel").html(response)
 
-            $(".bus-plan-create-input").on("input", e => {
-                if (e.currentTarget.value > 0 && e.currentTarget.value < 81) {
-                    e.currentTarget.className = "bus-plan-create-input taken"
-                }
-                else if (e.currentTarget.value == ">") {
-                    e.currentTarget.value = ">"
-                    e.currentTarget.className = "bus-plan-create-input doors"
-                }
-                else if (e.currentTarget.value == "ş" || e.currentTarget.value == "Ş") {
-                    e.currentTarget.value = "Ş"
-                    e.currentTarget.className = "bus-plan-create-input captain"
-                }
-                else {
-                    e.currentTarget.value = ""
-                    e.currentTarget.className = "bus-plan-create-input"
-                }
-            })
+            attachBusPlanInputEvents()
 
             $(".save-bus-plan").on("click", async e => {
                 const title = $(".bus-plan-title").val()
@@ -3238,23 +3313,7 @@ $(".add-bus-plan").on("click", async e => {
         success: function (response) {
             $(".bus-plan-panel").html(response)
 
-            $(".bus-plan-create-input").on("input", e => {
-                if (e.currentTarget.value > 0 && e.currentTarget.value < 81) {
-                    e.currentTarget.className = "bus-plan-create-input taken"
-                }
-                else if (e.currentTarget.value == ">") {
-                    e.currentTarget.value = ">"
-                    e.currentTarget.className = "bus-plan-create-input doors"
-                }
-                else if (e.currentTarget.value == "ş" || e.currentTarget.value == "Ş") {
-                    e.currentTarget.value = "Ş"
-                    e.currentTarget.className = "bus-plan-create-input captain"
-                }
-                else {
-                    e.currentTarget.value = ""
-                    e.currentTarget.className = "bus-plan-create-input"
-                }
-            })
+            attachBusPlanInputEvents()
 
             $(".save-bus-plan").on("click", async e => {
                 const title = $(".bus-plan-title").val()
