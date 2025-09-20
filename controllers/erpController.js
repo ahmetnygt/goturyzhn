@@ -272,7 +272,9 @@ exports.getTrip = async (req, res, next) => {
 
         const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
+        console.log(users)
         const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+        console.log(branches)
 
         const routeStopOrderMap = routeStops.reduce((acc, rs) => {
             acc[rs.stopId] = rs.order;
@@ -2773,7 +2775,7 @@ exports.getBranchesList = async (req, res, next) => {
 
     for (let i = 0; i < branches.length; i++) {
         const b = branches[i];
-        b.placeStr = stops.find(s => s.id == b.stopId).title;
+        b.placeStr = stops.find(s => s.id == b.stopId)?.title;
     }
 
     if (req.query.onlyData) {
