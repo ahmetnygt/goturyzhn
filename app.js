@@ -9,6 +9,8 @@ var usersRouter = require("./routes/users");
 var erpRouter = require("./routes/erp");
 
 const { goturDB, initGoturModels } = require("./utilities/goturDB"); // ortak kullanıcı & session DB
+const sequelize = require('./utilities/database');
+const seedPermissions = require('./utilities/permissionSeeder');
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 const tenantMiddleware = require("./middlewares/tenantMiddleware");
 
@@ -65,6 +67,13 @@ app.use("/", erpRouter);
 app.use(function (req, res, next) {
   next(createError(404));
 });
+
+sequelize.authenticate().then(console.log('Connection has been established successfully.')).catch(error => { console.error('Unable to connect to the database:', error) });
+
+sequelize
+  .sync({ alter: true })
+  .then(() => seedPermissions(sequelize))
+  .catch(e => console.log(e))
 
 // error handler
 app.use(function (err, req, res, next) {
