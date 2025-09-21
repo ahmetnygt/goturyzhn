@@ -1272,12 +1272,24 @@ block content
                         a.nav-link(data-bs-toggle="tab" href="#hesap") Hesap Kesim
                 .tab-content.mt-3.px-2(style="overflow-y: auto;height: 40vh;")
                     .tab-pane.fade.show.active#kasa
+                        .form-check.mb-2
+                            input#select-all-register.form-check-input.permission-select-all(type="checkbox" data-module="register")
+                            label.form-check-label(for="select-all-register") Tümünü Seç
                         .permission-list(data-module="register")
                     .tab-pane.fade#sefer
+                        .form-check.mb-2
+                            input#select-all-trip.form-check-input.permission-select-all(type="checkbox" data-module="trip")
+                            label.form-check-label(for="select-all-trip") Tümünü Seç
                         .permission-list(data-module="trip")
                     .tab-pane.fade#satis
+                        .form-check.mb-2
+                            input#select-all-sales.form-check-input.permission-select-all(type="checkbox" data-module="sales")
+                            label.form-check-label(for="select-all-sales") Tümünü Seç
                         .permission-list(data-module="sales")
                     .tab-pane.fade#hesap
+                        .form-check.mb-2
+                            input#select-all-account.form-check-input.permission-select-all(type="checkbox" data-module="account_cut")
+                            label.form-check-label(for="select-all-account") Tümünü Seç
                         .permission-list(data-module="account_cut")
 
     .members
