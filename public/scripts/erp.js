@@ -3809,34 +3809,48 @@ $(".save-stop").on("click", async e => {
 
 let editingRouteId = null
 let routeStops = []
+const syncRouteStopsState = () => {
+    routeStops = $(".route-stop")
+        .map((_, el) => {
+            const $el = $(el);
+            const $durationInput = $el.find(".duration-input");
+            const rawValue =
+                $durationInput.length > 0
+                    ? $durationInput.val()
+                    : $el.attr("data-duration");
+            const durationValue =
+                $durationInput.length > 0
+                    ? (rawValue || "").trim()
+                    : (rawValue || "").trim() || "00:00";
+            $el.attr("data-duration", durationValue);
+            return {
+                stopId: $el.data("stopId"),
+                duration: durationValue
+            };
+        })
+        .get();
+};
 
-setupDeleteHandler(".route-delete", {
-    url: "/post-delete-route",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const title = $btn.data("title");
-        return `${title || "Bu hattı"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingRouteId) === id) {
-            editingRouteId = null;
-            $(".route-code").val("");
-            $(".route-title").val("");
-            $(".route-from").val("");
-            $(".route-to").val("");
-            $(".route-description").val("");
-            routeStops = [];
-            $(".route-stops").html("");
-            $(".route-stop-duration").css("display", "none");
-            $(".route-info").css("display", "none");
-            $(".route-settings").css("display", "none");
-            $(".route").css("width", "");
-            $(".route-list").addClass("col-12").removeClass("col-4");
-            $(".save-route").html("KAYDET");
+$(document).on("change", ".route-stops .duration-input", syncRouteStopsState);
+
+$(document).on("click", ".remove-route-stop", e => {
+    const $stop = $(e.currentTarget).closest(".route-stop");
+    if (!$stop.length) return;
+
+    const stopId = $stop.data("stopId");
+    const wasFirst = $stop.is(":first-child");
+    $stop.remove();
+    routeStops = routeStops.filter(rs => String(rs.stopId) !== String(stopId));
+
+    if (wasFirst) {
+        const $newFirst = $(".route-stop").first();
+        if ($newFirst.length) {
+            $newFirst.find("._route-stop-duration").remove();
+            $newFirst.attr("data-duration", "00:00");
         }
-        $btn.closest(".btn-group").remove();
     }
+
+    syncRouteStopsState();
 });
 $(".route-nav").on("click", async e => {
     routeStops = []
@@ -3884,6 +3898,7 @@ $(".route-nav").on("click", async e => {
                             data: { id },
                             success: function (response) {
                                 $(".route-stops").html(response)
+                                syncRouteStopsState();
 
                                 $(".route").css("width", "80vw")
                                 $(".route-list").removeClass("col-12").addClass("col-4")
@@ -3975,7 +3990,7 @@ timeInput.addEventListener("blur", () => {
 $(".add-route-stop-button").on("click", async e => {
     const stopId = $(".route-stop-place").val()
     const duration = $(".route-stop-duration").val()
-    const isFirst = routeStops.length == 0
+    const isFirst = routeStops.length === 0
 
     if (stopId)
         await $.ajax({
@@ -3986,10 +4001,10 @@ $(".add-route-stop-button").on("click", async e => {
                 $(".route-stop-duration").css("display", "block")
                 $(".route-stop-place").val("")
                 $(".route-stop-duration").val("")
-                routeStops.push({ stopId, duration })
                 $(".route-stops").append(response)
+                syncRouteStopsState();
 
-                const timeInput = document.querySelector(".duration-input");
+                const timeInput = document.querySelector(".route-stops .route-stop:last-of-type .duration-input");
 
                 if (timeInput) {
                     // Yazarken 2 haneden sonra ":" ekle
@@ -4026,23 +4041,9 @@ $(".add-route-stop-button").on("click", async e => {
                         timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
                             .toString()
                             .padStart(2, "0")}`;
+                        syncRouteStopsState();
                     });
                 }
-
-                $(".remove-route-stop").on("click", e => {
-                    const $stop = $(e.currentTarget).closest(".route-stop");
-                    const stopId = $stop.data("stopId");
-
-                    if ($stop[0] === $(".route-stop")[0]) {
-                        $(".route-stop").eq(1).find("._route-stop-duration").remove();
-                    }
-
-                    console.log($stop)
-                    $stop.remove();
-
-                    routeStops = routeStops.filter(r => r.stopId !== stopId);
-                });
-
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -4056,6 +4057,7 @@ $(".save-route").on("click", async e => {
     const routeFrom = $(".route-from").val()
     const routeTo = $(".route-to").val()
     const routeDescription = $(".route-description").val()
+    syncRouteStopsState()
     const routeStopsSTR = JSON.stringify(routeStops)
 
     await $.ajax({
