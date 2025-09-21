@@ -435,10 +435,6 @@ function initPhoneInput(selector, mobileOnly = false) {
     input.addEventListener("input", () => {
         const d10 = normalizeTR(input.value);
         input.value = formatTR(d10);
-        input.style.borderColor =
-            d10.length === 10 && (!mobileOnly || d10.startsWith("5"))
-                ? "green"
-                : "";
     });
 
     input.addEventListener("blur", () => {
@@ -1476,7 +1472,7 @@ async function loadTrip(date, time, tripId) {
                 window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
             });
 
-            $(".account-cut-undo").on("click", async () => {
+            $(".account-cut-undo").off().on("click", async () => {
                 try {
                     const data = await $.ajax({
                         url: "/get-bus-account-cut-record",
@@ -3231,7 +3227,8 @@ const attachBusPlanInputEvents = () => {
         input.dataset.lastValidValue = normalized
     })
 
-    inputs.off("input.busPlan").on("input.busPlan", event => {
+    // duplicate kontrolünü change eventine taşıdık
+    inputs.off("change.busPlan").on("change.busPlan", event => {
         const input = event.currentTarget
         const normalized = normalizeBusPlanInputValue(input.value)
         const lastValidValue = input.dataset.lastValidValue || ""
@@ -3265,12 +3262,14 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
                 const title = $(".bus-plan-title").val()
                 const description = $(".bus-plan-description").val()
 
+                let maxPassenger = 0;
                 let plan = []
                 let planBinary = ""
                 $(".bus-plan-create-input").each((i, e) => {
                     plan.push(e.value ? e.value : 0)
                     if (e.value && e.value !== "Ş" && e.value !== ">") {
                         planBinary = `${planBinary}${1}`
+                        maxPassenger++;
                     }
                     else {
                         planBinary = `${planBinary}${0}`
@@ -3285,7 +3284,7 @@ $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", asy
                 await $.ajax({
                     url: "/post-save-bus-plan",
                     type: "POST",
-                    data: { id, title, description, plan: planJSON, planBinary },
+                    data: { id, title, description, plan: planJSON, planBinary, maxPassenger },
                     success: function (response) {
                         $(".bus-plans").css("display", "none")
                         $(".blackout").css("display", "none")

@@ -38,7 +38,7 @@ ul.nav.nav-pills(style="height: 2rem;overflow: hidden;line-height: 1rem;")
                         td #{t.to}
                         td #{t.date}
                         td #{t.price}
-                        td Nakit
+                        td #{`${t.payment=="cash"?"Nakit":t.payment=="card"?"K.Kartı":"Puan"}`}
                         if t.status == "web"
                             td WEB
                         else if t.status == "completed" || t.status == "gotur"

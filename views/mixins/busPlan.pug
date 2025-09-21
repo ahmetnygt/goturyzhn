@@ -64,8 +64,9 @@
             .trip-documents-button.dropdown-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false")
                 i.fa-solid.fa-file-lines
             ul.dropdown-menu
-                li
-                    a.dropdown-item.accountCut(href="#") Hesap Fişi
+                if trip.isAccountCut
+                    li
+                        a.dropdown-item.accountCut(href="#") Hesap Fişi
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b

@@ -13,7 +13,7 @@ module.exports = (sequelize) => {
     },
     captainId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     licensePlate: {
       type: DataTypes.STRING,
@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
     },
     owner: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
   });
 };

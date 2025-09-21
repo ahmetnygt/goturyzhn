@@ -247,6 +247,7 @@ exports.getTrip = async (req, res, next) => {
         const seatTypes = getSeatTypes(busModel.planBinary)
         const accountCut = await req.models.BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
+        console.log(stopId)
         const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
 
         trip.modifiedTime = trip.time
@@ -2156,15 +2157,17 @@ exports.postSaveBusPlan = async (req, res, next) => {
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, title, description, plan, planBinary } = data;
-
+        const { id, title, description, plan, planBinary, maxPassenger
+        } = data;
+        console.log(maxPassenger)
         const [busModel, created] = await req.models.BusModel.upsert(
             {
                 id,
                 title,
                 description,
                 plan,
-                planBinary
+                planBinary,
+                maxPassenger
             },
             { returning: true }
         );
@@ -2468,10 +2471,7 @@ exports.postTripActive = async (req, res, next) => {
 };
 
 exports.getStaffsList = async (req, res, next) => {
-    const staff = await req.models.Staff.findAll({
-        attributes: ["id", "name", "surname", "duty", "phoneNumber"],
-        raw: true,
-    });
+    const staff = await req.models.Staff.findAll({});
     const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
     staff.forEach(s => { s.dutyStr = dutyMap[s.duty] || s.duty; });
 
@@ -3081,6 +3081,17 @@ exports.postSaveUser = async (req, res, next) => {
             await req.models.FirmUserPermission.bulkCreate(rows);
         }
 
+        if (created) {
+            const cashRegister = req.models.CashRegister.build({
+                userId: user.id,
+                cash_balance: 0.00,
+                card_balance: 0.00,
+                reset_date_time: new Date()
+            })
+
+            await cashRegister.save()
+        }
+
         res.json({
             message: created ? "Eklendi" : "Güncellendi",
             user
@@ -3377,7 +3388,7 @@ exports.getPendingPayments = async (req, res, next) => {
 exports.getPendingCollections = async (req, res, next) => {
     try {
         console.log(req.session.user.id)
-        const payments = await req.models.Payment.findAll({ where: { receiverId: req.session.user.id, status: "pending" } });
+        const payments = await req.models.Payment.findAll({ where: { receiverId: req.session.user.id, initiatorId: req.session.user.id, status: "pending" } });
         if (!payments.length) {
             res.status(404);
         }

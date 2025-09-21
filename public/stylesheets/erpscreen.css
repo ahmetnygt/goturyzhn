@@ -764,6 +764,7 @@ p.inactiveTripText {
     max-width: 10rem;
 }
 
+.bus-plan-create-input-parameter,
 .bus-plan-create-input {
     height: 1.5rem;
     width: 1.75rem;
@@ -771,6 +772,7 @@ p.inactiveTripText {
     text-align: center;
 }
 
+.bus-plan-create-input-parameter.taken,
 .bus-plan-create-input.taken {
     background-color: #2660ff;
     color: #80a0fa;
@@ -778,12 +780,14 @@ p.inactiveTripText {
     border-top-left-radius: 5px;
 }
 
+.bus-plan-create-input-parameter.doors,
 .bus-plan-create-input.doors {
     border: solid 2px #696969;
     background-color: #696969;
     color: #3d3d3d;
 }
 
+.bus-plan-create-input-parameter.captain,
 .bus-plan-create-input.captain {
     border: solid 2px #ff7300;
     background-color: #ff7300;
@@ -792,6 +796,7 @@ p.inactiveTripText {
     border-top-left-radius: 5px;
 }
 
+.bus-plan-create-input-parameter.reverse,
 .bus-plan-create-input.reverse {
     border-bottom-right-radius: 5px;
     border-bottom-left-radius: 5px;
@@ -977,6 +982,7 @@ div.ticket-cancel-refund-open-close {
     overflow: hidden;
     width: 20vw;
 }
+
 .report-popup {
     position: fixed;
     left: 50%;
