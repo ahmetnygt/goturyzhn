@@ -4342,9 +4342,32 @@ $(".save-branch").on("click", async e => {
 
 let editingUserId = null
 
+const permissionModules = ['register', 'trip', 'sales', 'account_cut'];
+
+function updateSelectAllCheckbox(module) {
+    const container = $(`.permission-list[data-module="${module}"]`);
+    const selectAll = $(`.permission-select-all[data-module="${module}"]`);
+    const checkboxes = container.find('.permission-checkbox');
+
+    if (!selectAll.length) {
+        return;
+    }
+
+    if (!checkboxes.length) {
+        selectAll.prop('checked', false);
+        selectAll.prop('indeterminate', false);
+        return;
+    }
+
+    const total = checkboxes.length;
+    const checkedCount = checkboxes.filter(':checked').length;
+
+    selectAll.prop('checked', checkedCount === total);
+    selectAll.prop('indeterminate', checkedCount > 0 && checkedCount < total);
+}
+
 function renderPermissions(perms) {
-    const modules = ['register', 'trip', 'sales', 'account_cut'];
-    modules.forEach(m => {
+    permissionModules.forEach(m => {
         const container = $(`.permission-list[data-module="${m}"]`);
         container.html('');
         if (perms[m]) {
@@ -4353,8 +4376,22 @@ function renderPermissions(perms) {
                 container.append(`<div class="form-check"><input class="form-check-input permission-checkbox" type="checkbox" value="${p.id}" id="${id}" ${p.allow ? 'checked' : ''}><label class="form-check-label" for="${id}">${p.description}</label></div>`);
             });
         }
+        updateSelectAllCheckbox(m);
     });
 }
+
+$(document).on('change', '.permission-select-all', function () {
+    const module = $(this).data('module');
+    const checked = $(this).is(':checked');
+    $(this).prop('indeterminate', false);
+    $(`.permission-list[data-module="${module}"] .permission-checkbox`).prop('checked', checked);
+    updateSelectAllCheckbox(module);
+});
+
+$(document).on('change', '.permission-checkbox', function () {
+    const module = $(this).closest('.permission-list').data('module');
+    updateSelectAllCheckbox(module);
+});
 
 $(".user-settings-nav").on("click", async e => {
     const branchSelect = $(".user-branches")
