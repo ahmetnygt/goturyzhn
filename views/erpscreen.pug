@@ -528,11 +528,14 @@ block content
                     button.btn.mb-2.add-bus-plan
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex
-                    .col-6
-                        p.text-center.mb-0 Plan Adı
-                    .col-6
-                        p.text-center.mb-0 Açıklama
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-6
+                            p.text-center.mb-0 Plan Adı
+                        .col-6
+                            p.text-center.mb-0 Açıklama
+                    .col-1
+                        p.text-center.mb-0 İşlem
                 .bus-plan-list.d-flex.flex-column.gap-3.p-2
             .col-6.d-flex.gap-3.p-3.align-items-start.bus-plan-panel
 
@@ -547,13 +550,16 @@ block content
                     button.btn.mb-2.add-bus
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col-4
-                        p.text-center.m-0 Plaka
-                    .col-4
-                        p.text-center.m-0 Otobüs Modeli
-                    .col-4
-                        p.text-center.m-0 Telefon
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-4
+                            p.text-center.m-0 Plaka
+                        .col-4
+                            p.text-center.m-0 Otobüs Modeli
+                        .col-4
+                            p.text-center.m-0 Telefon
+                    .col-1
+                        p.text-center.m-0 İşlem
                 .bus-list-nodes.d-flex.flex-column.gap-3
 
             .bus-info.h-100
@@ -611,13 +617,16 @@ block content
                     button.btn.mb-2.add-staff
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col-4
-                        p.text-center.mb-0 Kimlik No
-                    .col-4
-                        p.text-center.mb-0 İsim Soyisim
-                    .col-4
-                        p.text-center.mb-0 Görev
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-4
+                            p.text-center.mb-0 Kimlik No
+                        .col-4
+                            p.text-center.mb-0 İsim Soyisim
+                        .col-4
+                            p.text-center.mb-0 Görev
+                    .col-1
+                        p.text-center.mb-0 İşlem
                 .staff-list-nodes.d-flex.flex-column.gap-3.p-2
             .col-6.flex-column.gap-3.p-3.align-items-start.staff-panel
                 .input-group
@@ -670,11 +679,14 @@ block content
                     button.btn.mb-2.add-stop
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex
-                    .col-6
-                        p.text-center.mb-0 Durak Adı
-                    .col-6
-                        p.text-center.mb-0 Yer
+                .d-flex.align-items-center
+                    .d-flex.col-11
+                        .col-6
+                            p.text-center.mb-0 Durak Adı
+                        .col-6
+                            p.text-center.mb-0 Yer
+                    .col-1
+                        p.text-center.mb-0 İşlem
                 .stop-list-nodes.d-flex.flex-column.gap-3.p-2
             .col-6.flex-column.gap-3.p-3.align-items-start.stop-panel
                 .input-group
@@ -709,15 +721,18 @@ block content
                     button.btn.mb-2.add-route
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col-2
-                        p.text-center.m-0 Kod
-                    .col-4
-                        p.text-center.m-0 Hat Adı
-                    .col-3
-                        p.text-center.m-0 Nereden
-                    .col-3
-                        p.text-center.m-0 Nereye
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-2
+                            p.text-center.m-0 Kod
+                        .col-4
+                            p.text-center.m-0 Hat Adı
+                        .col-3
+                            p.text-center.m-0 Nereden
+                        .col-3
+                            p.text-center.m-0 Nereye
+                    .col-1
+                        p.text-center.m-0 İşlem
                 .route-list-nodes.d-flex.flex-column.gap-3
 
             .route-info.h-100
@@ -966,35 +981,38 @@ block content
                     button.btn.mb-2.add-price
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col
-                        p.text-center.m-0 Nereden
-                    .col
-                        p.text-center.m-0 Nereye
-                    .col
-                        p.text-center.m-0 Fiyat1
-                    .col
-                        p.text-center.m-0 Fiyat2
-                    .col
-                        p.text-center.m-0 Fiyat3
-                    .col
-                        p.text-center.m-0 Webfiyat
-                    .col
-                        p.text-center.m-0 Tekli1
-                    .col
-                        p.text-center.m-0 Tekli2
-                    .col
-                        p.text-center.m-0 Tekli3
-                    .col
-                        p.text-center.m-0 Webtekli
-                    .col
-                        p.text-center.m-0 Koltuklimit
-                    .col
-                        p.text-center.m-0 Saatlimit
-                    .col
-                        p.text-center.m-0 Nezamandan
-                    .col
-                        p.text-center.m-0 Nezamana
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col
+                            p.text-center.m-0 Nereden
+                        .col
+                            p.text-center.m-0 Nereye
+                        .col
+                            p.text-center.m-0 Fiyat1
+                        .col
+                            p.text-center.m-0 Fiyat2
+                        .col
+                            p.text-center.m-0 Fiyat3
+                        .col
+                            p.text-center.m-0 Webfiyat
+                        .col
+                            p.text-center.m-0 Tekli1
+                        .col
+                            p.text-center.m-0 Tekli2
+                        .col
+                            p.text-center.m-0 Tekli3
+                        .col
+                            p.text-center.m-0 Webtekli
+                        .col
+                            p.text-center.m-0 Koltuklimit
+                        .col
+                            p.text-center.m-0 Saatlimit
+                        .col
+                            p.text-center.m-0 Nezamandan
+                        .col
+                            p.text-center.m-0 Nezamana
+                    .col-1
+                        p.text-center.m-0 İşlem
                 .price-list-nodes.d-flex.flex-column.gap-3
         .p-3.d-flex.justify-content-end
             button.btn.btn-outline-primary.price-save KAYDET
@@ -1147,11 +1165,14 @@ block content
                     button.btn.mb-2.add-branch
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col-6
-                        p.text-center.m-0 Şube Adı
-                    .col-6
-                        p.text-center.m-0 Durak
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-6
+                            p.text-center.m-0 Şube Adı
+                        .col-6
+                            p.text-center.m-0 Durak
+                    .col-1
+                        p.text-center.m-0 İşlem
                 .branch-list-nodes.d-flex.flex-column.gap-3
 
             .branch-info.h-100
@@ -1210,13 +1231,16 @@ block content
                     button.btn.mb-2.add-user
                         i.fa-solid.fa-plus.me-2
                         | EKLE
-                .d-flex.mb-2
-                    .col-4
-                        p.text-center.m-0 Ad Soyad
-                    .col-4
-                        p.text-center.m-0 Şube
-                    .col-4
-                        p.text-center.m-0 Telefon
+                .d-flex.align-items-center.mb-2
+                    .d-flex.col-11
+                        .col-4
+                            p.text-center.m-0 Ad Soyad
+                        .col-4
+                            p.text-center.m-0 Şube
+                        .col-4
+                            p.text-center.m-0 Telefon
+                    .col-1
+                        p.text-center.m-0 İşlem
                 .user-list-nodes.d-flex.flex-column.gap-3
 
             .user-info.h-100

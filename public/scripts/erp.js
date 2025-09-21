@@ -91,6 +91,38 @@ window.showError = showError;
 
 $(document).off("click", ".error-close").on("click", ".error-close", () => $(".error-popup").hide());
 
+const setupDeleteHandler = (selector, { url, getData, getConfirmMessage, onSuccess }) => {
+    $(document).off("click", selector).on("click", selector, async e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const $button = $(e.currentTarget);
+        const message = typeof getConfirmMessage === "function" ? getConfirmMessage($button) : getConfirmMessage;
+        if (message && !window.confirm(message)) {
+            return;
+        }
+
+        try {
+            const data = typeof getData === "function" ? getData($button) : getData;
+            await $.ajax({ url, type: "POST", data });
+            if (typeof onSuccess === "function") {
+                onSuccess($button);
+            } else {
+                $button.closest(".btn-group").remove();
+            }
+        } catch (err) {
+            const errorMessage =
+                err?.responseJSON?.message ||
+                err?.responseJSON?.error ||
+                err?.responseText ||
+                err?.statusText ||
+                err?.message ||
+                "Bilinmeyen hata";
+            showError(errorMessage);
+        }
+    });
+};
+
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
     let [input, init] = args;
@@ -3136,7 +3168,17 @@ $(".bus-plans-nav").on("click", async e => {
         type: "GET",
         success: function (busModels) {
             busModels.forEach(b => {
-                list.append(`<button class=\"btn btn-outline-primary bus-plan-button d-flex w-100\" data-id=\"${b.id}\"><div class=\"col-6\"><p class=\"text-center mb-0\">${b.title}</p></div><div class=\"col-6\"><p class=\"text-center mb-0\">${b.description}</p></div></button>`)
+                list.append(`
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-outline-primary bus-plan-button d-flex col-11" data-id="${b.id}" data-title="${b.title}">
+                            <div class="col-6"><p class="text-center mb-0">${b.title}</p></div>
+                            <div class="col-6"><p class="text-center mb-0">${b.description}</p></div>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger bus-plan-delete col-1" data-id="${b.id}" data-title="${b.title}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `)
             })
         },
         error: function (xhr, status, error) {
@@ -3245,6 +3287,23 @@ const attachBusPlanInputEvents = () => {
 }
 
 let editingBusPlanId = null
+
+setupDeleteHandler(".bus-plan-delete", {
+    url: "/post-delete-bus-plan",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const title = $btn.data("title");
+        return `${title || "Bu planı"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingBusPlanId) === id) {
+            editingBusPlanId = null;
+            $(".bus-plan-panel").html("");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 $(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", async e => {
     const id = e.currentTarget.dataset.id
     editingBusPlanId = id
@@ -3358,6 +3417,32 @@ $(".add-bus-plan").on("click", async e => {
 })
 
 let editingBusId = null
+
+setupDeleteHandler(".bus-delete", {
+    url: "/post-delete-bus",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const plate = $btn.data("plate");
+        return `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingBusId) === id) {
+            editingBusId = null;
+            $(".bus-license-plate").val("");
+            $(".bus-bus-model").val("");
+            $(".bus-captain").val("");
+            $(".bus-phone").val("");
+            $(".bus-owner").val("");
+            $(".bus").css("width", "");
+            $(".bus-list").addClass("col-12").removeClass("col-4");
+            $(".bus-info").css("display", "none");
+            $(".bus-settings").css("display", "none");
+            $(".save-bus").html("KAYDET");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 $(".bus-nav").on("click", async e => {
     const modelSelect = $(".bus-bus-model")
     const captainSelect = $(".bus-captain")
@@ -3487,6 +3572,32 @@ $(".save-bus").on("click", async e => {
 })
 
 let editingStaffId = null
+
+setupDeleteHandler(".staff-delete", {
+    url: "/post-delete-staff",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const name = $btn.data("name");
+        return `${name || "Bu personeli"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingStaffId) === id) {
+            editingStaffId = null;
+            $(".staff-id-number").val("");
+            $(".staff-duty").val("");
+            $(".staff-name").val("");
+            $(".staff-surname").val("");
+            $(".staff-address").val("");
+            $(".staff-phone").val("");
+            $("input[name='staff-gender']").prop("checked", false);
+            $(".staff-nationality").val("");
+            $(".staff-panel").css("display", "none");
+            $(".save-staff").html("KAYDET");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 $(".staff-nav").on("click", async e => {
     await $.ajax({
         url: "/get-staffs-list",
@@ -3575,6 +3686,30 @@ $(".save-staff").on("click", async e => {
 })
 
 let editingStopId = null
+
+setupDeleteHandler(".stop-delete", {
+    url: "/post-delete-stop",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const title = $btn.data("title");
+        return `${title || "Bu durağı"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingStopId) === id) {
+            editingStopId = null;
+            $(".stop-title").val("");
+            $(".stop-web-title").val("");
+            $(".stop-place").val("");
+            $(".stop-uetds").val("");
+            $(".stop-service").prop("checked", false);
+            $(".stop-active").prop("checked", true);
+            $(".stop-panel").css("display", "none");
+            $(".save-stop").html("KAYDET");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
     placeSelect.empty()
@@ -3674,6 +3809,35 @@ $(".save-stop").on("click", async e => {
 
 let editingRouteId = null
 let routeStops = []
+
+setupDeleteHandler(".route-delete", {
+    url: "/post-delete-route",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const title = $btn.data("title");
+        return `${title || "Bu hattı"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingRouteId) === id) {
+            editingRouteId = null;
+            $(".route-code").val("");
+            $(".route-title").val("");
+            $(".route-from").val("");
+            $(".route-to").val("");
+            $(".route-description").val("");
+            routeStops = [];
+            $(".route-stops").html("");
+            $(".route-stop-duration").css("display", "none");
+            $(".route-info").css("display", "none");
+            $(".route-settings").css("display", "none");
+            $(".route").css("width", "");
+            $(".route-list").addClass("col-12").removeClass("col-4");
+            $(".save-route").html("KAYDET");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 $(".route-nav").on("click", async e => {
     routeStops = []
     await $.ajax({
@@ -3962,6 +4126,22 @@ $(".trip-nav").on("click", async e => {
 
 let priceStops = [];
 
+setupDeleteHandler(".price-delete", {
+    url: "/post-delete-price",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const from = $btn.data("from");
+        const to = $btn.data("to");
+        if (from && to) {
+            return `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`;
+        }
+        return "Bu fiyatı silmek istediğinize emin misiniz?";
+    },
+    onSuccess: $btn => {
+        $btn.closest(".btn-group").remove();
+    }
+});
+
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
     const selects = row.find("select");
@@ -4003,7 +4183,7 @@ $(".price-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(document).off("click", ".price-list-nodes .d-flex.btn, .price-add-row").on("click", ".price-list-nodes .d-flex.btn, .price-add-row", function () {
+$(document).off("click", ".price-row, .price-add-row").on("click", ".price-row, .price-add-row", function () {
     const row = $(this);
     if (row.hasClass("price-button-inputs")) return;
     row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
@@ -4207,6 +4387,31 @@ $(".ticket-cancel-refund-open-close").on("click", e => {
 
 let editingBranchId = null
 
+setupDeleteHandler(".branch-delete", {
+    url: "/post-delete-branch",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const title = $btn.data("title");
+        return `${title || "Bu şubeyi"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingBranchId) === id) {
+            editingBranchId = null;
+            $("#isBranchActive").prop("checked", true);
+            $("#isMainBranch").prop("checked", false);
+            $(".branch-title").val("");
+            $(".branch-place").val("");
+            $(".branch-main-branch").val("");
+            $(".branch-info").css("display", "none");
+            $(".branch-settings").css("display", "none");
+            $(".branch").css("width", "");
+            $(".branch-list").addClass("col-12").removeClass("col-4");
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
+
 async function loadBranchOptions() {
     const stops = await $.ajax({
         url: "/get-stops-list",
@@ -4343,6 +4548,34 @@ $(".save-branch").on("click", async e => {
 })
 
 let editingUserId = null
+
+setupDeleteHandler(".user-delete", {
+    url: "/post-delete-user",
+    getData: $btn => ({ id: $btn.data("id") }),
+    getConfirmMessage: $btn => {
+        const name = $btn.data("name");
+        return `${name || "Bu kullanıcıyı"} silmek istediğinize emin misiniz?`;
+    },
+    onSuccess: $btn => {
+        const id = String($btn.data("id"));
+        if (String(editingUserId) === id) {
+            editingUserId = null;
+            $("#isUserActive").prop("checked", true);
+            $(".user-name").val("");
+            $(".user-username").val("");
+            $(".user-password").val("");
+            $(".user-phone").val("");
+            $(".user-branches").val("");
+            $(".users").css("width", "");
+            $(".user-list").addClass("col-12").removeClass("col-4");
+            $(".user-info").css("display", "none");
+            $(".user-settings").css("display", "none");
+            $(".save-user").html("KAYDET");
+            renderPermissions({ register: [], trip: [], sales: [], account_cut: [] });
+        }
+        $btn.closest(".btn-group").remove();
+    }
+});
 
 const permissionModules = ['register', 'trip', 'sales', 'account_cut'];
 
