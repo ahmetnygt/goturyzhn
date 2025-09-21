@@ -470,7 +470,7 @@ div.report-close {
     background-color: white;
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
-    min-width: 80vw;
+    min-width: 95vw;
     min-height: 40vh;
     overflow: hidden;
     display: none;
