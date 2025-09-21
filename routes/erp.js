@@ -60,12 +60,14 @@ router.get('/get-search-table', erpController.getSearchTable);
 
 router.get('/get-bus-plan-panel', erpController.getBusPlanPanel);
 router.post('/post-save-bus-plan', erpController.postSaveBusPlan);
+router.post('/post-delete-bus-plan', erpController.postDeleteBusPlan);
 
 router.get('/get-bus-models-data', erpController.getBusModelsData);
 
 router.get('/get-buses-list', erpController.getBusesList);
 router.get('/get-bus', erpController.getBus);
 router.post('/post-save-bus', erpController.postSaveBus);
+router.post('/post-delete-bus', erpController.postDeleteBus);
 router.get('/get-buses-data', erpController.getBusesData);
 router.post('/post-trip-bus', erpController.postTripBus);
 router.post('/post-trip-bus-plan', erpController.postTripBusPlan);
@@ -77,16 +79,19 @@ router.post('/post-refund-cargo', erpController.postRefundCargo);
 router.get('/get-staffs-list', erpController.getStaffsList);
 router.get('/get-staff', erpController.getStaff);
 router.post('/post-save-staff', erpController.postSaveStaff);
+router.post('/post-delete-staff', erpController.postDeleteStaff);
 
 router.get('/get-stops-list', erpController.getStopsList);
 router.get('/get-stop', erpController.getStop);
 router.post('/post-save-stop', erpController.postSaveStop);
+router.post('/post-delete-stop', erpController.postDeleteStop);
 router.get('/get-stops-data', erpController.getStopsData);
 router.get('/get-places-data', erpController.getPlacesData);
 
 router.get('/get-prices-list', erpController.getPricesList);
 router.post('/post-save-prices', erpController.postSavePrices);
 router.post('/post-add-price', erpController.postAddPrice);
+router.post('/post-delete-price', erpController.postDeletePrice);
 
 router.get('/get-routes-data', erpController.getRoutesData);
 router.get('/get-routes-list', erpController.getRoutesList);
@@ -94,6 +99,7 @@ router.get('/get-route', erpController.getRoute);
 router.get('/get-route-stop', erpController.getRouteStop);
 router.get('/get-route-stops-list', erpController.getRouteStopsList);
 router.post('/post-save-route', erpController.postSaveRoute);
+router.post('/post-delete-route', erpController.postDeleteRoute);
 
 router.get('/get-trips-list', erpController.getTripsList);
 router.post('/post-save-trip', erpController.postSaveTrip);
@@ -101,11 +107,13 @@ router.post('/post-save-trip', erpController.postSaveTrip);
 router.get('/get-branches-list', erpController.getBranchesList);
 router.get('/get-branch', erpController.getBranch);
 router.post('/post-save-branch', erpController.postSaveBranch);
+router.post('/post-delete-branch', erpController.postDeleteBranch);
 
 router.get('/get-users-list', erpController.getUsersList);
 router.get('/get-user', erpController.getUser);
 router.get('/get-users-by-branch', erpController.getUsersByBranch);
 router.post('/post-save-user', erpController.postSaveUser);
+router.post('/post-delete-user', erpController.postDeleteUser);
 
 router.get('/get-customers-list', erpController.getCustomersList);
 router.get('/get-customer', erpController.getCustomer);

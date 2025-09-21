@@ -1,4 +1,4 @@
-.route-stop.text-center(data-stop-id=routeStop.stopId)
+.route-stop.text-center(data-stop-id=routeStop.stopId data-duration=routeStop.duration)
     -if(routeStop.isFirst == false || routeStop.isFirst == "false"){
         .d-flex.flex-column.align-items-center._route-stop-duration
             i.fa-solid.fa-chevron-up.text-primary
