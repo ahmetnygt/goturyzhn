@@ -2190,6 +2190,25 @@ exports.postSaveBusPlan = async (req, res, next) => {
     }
 };
 
+exports.postDeleteBusPlan = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz plan bilgisi" });
+        }
+
+        const deleted = await req.models.BusModel.destroy({ where: { id } });
+        if (!deleted) {
+            return res.status(404).json({ message: "Otobüs planı bulunamadı" });
+        }
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Bus plan delete error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getBusesList = async (req, res, next) => {
     const buses = await req.models.Bus.findAll()
 
@@ -2334,6 +2353,25 @@ exports.postAddPrice = async (req, res, next) => {
     }
 }
 
+exports.postDeletePrice = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz fiyat bilgisi" });
+        }
+
+        const deleted = await req.models.Price.destroy({ where: { id } });
+        if (!deleted) {
+            return res.status(404).json({ message: "Fiyat bulunamadı" });
+        }
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Price delete error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getBus = async (req, res, next) => {
     const id = req.query.id
     const licensePlate = req.query.licensePlate
@@ -2370,6 +2408,25 @@ exports.postSaveBus = async (req, res, next) => {
         }
     } catch (err) {
         console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postDeleteBus = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz otobüs bilgisi" });
+        }
+
+        const deleted = await req.models.Bus.destroy({ where: { id } });
+        if (!deleted) {
+            return res.status(404).json({ message: "Otobüs bulunamadı" });
+        }
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Bus delete error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -2517,6 +2574,26 @@ exports.postSaveStaff = async (req, res, next) => {
     }
 };
 
+exports.postDeleteStaff = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz personel bilgisi" });
+        }
+
+        const staff = await req.models.Staff.findByPk(id);
+        if (!staff) {
+            return res.status(404).json({ message: "Personel bulunamadı" });
+        }
+
+        await staff.destroy();
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Staff delete error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getStopsList = async (req, res, next) => {
     const stops = await req.models.Stop.findAll();
     const places = await req.commonModels.Place.findAll()
@@ -2585,6 +2662,26 @@ exports.postSaveStop = async (req, res, next) => {
         }
     } catch (err) {
         console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postDeleteStop = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz durak bilgisi" });
+        }
+
+        const stop = await req.models.Stop.findByPk(id);
+        if (!stop) {
+            return res.status(404).json({ message: "Durak bulunamadı" });
+        }
+
+        await stop.destroy();
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Stop delete error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -2699,6 +2796,28 @@ exports.postSaveRoute = async (req, res, next) => {
         res.status(500).json({ message: err.message });
     }
 }
+
+exports.postDeleteRoute = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz hat bilgisi" });
+        }
+
+        const route = await req.models.Route.findByPk(id);
+        if (!route) {
+            return res.status(404).json({ message: "Hat bulunamadı" });
+        }
+
+        await req.models.RouteStop.destroy({ where: { routeId: id } });
+        await route.destroy();
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Route delete error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
 
 exports.getTripsList = async (req, res, next) => {
     const date = req.query.date
@@ -2829,6 +2948,25 @@ exports.postSaveBranch = async (req, res, next) => {
         }
     } catch (err) {
         console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postDeleteBranch = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz şube bilgisi" });
+        }
+
+        const deleted = await req.models.Branch.destroy({ where: { id } });
+        if (!deleted) {
+            return res.status(404).json({ message: "Şube bulunamadı" });
+        }
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("Branch delete error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -3106,6 +3244,29 @@ exports.postSaveUser = async (req, res, next) => {
 
     } catch (err) {
         console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.postDeleteUser = async (req, res, next) => {
+    try {
+        const id = Number(req.body.id);
+        if (!id) {
+            return res.status(400).json({ message: "Geçersiz kullanıcı bilgisi" });
+        }
+
+        const user = await req.models.FirmUser.findByPk(id);
+        if (!user) {
+            return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+        }
+
+        await req.models.FirmUserPermission.destroy({ where: { firmUserId: id } });
+        await req.models.CashRegister.destroy({ where: { userId: id } });
+        await user.destroy();
+
+        res.json({ message: "Silindi" });
+    } catch (err) {
+        console.error("User delete error:", err);
         res.status(500).json({ message: err.message });
     }
 };
