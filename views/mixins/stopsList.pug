@@ -1,6 +1,9 @@
 each s in stops
-    button.stop-button.d-flex.btn.btn-outline-primary(data-id=s.id)
-        .col-6
-            p.text-center.m-0 #{s.title}
-        .col-6
-            p.text-center.m-0 #{s.placeTitle}
+    .btn-group.w-100
+        button.stop-button.d-flex.btn.btn-outline-primary.col-11(type="button" data-id=s.id)
+            .col-6
+                p.text-center.m-0 #{s.title}
+            .col-6
+                p.text-center.m-0 #{s.placeTitle}
+        button.btn.btn-outline-danger.stop-delete.col-1(type="button" data-id=s.id data-title=s.title)
+            i.fa-solid.fa-trash
