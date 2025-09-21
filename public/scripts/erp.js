@@ -3760,6 +3760,8 @@ $(".add-route").on("click", e => {
     $(".route-to").val("")
     $(".route-description").val("")
     $(".route-stops").html("")
+    $(".route-stop-duration").css("display", "none")
+    routeStops = []
     editingRouteId = null
     $(".route").css("width", "80vw")
     $(".route-list").removeClass("col-12").addClass("col-4")
@@ -3773,8 +3775,8 @@ const timeInput = document.querySelector(".route-stop-duration");
 // Yazarken 2 haneden sonra ":" ekle
 timeInput.addEventListener("input", () => {
     let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
-    if (val.length >= 3) {
-        val = val.slice(0, 2) + ":" + val.slice(2, 4);
+    if (val.length >= 2) {
+        val = val.slice(0, 3) + ":" + val.slice(3, 4);
     }
     timeInput.value = val;
 });

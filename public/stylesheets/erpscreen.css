@@ -476,8 +476,9 @@ div.report-close {
     display: none;
 }
 
-.price-list {
-    overflow: auto;
+.price-list-nodes {
+    max-height: 65vh;
+    overflow-y: auto;
 }
 
 input.price-button-input,
@@ -598,7 +599,7 @@ select.price-button-select {
     background-color: white;
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
-    min-width: 20vw;
+    min-width: 25vw;
     min-height: 40vh;
     overflow: hidden;
     display: none;
@@ -1039,10 +1040,10 @@ div.ticket-cancel-refund-open-close {
     gap: 1rem;
 }
 
-/* .tripRows {
+.tripRows {
     width: 100%;
-    overflow: auto;
-} */
+    overflow-x: auto;
+}
 
 .tripRow {
     border-radius: 5px;
@@ -1050,7 +1051,7 @@ div.ticket-cancel-refund-open-close {
     display: flex;
     padding: 0 .2rem;
     margin-bottom: .5rem;
-    width: fit-content;
+    width: max-content;
     cursor: pointer;
 }
 

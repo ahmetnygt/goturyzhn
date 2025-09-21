@@ -174,6 +174,8 @@ exports.getDayTripsList = async (req, res, next) => {
 
         const fromStop = await req.models.Stop.findOne({ where: { id: stopId } })
 
+        const busModels = await req.models.BusModel.findAll({ where: { id: { [Op.in]: [...new Set(trips.map(t => t.busModelId))] } } })
+
         var newTrips = []
         for (let i = 0; i < trips.length; i++) {
             const t = trips[i];
@@ -194,6 +196,10 @@ exports.getDayTripsList = async (req, res, next) => {
             }
 
             t.modifiedTime = t.time
+
+            const ticketCount = await req.models.Ticket.count({ where: { tripId: t.id } })
+
+            t.fullness = `${ticketCount}/${busModels.find(bm => bm.id == t.busModelId).maxPassenger}`
 
             const routeStops = await req.models.RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
             const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
@@ -219,9 +225,10 @@ exports.getDayTripsList = async (req, res, next) => {
 
             return {
                 ...trip.toJSON(),
-                dateString: `${pad(tripDate.getDate())}/${pad(tripDate.getMonth() + 1)}`,
+                dateString: `${new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate)}`,
                 timeString: `${hours}.${minutes}`,
-                isExpired: trip.isExpired
+                isExpired: trip.isExpired,
+                fullness: trip.fullness
             };
         });
         res.render("mixins/tripRow", { trips: tripArray, tripId })
