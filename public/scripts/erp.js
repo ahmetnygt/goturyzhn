@@ -19,6 +19,157 @@ let accountCutId;
 let originalPrices = []
 let seatTypes = []
 
+function parsePriceAttribute(value) {
+    if (value === undefined || value === null || value === "") {
+        return [];
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map(v => Number(v))
+            .filter(v => !Number.isNaN(v));
+    }
+
+    if (typeof value === "number") {
+        return Number.isNaN(value) ? [] : [value];
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(trimmed);
+
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map(v => Number(v))
+                    .filter(v => !Number.isNaN(v));
+            }
+
+            if (typeof parsed === "number" && !Number.isNaN(parsed)) {
+                return [parsed];
+            }
+
+            return [];
+        } catch (err) {
+            return trimmed
+                .split(",")
+                .map(part => Number(part.trim()))
+                .filter(v => !Number.isNaN(v));
+        }
+    }
+
+    return [];
+}
+
+function getPriceLists($priceContainer) {
+    const seatType = $priceContainer.attr("data-seat-type") === "single" ? "single" : "standard";
+    const regularPrices = parsePriceAttribute($priceContainer.attr("data-regular-prices"));
+    const singlePrices = parsePriceAttribute($priceContainer.attr("data-single-prices"));
+
+    const activeList = seatType === "single"
+        ? (singlePrices.length ? singlePrices : regularPrices)
+        : (regularPrices.length ? regularPrices : singlePrices);
+
+    return {
+        seatType,
+        regularPrices,
+        singlePrices,
+        activeList,
+    };
+}
+
+function initializeTicketRowPriceControls() {
+    originalPrices = [];
+
+    $(".ticket-row").each((index, row) => {
+        const $row = $(row);
+        const $priceInput = $row.find(".price input").first();
+        const basePrice = Number($priceInput.val());
+
+        originalPrices[index] = Number.isNaN(basePrice) ? null : basePrice;
+    });
+}
+
+$(document).on("click", ".price-arrow", function (e) {
+    e.preventDefault();
+
+    const $button = $(this);
+    const isUp = $button.hasClass("price-arrow-up");
+    const $priceContainer = $button.closest(".price");
+    const priceLists = getPriceLists($priceContainer);
+    const options = priceLists.activeList;
+
+    if (!options.length) {
+        return;
+    }
+
+    const $row = $button.closest(".ticket-row");
+    const rowIndex = $(".ticket-row").index($row);
+    const $input = $priceContainer.find("input").first();
+
+    const currentValue = Number($input.val());
+    let currentIndex = options.findIndex(p => Number(p) === currentValue);
+
+    if (currentIndex === -1 && rowIndex > -1) {
+        const originalPrice = originalPrices[rowIndex];
+
+        if (originalPrice !== undefined && originalPrice !== null) {
+            currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
+        }
+    }
+
+    let nextIndex;
+
+    if (currentIndex === -1) {
+        nextIndex = isUp ? 0 : options.length - 1;
+    } else if (isUp) {
+        nextIndex = (currentIndex + 1) % options.length;
+    } else {
+        nextIndex = (currentIndex - 1 + options.length) % options.length;
+    }
+
+    const newBasePrice = Number(options[nextIndex]);
+
+    if (Number.isNaN(newBasePrice)) {
+        return;
+    }
+
+    if (rowIndex > -1) {
+        originalPrices[rowIndex] = newBasePrice;
+    }
+
+    let finalPrice = newBasePrice;
+    const $discountInfo = $priceContainer.find("span.customer-point");
+    const pointOrPercent = $discountInfo.data("pointorpercent");
+
+    if (pointOrPercent === "percent") {
+        const percentText = ($discountInfo.text() || "").trim();
+        const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
+
+        if (percentMatch) {
+            const percentValue = parseFloat(percentMatch[0].replace(",", "."));
+
+            if (!Number.isNaN(percentValue)) {
+                finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+            }
+        }
+    }
+
+    $input.val(finalPrice);
+
+    if ($input.length && $input[0]) {
+        const inputEvent = new Event("input", { bubbles: true });
+        const changeEvent = new Event("change", { bubbles: true });
+        $input[0].dispatchEvent(inputEvent);
+        $input[0].dispatchEvent(changeEvent);
+    }
+});
+
 let tripStaffInitial = {};
 let tripStaffList = [];
 
@@ -1203,10 +1354,7 @@ async function loadTrip(date, time, tripId) {
 
                         initTcknInputs(".identity input")
                         initPhoneInput(".phone input")
-
-                        $(".ticket-row").each((i, e) => {
-                            originalPrices[i] = Number($(".ticket-row").find(".price").find("input").val())
-                        })
+                        initializeTicketRowPriceControls()
                         $(".identity input").on("blur", async e => {
                             const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                             if (customer) {
@@ -2082,6 +2230,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
+                initializeTicketRowPriceControls()
 
                 $(".identity input").on("blur", async e => {
                     const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
@@ -2161,6 +2310,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
+                initializeTicketRowPriceControls()
 
                 $(".identity input").on("blur", async e => {
                     const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
@@ -2799,6 +2949,7 @@ $(".open-ticket-next").on("click", async e => {
             $(".ticket-rows").prepend(response)
             initTcknInputs(".identity input")
             initPhoneInput(".phone input")
+            initializeTicketRowPriceControls()
             $(".identity input").on("blur", async e => {
                 const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                 if (customer) {
