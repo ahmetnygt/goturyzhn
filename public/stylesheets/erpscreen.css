@@ -1006,6 +1006,10 @@ div.ticket-cancel-refund-open-close {
     gap: 1rem;
 }
 
+.stops-times {
+    overflow-y: auto;
+}
+
 .note {
     border-radius: 5px;
     background-color: #216396;
