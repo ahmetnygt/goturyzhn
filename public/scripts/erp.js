@@ -3904,7 +3904,7 @@ $(".route-nav").on("click", async e => {
                                 $(".route-list").removeClass("col-12").addClass("col-4")
                                 $(".route-info").css("display", "flex")
                                 $(".route-settings").css("display", "block")
-                                $(".save-route").html("EKLE")
+                                $(".save-route").html("KAYDET")
                             },
                             error: function (xhr, status, error) {
                                 console.log(error);
