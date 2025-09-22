@@ -345,6 +345,7 @@ div.trip-staff-close,
 div.trip-cargo-close,
 div.trip-cargo-list-close,
 div.trip-stop-restriction-close,
+div.trip-time-adjust-close,
 div.trip-note-close,
 div.open-ticket-close,
 div.error-close,
@@ -1307,6 +1308,25 @@ div.ticket-cancel-refund-open-close {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     overflow: auto;
     display: none;
+}
+
+.trip-time-adjust-pop-up {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 110;
+    width: 24rem;
+    max-width: 90vw;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    overflow: hidden;
+    display: none;
+}
+
+.trip-time-adjust-pop-up .form-check {
+    margin-bottom: 0;
 }
 
 .ticket-row {

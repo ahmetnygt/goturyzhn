@@ -967,6 +967,30 @@ block content
             button.btn.btn-outline-primary.trip-stop-restriction-save KAYDET
             button.btn.btn-outline-primary.trip-stop-restriction-close KAPAT
 
+    .trip-time-adjust-pop-up
+        .gtr-header
+            span SEFER SAATİ GÜNCELLE
+        .trip-time-adjust-close
+            i.fa-solid.fa-x
+        .p-3.d-flex.flex-column.gap-3
+            .input-group
+                span.input-group-text Duraktan İtibaren
+                select.form-select.form-select-sm.trip-time-adjust-stop
+                    option(value="" disabled selected) Seçiniz
+            .d-flex.gap-3.flex-wrap
+                .form-check
+                    input.form-check-input(type="radio" name="trip-time-adjust-direction" id="trip-time-adjust-forward" value="forward")
+                    label.form-check-label(for="trip-time-adjust-forward") İleri Al
+                .form-check
+                    input.form-check-input(type="radio" name="trip-time-adjust-direction" id="trip-time-adjust-backward" value="backward")
+                    label.form-check-label(for="trip-time-adjust-backward") Geri Al
+            .input-group
+                span.input-group-text Süre
+                input.trip-time-adjust-amount.form-control.form-control-sm(type="text" placeholder="00:15")
+        .p-3.d-flex.justify-content-end.gap-2
+            button.btn.btn-outline-primary.trip-time-adjust-confirm(type="button") ONAYLA
+            button.btn.btn-outline-secondary.trip-time-adjust-cancel(type="button") İPTAL
+
     .prices
         .gtr-header
             span FİYATLAR
