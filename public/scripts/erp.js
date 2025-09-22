@@ -19,6 +19,157 @@ let accountCutId;
 let originalPrices = []
 let seatTypes = []
 
+function parsePriceAttribute(value) {
+    if (value === undefined || value === null || value === "") {
+        return [];
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map(v => Number(v))
+            .filter(v => !Number.isNaN(v));
+    }
+
+    if (typeof value === "number") {
+        return Number.isNaN(value) ? [] : [value];
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(trimmed);
+
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map(v => Number(v))
+                    .filter(v => !Number.isNaN(v));
+            }
+
+            if (typeof parsed === "number" && !Number.isNaN(parsed)) {
+                return [parsed];
+            }
+
+            return [];
+        } catch (err) {
+            return trimmed
+                .split(",")
+                .map(part => Number(part.trim()))
+                .filter(v => !Number.isNaN(v));
+        }
+    }
+
+    return [];
+}
+
+function getPriceLists($priceContainer) {
+    const seatType = $priceContainer.attr("data-seat-type") === "single" ? "single" : "standard";
+    const regularPrices = parsePriceAttribute($priceContainer.attr("data-regular-prices"));
+    const singlePrices = parsePriceAttribute($priceContainer.attr("data-single-prices"));
+
+    const activeList = seatType === "single"
+        ? (singlePrices.length ? singlePrices : regularPrices)
+        : (regularPrices.length ? regularPrices : singlePrices);
+
+    return {
+        seatType,
+        regularPrices,
+        singlePrices,
+        activeList,
+    };
+}
+
+function initializeTicketRowPriceControls() {
+    originalPrices = [];
+
+    $(".ticket-row").each((index, row) => {
+        const $row = $(row);
+        const $priceInput = $row.find(".price input").first();
+        const basePrice = Number($priceInput.val());
+
+        originalPrices[index] = Number.isNaN(basePrice) ? null : basePrice;
+    });
+}
+
+$(document).on("click", ".price-arrow", function (e) {
+    e.preventDefault();
+
+    const $button = $(this);
+    const isUp = $button.hasClass("price-arrow-up");
+    const $priceContainer = $button.closest(".price");
+    const priceLists = getPriceLists($priceContainer);
+    const options = priceLists.activeList;
+
+    if (!options.length) {
+        return;
+    }
+
+    const $row = $button.closest(".ticket-row");
+    const rowIndex = $(".ticket-row").index($row);
+    const $input = $priceContainer.find("input").first();
+
+    const currentValue = Number($input.val());
+    let currentIndex = options.findIndex(p => Number(p) === currentValue);
+
+    if (currentIndex === -1 && rowIndex > -1) {
+        const originalPrice = originalPrices[rowIndex];
+
+        if (originalPrice !== undefined && originalPrice !== null) {
+            currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
+        }
+    }
+
+    let nextIndex;
+
+    if (currentIndex === -1) {
+        nextIndex = isUp ? 0 : options.length - 1;
+    } else if (isUp) {
+        nextIndex = (currentIndex + 1) % options.length;
+    } else {
+        nextIndex = (currentIndex - 1 + options.length) % options.length;
+    }
+
+    const newBasePrice = Number(options[nextIndex]);
+
+    if (Number.isNaN(newBasePrice)) {
+        return;
+    }
+
+    if (rowIndex > -1) {
+        originalPrices[rowIndex] = newBasePrice;
+    }
+
+    let finalPrice = newBasePrice;
+    const $discountInfo = $priceContainer.find("span.customer-point");
+    const pointOrPercent = $discountInfo.data("pointorpercent");
+
+    if (pointOrPercent === "percent") {
+        const percentText = ($discountInfo.text() || "").trim();
+        const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
+
+        if (percentMatch) {
+            const percentValue = parseFloat(percentMatch[0].replace(",", "."));
+
+            if (!Number.isNaN(percentValue)) {
+                finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+            }
+        }
+    }
+
+    $input.val(finalPrice);
+
+    if ($input.length && $input[0]) {
+        const inputEvent = new Event("input", { bubbles: true });
+        const changeEvent = new Event("change", { bubbles: true });
+        $input[0].dispatchEvent(inputEvent);
+        $input[0].dispatchEvent(changeEvent);
+    }
+});
+
 let tripStaffInitial = {};
 let tripStaffList = [];
 
@@ -91,10 +242,10 @@ const showError = message => {
 
 window.showError = showError;
 
-$(document).off("click", ".error-close").on("click", ".error-close", () => $(".error-popup").hide());
+$(".error-close").off().on("click", () => $(".error-popup").hide());
 
 const setupDeleteHandler = (selector, { url, getData, getConfirmMessage, onSuccess }) => {
-    $(document).off("click", selector).on("click", selector, async e => {
+    $(selector).off().on("click", async e => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -420,7 +571,7 @@ function closeTripCargoListPopup() {
     $(".blackout").css("display", "none");
 }
 
-$(document).off("change", ".trip-cargo-from").on("change", ".trip-cargo-from", () => {
+$(".trip-cargo-from").off().on("change", () => {
     updateTripCargoToOptions();
 });
 
@@ -685,8 +836,7 @@ async function loadTrip(date, time, tripId) {
                 data: { date: date, time: time, tripId, stopId: currentStop },
                 success: function (response) {
                     $(".passenger-table").html(response)
-                    $(document).off("click", ".passenger-table tbody tr")
-                    $(".passenger-table tbody tr").on("click", function (e) {
+                    $(".passenger-table tbody tr").off().on("click", function (e) {
                         const $row = $(this);
                         if (!$row.closest('#activeTickets').length) return;
 
@@ -861,23 +1011,20 @@ async function loadTrip(date, time, tripId) {
                     busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)))
                     $planEl.html(planOpts)
                     if (tripBusModelId) $planEl.val(tripBusModelId)
-                    $(document).off("change", ".trip-bus-plan")
-                    if ($(".trip-bus-plan").is("select")) {
-                        $(document).on("change", ".trip-bus-plan", async function () {
-                            const busModelId = $(this).val()
+                    $planEl.off().on("change", async function () {
+                        const busModelId = $(this).val()
 
-                            $plateEl.val("")
-                            $(".captain-name").html("")
-                            $(".captain-phone").html("")
+                        $plateEl.val("")
+                        $(".captain-name").html("")
+                        $(".captain-phone").html("")
 
-                            try {
-                                await $.post("/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
-                                loadTrip(currentTripDate, currentTripTime, currentTripId)
-                            } catch (err) {
-                                console.log(err)
-                            }
-                        })
-                    }
+                        try {
+                            await $.post("/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
+                            loadTrip(currentTripDate, currentTripTime, currentTripId)
+                        } catch (err) {
+                            console.log(err)
+                        }
+                    })
                 } else if ($planEl.is("input")) {
                     const modelTitle = busModels.find(bm => bm.id === tripBusModelId)?.title || ""
                     $planEl.val(modelTitle)
@@ -899,32 +1046,29 @@ async function loadTrip(date, time, tripId) {
                     $plateEl.html(plateOpts)
                     if (tripBusId) $plateEl.val(tripBusId)
 
-                    $(document).off("change", ".trip-bus-license-plate")
-                    if ($(".trip-bus-license-plate").is("select")) {
-                        $(document).on("change", ".trip-bus-license-plate", async function () {
-                            const busId = $(this).val()
-                            const selected = $(this).find("option:selected")
-                            const busModelId = selected.data("bus-model-id")
-                            const busModelTitle = selected.data("bus-model-title")
-                            const captainName = selected.data("captain-name")
-                            const captainPhone = selected.data("captain-phone")
+                    $plateEl.off().on("change", async function () {
+                        const busId = $(this).val()
+                        const selected = $(this).find("option:selected")
+                        const busModelId = selected.data("bus-model-id")
+                        const busModelTitle = selected.data("bus-model-title")
+                        const captainName = selected.data("captain-name")
+                        const captainPhone = selected.data("captain-phone")
 
-                            if ($planEl.is("select")) {
-                                $planEl.val(busModelId)
-                            } else {
-                                $planEl.val(busModelTitle || "")
-                            }
-                            $(".captain-name").html(captainName || "")
-                            $(".captain-phone").html(captainPhone || "")
+                        if ($planEl.is("select")) {
+                            $planEl.val(busModelId)
+                        } else {
+                            $planEl.val(busModelTitle || "")
+                        }
+                        $(".captain-name").html(captainName || "")
+                        $(".captain-phone").html(captainPhone || "")
 
-                            try {
-                                await $.post("/post-trip-bus", { tripId: currentTripId, busId: busId })
-                                loadTrip(currentTripDate, currentTripTime, currentTripId)
-                            } catch (err) {
-                                console.log(err)
-                            }
-                        })
-                    }
+                        try {
+                            await $.post("/post-trip-bus", { tripId: currentTripId, busId: busId })
+                            loadTrip(currentTripDate, currentTripTime, currentTripId)
+                        } catch (err) {
+                            console.log(err)
+                        }
+                    })
                 } else if ($plateEl.is("input")) {
                     const selectedBus = buses.find(b => b.id === tripBusId)
                     $plateEl.val(selectedBus ? selectedBus.licensePlate : "")
@@ -1006,8 +1150,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-option-staff");
-            $(document).on("click", ".trip-option-staff", async function (e) {
+            $(".trip-option-staff").off().on("click", async function (e) {
                 e.stopPropagation();
                 try {
                     const staffs = await $.get("/get-staffs-list", { onlyData: true });
@@ -1054,8 +1197,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-cargo-add");
-            $(".trip-cargo-add").on("click", async function (e) {
+            $(".trip-cargo-add").off().on("click", async function (e) {
                 try {
                     const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
                     resetTripCargoForm();
@@ -1067,8 +1209,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-cargo-list");
-            $(".trip-cargo-list").on("click", async function (e) {
+            $(".trip-cargo-list").off().on("click", async function (e) {
                 e.preventDefault();
                 if (!currentTripId) {
                     showError("Sefer bilgisi bulunamadı.");
@@ -1082,8 +1223,7 @@ async function loadTrip(date, time, tripId) {
                 try {
                     const html = await $.get("/get-trip-cargo-list", { tripId: currentTripId });
                     $(".trip-cargo-list-nodes").html(html);
-                    $(document).off("click", ".trip-cargo-refund");
-                    $(".trip-cargo-refund").on("click", async function (e) {
+                    $(".trip-cargo-refund").off().on("click", async function (e) {
                         e.preventDefault();
                         e.stopPropagation();
 
@@ -1130,8 +1270,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-option-cancel-trip");
-            $(document).on("click", ".trip-option-cancel-trip", async function (e) {
+            $(".trip-option-cancel-trip").off().on("click", async function (e) {
                 e.stopPropagation();
                 if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
                 try {
@@ -1143,8 +1282,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-option-active-trip");
-            $(document).on("click", ".trip-option-active-trip", async function (e) {
+            $(".trip-option-active-trip").off().on("click", async function (e) {
                 e.stopPropagation();
                 if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
                 try {
@@ -1156,8 +1294,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-option-stop-restriction");
-            $(document).on("click", ".trip-option-stop-restriction", function (e) {
+            $(".trip-option-stop-restriction").off().on("click", function (e) {
                 e.stopPropagation();
                 $.ajax({
                     url: "/get-trip-stop-restriction",
@@ -1265,6 +1402,7 @@ async function loadTrip(date, time, tripId) {
 
             $(document).off("change", ".trip-stop-restriction-checkbox");
             $(document).on("change", ".trip-stop-restriction-checkbox", function () {
+              
                 const fromId = this.dataset.from;
                 const toId = this.dataset.to;
                 const key = `${fromId}-${toId}`;
@@ -1278,8 +1416,7 @@ async function loadTrip(date, time, tripId) {
                 tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
             });
 
-            $(document).off("click", ".trip-stop-restriction-save");
-            $(document).on("click", ".trip-stop-restriction-save", async function () {
+            $(".trip-stop-restriction-save").off().on("click", async function () {
                 const entries = Object.entries(tripStopRestrictionChanges);
                 if (entries.length === 0) {
                     closeTripStopRestriction();
@@ -1359,10 +1496,7 @@ async function loadTrip(date, time, tripId) {
 
                         initTcknInputs(".identity input")
                         initPhoneInput(".phone input")
-
-                        $(".ticket-row").each((i, e) => {
-                            originalPrices[i] = Number($(".ticket-row").find(".price").find("input").val())
-                        })
+                        initializeTicketRowPriceControls()
                         $(".identity input").on("blur", async e => {
                             const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                             if (customer) {
@@ -2250,6 +2384,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
+                initializeTicketRowPriceControls()
 
                 $(".identity input").on("blur", async e => {
                     const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
@@ -2329,6 +2464,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 initTcknInputs(".identity input")
                 initPhoneInput(".phone input")
+                initializeTicketRowPriceControls()
 
                 $(".identity input").on("blur", async e => {
                     const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
@@ -2644,7 +2780,7 @@ function closeTripStopRestriction() {
     tripStopRestrictionDirty = false;
 }
 
-$(document).off("click", ".trip-stop-restriction-close").on("click", ".trip-stop-restriction-close", () => {
+$(".trip-stop-restriction-close").off().on("click", () => {
     closeTripStopRestriction();
 });
 
@@ -2833,7 +2969,7 @@ $(".trip-note-close").on("click", e => {
     $(".add-trip-note").css("display", "none")
 })
 
-$(document).off("click", ".note-edit").on("click", ".note-edit", e => {
+$(".note-edit").off().on("click", e => {
     const noteEl = $(e.currentTarget).closest(".note");
     editingNoteId = noteEl.data("id");
     const text = noteEl.find(".note-text").text();
@@ -2844,7 +2980,7 @@ $(document).off("click", ".note-edit").on("click", ".note-edit", e => {
     $(".add-trip-note").css("display", "flex");
 })
 
-$(document).off("click", ".note-delete").on("click", ".note-delete", async e => {
+$(".note-delete").off().on("click", async e => {
     const noteEl = $(e.currentTarget).closest(".note");
     const noteId = noteEl.data("id");
     if (confirm("Notu silmek istediğinize emin misiniz?")) {
@@ -2979,6 +3115,7 @@ $(".open-ticket-next").on("click", async e => {
             $(".ticket-rows").prepend(response)
             initTcknInputs(".identity input")
             initPhoneInput(".phone input")
+            initializeTicketRowPriceControls()
             $(".identity input").on("blur", async e => {
                 const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
                 if (customer) {
@@ -3046,7 +3183,7 @@ $(".ticket-search-button").on("click", async e => {
     })
 })
 
-$(document).off("click", ".searched-table tbody tr").on("click", ".searched-table tbody tr", function (e) {
+$(".searched-table tbody tr").off().on("click", function (e) {
     const $row = $(this);
     selectedTakenSeats = [$row.data("seat-number")];
     currentGroupId = $row.data("group-id");
@@ -3083,7 +3220,7 @@ $(document).off("click", ".searched-table tbody tr").on("click", ".searched-tabl
     $popup.css({ left: left + "px", top: top + "px", display: "block" });
 });
 
-$(document).off("click", ".searched-ticket-op[data-action='go_trip']").on("click", ".searched-ticket-op[data-action='go_trip']", async e => {
+$(".searched-ticket-op[data-action='go_trip']").off().on("click", async e => {
     $(".search-ticket-ops-pop-up").hide();
     await loadTrip(currentTripDate, currentTripTime, currentTripId);
 });
@@ -3467,7 +3604,7 @@ setupDeleteHandler(".bus-plan-delete", {
         $btn.closest(".btn-group").remove();
     }
 });
-$(document).off("click", ".bus-plan-button").on("click", ".bus-plan-button", async e => {
+$(".bus-plan-button").off().on("click", async e => {
     const id = e.currentTarget.dataset.id
     editingBusPlanId = id
 
@@ -4348,7 +4485,7 @@ $(".price-close").on("click", e => {
     $(".blackout").css("display", "none");
 })
 
-$(document).off("click", ".price-row, .price-add-row").on("click", ".price-row, .price-add-row", function () {
+$(".price-row, .price-add-row").off().on("click", function () {
     const row = $(this);
     if (row.hasClass("price-button-inputs")) return;
     row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
@@ -4978,7 +5115,7 @@ $(".customer-blacklist-btn").on("click", async e => {
     })
 })
 
-$(document).off("click", ".customer-blacklist-open").on("click", ".customer-blacklist-open", function (e) {
+$(".customer-blacklist-open").off().on("click", function (e) {
     const id = $(this).data("id");
     $(".customer-blacklist-pop-up").data("id", id);
     $(".customer-blacklist-description").val("");
@@ -5186,7 +5323,7 @@ $(".members-close").on("click", e => {
     $(".members").css("display", "none")
 })
 
-$(document).off("click", ".member-row").on("click", ".member-row", function () {
+$(".member-row").off().on("click", function () {
     const idNumber = $(this).data("idnumber");
     const name = $(this).data("name");
     const surname = $(this).data("surname");

@@ -1464,7 +1464,48 @@ exports.getTicketRow = async (req, res, next) => {
         const ticketUserBranch = user ? await req.models.Branch.findOne({ where: { id: user.branchId } }) : null;
 
         const gender = ticket.map((t) => t.gender);
-        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action });
+
+        let pricesForTickets = [];
+
+        if (ticket.length) {
+            const routeStopIds = ticket.reduce((ids, t) => {
+                if (t.fromRouteStopId) ids.add(t.fromRouteStopId);
+                if (t.toRouteStopId) ids.add(t.toRouteStopId);
+                return ids;
+            }, new Set());
+
+            const routeStops = routeStopIds.size
+                ? await req.models.RouteStop.findAll({ where: { id: { [Op.in]: Array.from(routeStopIds) } } })
+                : [];
+
+            const routeStopMap = routeStops.reduce((acc, rs) => {
+                acc[rs.id] = rs.stopId;
+                return acc;
+            }, {});
+
+            const priceCache = {};
+
+            for (const t of ticket) {
+                const fromStopId = routeStopMap[t.fromRouteStopId];
+                const toStopId = routeStopMap[t.toRouteStopId];
+
+                let priceForSeat = null;
+
+                if (fromStopId && toStopId) {
+                    const key = `${fromStopId}-${toStopId}`;
+
+                    if (!(key in priceCache)) {
+                        priceCache[key] = await req.models.Price.findOne({ where: { fromStopId, toStopId } });
+                    }
+
+                    priceForSeat = priceCache[key];
+                }
+
+                pricesForTickets.push(priceForSeat);
+            }
+        }
+
+        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action, price: pricesForTickets });
     }
 
     // --- ELSE CASE ---

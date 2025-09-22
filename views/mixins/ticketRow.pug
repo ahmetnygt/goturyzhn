@@ -42,22 +42,41 @@
             label.form-label Kategori
             select.form-select.form-select-sm(value=ticket?ticket[i].customerCategory:"")
                 option(value="normal") Normal
-                if (permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch) 
+                if (permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch)
                     option(value="member") Abone
                     option(value="guest") Misafir
-        .price
-            label.form-label Fiyat 
+        - const seatPriceData = Array.isArray(price) ? price[i] : price;
+        - const seatType = seatTypes && seatTypes[i] == "single" ? "single" : "standard";
+        - const regularPriceValues = [];
+        - const singleSeatPriceValues = [];
+        - if (seatPriceData && typeof seatPriceData === "object") {
+        -     if (seatPriceData.price1 !== undefined && seatPriceData.price1 !== null) regularPriceValues.push(seatPriceData.price1);
+        -     if (seatPriceData.price2 !== undefined && seatPriceData.price2 !== null) regularPriceValues.push(seatPriceData.price2);
+        -     if (seatPriceData.price3 !== undefined && seatPriceData.price3 !== null) regularPriceValues.push(seatPriceData.price3);
+        -     if (seatPriceData.singleSeatPrice1 !== undefined && seatPriceData.singleSeatPrice1 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1);
+        -     if (seatPriceData.singleSeatPrice2 !== undefined && seatPriceData.singleSeatPrice2 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2);
+        -     if (seatPriceData.singleSeatPrice3 !== undefined && seatPriceData.singleSeatPrice3 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3);
+        - }
+        - const activePriceList = seatType === "single"
+        -     ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
+        -     : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues);
+        - const defaultPriceValue = ticket && ticket[i] ? ticket[i].price : (activePriceList.length ? activePriceList[0] : "");
+        - const showPriceArrows = activePriceList.length > 1;
+        .price(data-seat-type=seatType data-regular-prices=JSON.stringify(regularPriceValues) data-single-prices=JSON.stringify(singleSeatPriceValues))
+            label.form-label
+                | Fiyat
                 span.customer-point.ms-1
-            if !permissions.includes('ENTER_FREE_PRICE')
-                if seatTypes &&seatTypes[i] == "single"
-                    input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
+            .price-input-wrapper
+                if !permissions.includes('ENTER_FREE_PRICE')
+                    input.form-control.form-control-sm(readonly type="number" name="" value=defaultPriceValue)
                 else
-                    input.form-control.form-control-sm(readonly type="number" name="" value=ticket?ticket[i].price:price.price1)
-            else 
-                if seatTypes &&seatTypes[i] == "single"
-                    input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.singleSeatPrice1)
-                else
-                    input.form-control.form-control-sm(type="number" name="" value=ticket?ticket[i].price:price.price1)
+                    input.form-control.form-control-sm(type="number" name="" value=defaultPriceValue)
+                if showPriceArrows
+                    .price-arrows.btn-group-vertical.ms-1
+                        button.price-arrow.price-arrow-up.btn.btn-outline-secondary.btn-sm(type="button")
+                            i.fa-solid.fa-chevron-up
+                        button.price-arrow.price-arrow-down.btn.btn-outline-secondary.btn-sm(type="button")
+                            i.fa-solid.fa-chevron-down
 -}
 .ticket-info    
     .up-row
