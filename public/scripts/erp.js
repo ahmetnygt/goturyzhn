@@ -926,8 +926,7 @@ async function loadTrip(date, time, tripId) {
             //     currentSeat = null;
             // });
 
-            $(document).off("click", ".trip-option-revenues");
-            $(document).on("click", ".trip-option-revenues", async function (e) {
+            $(".trip-option-revenues").off().on("click", async function (e) {
                 e.stopPropagation();
                 try {
                     const revenues = await $.get("/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
