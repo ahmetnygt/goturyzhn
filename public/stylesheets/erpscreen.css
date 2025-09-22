@@ -1349,6 +1349,24 @@ div.ticket-cancel-refund-open-close {
     border-radius: .3rem;
 }
 
+.ticket-row .price-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.ticket-row .price-arrows {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.ticket-row .price-arrows .btn {
+    line-height: 1;
+    padding: .25rem .35rem;
+    min-width: 0;
+}
+
 .gender input[type="radio"]:checked+label.male {
     background-color: #21639650;
     border-color: #216396;
