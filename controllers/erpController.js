@@ -117,6 +117,89 @@ function addTime(baseTime, addTime) {
     return `${hh}:${mm}:${ss}`;
 }
 
+function timeToSeconds(timeString) {
+    if (!timeString || typeof timeString !== "string") {
+        return 0;
+    }
+
+    const parts = timeString.split(":").map(Number);
+    if (!parts.length || parts.some(isNaN)) {
+        return 0;
+    }
+
+    const [hours = 0, minutes = 0, seconds = 0] = parts;
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+function secondsToTime(totalSeconds) {
+    const secondsInDay = 24 * 3600;
+    const normalized = ((totalSeconds % secondsInDay) + secondsInDay) % secondsInDay;
+
+    const hours = Math.floor(normalized / 3600);
+    const minutes = Math.floor((normalized % 3600) / 60);
+    const seconds = normalized % 60;
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatTimeWithoutSeconds(timeString) {
+    if (!timeString) {
+        return timeString;
+    }
+    return timeString.endsWith(":00") ? timeString.slice(0, -3) : timeString;
+}
+
+function buildOffsetMap(offsetRows = []) {
+    const map = new Map();
+    offsetRows.forEach(row => {
+        const routeStopId = row.routeStopId ?? row.get?.("routeStopId");
+        const rawOffset = row.offsetMinutes ?? row.get?.("offsetMinutes");
+        if (routeStopId === undefined || routeStopId === null) {
+            return;
+        }
+        const offset = Number(rawOffset) || 0;
+        map.set(Number(routeStopId), offset);
+    });
+    return map;
+}
+
+function computeRouteStopTimes(trip, routeStops = [], offsetMap = new Map()) {
+    const results = [];
+    let baseSeconds = timeToSeconds(trip.time);
+    let cumulativeOffsetSeconds = 0;
+
+    for (const rs of routeStops) {
+        baseSeconds += timeToSeconds(rs.duration);
+        const routeStopKey = Number(rs.id);
+        const offsetMinutes = offsetMap.get(routeStopKey) || 0;
+        cumulativeOffsetSeconds += offsetMinutes * 60;
+        const adjustedSeconds = baseSeconds + cumulativeOffsetSeconds;
+        results.push({
+            routeStopId: routeStopKey,
+            stopId: rs.stopId,
+            order: rs.order,
+            time: secondsToTime(adjustedSeconds),
+        });
+    }
+
+    return results;
+}
+
+function parseTimeInputToMinutes(value) {
+    if (!value || typeof value !== "string") {
+        return null;
+    }
+
+    const parts = value.split(":").map(Number);
+    if (!parts.length || parts.some(isNaN)) {
+        return null;
+    }
+
+    const [hours = 0, minutes = 0, seconds = 0] = parts;
+    const totalSeconds = (hours * 60 + minutes) * 60 + seconds;
+    return Math.floor(totalSeconds / 60);
+}
+
 function getSeatTypes(planBinary) {
     const SEATS_PER_ROW = 5;
     const seatTypes = {};
@@ -202,19 +285,22 @@ exports.getDayTripsList = async (req, res, next) => {
             t.fullness = `${ticketCount}/${busModels.find(bm => bm.id == t.busModelId).maxPassenger}`
 
             const routeStops = await req.models.RouteStop.findAll({ where: { routeId: t.routeId }, order: [["order", "ASC"]] })
-            const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+            const matchedRouteStop = routeStops.find(rs => rs.stopId == stopId)
+            if (!matchedRouteStop) {
+                continue
+            }
+            const routeStopOrder = matchedRouteStop.order
 
             if (routeStopOrder !== routeStops.length - 1) {
-                newTrips.push(t)
-
-                for (let j = 0; j < routeStops.length; j++) {
-                    const rs = routeStops[j];
-
-                    t.modifiedTime = addTime(t.modifiedTime, rs.duration)
-
-                    if (rs.order == routeStopOrder)
-                        break
+                const offsets = await req.models.TripStopTime.findAll({ where: { tripId: t.id }, raw: true })
+                const offsetMap = buildOffsetMap(offsets)
+                const stopTimes = computeRouteStopTimes(t, routeStops, offsetMap)
+                const currentStopTime = stopTimes.find(st => st.order === routeStopOrder)
+                if (currentStopTime) {
+                    t.modifiedTime = currentStopTime.time
                 }
+
+                newTrips.push(t)
             }
         }
 
@@ -255,20 +341,20 @@ exports.getTrip = async (req, res, next) => {
         const accountCut = await req.models.BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
         console.log(stopId)
-        const currentStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+        const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
+        const currentStopOrder = currentRouteStop ? currentRouteStop.order : null
 
         trip.modifiedTime = trip.time
         trip.isExpired = new Date(`${trip.date} ${trip.time}`) < new Date()
         trip.isAccountCut = accountCut ? true : false
 
-        if (currentStopOrder !== routeStops.length - 1) {
-            for (let j = 0; j < routeStops.length; j++) {
-                const rs = routeStops[j];
-
-                trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
-
-                if (rs.order == currentStopOrder)
-                    break
+        if (currentRouteStop) {
+            const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+            const offsetMap = buildOffsetMap(offsets)
+            const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
+            const matchedStopTime = stopTimes.find(st => st.order === currentStopOrder)
+            if (matchedStopTime) {
+                trip.modifiedTime = matchedStopTime.time
             }
         }
 
@@ -404,6 +490,7 @@ exports.getTripStops = async (req, res, next) => {
 
         const result = routeStops.map(rs => ({
             id: rs.stopId,
+            routeStopId: rs.id,
             order: rs.order,
             title: stopMap.get(rs.stopId) || ""
         }));
@@ -713,17 +800,15 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
     const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
+    const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+    const offsetMap = buildOffsetMap(offsets)
+    const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
+    const timeMap = new Map(stopTimes.map(st => [st.routeStopId, st.time]))
+
     for (let i = 0; i < routeStops.length; i++) {
         const rs = routeStops[i];
-        let rsTime = trip.time
-        for (let j = 0; j < routeStops.length; j++) {
-            const rs_ = routeStops[j];
-            rsTime = addTime(rsTime, rs_.duration)
-            if (rs_.order == rs.order)
-                break
-        }
-
-        rs.timeStamp = rsTime.endsWith(":00") ? rsTime.slice(0, -3) : rsTime
+        const timeStr = timeMap.get(rs.id) || trip.time
+        rs.timeStamp = formatTimeWithoutSeconds(timeStr)
         rs.stopStr = stops.find(s => s.id == rs.stopId).title
     }
 
@@ -789,6 +874,81 @@ exports.postTripStopRestriction = async (req, res, next) => {
     } catch (err) {
         console.log(err);
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.postTripTimeAdjustment = async (req, res, next) => {
+    try {
+        const { tripId, routeStopId, direction, amount } = req.body;
+
+        const numericTripId = Number(tripId);
+        const numericRouteStopId = Number(routeStopId);
+
+        if (!numericTripId || !numericRouteStopId) {
+            return res.status(400).json({ message: "Geçersiz sefer veya durak bilgisi." });
+        }
+
+        const normalizedDirection = direction === "backward" ? "backward" : direction === "forward" ? "forward" : null;
+        if (!normalizedDirection) {
+            return res.status(400).json({ message: "Geçerli bir yön seçiniz." });
+        }
+
+        const minutes = parseTimeInputToMinutes(amount);
+        if (minutes === null) {
+            return res.status(400).json({ message: "Geçerli bir süre giriniz." });
+        }
+        if (minutes === 0) {
+            return res.status(400).json({ message: "Süre 0 olamaz." });
+        }
+
+        const hasPermission = (req.session.permissions || []).includes("TRIP_TIME_ADJUST") ||
+            (req.session.permissions || []).includes("TRIP_STOP_RESTRICT");
+
+        if (!hasPermission) {
+            return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+        }
+
+        const trip = await req.models.Trip.findByPk(numericTripId);
+        if (!trip) {
+            return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        const routeStop = await req.models.RouteStop.findOne({ where: { id: numericRouteStopId, routeId: trip.routeId } });
+        if (!routeStop) {
+            return res.status(404).json({ message: "Sefer durağı bulunamadı." });
+        }
+
+        const delta = minutes * (normalizedDirection === "backward" ? -1 : 1);
+
+        const [record, created] = await req.models.TripStopTime.findOrCreate({
+            where: { tripId: numericTripId, routeStopId: numericRouteStopId },
+            defaults: { offsetMinutes: delta }
+        });
+
+        if (!created) {
+            const current = Number(record.offsetMinutes) || 0;
+            const updated = current + delta;
+            if (updated === 0) {
+                await record.destroy();
+            } else {
+                record.offsetMinutes = updated;
+                await record.save();
+            }
+        }
+
+        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: numericTripId }, raw: true });
+        const offsetMap = buildOffsetMap(offsets);
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] });
+        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap).map(st => ({
+            routeStopId: st.routeStopId,
+            order: st.order,
+            time: formatTimeWithoutSeconds(st.time)
+        }));
+
+        res.json({ success: true, stopTimes });
+    } catch (err) {
+        console.error("postTripTimeAdjustment error:", err);
+        res.status(500).json({ message: err.message || "Sefer saati güncellenemedi." });
     }
 };
 
@@ -1261,11 +1421,13 @@ exports.getTicketRow = async (req, res, next) => {
         : null;
 
     trip.modifiedTime = trip.time;
-    if (routeStopOrder !== null && routeStopOrder !== routeStops.length - 1) {
-        for (let j = 0; j < routeStops.length; j++) {
-            const rs = routeStops[j];
-            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration);
-            if (rs.order == routeStopOrder) break;
+    if (routeStopOrder !== null) {
+        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true });
+        const offsetMap = buildOffsetMap(offsets);
+        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap);
+        const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder);
+        if (matchedStopTime) {
+            trip.modifiedTime = matchedStopTime.time;
         }
     }
 
@@ -1979,16 +2141,16 @@ exports.getMoveTicket = async (req, res, next) => {
     trip.modifiedTime = trip.time
 
     const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+    const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
+    const routeStopOrder = currentRouteStop ? currentRouteStop.order : null
 
-    if (routeStopOrder !== routeStops.length - 1) {
-        for (let j = 0; j < routeStops.length; j++) {
-            const rs = routeStops[j];
-
-            trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
-
-            if (rs.order == routeStopOrder)
-                break
+    if (currentRouteStop) {
+        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+        const offsetMap = buildOffsetMap(offsets)
+        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
+        const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder)
+        if (matchedStopTime) {
+            trip.modifiedTime = matchedStopTime.time
         }
     }
 
@@ -2051,23 +2213,23 @@ exports.postMoveTickets = async (req, res, next) => {
         const fromId = req.body.fromId
         const toId = req.body.toId
 
-        const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
+    const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
 
-        trip.modifiedTime = trip.time
+    trip.modifiedTime = trip.time
 
-        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const routeStopOrder = routeStops.find(rs => rs.stopId == fromId).order
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const currentRouteStop = routeStops.find(rs => rs.stopId == fromId)
+    const routeStopOrder = currentRouteStop ? currentRouteStop.order : null
 
-        if (routeStopOrder !== routeStops.length - 1) {
-            for (let j = 0; j < routeStops.length; j++) {
-                const rs = routeStops[j];
-
-                trip.modifiedTime = addTime(trip.modifiedTime, rs.duration)
-
-                if (rs.order == routeStopOrder)
-                    break
-            }
+    if (currentRouteStop) {
+        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+        const offsetMap = buildOffsetMap(offsets)
+        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
+        const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder)
+        if (matchedStopTime) {
+            trip.modifiedTime = matchedStopTime.time
         }
+    }
 
         console.log(`${trip.date} ${trip.modifiedTime}`)
 

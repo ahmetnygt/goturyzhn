@@ -177,6 +177,8 @@ let tripStopRestrictionChanges = {};
 let tripStopRestrictionDirty = false;
 
 let tripCargoStops = [];
+let tripTimeAdjustStops = [];
+let tripTimeAdjustPicker;
 const tripCargoListLoadingHtml = '<p class="text-center text-muted m-0 trip-cargo-list-placeholder">Kargolar yükleniyor...</p>';
 
 function updateClock() {
@@ -504,6 +506,57 @@ function populateTripCargoStops(stops, defaults = {}) {
 
     const desiredTo = defaults.toStopId ? String(defaults.toStopId) : undefined;
     updateTripCargoToOptions(desiredTo);
+}
+
+function populateTripTimeAdjustStops(stops) {
+    tripTimeAdjustStops = Array.isArray(stops)
+        ? [...stops].sort((a, b) => Number(a.order) - Number(b.order))
+        : [];
+
+    const $select = $(".trip-time-adjust-stop");
+    if (!$select.length) return;
+
+    const placeholder = $("<option>")
+        .val("")
+        .text("Seçiniz")
+        .prop("disabled", true);
+
+    $select.empty().append(placeholder);
+
+    tripTimeAdjustStops.forEach(stop => {
+        const value = stop.routeStopId !== undefined ? stop.routeStopId : stop.id;
+        $select.append($("<option>").val(String(value)).text(stop.title));
+    });
+
+    let hasSelection = false;
+    if (tripTimeAdjustStops.length) {
+        const currentMatch = tripTimeAdjustStops.find(stop => String(stop.id) === String(currentStop));
+        if (currentMatch) {
+            const value = currentMatch.routeStopId !== undefined ? currentMatch.routeStopId : currentMatch.id;
+            $select.val(String(value));
+            hasSelection = true;
+        }
+    }
+
+    if (!hasSelection) {
+        placeholder.prop("selected", true);
+    }
+}
+
+function resetTripTimeAdjustForm() {
+    const $select = $(".trip-time-adjust-stop");
+    if ($select.length) {
+        $select.val("");
+        $select.find("option[value='']").prop("selected", true);
+    }
+
+    $("input[name='trip-time-adjust-direction']").prop("checked", false);
+
+    if (tripTimeAdjustPicker) {
+        tripTimeAdjustPicker.setDate("00:15", false);
+    } else {
+        $(".trip-time-adjust-amount").val("");
+    }
 }
 
 function closeTripCargoPopup() {
@@ -1260,7 +1313,96 @@ async function loadTrip(date, time, tripId) {
                 });
             });
 
-            $(".trip-stop-restriction-checkbox").off().on("change", function () {
+            $(document).off("click", ".trip-option-change-time");
+            $(document).on("click", ".trip-option-change-time", async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!currentTripId) {
+                    showError("Sefer bilgisi bulunamadı.");
+                    return;
+                }
+
+                try {
+                    const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
+                    resetTripTimeAdjustForm();
+                    populateTripTimeAdjustStops(stops);
+                    $(".trip-time-adjust-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+                } catch (err) {
+                    console.log(err);
+                    showError("Durak listesi alınamadı.");
+                }
+            });
+
+            $(document).off("click", ".trip-time-adjust-confirm");
+            $(document).on("click", ".trip-time-adjust-confirm", async function () {
+                if (!currentTripId) {
+                    showError("Sefer bilgisi bulunamadı.");
+                    return;
+                }
+
+                const routeStopId = $(".trip-time-adjust-stop").val();
+                const direction = $("input[name='trip-time-adjust-direction']:checked").val();
+                const amount = $(".trip-time-adjust-amount").val();
+
+                if (!routeStopId) {
+                    showError("Lütfen bir durak seçiniz.");
+                    return;
+                }
+
+                if (!direction) {
+                    showError("Lütfen yön seçiniz.");
+                    return;
+                }
+
+                if (!amount) {
+                    showError("Lütfen süre seçiniz.");
+                    return;
+                }
+
+                const [hours, minutes] = amount.split(":").map(Number);
+                if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+                    showError("Geçerli bir süre giriniz.");
+                    return;
+                }
+
+                if (hours * 60 + minutes === 0) {
+                    showError("Süre 0 olamaz.");
+                    return;
+                }
+
+                const $button = $(this);
+                if ($button.prop("disabled")) {
+                    return;
+                }
+
+                $button.prop("disabled", true);
+
+                try {
+                    await $.post("/post-trip-time-adjustment", {
+                        tripId: currentTripId,
+                        routeStopId,
+                        direction,
+                        amount
+                    });
+                    closeTripTimeAdjustPopup();
+                    loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    if (calendar && typeof calendar.val === "function") {
+                        loadTripsList(calendar.val());
+                    }
+                } catch (err) {
+                    console.log(err);
+                    const message = err?.responseJSON?.message || err?.responseText || err?.statusText || "Sefer saati güncellenemedi.";
+                    showError(message);
+                } finally {
+                    $button.prop("disabled", false);
+                }
+            });
+
+            $(document).off("change", ".trip-stop-restriction-checkbox");
+            $(document).on("change", ".trip-stop-restriction-checkbox", function () {
+              
                 const fromId = this.dataset.from;
                 const toId = this.dataset.to;
                 const key = `${fromId}-${toId}`;
@@ -1847,6 +1989,18 @@ flatpickr(tripLastDate, {
     locale: "tr",
     defaultDate: "2025-05-12"
 })
+
+const tripTimeAdjustInput = document.querySelector(".trip-time-adjust-amount")
+if (tripTimeAdjustInput) {
+    tripTimeAdjustPicker = flatpickr(tripTimeAdjustInput, {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        time_24hr: true,
+        defaultDate: "00:15",
+        minuteIncrement: 1
+    })
+}
 
 let currentSeat = null;
 
@@ -2629,6 +2783,18 @@ function closeTripStopRestriction() {
 $(".trip-stop-restriction-close").off().on("click", () => {
     closeTripStopRestriction();
 });
+
+function closeTripTimeAdjustPopup() {
+    resetTripTimeAdjustForm();
+    $(".trip-time-adjust-pop-up").css("display", "none");
+    $(".blackout").css("display", "none");
+}
+
+$(document)
+    .off("click", ".trip-time-adjust-close, .trip-time-adjust-cancel")
+    .on("click", ".trip-time-adjust-close, .trip-time-adjust-cancel", () => {
+        closeTripTimeAdjustPopup();
+    });
 
 $(".trip-staff-save").on("click", async e => {
     const data = {

@@ -57,6 +57,9 @@
                 if permissions.includes('TRIP_STOP_RESTRICT')
                     li
                         a.dropdown-item.trip-option-stop-restriction(href="#") Durak Kısıtlama
+                if permissions.includes('TRIP_STOP_RESTRICT') || permissions.includes('TRIP_TIME_ADJUST')
+                    li
+                        a.dropdown-item.trip-option-change-time(href="#") Saat Değiştir
                 if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
                     li
                         a.dropdown-item.trip-option-revenues(href="#") Hasılatlar
