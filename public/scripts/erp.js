@@ -95,81 +95,6 @@ function initializeTicketRowPriceControls() {
     });
 }
 
-$(document).on("click", ".price-arrow", function (e) {
-    e.preventDefault();
-
-    const $button = $(this);
-    const isUp = $button.hasClass("price-arrow-up");
-    const $priceContainer = $button.closest(".price");
-    const priceLists = getPriceLists($priceContainer);
-    const options = priceLists.activeList;
-
-    if (!options.length) {
-        return;
-    }
-
-    const $row = $button.closest(".ticket-row");
-    const rowIndex = $(".ticket-row").index($row);
-    const $input = $priceContainer.find("input").first();
-
-    const currentValue = Number($input.val());
-    let currentIndex = options.findIndex(p => Number(p) === currentValue);
-
-    if (currentIndex === -1 && rowIndex > -1) {
-        const originalPrice = originalPrices[rowIndex];
-
-        if (originalPrice !== undefined && originalPrice !== null) {
-            currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
-        }
-    }
-
-    let nextIndex;
-
-    if (currentIndex === -1) {
-        nextIndex = isUp ? 0 : options.length - 1;
-    } else if (isUp) {
-        nextIndex = (currentIndex + 1) % options.length;
-    } else {
-        nextIndex = (currentIndex - 1 + options.length) % options.length;
-    }
-
-    const newBasePrice = Number(options[nextIndex]);
-
-    if (Number.isNaN(newBasePrice)) {
-        return;
-    }
-
-    if (rowIndex > -1) {
-        originalPrices[rowIndex] = newBasePrice;
-    }
-
-    let finalPrice = newBasePrice;
-    const $discountInfo = $priceContainer.find("span.customer-point");
-    const pointOrPercent = $discountInfo.data("pointorpercent");
-
-    if (pointOrPercent === "percent") {
-        const percentText = ($discountInfo.text() || "").trim();
-        const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
-
-        if (percentMatch) {
-            const percentValue = parseFloat(percentMatch[0].replace(",", "."));
-
-            if (!Number.isNaN(percentValue)) {
-                finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
-            }
-        }
-    }
-
-    $input.val(finalPrice);
-
-    if ($input.length && $input[0]) {
-        const inputEvent = new Event("input", { bubbles: true });
-        const changeEvent = new Event("change", { bubbles: true });
-        $input[0].dispatchEvent(inputEvent);
-        $input[0].dispatchEvent(changeEvent);
-    }
-});
-
 let tripStaffInitial = {};
 let tripStaffList = [];
 
@@ -1313,8 +1238,7 @@ async function loadTrip(date, time, tripId) {
                 });
             });
 
-            $(document).off("click", ".trip-option-change-time");
-            $(document).on("click", ".trip-option-change-time", async function (e) {
+            $(".trip-option-change-time").off().on("click", async function (e) {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -1335,8 +1259,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("click", ".trip-time-adjust-confirm");
-            $(document).on("click", ".trip-time-adjust-confirm", async function () {
+            $(".trip-time-adjust-confirm").off().on("click", async function () {
                 if (!currentTripId) {
                     showError("Sefer bilgisi bulunamadı.");
                     return;
@@ -1400,9 +1323,8 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(document).off("change", ".trip-stop-restriction-checkbox");
-            $(document).on("change", ".trip-stop-restriction-checkbox", function () {
-              
+            $(".trip-stop-restriction-checkbox").off().on("change", function () {
+
                 const fromId = this.dataset.from;
                 const toId = this.dataset.to;
                 const key = `${fromId}-${toId}`;
@@ -1561,6 +1483,81 @@ async function loadTrip(date, time, tripId) {
                                 $row.addClass("m");
                             } else if ($(this).val() === "f") {
                                 $row.addClass("f");
+                            }
+                        });
+
+                        $(".price-arrow").off().on("click", function (e) {
+                            e.preventDefault();
+
+                            const $button = $(this);
+                            const isUp = $button.hasClass("price-arrow-up");
+                            const $priceContainer = $button.closest(".price");
+                            const priceLists = getPriceLists($priceContainer);
+                            const options = priceLists.activeList;
+
+                            if (!options.length) {
+                                return;
+                            }
+
+                            const $row = $button.closest(".ticket-row");
+                            const rowIndex = $(".ticket-row").index($row);
+                            const $input = $priceContainer.find("input").first();
+
+                            const currentValue = Number($input.val());
+                            let currentIndex = options.findIndex(p => Number(p) === currentValue);
+
+                            if (currentIndex === -1 && rowIndex > -1) {
+                                const originalPrice = originalPrices[rowIndex];
+
+                                if (originalPrice !== undefined && originalPrice !== null) {
+                                    currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
+                                }
+                            }
+
+                            let nextIndex;
+
+                            if (currentIndex === -1) {
+                                nextIndex = isUp ? 0 : options.length - 1;
+                            } else if (isUp) {
+                                nextIndex = (currentIndex + 1) % options.length;
+                            } else {
+                                nextIndex = (currentIndex - 1 + options.length) % options.length;
+                            }
+
+                            const newBasePrice = Number(options[nextIndex]);
+
+                            if (Number.isNaN(newBasePrice)) {
+                                return;
+                            }
+
+                            if (rowIndex > -1) {
+                                originalPrices[rowIndex] = newBasePrice;
+                            }
+
+                            let finalPrice = newBasePrice;
+                            const $discountInfo = $priceContainer.find("span.customer-point");
+                            const pointOrPercent = $discountInfo.data("pointorpercent");
+
+                            if (pointOrPercent === "percent") {
+                                const percentText = ($discountInfo.text() || "").trim();
+                                const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
+
+                                if (percentMatch) {
+                                    const percentValue = parseFloat(percentMatch[0].replace(",", "."));
+
+                                    if (!Number.isNaN(percentValue)) {
+                                        finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+                                    }
+                                }
+                            }
+
+                            $input.val(finalPrice);
+
+                            if ($input.length && $input[0]) {
+                                const inputEvent = new Event("input", { bubbles: true });
+                                const changeEvent = new Event("change", { bubbles: true });
+                                $input[0].dispatchEvent(inputEvent);
+                                $input[0].dispatchEvent(changeEvent);
                             }
                         });
 

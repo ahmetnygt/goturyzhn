@@ -367,7 +367,7 @@ exports.getTrip = async (req, res, next) => {
         const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
         console.log(users)
-        const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+        const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.firmUser.branchId] } } })
         console.log(branches)
 
         const routeStopOrderMap = routeStops.reduce((acc, rs) => {
@@ -387,7 +387,7 @@ exports.getTrip = async (req, res, next) => {
             return acc;
         }, {});
 
-        trip.isOwnBranchStop = (stopId == branchMap[req.session.user.branchId].stopId).toString()
+        trip.isOwnBranchStop = (stopId == branchMap[req.session.firmUser.branchId].stopId).toString()
 
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
@@ -421,8 +421,8 @@ exports.getTrip = async (req, res, next) => {
             ticket.to = stopsMap[ticket.toRouteStopId];
             ticket.user = user.name;
             ticket.userBranch = branch.title;
-            ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString();
-            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId]?.stopId).toString()
+            ticket.isOwnBranchTicket = (user.branchId == req.session.firmUser.branchId).toString();
+            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.firmUser.branchId]?.stopId).toString()
             ticket.tripRefundOptionDate = trip.refundOptionDate
 
             newTicketArray[ticket.seatNo] = ticket
@@ -513,7 +513,7 @@ exports.getTripTable = async (req, res, next) => {
 
     const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ["pending"] } }, order: [["seatNo", "ASC"]] })
     const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
-    const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.user.branchId] } } })
+    const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.firmUser.branchId] } } })
 
     const userMap = users.reduce((acc, u) => { acc[u.id] = u; return acc }, {})
     const branchMap = branches.reduce((acc, b) => { acc[b.id] = b; return acc }, {})
@@ -531,8 +531,8 @@ exports.getTripTable = async (req, res, next) => {
 
         const user = userMap[ticket.userId]
         const branch = branchMap[user.branchId]
-        ticket.isOwnBranchTicket = (user.branchId == req.session.user.branchId).toString()
-        ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.user.branchId]?.stopId).toString()
+        ticket.isOwnBranchTicket = (user.branchId == req.session.firmUser.branchId).toString()
+        ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.firmUser.branchId]?.stopId).toString()
         ticket.tripRefundOptionDate = trip.refundOptionDate
 
         if (canceledStatuses.includes(ticket.status)) {
@@ -557,7 +557,7 @@ exports.getTripNotes = async (req, res, next) => {
 
         note.user = users.find(u => u.id == note.userId)?.name
 
-        note.isOwn = note.userId == req.session.user.id
+        note.isOwn = note.userId == req.session.firmUser.id
     }
 
     res.render("mixins/tripNotes", { notes: notes })
@@ -581,7 +581,7 @@ exports.postTripNote = async (req, res, next) => {
         await req.models.TripNote.create({
             tripId: tripId,
             noteText: noteText,
-            userId: req.session.user.id
+            userId: req.session.firmUser.id
         });
 
         return res.status(201).json({ message: "Note created successfully" });
@@ -597,7 +597,7 @@ exports.getBusAccountCutData = async (req, res, next) => {
         const BUS_COMISSION_PERCENT = 20
 
         const { tripId, stopId } = req.query;
-        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
         const needToPay = data.allTotal - comissionAmount;
         res.json({
@@ -631,7 +631,7 @@ exports.postBusAccountCut = async (req, res, next) => {
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
         const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
         const needToPay = data.allTotal - comissionAmount - d1 - d2 - d3 - d4 - d5 - tip;
 
@@ -652,14 +652,14 @@ exports.postBusAccountCut = async (req, res, next) => {
         });
 
         await req.models.Transaction.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: "expense",
             category: "payed_to_bus",
             amount: payedAmount,
             description: `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
             register.cash_balance = (register.cash_balance || 0) - (payedAmount || 0);
             await register.save();
@@ -677,7 +677,7 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
         const { tripId, stopId } = req.query;
         const record = await req.models.BusAccountCut.findOne({ where: { tripId, stopId } });
         if (!record) return res.status(404).json({ message: "Hesap bulunamadı." });
-        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.user);
+        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
         res.json({
             id: record.id,
             myCash: data.myCash,
@@ -713,14 +713,14 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         await req.models.Transaction.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: "income",
             category: "payed_to_bus",
             amount: accountCut.payedAmount,
             description: `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == accountCut.stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
         });
 
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
             register.cash_balance = (register.cash_balance || 0) + (accountCut.payedAmount || 0);
             await register.save();
@@ -758,7 +758,7 @@ exports.postEditTripNote = async (req, res, next) => {
 
         await note.update({
             noteText: noteText,
-            userId: req.session.user.id
+            userId: req.session.firmUser.id
         });
 
         return res.status(200).json({ message: "Note updated successfully" });
@@ -1056,7 +1056,7 @@ exports.postAddCargo = async (req, res, next) => {
         }
 
         const cargo = await req.models.Cargo.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             tripId,
             fromStopId,
             toStopId,
@@ -1073,14 +1073,14 @@ exports.postAddCargo = async (req, res, next) => {
         const toStop = stops.find(s => s.id == toStopId);
 
         await req.models.Transaction.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: "income",
             category: payment === "cash" ? "cash_sale" : "card_sale",
             amount: price,
             description: `Kargo | ${trip.date} ${trip.time} | ${(fromStop ? fromStop.title : "")} - ${(toStop ? toStop.title : "")}`
         });
 
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
             if (payment === "cash") {
                 register.cash_balance = Number(register.cash_balance) + price;
@@ -1105,7 +1105,7 @@ exports.postRefundCargo = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz kargo bilgisi." });
         }
 
-        if (!req.session.user || !req.session.user.id) {
+        if (!req.session.firmUser || !req.session.firmUser.id) {
             return res.status(401).json({ message: "Oturum bilgisi bulunamadı." });
         }
 
@@ -1156,14 +1156,14 @@ exports.postRefundCargo = async (req, res, next) => {
         const description = descriptionParts.join(" | ");
 
         await req.models.Transaction.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: "expense",
             category: cargo.payment === "card" ? "card_refund" : "cash_refund",
             amount: amount,
             description
         });
 
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register && amount > 0) {
             if (cargo.payment === "cash") {
                 register.cash_balance = Number(register.cash_balance) - amount;
@@ -1271,7 +1271,7 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const stopId = req.query.stopId
 
     const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
-    const branch = await req.models.Branch.findOne({ where: { id: req.session.user.branchId } })
+    const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
 
     const isOwnBranchStop = (stopId == branch.stopId).toString()
 
@@ -1302,12 +1302,12 @@ exports.getErp = async (req, res, next) => {
     let busModel = await req.models.BusModel.findAll()
     let staff = await req.models.Staff.findAll()
     let branches = await req.models.Branch.findAll()
-    let user = await req.models.FirmUser.findOne({ where: { id: req.session.user.id } })
+    let user = await req.models.FirmUser.findOne({ where: { id: req.session.firmUser.id } })
     let places = await req.commonModels.Place.findAll()
     let stops = await req.models.Stop.findAll()
 
     const userPerms = await req.models.FirmUserPermission.findAll({
-        where: { firmUserId: req.session.user.id, allow: true },
+        where: { firmUserId: req.session.firmUser.id, allow: true },
         attributes: ["permissionId"],
     });
 
@@ -1345,7 +1345,7 @@ exports.postErpLogin = async (req, res, next) => {
             return res.redirect("/login?error=1");
         }
 
-        req.session.user = u;
+        req.session.firmUser = u;
         req.session.isAuthenticated = true;
 
         const userPerms = await req.models.FirmUserPermission.findAll({
@@ -1408,7 +1408,7 @@ exports.getTicketRow = async (req, res, next) => {
     const trip = await req.models.Trip.findOne({ where: tripWhere });
     if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
 
-    const branch = await req.models.Branch.findOne({ where: { id: req.session.user.branchId } });
+    const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } });
     const isOwnBranch = stopId ? branch.stopId == stopId : false;
 
     const routeStops = await req.models.RouteStop.findAll({
@@ -1514,7 +1514,7 @@ exports.getTicketRow = async (req, res, next) => {
     let price = 0;
     if (fromId && toId) {
         const p = await req.models.Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
-        price = p ? p : 0;
+        price = p ? p : null;
     }
 
     const group = await req.models.TicketGroup.create({ tripId: trip.id });
@@ -1541,7 +1541,7 @@ exports.getTicketRow = async (req, res, next) => {
             optionDate: nowDate,
             fromRouteStopId: fromId,
             toRouteStopId: toId,
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
         });
 
         await ticket.save()
@@ -1607,8 +1607,8 @@ exports.postTickets = async (req, res, next) => {
             const t = tickets[i]
             if (!t) continue;
 
-            console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id })
-            const pendingTicket = await req.models.Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.user.id } })
+            console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id })
+            const pendingTicket = await req.models.Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id } })
             const pendingTicketGroup = await req.models.TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
             await pendingTicket?.destroy().then(r => console.log("pending silindi"))
             await pendingTicketGroup?.destroy().then(r => console.log("pending grup silindi"))
@@ -1631,7 +1631,7 @@ exports.postTickets = async (req, res, next) => {
                 optionDate: t.optionDate,
                 fromRouteStopId: fromId,
                 toRouteStopId: toId,
-                userId: req.session.user.id,
+                userId: req.session.firmUser.id,
                 pnr: pnr,
                 payment: t.payment
             });
@@ -1679,7 +1679,7 @@ exports.postTickets = async (req, res, next) => {
                 const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
                 await req.models.Transaction.create({
-                    userId: req.session.user.id,
+                    userId: req.session.firmUser.id,
                     type: "income",
                     category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                     amount: ticket.price,
@@ -1687,7 +1687,7 @@ exports.postTickets = async (req, res, next) => {
                     ticketId: ticket.id
                 });
 
-                const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+                const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
                 if (register) {
                     if (ticket.payment === "cash") {
                         register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -1756,7 +1756,7 @@ exports.postCompleteTickets = async (req, res, next) => {
 
         for (let i = 0; i < foundTickets.length; i++) {
             const ticket = foundTickets[i];
-            ticket.userId = req.session.user.id
+            ticket.userId = req.session.firmUser.id
             ticket.idNumber = tickets[i].idNumber
             ticket.name = tickets[i].name
             ticket.surname = tickets[i].surname
@@ -1805,7 +1805,7 @@ exports.postCompleteTickets = async (req, res, next) => {
             const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
             await req.models.Transaction.create({
-                userId: req.session.user.id,
+                userId: req.session.firmUser.id,
                 type: "income",
                 category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                 amount: ticket.price,
@@ -1813,7 +1813,7 @@ exports.postCompleteTickets = async (req, res, next) => {
                 ticketId: ticket.id
             });
 
-            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -1870,7 +1870,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
                 optionTime: t.optionTime,
                 fromRouteStopId: fromId,
                 toRouteStopId: toId,
-                userId: req.session.user.id,
+                userId: req.session.firmUser.id,
                 pnr: pnr,
                 payment: t.payment
             });
@@ -1906,7 +1906,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
             const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
             await req.models.Transaction.create({
-                userId: req.session.user.id,
+                userId: req.session.firmUser.id,
                 type: "income",
                 category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
                 amount: ticket.price,
@@ -1914,7 +1914,7 @@ exports.postSellOpenTickets = async (req, res, next) => {
                 ticketId: ticket.id
             });
 
-            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -2017,7 +2017,7 @@ exports.postCancelTicket = async (req, res, next) => {
                     const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
 
                     await req.models.Transaction.create({
-                        userId: req.session.user.id,
+                        userId: req.session.firmUser.id,
                         type: "expense",
                         category: ticket.payment === "cash" ? "cash_refund" : ticket.payment === "card" ? "card_refund" : "point_refund",
                         amount: ticket.price,
@@ -2025,7 +2025,7 @@ exports.postCancelTicket = async (req, res, next) => {
                         ticketId: ticket.id
                     });
 
-                    const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+                    const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
                     if (register) {
                         if (ticket.payment === "cash") {
                             register.cash_balance = Number(register.cash_balance) - (Number(ticket.price) || 0);
@@ -2213,23 +2213,23 @@ exports.postMoveTickets = async (req, res, next) => {
         const fromId = req.body.fromId
         const toId = req.body.toId
 
-    const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
+        const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
 
-    trip.modifiedTime = trip.time
+        trip.modifiedTime = trip.time
 
-    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const currentRouteStop = routeStops.find(rs => rs.stopId == fromId)
-    const routeStopOrder = currentRouteStop ? currentRouteStop.order : null
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+        const currentRouteStop = routeStops.find(rs => rs.stopId == fromId)
+        const routeStopOrder = currentRouteStop ? currentRouteStop.order : null
 
-    if (currentRouteStop) {
-        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
-        const offsetMap = buildOffsetMap(offsets)
-        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
-        const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder)
-        if (matchedStopTime) {
-            trip.modifiedTime = matchedStopTime.time
+        if (currentRouteStop) {
+            const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+            const offsetMap = buildOffsetMap(offsets)
+            const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
+            const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder)
+            if (matchedStopTime) {
+                trip.modifiedTime = matchedStopTime.time
+            }
         }
-    }
 
         console.log(`${trip.date} ${trip.modifiedTime}`)
 
@@ -3401,7 +3401,7 @@ exports.postSaveUser = async (req, res, next) => {
         const [user, created] = await req.models.FirmUser.upsert(
             {
                 id,
-                firmId: req.session.user.firmId,
+                firmId: req.session.firmUser.firmId,
                 isActive,
                 branchId,
                 username,
@@ -3476,7 +3476,7 @@ exports.postDeleteUser = async (req, res, next) => {
 
 exports.getTransactions = async (req, res, next) => {
     try {
-        const userId = req.query.userId || req.session.user.id;
+        const userId = req.query.userId || req.session.firmUser.id;
         const register = await req.models.CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
@@ -3513,7 +3513,7 @@ exports.getTransactions = async (req, res, next) => {
 
 exports.getTransactionData = async (req, res, next) => {
     try {
-        const userId = req.query.userId || req.session.user.id;
+        const userId = req.query.userId || req.session.firmUser.id;
         const register = await req.models.CashRegister.findOne({ where: { userId } });
         if (!register) throw new Error("Kasa kaydı bulunamadı.");
 
@@ -3608,7 +3608,7 @@ exports.postAddTransaction = async (req, res, next) => {
         const description = req.body.description;
 
         const transaction = req.models.Transaction.build({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: type,
             category: type,
             amount: amount,
@@ -3618,7 +3618,7 @@ exports.postAddTransaction = async (req, res, next) => {
         await transaction.save();
         res.locals.newRecordId = transaction.id;
 
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (!register) {
             throw new Error("Kasa kaydı bulunamadı.");
         }
@@ -3639,13 +3639,13 @@ exports.postAddTransaction = async (req, res, next) => {
 
 exports.postResetRegister = async (req, res, next) => {
     try {
-        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.user.id } });
+        const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
 
         const total = Number(register.cash_balance) + Number(register.card_balance);
 
         await req.models.Transaction.create({
-            userId: req.session.user.id,
+            userId: req.session.firmUser.id,
             type: "expense",
             category: "register_reset",
             amount: total,
@@ -3669,7 +3669,7 @@ exports.postTransferRegister = async (req, res, next) => {
         const targetUserId = Number(req.body.user);
         if (!targetUserId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
 
-        const senderId = req.session.user.id;
+        const senderId = req.session.firmUser.id;
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [senderId, targetUserId] } } });
 
         const sender = users.find(u => u.id == senderId);
@@ -3705,7 +3705,7 @@ exports.postRequestPayment = async (req, res, next) => {
         await req.models.Payment.create({
             initiatorId: userId,
             payerId: userId,
-            receiverId: req.session.user.id,
+            receiverId: req.session.firmUser.id,
             amount,
             cash_amount: amount,
             isWholeTransfer: false
@@ -3722,7 +3722,7 @@ exports.postSendPayment = async (req, res, next) => {
         const { userId, amount } = req.body;
         await req.models.Payment.create({
             initiatorId: userId,
-            payerId: req.session.user.id,
+            payerId: req.session.firmUser.id,
             receiverId: userId,
             amount,
             cash_amount: amount,
@@ -3737,7 +3737,7 @@ exports.postSendPayment = async (req, res, next) => {
 
 exports.getPendingPayments = async (req, res, next) => {
     try {
-        const payments = await req.models.Payment.findAll({ where: { payerId: req.session.user.id, status: "pending" } });
+        const payments = await req.models.Payment.findAll({ where: { payerId: req.session.firmUser.id, status: "pending" } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(payments.map(p => p.receiverId))] } } });
         if (!payments.length) {
             res.status(404);
@@ -3746,7 +3746,7 @@ exports.getPendingPayments = async (req, res, next) => {
             id: p.id,
             amount: p.amount,
             userName: users.find(u => u.id == p.receiverId)?.name || "",
-            canConfirm: p.initiatorId == req.session.user.id,
+            canConfirm: p.initiatorId == req.session.firmUser.id,
             type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
         }));
         res.render("mixins/paymentsList", { payments: result });
@@ -3758,8 +3758,8 @@ exports.getPendingPayments = async (req, res, next) => {
 
 exports.getPendingCollections = async (req, res, next) => {
     try {
-        console.log(req.session.user.id)
-        const payments = await req.models.Payment.findAll({ where: { receiverId: req.session.user.id, initiatorId: req.session.user.id, status: "pending" } });
+        console.log(req.session.firmUser.id)
+        const payments = await req.models.Payment.findAll({ where: { receiverId: req.session.firmUser.id, initiatorId: req.session.firmUser.id, status: "pending" } });
         if (!payments.length) {
             res.status(404);
         }
@@ -3768,7 +3768,7 @@ exports.getPendingCollections = async (req, res, next) => {
             id: p.id,
             amount: p.amount,
             userName: users.find(u => u.id == p.payerId)?.name || "",
-            canConfirm: p.initiatorId == req.session.user.id,
+            canConfirm: p.initiatorId == req.session.firmUser.id,
             type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
         }));
         res.render("mixins/paymentsList", { payments: result });
@@ -3786,7 +3786,7 @@ exports.postConfirmPayment = async (req, res, next) => {
 
         if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
         if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
-        if (payment.initiatorId !== req.session.user.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
+        if (payment.initiatorId !== req.session.firmUser.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
 
         if (Number(payment.amount) === 0) {
             payment.status = action == "approve" ? "approved" : "rejected";
@@ -3860,8 +3860,8 @@ exports.postSaveAnnouncement = async (req, res, next) => {
 
 exports.getAnnouncements = async (req, res, next) => {
     try {
-        const userId = req.session.user.id;
-        const branchId = req.session.user.branchId;
+        const userId = req.session.firmUser.id;
+        const branchId = req.session.firmUser.branchId;
 
         const announcements = await req.models.Announcement.findAll({
             where: {
@@ -3893,7 +3893,7 @@ exports.getAnnouncements = async (req, res, next) => {
 exports.getDailyUserAccountReport = async (req, res, next) => {
     try {
         const { startDate, endDate, userId } = req.query;
-        const targetUserId = userId || req.session.user?.id;
+        const targetUserId = userId || req.session.firmUser?.id;
 
         if (!targetUserId) {
             return res.status(400).json({ message: 'Kullanıcı bilgisi eksik.' });
@@ -4692,7 +4692,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
 exports.postAnnouncementSeen = async (req, res, next) => {
     try {
         const { announcementId } = req.body;
-        const userId = req.session.user.id;
+        const userId = req.session.firmUser.id;
         await req.models.AnnouncementUser.findOrCreate({
             where: { announcementId, userId },
             defaults: { seenAt: new Date() }

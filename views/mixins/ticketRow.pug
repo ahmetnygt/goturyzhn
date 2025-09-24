@@ -1,113 +1,185 @@
-- for(let i = 0; i < seats.length; i++){
-    .ticket-row(class=gender[i])
+- for (var i = 0; i < seats.length; i++)
+    .ticket-row(class=(gender && gender[i] ? gender[i] : ""))
         .seat-number
-            p.mb-0 #{`${seats[i]<10?"0"+seats[i]:seats[i]}`}
-            input(type="hidden" value=seats[i])
+            p.mb-0 #{seats && seats[i] != null ? (seats[i] < 10 ? "0" + seats[i] : seats[i]) : ""}
+            input(type="hidden" value=(seats ? seats[i] : ""))
+
         .gender
-            input.male(id="male_"+i name="gender_"+i type="radio" value="m" checked=gender[i]=="m"?true:false)
+            input.male(
+                id="male_"+i
+                name="gender_"+i
+                type="radio"
+                value="m"
+                checked=(gender && gender[i] == "m")
+            )
             label.male.gender-input-label(for="male_"+i) ERKEK
-            input.female(id="female_"+i name="gender_"+i type="radio" value="f" checked=gender[i]=="f"?true:false)
+            input.female(
+                id="female_"+i
+                name="gender_"+i
+                type="radio"
+                value="f"
+                checked=(gender && gender[i] == "f")
+            )
             label.female.gender-input-label(for="female_"+i) KADIN
+
         .nationality
             label.form-label Uyruk
-            select.form-select.form-select-sm(value=ticket?ticket[i].nationality:"")
-                option(value="tr") Türkiye 
-                if permissions.includes('FOREIGN_PASSENGER_TICKET_SALE')
-                    option(value="us") Amerika 
+            select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].nationality : ""))
+                option(value="tr") Türkiye
+                if permissions && permissions.includes('FOREIGN_PASSENGER_TICKET_SALE')
+                    option(value="us") Amerika
                     option(value="sr") Suriye
-                else 
-                    option(value="" disabled) Amerika 
+                else
+                    option(value="" disabled) Amerika
                     option(value="" disabled) Suriye
+
         .identity
             label.form-label Kimlik/Pasaport No
-            if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ticket?ticket[i].status:"" == "completed"
-                input.form-control.form-control-sm(readonly type="text" name="" value=ticket?ticket[i].idNumber:"")
+            if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ((ticket && ticket[i] ? ticket[i].status : "") == "completed")
+                input.form-control.form-control-sm(
+                    readonly
+                    type="text"
+                    value=(ticket && ticket[i] ? ticket[i].idNumber : "")
+                )
             else
-                input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].idNumber:"")
+                input.form-control.form-control-sm(
+                    type="text"
+                    value=(ticket && ticket[i] ? ticket[i].idNumber : "")
+                )
+
         .name
             label.form-label İsim
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].name:"")
+            input.form-control.form-control-sm(type="text" value=(ticket && ticket[i] ? ticket[i].name : ""))
+
         .surname
             label.form-label Soyisim
-            input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[i].surname:"")
+            input.form-control.form-control-sm(type="text" value=(ticket && ticket[i] ? ticket[i].surname : ""))
+
         .type
             label.form-label Yolcu Türü
-            select.form-select.form-select-sm(value=ticket?ticket[i].customerType:"")
-                option(value="adult") Yetişkin 
-                option(value="child") Çocuk 
-                option(value="student") Öğrenci 
-                option(value="disabled") Engelli 
+            select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].customerType : ""))
+                option(value="adult") Yetişkin
+                option(value="child") Çocuk
+                option(value="student") Öğrenci
+                option(value="disabled") Engelli
                 option(value="retired") Emekli
+
         .category
             label.form-label Kategori
-            select.form-select.form-select-sm(value=ticket?ticket[i].customerCategory:"")
+            select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].customerCategory : ""))
                 option(value="normal") Normal
-                if (permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch)
+                if ((permissions && permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions && permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch))
                     option(value="member") Abone
                     option(value="guest") Misafir
-        - const seatPriceData = Array.isArray(price) ? price[i] : price;
-        - const seatType = seatTypes && seatTypes[i] == "single" ? "single" : "standard";
-        - const regularPriceValues = [];
-        - const singleSeatPriceValues = [];
-        - if (seatPriceData && typeof seatPriceData === "object") {
-        -     if (seatPriceData.price1 !== undefined && seatPriceData.price1 !== null) regularPriceValues.push(seatPriceData.price1);
-        -     if (seatPriceData.price2 !== undefined && seatPriceData.price2 !== null) regularPriceValues.push(seatPriceData.price2);
-        -     if (seatPriceData.price3 !== undefined && seatPriceData.price3 !== null) regularPriceValues.push(seatPriceData.price3);
-        -     if (seatPriceData.singleSeatPrice1 !== undefined && seatPriceData.singleSeatPrice1 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1);
-        -     if (seatPriceData.singleSeatPrice2 !== undefined && seatPriceData.singleSeatPrice2 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2);
-        -     if (seatPriceData.singleSeatPrice3 !== undefined && seatPriceData.singleSeatPrice3 !== null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3);
-        - }
-        - const activePriceList = seatType === "single"
-        -     ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
-        -     : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues);
-        - const defaultPriceValue = ticket && ticket[i] ? ticket[i].price : (activePriceList.length ? activePriceList[0] : "");
-        - const showPriceArrows = activePriceList.length > 1;
-        .price(data-seat-type=seatType data-regular-prices=JSON.stringify(regularPriceValues) data-single-prices=JSON.stringify(singleSeatPriceValues))
+
+        -
+            const seatPriceData = Array.isArray(price) ? price[i] : price
+            const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
+            const regularPriceValues = []
+            const singleSeatPriceValues = []
+
+            if (seatPriceData.price1 != null) regularPriceValues.push(seatPriceData.price1)
+            if (seatPriceData.price2 != null) regularPriceValues.push(seatPriceData.price2)
+            if (seatPriceData.price3 != null) regularPriceValues.push(seatPriceData.price3)
+            if (seatPriceData.singleSeatPrice1 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1)
+            if (seatPriceData.singleSeatPrice2 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2)
+            if (seatPriceData.singleSeatPrice3 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3)
+
+            const activePriceList = (seatType === "single")
+                ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
+                : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues)
+
+            const defaultPriceValue = (ticket && ticket[i] && ticket[i].price != null)
+                ? ticket[i].price
+                : (activePriceList.length ? activePriceList[0] : "")
+
+            const showPriceArrows = activePriceList.length > 1
+
+        .price(
+            data-seat-type=seatType
+            data-regular-prices=JSON.stringify(regularPriceValues)
+            data-single-prices=JSON.stringify(singleSeatPriceValues)
+        )
             label.form-label
                 | Fiyat
                 span.customer-point.ms-1
             .price-input-wrapper
                 if !permissions.includes('ENTER_FREE_PRICE')
-                    input.form-control.form-control-sm(readonly type="number" name="" value=defaultPriceValue)
+                    input.form-control.form-control-sm(readonly type="number" value=defaultPriceValue)
                 else
-                    input.form-control.form-control-sm(type="number" name="" value=defaultPriceValue)
+                    input.form-control.form-control-sm(type="number" value=defaultPriceValue)
                 if showPriceArrows
                     .price-arrows.btn-group-vertical.ms-1
                         button.price-arrow.price-arrow-up.btn.btn-outline-secondary.btn-sm(type="button")
                             i.fa-solid.fa-chevron-up
                         button.price-arrow.price-arrow-down.btn.btn-outline-secondary.btn-sm(type="button")
                             i.fa-solid.fa-chevron-down
--}
-.ticket-info    
+
+.ticket-info
     .up-row
         .phone
             label.form-label Telefon Numarası
-            if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ticket?ticket[0].status:"" == "completed"
-                input.form-control.form-control-sm(readonly type="text" name="" value=ticket?ticket[0].phoneNumber:"" placeholder="555 555 55 55") 
+            if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ((ticket && ticket[0] ? ticket[0].status : "") == "completed")
+                input.form-control.form-control-sm(
+                    readonly
+                    type="text"
+                    value=(ticket && ticket[0] ? ticket[0].phoneNumber : "")
+                    placeholder="555 555 55 55"
+                )
             else
-                input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].phoneNumber:"" placeholder="555 555 55 55") 
+                input.form-control.form-control-sm(
+                    type="text"
+                    value=(ticket && ticket[0] ? ticket[0].phoneNumber : "")
+                    placeholder="555 555 55 55"
+                )
+
         if action == "reservation" || action == "edit"
             .reservation-expire
                 label.form-label Rezervasyon Opsiyonu
                 if permissions.includes('UPDATE_RESERVATION_OPTION_TIME')
-                    if isOwnBranch ||(!isOwnBranch && permissions.includes('UPDATE_RESERVATION_OPTION_TIME_OTHER_BRANCH'))
+                    if isOwnBranch || (!isOwnBranch && permissions.includes('UPDATE_RESERVATION_OPTION_TIME_OTHER_BRANCH'))
                         .input-group
-                            input.changable.date.form-control.form-control-sm(type="text" name="" value=`${ticket?ticket[0].optionDate:trip.date}`) 
-                            input.changable.time.form-control.form-control-sm(type="text" name="" value=`${ticket?ticket[0].optionTime:trip.modifiedTime}`) 
+                            input.changable.date.form-control.form-control-sm(
+                                type="text"
+                                value=(ticket && ticket[0] ? ticket[0].optionDate : trip.date)
+                            )
+                            input.changable.time.form-control.form-control-sm(
+                                type="text"
+                                value=(ticket && ticket[0] ? ticket[0].optionTime : trip.modifiedTime)
+                            )
                     else
                         .input-group
-                            input.date.form-control.form-control-sm(readonly type="text" name="" value=`${ticket?ticket[0].optionDate:trip.date}`) 
-                            input.time.form-control.form-control-sm(readonly type="text" name="" value=`${ticket?ticket[0].optionTime:trip.modifiedTime}`) 
+                            input.date.form-control.form-control-sm(
+                                readonly
+                                type="text"
+                                value=(ticket && ticket[0] ? ticket[0].optionDate : trip.date)
+                            )
+                            input.time.form-control.form-control-sm(
+                                readonly
+                                type="text"
+                                value=(ticket && ticket[0] ? ticket[0].optionTime : trip.modifiedTime)
+                            )
                 else
                     .input-group
-                        input.date.form-control.form-control-sm(readonly type="text" name="" value=`${ticket?ticket[0].optionDate:trip.date}`) 
-                        input.time.form-control.form-control-sm(readonly type="text" name="" value=`${ticket?ticket[0].optionTime:trip.modifiedTime}`) 
+                        input.date.form-control.form-control-sm(
+                            readonly
+                            type="text"
+                            value=(ticket && ticket[0] ? ticket[0].optionDate : trip.date)
+                        )
+                        input.time.form-control.form-control-sm(
+                            readonly
+                            type="text"
+                            value=(ticket && ticket[0] ? ticket[0].optionTime : trip.modifiedTime)
+                        )
+
         .take-on
             label.form-label Biniş Yeri
-            input.form-control.form-control-sm(type="text" name="") 
+            input.form-control.form-control-sm(type="text")
+
         .take-off
             label.form-label İniş Yeri
-            input.form-control.form-control-sm(type="text" name="") 
+            input.form-control.form-control-sm(type="text")
+
         if action == "sell" || action == "edit" || action == "complete"
             .payment
                 label.form-label Ödeme
@@ -115,15 +187,27 @@
                     option(value="cash") Nakit
                     option(value="card") K. Kartı
                     option(value="point") Puan
-        if ticket && (action == "edit" || action == "complete") 
+
+        if ticket && (action == "edit" || action == "complete")
             .pnr
                 label.form-label PNR
-                input.form-control.form-control-sm(type="text" name="" value=ticket?ticket[0].pnr:"" readonly) 
+                input.form-control.form-control-sm(
+                    type="text"
+                    value=(ticket && ticket[0] ? ticket[0].pnr : "")
+                    readonly
+                )
+
         .sum-price
             label.form-label Toplam Fiyat
-            input.form-control.form-control-sm(readonly type="text" name="" value=ticket?ticket[0].price*seats.length:"") 
+            input.form-control.form-control-sm(
+                readonly
+                type="text"
+                value=(ticket && ticket[0] ? ticket[0].price * seats.length : "")
+            )
+
     .row
         .description
             label.form-label Açıklama
-            input.form-control.form-control-sm(type="text" name="") 
+            input.form-control.form-control-sm(type="text")
+
 input#pendingIds(type="hidden" value=pendingIds)

@@ -52,7 +52,7 @@ app.use(tenantMiddleware);
 // ortak modelleri (gotur DB) request içine ekle
 app.use((req, res, next) => {
   req.commonModels = initGoturModels(); // Place vs.
-  res.locals.user = req.session.user;
+  res.locals.firmUser = req.session.firmUser;
   res.locals.permissions = req.session.permissions || [];
   next();
 });
