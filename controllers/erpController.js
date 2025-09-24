@@ -2590,7 +2590,30 @@ exports.postSaveBus = async (req, res, next) => {
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, licensePlate, busModelId, captainId, phoneNumber, owner } = data;
+        const {
+            id,
+            licensePlate,
+            busModelId,
+            captainId,
+            phoneNumber,
+            owner,
+            hasPowerOutlet,
+            hasCatering,
+            hasUsbPort,
+            hasSeatScreen,
+            hasComfortableSeat,
+            hasFridge,
+            hasWifi,
+            hasSeatPillow
+        } = data;
+
+        const parseBoolean = value => {
+            if (typeof value === "string") {
+                const lowered = value.toLowerCase();
+                return lowered === "true" || lowered === "1" || lowered === "on";
+            }
+            return Boolean(value);
+        };
 
         const [bus, created] = await req.models.Bus.upsert(
             {
@@ -2599,7 +2622,15 @@ exports.postSaveBus = async (req, res, next) => {
                 busModelId,
                 captainId,
                 phoneNumber,
-                owner
+                owner,
+                hasPowerOutlet: parseBoolean(hasPowerOutlet),
+                hasCatering: parseBoolean(hasCatering),
+                hasUsbPort: parseBoolean(hasUsbPort),
+                hasSeatScreen: parseBoolean(hasSeatScreen),
+                hasComfortableSeat: parseBoolean(hasComfortableSeat),
+                hasFridge: parseBoolean(hasFridge),
+                hasWifi: parseBoolean(hasWifi),
+                hasSeatPillow: parseBoolean(hasSeatPillow)
             },
             { returning: true }
         );
