@@ -3713,6 +3713,48 @@ $(".add-bus-plan").on("click", async e => {
     })
 })
 
+const BUS_FEATURE_SELECTOR = ".bus-feature"
+
+function setBusFeatureValues(bus = {}) {
+    $(BUS_FEATURE_SELECTOR).each((_, el) => {
+        const field = el.dataset.field
+        if (!field) return
+        const value = bus[field]
+        if (value === undefined || value === null) {
+            if (typeof el.defaultChecked === "boolean") {
+                el.checked = el.defaultChecked
+            }
+            else {
+                el.checked = false
+            }
+        }
+        else {
+            el.checked = Boolean(value)
+        }
+    })
+}
+
+function resetBusFeatureDefaults() {
+    $(BUS_FEATURE_SELECTOR).each((_, el) => {
+        if (typeof el.defaultChecked === "boolean") {
+            el.checked = el.defaultChecked
+        }
+        else {
+            el.checked = false
+        }
+    })
+}
+
+function collectBusFeatureValues() {
+    const result = {}
+    $(BUS_FEATURE_SELECTOR).each((_, el) => {
+        const field = el.dataset.field
+        if (!field) return
+        result[field] = el.checked ? "true" : "false"
+    })
+    return result
+}
+
 let editingBusId = null
 
 setupDeleteHandler(".bus-delete", {
@@ -3790,6 +3832,7 @@ $(".bus-nav").on("click", async e => {
                         $(".bus-captain").val(response.captainId)
                         $(".bus-phone").val(response.phoneNumber)
                         $(".bus-owner").val(response.owner)
+                        setBusFeatureValues(response || {})
                         $(".bus").css("width", "75vw")
                         $(".bus-list").removeClass("col-12").addClass("col-4")
                         $(".bus-info").css("display", "flex")
@@ -3829,6 +3872,7 @@ $(".add-bus").on("click", e => {
     $(".bus-captain").val("")
     $(".bus-phone").val("")
     $(".bus-owner").val("")
+    resetBusFeatureDefaults()
     editingBusId = null
     $(".bus").css("width", "75vw")
     $(".bus-list").removeClass("col-12").addClass("col-4")
@@ -3843,17 +3887,19 @@ $(".save-bus").on("click", async e => {
     const captainId = $(".bus-captain").val()
     const phoneNumber = $(".bus-phone").val()
     const owner = $(".bus-owner").val()
+    const featureData = collectBusFeatureValues()
 
     await $.ajax({
         url: "/post-save-bus",
         type: "POST",
-        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner },
+        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, ...featureData },
         success: function (response) {
             $(".bus-license-plate").val("")
             $(".bus-bus-model").val("")
             $(".bus-captain").val("")
             $(".bus-phone").val("")
             $(".bus-owner").val("")
+            resetBusFeatureDefaults()
             editingBusId = null
             $(".bus").css("width", "30vw")
             $(".bus-list").addClass("col-12").removeClass("col-4")
