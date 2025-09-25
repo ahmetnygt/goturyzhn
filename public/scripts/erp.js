@@ -570,9 +570,17 @@ function initTimeInput(selector) {
 initTimeInput(".trip-departure")
 
 function initPhoneInput(selector, mobileOnly = false) {
-    const input = document.querySelector(selector);
+    let inputs = [];
 
-    if (!input) return;
+    if (typeof selector === "string") {
+        inputs = Array.from(document.querySelectorAll(selector));
+    } else if (typeof Element !== "undefined" && selector instanceof Element) {
+        inputs = [selector];
+    } else if (selector && typeof selector[Symbol.iterator] === "function") {
+        inputs = Array.from(selector).filter(el => typeof Element !== "undefined" && el instanceof Element);
+    }
+
+    if (!inputs.length) return;
 
     const onlyDigits = s => (s || "").replace(/\D/g, "");
 
@@ -593,30 +601,65 @@ function initPhoneInput(selector, mobileOnly = false) {
         return out;
     }
 
-    input.addEventListener("input", () => {
-        const d10 = normalizeTR(input.value);
-        input.value = formatTR(d10);
-    });
-
-    input.addEventListener("blur", () => {
-        const d10 = normalizeTR(input.value);
-
-        if (d10.length !== 10) {
-            input.value = "";
-            return;
+    const isHtmlInput = el => {
+        if (!el || typeof el !== "object") return false;
+        if (typeof HTMLInputElement !== "undefined") {
+            return el instanceof HTMLInputElement;
         }
+        return String(el.tagName).toUpperCase() === "INPUT";
+    };
 
-        if (mobileOnly && !d10.startsWith("5")) {
-            input.value = "";
-            return;
-        }
+    inputs
+        .filter(isHtmlInput)
+        .forEach(input => {
+            if (input.dataset.phoneInputInitialized === "true") {
+                return;
+            }
 
-        input.value = formatTR(d10);
-    });
+            input.dataset.phoneInputInitialized = "true";
+
+            const onInput = () => {
+                const d10 = normalizeTR(input.value);
+                input.value = formatTR(d10);
+            };
+
+            const onBlur = () => {
+                const d10 = normalizeTR(input.value);
+
+                if (!d10) {
+                    input.value = "";
+                    return;
+                }
+
+                if (d10.length !== 10) {
+                    input.value = "";
+                    return;
+                }
+
+                if (mobileOnly && !d10.startsWith("5")) {
+                    input.value = "";
+                    return;
+                }
+
+                input.value = formatTR(d10);
+            };
+
+            input.addEventListener("input", onInput);
+            input.addEventListener("blur", onBlur);
+
+            if (input.value) {
+                onInput();
+            }
+        });
 }
 
-initPhoneInput(".bus-phone")
-initPhoneInput(".user-phone")
+initPhoneInput(".bus-phone");
+initPhoneInput(".user-phone");
+initPhoneInput(".staff-phone");
+initPhoneInput(".search-phone");
+initPhoneInput(".member-search-phone");
+initPhoneInput(".customer-search-phone");
+initPhoneInput(".trip-cargo-sender-phone");
 
 function initPlateInput(selector) {
     const el = document.querySelector(selector);
@@ -683,10 +726,19 @@ function initPlateInput(selector) {
 initPlateInput(".bus-license-plate")
 
 function initTcknInputs(selector, opts = {}) {
-    const els = document.querySelectorAll(selector);
+    let els = [];
+
+    if (typeof selector === "string") {
+        els = Array.from(document.querySelectorAll(selector));
+    } else if (typeof Element !== "undefined" && selector instanceof Element) {
+        els = [selector];
+    } else if (selector && typeof selector[Symbol.iterator] === "function") {
+        els = Array.from(selector).filter(el => typeof Element !== "undefined" && el instanceof Element);
+    }
+
     if (!els.length) return;
 
-    const { clearOnInvalid = true, liveMark = false } = opts;
+    const { clearOnInvalid = false, liveMark = false } = opts;
 
     const onlyDigits = s => (s || "").replace(/\D/g, "");
 
@@ -712,37 +764,74 @@ function initTcknInputs(selector, opts = {}) {
         return d.slice(0, 11);
     }
 
-    els.forEach(el => {
-        el.addEventListener("input", () => {
-            const d = sanitizeValue(el.value);
-            el.value = d;
+    const isHtmlInput = el => {
+        if (!el || typeof el !== "object") return false;
+        if (typeof HTMLInputElement !== "undefined") {
+            return el instanceof HTMLInputElement;
+        }
+        return String(el.tagName).toUpperCase() === "INPUT";
+    };
 
-            if (liveMark) {
-                if (d.length === 11 && isValidTCKN(d)) {
-                    el.style.borderColor = "green";
-                } else {
+    els
+        .filter(isHtmlInput)
+        .forEach(el => {
+            if (el.dataset.tcknInputInitialized === "true") {
+                return;
+            }
+
+            el.dataset.tcknInputInitialized = "true";
+
+            const onInput = () => {
+                const d = sanitizeValue(el.value);
+                el.value = d;
+
+                if (liveMark) {
+                    if (d.length === 11 && isValidTCKN(d)) {
+                        el.style.borderColor = "green";
+                    } else {
+                        el.style.borderColor = "";
+                    }
+                }
+            };
+
+            const onBlur = () => {
+                const d = sanitizeValue(el.value);
+                if (!d) {
+                    el.value = "";
+                    el.style.borderColor = "";
+                    return;
+                }
+
+                if (isValidTCKN(d)) {
+                    el.value = d;
+                    if (liveMark) el.style.borderColor = "green";
+                    return;
+                }
+
+                if (liveMark) {
                     el.style.borderColor = "";
                 }
+
+                if (clearOnInvalid) {
+                    el.value = "";
+                }
+            };
+
+            el.addEventListener("input", onInput);
+            el.addEventListener("blur", onBlur);
+
+            if (el.value) {
+                onInput();
             }
         });
-
-        el.addEventListener("blur", () => {
-            const d = sanitizeValue(el.value);
-            if (!d) { el.value = ""; el.style.borderColor = ""; return; }
-
-            if (isValidTCKN(d)) {
-                el.value = d;
-                if (liveMark) el.style.borderColor = "green";
-            } else {
-                // if (clearOnInvalid) {
-                //     el.value = "";
-                //     el.style.borderColor = "";
-                //     alert("Yanlış bir kimlik numarası girdiniz.")
-                // }
-            }
-        });
-    });
 }
+
+initTcknInputs(".identity input");
+initTcknInputs(".search-idnum");
+initTcknInputs(".staff-id-number");
+initTcknInputs(".member-search-idNumber");
+initTcknInputs(".customer-search-idNumber");
+initTcknInputs(".trip-cargo-sender-identity");
 
 
 // Seferi yükler
