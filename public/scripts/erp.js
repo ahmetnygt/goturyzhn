@@ -1467,6 +1467,8 @@ async function loadTrip(date, time, tripId) {
 
                         flatpickr($(".reservation-expire input.changable.date"), {
                             locale: "tr",
+                            altInput: true,
+                            altFormat: "d F Y",
                         })
                         flatpickr($(".reservation-expire input.changable.time"), {
                             locale: "tr",
@@ -1925,6 +1927,8 @@ flatpickr(calendar, {
     inline: true,
     locale: "tr",
     defaultDate: "2025-05-12",
+    altInput: true,
+    altFormat: "d F Y",
     onChange: async function (selectedDates, dateStr, instance) {
         loadTripsList(dateStr)
     },
@@ -1933,6 +1937,8 @@ const tripCalendar = $(".trip-settings-calendar")
 flatpickr(tripCalendar, {
     locale: "tr",
     defaultDate: "2025-05-12",
+    altInput: true,
+    altFormat: "d F Y",
     onChange: async function (selectedDates, dateStr, instance) {
         const date = dateStr
         await $.ajax({
@@ -1979,12 +1985,16 @@ flatpickr(tripCalendar, {
 const tripFirstDate = $(".trip-first-date")
 flatpickr(tripFirstDate, {
     locale: "tr",
-    defaultDate: "2025-05-12"
+    defaultDate: "2025-05-12",
+    altInput: true,
+    altFormat: "d F Y",
 })
 const tripLastDate = $(".trip-last-date")
 flatpickr(tripLastDate, {
     locale: "tr",
-    defaultDate: "2025-05-12"
+    defaultDate: "2025-05-12",
+    altInput: true,
+    altFormat: "d F Y",
 })
 
 const tripTimeAdjustInput = document.querySelector(".trip-time-adjust-amount")
@@ -2408,6 +2418,8 @@ $(".taken-ticket-op").on("click", async e => {
 
                 flatpickr($(".reservation-expire input.changable.date"), {
                     locale: "tr",
+                    altInput: true,
+                    altFormat: "d F Y",
                 })
                 flatpickr($(".reservation-expire input.changable.time"), {
                     locale: "tr",
@@ -2488,6 +2500,8 @@ $(".taken-ticket-op").on("click", async e => {
 
                 flatpickr($(".reservation-expire input.changable.date"), {
                     locale: "tr",
+                    altInput: true,
+                    altFormat: "d F Y",
                 })
                 flatpickr($(".reservation-expire input.changable.time"), {
                     locale: "tr",
@@ -4498,7 +4512,11 @@ const resetPriceAddRow = () => {
         $(this).html(options);
     });
     row.find("input").val("");
-    flatpickr(row.find(".date-picker").toArray(), { dateFormat: "Y-m-d" });
+    flatpickr(row.find(".date-picker").toArray(), {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d F Y",
+    });
 };
 
 $(".price-nav").on("click", async e => {
@@ -4551,7 +4569,11 @@ $(".price-row, .price-add-row").off().on("click", function () {
             p.replaceWith(`<input class="${cls}" type="${type}" value="${value ?? ''}">`);
         }
     });
-    flatpickr(row.find(".date-picker").toArray(), { dateFormat: "Y-m-d" });
+    flatpickr(row.find(".date-picker").toArray(), {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d F Y",
+    });
 });
 
 $(".price-save").on("click", async function () {
