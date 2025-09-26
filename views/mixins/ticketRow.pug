@@ -71,30 +71,29 @@
                 if ((permissions && permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions && permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch))
                     option(value="member") Abone
                     option(value="guest") Misafir
+        if price
+            -
+                const seatPriceData = Array.isArray(price) ? price[i] : price
+                const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
+                const regularPriceValues = []
+                const singleSeatPriceValues = []
 
-        -
-            const seatPriceData = Array.isArray(price) ? price[i] : price
-            const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
-            const regularPriceValues = []
-            const singleSeatPriceValues = []
+                if (seatPriceData.price1 != null) regularPriceValues.push(seatPriceData.price1)
+                if (seatPriceData.price2 != null) regularPriceValues.push(seatPriceData.price2)
+                if (seatPriceData.price3 != null) regularPriceValues.push(seatPriceData.price3)
+                if (seatPriceData.singleSeatPrice1 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1)
+                if (seatPriceData.singleSeatPrice2 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2)
+                if (seatPriceData.singleSeatPrice3 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3)
 
-            if (seatPriceData.price1 != null) regularPriceValues.push(seatPriceData.price1)
-            if (seatPriceData.price2 != null) regularPriceValues.push(seatPriceData.price2)
-            if (seatPriceData.price3 != null) regularPriceValues.push(seatPriceData.price3)
-            if (seatPriceData.singleSeatPrice1 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1)
-            if (seatPriceData.singleSeatPrice2 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2)
-            if (seatPriceData.singleSeatPrice3 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3)
+                const activePriceList = (seatType === "single")
+                    ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
+                    : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues)
 
-            const activePriceList = (seatType === "single")
-                ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
-                : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues)
+                const defaultPriceValue = (ticket && ticket[i] && ticket[i].price != null)
+                    ? ticket[i].price
+                    : (activePriceList.length ? activePriceList[0] : "")
 
-            const defaultPriceValue = (ticket && ticket[i] && ticket[i].price != null)
-                ? ticket[i].price
-                : (activePriceList.length ? activePriceList[0] : "")
-
-            const showPriceArrows = activePriceList.length > 1
-
+                const showPriceArrows = activePriceList.length > 1
         .price(
             data-seat-type=seatType
             data-regular-prices=JSON.stringify(regularPriceValues)
