@@ -831,7 +831,7 @@ exports.getBusAccountCutReceipt = async (req, res, next) => {
         const { tripId, stopId } = req.query;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename="account_receipt.pdf"');
-        await generateAccountReceiptFromDb(tripId, stopId, res);
+        await generateAccountReceiptFromDb(tripId, stopId, res, req.models);
     } catch (err) {
         console.error("getBusAccountCutReceipt error:", err);
         res.status(500).json({ message: "Hesap fişi oluşturulamadı." });
@@ -4318,15 +4318,28 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
 
+        const branchRecord = branchId
+            ? await req.models.Branch.findOne({ where: { id: branchId }, attributes: ['title'], raw: true })
+            : null;
+        const userRecord = userId
+            ? await req.models.FirmUser.findOne({ where: { id: userId }, attributes: ['name'], raw: true })
+            : null;
+        const fromStopRecord = fromStopId
+            ? await req.models.Stop.findOne({ where: { id: fromStopId }, attributes: ['title'], raw: true })
+            : null;
+        const toStopRecord = toStopId
+            ? await req.models.Stop.findOne({ where: { id: toStopId }, attributes: ['title'], raw: true })
+            : null;
+
         const query = {
-            type: type,
-            startDate: startDate,
-            endDate: endDate,
-            branch: branchId ? await req.models.Branch.findOne({ where: { id: branchId } }).title : "Tümü",
-            user: userId ? await req.models.FirmUser.findOne({ where: { id: userId } }).title : "Tümü",
-            from: fromStopId ? await req.models.Stop.findOne({ where: { id: fromStopId } }).title : "Tümü",
-            to: toStopId ? await req.models.Stop.findOne({ where: { id: toStopId } }).title : "Tümü",
-        }
+            type,
+            startDate,
+            endDate,
+            branch: branchRecord?.title || "Tümü",
+            user: userRecord?.name || "Tümü",
+            from: fromStopRecord?.title || "Tümü",
+            to: toStopRecord?.title || "Tümü",
+        };
 
         console.log(start)
         console.log(end)

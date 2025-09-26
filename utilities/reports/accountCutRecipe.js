@@ -200,17 +200,38 @@ function addTime(baseTime, addTime) {
   return `${hh}:${mm}:${ss}`;
 }
 
-async function generateAccountReceiptFromDb(tripId, stopId, output) {
-  const trip = await Trip.findOne({ where: { id: tripId } });
+async function generateAccountReceiptFromDb(tripId, stopId, output, models = {}) {
+  const {
+    Trip: TripModel = Trip,
+    Route: RouteModel = Route,
+    RouteStop: RouteStopModel = RouteStop,
+    Stop: StopModel = Stop,
+    Ticket: TicketModel = Ticket,
+    Bus: BusModel = Bus,
+    Staff: StaffModel = Staff,
+    BusAccountCut: BusAccountCutModel = BusAccountCut,
+  } = models;
+
+  const trip = await TripModel.findOne({ where: { id: tripId } });
   if (!trip) throw new Error('Trip not found');
 
-  const route = await Route.findOne({ where: { id: trip.routeId } });
-  const routeStops = await RouteStop.findAll({ where: { routeId: route.id } });
-  const stops = await Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } });
-  const bus = trip.busId ? await Bus.findOne({ where: { id: trip.busId } }) : null;
-  const captain = await Staff.findOne({ where: { id: trip.captainId } })
+  const route = await RouteModel.findOne({ where: { id: trip.routeId } });
+  if (!route) throw new Error('Route not found');
 
-  const routeStopOrder = routeStops.find(rs => rs.stopId == stopId).order
+  const routeStops = await RouteStopModel.findAll({ where: { routeId: route.id } });
+  const stopIds = [...new Set(routeStops.map(rs => rs.stopId))];
+  const stops = stopIds.length
+    ? await StopModel.findAll({ where: { id: { [Op.in]: stopIds } } })
+    : [];
+  const bus = trip.busId ? await BusModel.findOne({ where: { id: trip.busId } }) : null;
+  const captain = trip.captainId ? await StaffModel.findOne({ where: { id: trip.captainId } }) : null;
+
+  const currentRouteStop = routeStops.find(rs => rs.stopId == stopId);
+  if (!currentRouteStop) {
+    throw new Error('Route stop not found for provided stop');
+  }
+
+  const routeStopOrder = currentRouteStop.order;
 
   if (routeStopOrder !== routeStops.length - 1) {
     for (let j = 0; j < routeStops.length; j++) {
@@ -223,7 +244,7 @@ async function generateAccountReceiptFromDb(tripId, stopId, output) {
     }
   }
 
-  const tickets = await Ticket.findAll({
+  const tickets = await TicketModel.findAll({
     where: { tripId, fromRouteStopId: stopId, status: { [Op.notIn]: ["canceled", "refund"] } },
     order: [["seatNo", "ASC"]]
   });
@@ -239,27 +260,41 @@ async function generateAccountReceiptFromDb(tripId, stopId, output) {
 
   const total = tickets.reduce((sum, t) => sum + (t.price || 0), 0).toFixed(2);
 
-  const accountCut = await BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
+  const accountCut = await BusAccountCutModel.findOne({ where: { tripId: trip.id, stopId: stopId } });
+
+  const stopTitle = stops.find(s => s.id == stopId)?.title || '';
+  let destinationStopTitle = stops.find(s => s.id == route.toStopId)?.title || '';
+  if (!destinationStopTitle && route.toStopId) {
+    const destinationStop = await StopModel.findOne({ where: { id: route.toStopId } });
+    destinationStopTitle = destinationStop?.title || '';
+  }
+  const totalCut = ['deduction1', 'deduction2', 'deduction3', 'deduction4', 'deduction5']
+    .map(key => Number(accountCut?.[key] || 0))
+    .reduce((acc, val) => acc + val, 0);
+  const commissionAmount = Number(accountCut?.comissionAmount || 0);
+  const needToPay = Number(accountCut?.needToPayAmount || 0);
+  const payedAmount = Number(accountCut?.payedAmount || 0);
+  const tipAmount = Number(accountCut?.tip || 0);
 
   const data = {
     header: {
-      stop: stops.find(s => s.id == stopId)?.title || '',
-      route: `${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == route.toStopId).title}` || '',
+      stop: stopTitle,
+      route: stopTitle && destinationStopTitle ? `${stopTitle} - ${destinationStopTitle}` : destinationStopTitle,
       departure: `${new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(new Date(trip.date))} ${trip.time.split(':').slice(0, 2).join(':')} `,
-      arrival: stops.find(s => s.id == route.toStopId)?.title || '',
+      arrival: destinationStopTitle,
       bus: bus?.licensePlate || '',
-      driver: captain?.name+" "+captain?.surname || ''
+      driver: [captain?.name, captain?.surname].filter(Boolean).join(' ')
     },
     summary: {
       ticketCount: tickets.length,
       ticketTotal: Number(total),
-      commission: accountCut.comissionAmount,
-      cut: Number(accountCut.deduction1) + Number(accountCut.deduction2) + Number(accountCut.deduction3) + Number(accountCut.deduction4) + Number(accountCut.deduction5),
-      tip: accountCut.tip,
-      needToPay: accountCut.needToPayAmount,
-      payed: accountCut.payedAmount,
-      afterComission: Number(total) - Number(accountCut.comissionAmount),
-      remaining: Number(accountCut.needToPayAmount) - Number(accountCut.payedAmount)
+      commission: commissionAmount,
+      cut: totalCut,
+      tip: tipAmount,
+      needToPay: needToPay,
+      payed: payedAmount,
+      afterComission: Number(total) - commissionAmount,
+      remaining: needToPay - payedAmount
     },
     passengers
   };
