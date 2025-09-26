@@ -1091,6 +1091,8 @@ div.ticket-cancel-refund-open-close {
     margin-bottom: .5rem;
     width: max-content;
     cursor: pointer;
+    border: 2px solid transparent;
+    box-sizing: border-box;
 }
 
 .tripRow p {
@@ -1100,6 +1102,7 @@ div.ticket-cancel-refund-open-close {
 .tripRow.selected {
     background-color: #2660ff;
     color: white;
+    border-color: #2660ff;
 }
 
 .tripRow.disabled,
