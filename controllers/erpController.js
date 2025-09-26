@@ -651,13 +651,27 @@ exports.postBusAccountCut = async (req, res, next) => {
             payedAmount
         });
 
+        const startStop = stops.find(s => s.id == stopId);
+        const endStop = stops.find(s => s.id == routeStops[routeStops.length - 1].stopId);
+        const baseDescription = `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${startStop ? startStop.title : ""} - ${endStop ? endStop.title : ""}`.trim();
+
         await req.models.Transaction.create({
             userId: req.session.firmUser.id,
             type: "expense",
             category: "payed_to_bus",
             amount: payedAmount,
-            description: `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
+            description: baseDescription
         });
+
+        if (bus && payedAmount > 0) {
+            await req.models.BusTransaction.create({
+                busId: bus.id,
+                userId: req.session.firmUser.id,
+                type: "income",
+                amount: payedAmount,
+                description: baseDescription
+            });
+        }
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
@@ -712,13 +726,27 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
+        const startStop = stops.find(s => s.id == accountCut.stopId);
+        const endStop = stops.find(s => s.id == routeStops[routeStops.length - 1].stopId);
+        const baseDescription = `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${startStop ? startStop.title : ""} - ${endStop ? endStop.title : ""}`.trim();
+
         await req.models.Transaction.create({
             userId: req.session.firmUser.id,
             type: "income",
             category: "payed_to_bus",
             amount: accountCut.payedAmount,
-            description: `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == accountCut.stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
+            description: baseDescription
         });
+
+        if (bus && accountCut.payedAmount > 0) {
+            await req.models.BusTransaction.create({
+                busId: bus.id,
+                userId: req.session.firmUser.id,
+                type: "expense",
+                amount: accountCut.payedAmount,
+                description: baseDescription
+            });
+        }
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
@@ -3542,6 +3570,26 @@ exports.getTransactions = async (req, res, next) => {
     }
 };
 
+exports.getBusTransactions = async (req, res, next) => {
+    try {
+        const busId = req.query.busId;
+        if (!busId) {
+            return res.render("mixins/busTransactionsList", { transactions: [] });
+        }
+
+        const transactions = await req.models.BusTransaction.findAll({
+            where: { busId },
+            order: [["createdAt", "DESC"]],
+            limit: 50
+        });
+
+        res.render("mixins/busTransactionsList", { transactions });
+    } catch (err) {
+        console.error("Get bus transactions error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getTransactionData = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.firmUser.id;
@@ -3667,6 +3715,48 @@ exports.postAddTransaction = async (req, res, next) => {
         res.status(500).json({ success: false, message: err.message });
     }
 }
+
+exports.postAddBusTransaction = async (req, res, next) => {
+    try {
+        const { transactionType, busId, amount, description } = req.body;
+        const allowedTypes = ["income", "expense"];
+
+        if (!req.session?.firmUser?.id) {
+            return res.status(401).json({ message: "Oturum bulunamadı." });
+        }
+
+        if (!allowedTypes.includes(transactionType)) {
+            return res.status(400).json({ message: "Geçersiz işlem tipi." });
+        }
+
+        if (!busId) {
+            return res.status(400).json({ message: "Otobüs bilgisi eksik." });
+        }
+
+        const normalizedAmount = Number(amount);
+        if (!amount || isNaN(normalizedAmount) || normalizedAmount <= 0) {
+            return res.status(400).json({ message: "Geçerli bir tutar giriniz." });
+        }
+
+        const bus = await req.models.Bus.findOne({ where: { id: busId } });
+        if (!bus) {
+            return res.status(404).json({ message: "Otobüs bulunamadı." });
+        }
+
+        const record = await req.models.BusTransaction.create({
+            busId: bus.id,
+            userId: req.session.firmUser.id,
+            type: transactionType,
+            amount: normalizedAmount,
+            description: description ? description.trim() : null
+        });
+
+        res.status(200).json({ success: true, transactionId: record.id });
+    } catch (err) {
+        console.error("Bus transaction error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
 
 exports.postResetRegister = async (req, res, next) => {
     try {

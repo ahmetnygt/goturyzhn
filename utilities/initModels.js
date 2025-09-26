@@ -5,6 +5,7 @@ const BranchFactory = require("../models/branchModel");
 const BusAccountCutFactory = require("../models/busAccountCutModel");
 const BusFactory = require("../models/busModel");
 const BusModelFactory = require("../models/busModelModel");
+const BusTransactionFactory = require("../models/busTransactionModel");
 const CargoFactory = require("../models/cargoModel");
 const CashRegisterFactory = require("../models/cashRegisterModel");
 const CustomerFactory = require("../models/customerModel");
@@ -35,6 +36,7 @@ function initModels(sequelize) {
   const BusAccountCut = BusAccountCutFactory(sequelize);
   const Bus = BusFactory(sequelize);
   const BusModel = BusModelFactory(sequelize);
+  const BusTransaction = BusTransactionFactory(sequelize);
   const Cargo = CargoFactory(sequelize);
   const CashRegister = CashRegisterFactory(sequelize);
   const Customer = CustomerFactory(sequelize);
@@ -64,6 +66,7 @@ function initModels(sequelize) {
     BusAccountCut,
     Bus,
     BusModel,
+    BusTransaction,
     Cargo,
     CashRegister,
     Customer,

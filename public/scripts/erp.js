@@ -3558,6 +3558,125 @@ $(".add-transaction-button").on("click", async e => {
     })
 })
 
+let busTransactionType = null;
+
+const loadBusTransactions = async busId => {
+    if (!busId) {
+        $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Otobüs seçiniz.</p>');
+        return;
+    }
+
+    try {
+        const response = await $.ajax({
+            url: "/get-bus-transactions",
+            type: "GET",
+            data: { busId }
+        });
+        $(".bus-transaction-list").html(response);
+    } catch (err) {
+        const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
+        showError(message || "İşlem listesi alınamadı.");
+    }
+};
+
+const openBusTransactionModal = async type => {
+    busTransactionType = type;
+    const title = type === "income" ? "FİLO GELİRİ EKLE" : "FİLO GİDERİ EKLE";
+    const buttonLabel = type === "income" ? "GELİR EKLE" : "GİDER EKLE";
+    $(".bus-transaction-title").text(title);
+    $(".bus-transaction-button").text(buttonLabel);
+
+    const select = $(".bus-transaction-bus");
+    select.empty();
+    select.append('<option value="">Otobüs Seç</option>');
+
+    try {
+        const buses = await $.ajax({ url: "/get-buses-data", type: "GET" });
+        buses.forEach(b => {
+            const plate = b.licensePlate ? b.licensePlate : `Otobüs #${b.id}`;
+            select.append(`<option value="${b.id}">${plate}</option>`);
+        });
+    } catch (err) {
+        const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
+        showError(message || "Otobüs listesi alınamadı.");
+    }
+
+    $(".bus-transaction-amount").val("");
+    $(".bus-transaction-description").val("");
+    $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Otobüs seçiniz.</p>');
+
+    $(".bus-transaction").css("display", "block");
+    $(".blackout").css("display", "block");
+};
+
+const closeBusTransactionModal = () => {
+    busTransactionType = null;
+    $(".bus-transaction").css("display", "none");
+    $(".blackout").css("display", "none");
+};
+
+$(".bus-income-nav").on("click", async e => {
+    e.preventDefault();
+    await openBusTransactionModal("income");
+});
+
+$(".bus-expense-nav").on("click", async e => {
+    e.preventDefault();
+    await openBusTransactionModal("expense");
+});
+
+$(".bus-transaction-close").on("click", e => {
+    e.preventDefault();
+    closeBusTransactionModal();
+});
+
+$(".bus-transaction-bus").on("change", async e => {
+    const busId = $(e.target).val();
+    await loadBusTransactions(busId);
+});
+
+$(".bus-transaction-button").on("click", async e => {
+    e.preventDefault();
+    const busId = $(".bus-transaction-bus").val();
+    const amountRaw = $(".bus-transaction-amount").val();
+    const description = $(".bus-transaction-description").val();
+
+    if (!busTransactionType) {
+        showError("İşlem tipi belirlenemedi.");
+        return;
+    }
+
+    if (!busId) {
+        showError("Lütfen bir otobüs seçiniz.");
+        return;
+    }
+
+    if (!amountRaw || isNaN(Number(amountRaw))) {
+        showError("Geçerli bir tutar giriniz.");
+        return;
+    }
+
+    try {
+        await $.ajax({
+            url: "/post-add-bus-transaction",
+            type: "POST",
+            data: {
+                transactionType: busTransactionType,
+                busId,
+                amount: amountRaw,
+                description
+            }
+        });
+
+        $(".bus-transaction-amount").val("");
+        $(".bus-transaction-description").val("");
+        await loadBusTransactions(busId);
+    } catch (err) {
+        const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
+        showError(message || "İşlem kaydedilemedi.");
+    }
+});
+
 $(".bus-plans-nav").on("click", async e => {
     const list = $(".bus-plan-list")
     list.empty()

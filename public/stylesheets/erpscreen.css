@@ -235,6 +235,38 @@ body {
     overflow: hidden;
 }
 
+.bus-transaction {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    width: 45vw;
+    max-width: 600px;
+    max-height: 80vh;
+    display: none;
+    overflow: hidden;
+}
+
+.bus-transaction-history {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: .5rem;
+    padding: 1rem;
+    max-height: 35vh;
+    overflow-y: auto;
+}
+
+.bus-transaction-list {
+    max-height: 28vh;
+    overflow-y: auto;
+}
+
+.bus-transaction-item {
+    background-color: #f8f9fa;
+}
+
 .add-announcement {
     position: absolute;
     left: 50%;
