@@ -97,7 +97,7 @@ function drawHeader(doc, header) {
   const routeCode = header?.routeCode ? ` (${header.routeCode})` : '';
   const modelTitle = header?.busModel ? ` • ${header.busModel}` : '';
 
-  doc.font('Bold').fontSize(13).text(`${routeTitle}${routeCode}${modelTitle}`, leftX, centerY, {
+  doc.font('Bold').fontSize(13).text(`${routeTitle}`, leftX, centerY, {
     width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
     align: 'center',
   });
@@ -119,12 +119,11 @@ function drawSeat(doc, x, y, width, height, seatNumber, seatInfo, options) {
 
   if (seatInfo && options?.highlightByStop) {
     doc.save();
-    doc.rect(x, y, width, height);
-    doc.fillColor(seatInfo.isCurrentStop ? '#f6fbff' : '#f2f2f2').fill();
+    doc.roundedRect(x, y, width, height, 6);
     doc.restore();
   }
 
-  doc.rect(x, y, width, height).stroke();
+  doc.roundedRect(x, y, width, height, 6).stroke();
 
   doc.save();
   const seatNumberFontSize = Math.min(height * 0.6, 22);
@@ -146,13 +145,13 @@ function drawSeat(doc, x, y, width, height, seatNumber, seatInfo, options) {
   if (seatInfo) {
     const seatPrice = formatSeatPrice(seatInfo.price);
     if (seatPrice) {
-      doc.font('Bold').fontSize(9).text(seatPrice, x + padding, y + padding, {
+      doc.font('Bold').fontSize(9).text(seatPrice + "₺", x + padding, y + padding, {
         width: innerWidth,
         align: 'right',
       });
     }
 
-    let cursorY = y + padding + 12;
+    let cursorY = y + padding;
 
     const statusBadge = STATUS_LABELS[seatInfo.status];
     const paymentBadge = PAYMENT_LABELS[seatInfo.payment];
@@ -209,12 +208,12 @@ function drawSeatLayout(doc, layout) {
   const gapY = 8;
   const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const seatWidth = (usableWidth - gapX * (columns - 1)) / columns;
-  const seatHeight = Math.max(seatWidth * 0.65, 36);
+  const seatHeight = Math.max(seatWidth * 0.50, 36);
   const layoutWidth = columns * seatWidth + gapX * (columns - 1);
   const startX = doc.page.margins.left + (usableWidth - layoutWidth) / 2;
   const startY = doc.y;
 
-  let seatNumber = 0;
+  let seatNumber = 1;
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < columns; col++) {
@@ -224,11 +223,11 @@ function drawSeatLayout(doc, layout) {
         continue;
       }
 
-      seatNumber += 1;
       const x = startX + col * (seatWidth + gapX);
       const y = startY + row * (seatHeight + gapY);
       const seatInfo = layout?.seats ? layout.seats[seatNumber] : null;
       drawSeat(doc, x, y, seatWidth, seatHeight, seatNumber, seatInfo, layout);
+      seatNumber += 1;
     }
   }
 

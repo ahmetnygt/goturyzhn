@@ -3707,6 +3707,63 @@ $(".bus-plans-nav").on("click", async e => {
                     </div>
                 `)
             })
+            $(".bus-plan-button").off().on("click", async e => {
+                const id = e.currentTarget.dataset.id
+                editingBusPlanId = id
+
+                await $.ajax({
+                    url: "/get-bus-plan-panel",
+                    type: "GET",
+                    data: { id: id },
+                    success: function (response) {
+                        $(".bus-plan-panel").html(response)
+
+                        attachBusPlanInputEvents()
+
+                        $(".save-bus-plan").on("click", async e => {
+                            const title = $(".bus-plan-title").val()
+                            const description = $(".bus-plan-description").val()
+
+                            let maxPassenger = 0;
+                            let plan = []
+                            let planBinary = ""
+                            $(".bus-plan-create-input").each((i, e) => {
+                                plan.push(e.value ? e.value : 0)
+                                if (e.value && e.value !== "Ş" && e.value !== ">") {
+                                    planBinary = `${planBinary}${1}`
+                                    maxPassenger++;
+                                }
+                                else {
+                                    planBinary = `${planBinary}${0}`
+                                }
+                            })
+
+                            console.log(plan)
+                            console.log(planBinary)
+
+                            const planJSON = JSON.stringify(plan)
+
+                            await $.ajax({
+                                url: "/post-save-bus-plan",
+                                type: "POST",
+                                data: { id, title, description, plan: planJSON, planBinary, maxPassenger },
+                                success: function (response) {
+                                    $(".bus-plans").css("display", "none")
+                                    $(".blackout").css("display", "none")
+
+                                    $(".bus-plan-panel").html("")
+                                },
+                                error: function (xhr, status, error) {
+                                    console.log(error);
+                                }
+                            })
+                        })
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            })
         },
         error: function (xhr, status, error) {
             console.log(error)
@@ -3831,63 +3888,6 @@ setupDeleteHandler(".bus-plan-delete", {
         $btn.closest(".btn-group").remove();
     }
 });
-$(".bus-plan-button").off().on("click", async e => {
-    const id = e.currentTarget.dataset.id
-    editingBusPlanId = id
-
-    await $.ajax({
-        url: "/get-bus-plan-panel",
-        type: "GET",
-        data: { id: id },
-        success: function (response) {
-            $(".bus-plan-panel").html(response)
-
-            attachBusPlanInputEvents()
-
-            $(".save-bus-plan").on("click", async e => {
-                const title = $(".bus-plan-title").val()
-                const description = $(".bus-plan-description").val()
-
-                let maxPassenger = 0;
-                let plan = []
-                let planBinary = ""
-                $(".bus-plan-create-input").each((i, e) => {
-                    plan.push(e.value ? e.value : 0)
-                    if (e.value && e.value !== "Ş" && e.value !== ">") {
-                        planBinary = `${planBinary}${1}`
-                        maxPassenger++;
-                    }
-                    else {
-                        planBinary = `${planBinary}${0}`
-                    }
-                })
-
-                console.log(plan)
-                console.log(planBinary)
-
-                const planJSON = JSON.stringify(plan)
-
-                await $.ajax({
-                    url: "/post-save-bus-plan",
-                    type: "POST",
-                    data: { id, title, description, plan: planJSON, planBinary, maxPassenger },
-                    success: function (response) {
-                        $(".bus-plans").css("display", "none")
-                        $(".blackout").css("display", "none")
-
-                        $(".bus-plan-panel").html("")
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                })
-            })
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
-    })
-})
 
 $(".add-bus-plan").on("click", async e => {
     editingBusPlanId = null
