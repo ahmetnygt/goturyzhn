@@ -1786,7 +1786,7 @@ async function loadTrip(date, time, tripId) {
             });
 
 
-            $(".seat").on("mouseenter", function (e) {
+            $(".seat").off().on("mouseenter", function (e) {
                 const data = e.currentTarget.dataset
 
                 const rect = this.getBoundingClientRect();
@@ -1829,10 +1829,10 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(".seat").on("mouseleave", function () {
+            $(".seat").off().on("mouseleave", function () {
                 $(".passenger-info-popup").hide();
             });
-            $(".account-cut").on("click", async () => {
+            $(".account-cut").off().on("click", async () => {
                 $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", false);
                 $(".account-cut-save").show();
                 $(".account-cut-undo-btn").hide();
@@ -1860,12 +1860,12 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "block");
             });
 
-            $(".accountCut").on("click", e => {
+            $(".accountCut").off().on("click", e => {
                 e.preventDefault();
                 window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
             });
 
-            $(".trip-seat-plan-report").on("click", e => {
+            $(".trip-seat-plan-report").off().on("click", e => {
                 e.preventDefault();
                 if (!currentTripId) return;
                 const params = new URLSearchParams({ tripId: currentTripId });
@@ -1905,7 +1905,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(".account-cut-undo-btn").on("click", async () => {
+            $(".account-cut-undo-btn").off().on("click", async () => {
                 if (!accountCutId) return;
                 try {
                     await $.ajax({ url: "/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
@@ -1917,12 +1917,12 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "none");
             });
 
-            $(".account-cut-deductions-cancel").on("click", () => {
+            $(".account-cut-deductions-cancel").off().on("click", () => {
                 $(".account-cut-deductions-popup").css("display", "none");
                 $(".blackout").css("display", "none");
             });
 
-            $(".account-cut-deductions-continue").on("click", () => {
+            $(".account-cut-deductions-continue").off().on("click", () => {
                 for (let i = 1; i <= 5; i++) {
                     const val = $(".account-cut-deductions-popup .account-deduction" + i).val();
                     $(".account-cut-popup .account-deduction" + i).val(val);
@@ -1934,7 +1934,7 @@ async function loadTrip(date, time, tripId) {
                 updateAccountNeedToPay();
             });
 
-            $(".account-cut-close").on("click", () => {
+            $(".account-cut-close").off().on("click", () => {
                 $(".account-cut-popup").css("display", "none");
                 $(".blackout").css("display", "none");
             });
