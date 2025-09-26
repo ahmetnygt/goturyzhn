@@ -1976,7 +1976,7 @@ async function loadTrip(date, time, tripId) {
 // Site ilk açıldığında bugünün seferini yükler
 $(document).ready(function () {
     // loadTrip('2025-05-12', '12:30:00', 1)
-    loadTripsList("2025-05-12")
+    loadTripsList(new Date())
 })
 
 // Sefer listesini yükler
@@ -2015,9 +2015,7 @@ const calendar = $("#calendar")
 flatpickr(calendar, {
     inline: true,
     locale: "tr",
-    defaultDate: "2025-05-12",
-    altInput: true,
-    altFormat: "d F Y",
+    defaultDate: new Date(),
     onChange: async function (selectedDates, dateStr, instance) {
         loadTripsList(dateStr)
     },
@@ -2025,7 +2023,7 @@ flatpickr(calendar, {
 const tripCalendar = $(".trip-settings-calendar")
 flatpickr(tripCalendar, {
     locale: "tr",
-    defaultDate: "2025-05-12",
+    defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
     onChange: async function (selectedDates, dateStr, instance) {
@@ -2074,14 +2072,14 @@ flatpickr(tripCalendar, {
 const tripFirstDate = $(".trip-first-date")
 flatpickr(tripFirstDate, {
     locale: "tr",
-    defaultDate: "2025-05-12",
+    defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
 })
 const tripLastDate = $(".trip-last-date")
 flatpickr(tripLastDate, {
     locale: "tr",
-    defaultDate: "2025-05-12",
+    defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
 })
@@ -3583,7 +3581,7 @@ const loadBusTransactions = async busId => {
 
 const openBusTransactionModal = async type => {
     busTransactionType = type;
-    const title = type === "income" ? "FİLO GELİRİ EKLE" : "FİLO GİDERİ EKLE";
+    const title = type === "income" ? "OTOBÜS GELİRİ EKLE" : "OTOBÜS GİDERİ EKLE";
     const buttonLabel = type === "income" ? "GELİR EKLE" : "GİDER EKLE";
     $(".bus-transaction-title").text(title);
     $(".bus-transaction-button").text(buttonLabel);

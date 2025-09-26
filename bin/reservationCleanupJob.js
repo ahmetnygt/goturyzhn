@@ -1,6 +1,7 @@
-const Ticket = require('../models/ticketModel');
-const SystemLog = require('../models/systemLogModel');
 const { Op } = require('sequelize');
+const { getTenantConnection } = require('../utilities/database');
+
+const DEFAULT_TENANT = process.env.TENANT_KEY || 'derseturizm';
 
 // Try to use node-cron; fall back to setInterval if unavailable
 let cron;
@@ -13,11 +14,26 @@ try {
 // Task that cancels expired reservations and deletes expired pendings
 async function cancelExpiredReservations() {
   const now = new Date();
-  const sequelize = req.models.Ticket.sequelize; // transaction için
+
+  let tenant;
+  try {
+    tenant = await getTenantConnection(DEFAULT_TENANT);
+  } catch (err) {
+    console.error('Tenant connection error for reservation cleanup job:', err);
+    return;
+  }
+
+  const { models, sequelize } = tenant;
+  const { Ticket, SystemLog } = models;
+
+  if (!Ticket || !SystemLog) {
+    console.error('Ticket or SystemLog model missing in reservation cleanup job.');
+    return;
+  }
 
   try {
     // Tek sorgu ile al, sonra ayır
-    const expiredTickets = await req.models.Ticket.findAll({
+    const expiredTickets = await Ticket.findAll({
       where: {
         status: { [Op.in]: ['reservation', 'pending'] },
         optionTime: { [Op.lt]: now }
@@ -38,7 +54,7 @@ async function cancelExpiredReservations() {
     await sequelize.transaction(async (tx) => {
       // 1) reservation → canceled
       if (reservationIds.length) {
-        await req.models.Ticket.update(
+        await Ticket.update(
           { status: 'canceled' }, // modelde 'canceled' kullanıyoruz
           { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
         );
@@ -59,7 +75,7 @@ async function cancelExpiredReservations() {
 
       // 2) pending → destroy
       if (pendingIds.length) {
-        await req.models.Ticket.destroy({
+        await Ticket.destroy({
           where: { id: { [Op.in]: pendingIds } },
           transaction: tx
         });
