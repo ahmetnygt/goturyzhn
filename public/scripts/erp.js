@@ -5042,7 +5042,7 @@ $(".branch-settings-nav").on("click", async e => {
                     success: function (response) {
                         $("#isBranchActive").prop("checked", response.isActive)
                         $("#isMainBranch").prop("checked", response.isMainBranch)
-                        $(".branch").css("width", "60vw")
+                        $(".branch").css("width", "90vw")
                         $(".branch-list").removeClass("col-12").addClass("col-4")
                         $(".save-branch").html("KAYDET")
                         $(".branch-info").css("display", "flex")

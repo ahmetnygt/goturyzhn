@@ -244,11 +244,20 @@ function drawFooter(doc, footer) {
 
   const summaryText = `${label ? `${label} ` : ''}Toplam Yolcu: ${count}   Toplam Tutar: ${amountText}`;
 
-  doc.moveDown(1);
-  doc.font('Bold').fontSize(10).text(summaryText, {
-    width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-    align: 'left',
-  });
+  // const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  // const footerHeight = doc.heightOfString(summaryText, {
+  //   width: contentWidth,
+  //   align: 'left',
+  // });
+
+  // const bottomY = doc.page.height - doc.page.margins.bottom - footerHeight;
+  // if (doc.y > bottomY) {
+  //   doc.addPage();
+  // }
+
+  // doc.y = Math.max(doc.y, bottomY);
+
+  doc.font('Bold').fontSize(10).text(summaryText, doc.x, doc.y);
 }
 
 function generateTripSeatPlanReport(data, output) {
@@ -261,8 +270,8 @@ function generateTripSeatPlanReport(data, output) {
   registerFonts(doc);
 
   drawHeader(doc, data?.header || {});
-  drawSeatLayout(doc, data?.layout || {});
   drawFooter(doc, data?.footer || {});
+  drawSeatLayout(doc, data?.layout || {});
 
   doc.end();
 
