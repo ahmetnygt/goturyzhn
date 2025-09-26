@@ -1865,6 +1865,16 @@ async function loadTrip(date, time, tripId) {
                 window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
             });
 
+            $(".trip-seat-plan-report").on("click", e => {
+                e.preventDefault();
+                if (!currentTripId) return;
+                const params = new URLSearchParams({ tripId: currentTripId });
+                if (currentStop !== undefined && currentStop !== null && currentStop !== "") {
+                    params.append("stopId", currentStop);
+                }
+                window.open(`/trip-seat-plan?${params.toString()}`, "_blank", "width=900,height=700");
+            });
+
             $(".account-cut-undo").off().on("click", async () => {
                 try {
                     const data = await $.ajax({
