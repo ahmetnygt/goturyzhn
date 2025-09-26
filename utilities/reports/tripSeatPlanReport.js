@@ -126,9 +126,22 @@ function drawSeat(doc, x, y, width, height, seatNumber, seatInfo, options) {
 
   doc.rect(x, y, width, height).stroke();
 
-  doc.font('Bold').fontSize(9).fillColor('black').text(String(seatNumber), x + padding, y + padding, {
-    width: innerWidth,
+  doc.save();
+  const seatNumberFontSize = Math.min(height * 0.6, 22);
+  const seatNumberText = String(seatNumber);
+  doc.font('Bold').fontSize(seatNumberFontSize).fillColor('black');
+  if (typeof doc.fillOpacity === 'function') {
+    doc.fillOpacity(0.3);
+  } else if (typeof doc.opacity === 'function') {
+    doc.opacity(0.3);
+  }
+  const numberHeight = doc.heightOfString(seatNumberText, { width });
+  const numberY = y + (height - numberHeight) / 2;
+  doc.text(seatNumberText, x, numberY, {
+    width,
+    align: 'center',
   });
+  doc.restore();
 
   if (seatInfo) {
     const seatPrice = formatSeatPrice(seatInfo.price);
@@ -195,9 +208,8 @@ function drawSeatLayout(doc, layout) {
   const gapX = 8;
   const gapY = 8;
   const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const baseWidth = (usableWidth - gapX * (columns - 1)) / columns;
-  const seatWidth = Math.min(baseWidth, 60);
-  const seatHeight = Math.max(Math.min(seatWidth * 0.5, 34), 28);
+  const seatWidth = (usableWidth - gapX * (columns - 1)) / columns;
+  const seatHeight = Math.max(seatWidth * 0.65, 36);
   const layoutWidth = columns * seatWidth + gapX * (columns - 1);
   const startX = doc.page.margins.left + (usableWidth - layoutWidth) / 2;
   const startY = doc.y;
