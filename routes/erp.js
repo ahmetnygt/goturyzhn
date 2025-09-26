@@ -127,6 +127,8 @@ router.get('/get-transactions-list', auth, erpController.getTransactions);
 router.get('/get-transaction-data', auth, erpController.getTransactionData);
 router.get('/get-user-register-balance', auth, erpController.getUserRegisterBalance);
 router.post('/post-add-transaction', auth, erpController.postAddTransaction);
+router.get('/get-bus-transactions', auth, erpController.getBusTransactions);
+router.post('/post-add-bus-transaction', auth, erpController.postAddBusTransaction);
 router.post('/post-reset-register', auth, erpController.postResetRegister);
 router.post('/post-transfer-register', auth, erpController.postTransferRegister);
 

@@ -185,6 +185,74 @@ function computeRouteStopTimes(trip, routeStops = [], offsetMap = new Map()) {
     return results;
 }
 
+function formatTripDateForDisplay(dateString) {
+    if (!dateString || typeof dateString !== "string") {
+        return "";
+    }
+
+    const [year, month, day] = dateString.split("-").map(Number);
+    if ([year, month, day].some(value => !Number.isFinite(value))) {
+        return dateString;
+    }
+
+    return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.${year}`;
+}
+
+async function buildBusTransactionDescription(models, trip, stopId, bus, routeStops = [], stops = []) {
+    if (!trip) {
+        return "";
+    }
+
+    const orderedRouteStops = [...routeStops].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const offsets = orderedRouteStops.length
+        ? await models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+        : [];
+    const offsetMap = buildOffsetMap(offsets);
+    const stopTimes = computeRouteStopTimes(trip, orderedRouteStops, offsetMap);
+
+    const matchedRouteStop = orderedRouteStops.find(rs => rs.stopId == stopId);
+    let stopTimeString = trip.time;
+
+    if (matchedRouteStop) {
+        const matchedRouteStopId = Number(matchedRouteStop.id);
+        const matchedStopTime = stopTimes.find(st => Number(st.routeStopId) === matchedRouteStopId);
+        if (matchedStopTime?.time) {
+            stopTimeString = matchedStopTime.time;
+        }
+    }
+
+    const formattedTime = formatTimeWithoutSeconds(stopTimeString);
+    const formattedDate = formatTripDateForDisplay(trip.date);
+
+    const startStop = stops.find(s => s.id == stopId);
+    const lastRouteStop = orderedRouteStops[orderedRouteStops.length - 1];
+    const endStop = lastRouteStop ? stops.find(s => s.id == lastRouteStop.stopId) : undefined;
+
+    const segments = [];
+
+    if (bus?.licensePlate) {
+        segments.push(bus.licensePlate);
+    }
+
+    const dateTimeSegment = [formattedDate, formattedTime].filter(Boolean).join(" ").trim();
+    if (dateTimeSegment) {
+        segments.push(dateTimeSegment);
+    }
+
+    const routeSegmentParts = [];
+    if (startStop?.title) {
+        routeSegmentParts.push(startStop.title);
+    }
+    if (endStop?.title) {
+        routeSegmentParts.push(endStop.title);
+    }
+    if (routeSegmentParts.length) {
+        segments.push(routeSegmentParts.join(" - "));
+    }
+
+    return segments.join(" | ");
+}
+
 function parseTimeInputToMinutes(value) {
     if (!value || typeof value !== "string") {
         return null;
@@ -628,7 +696,7 @@ exports.postBusAccountCut = async (req, res, next) => {
 
         const trip = await req.models.Trip.findOne({ where: { id: tripId } })
         const bus = await req.models.Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
@@ -651,13 +719,25 @@ exports.postBusAccountCut = async (req, res, next) => {
             payedAmount
         });
 
+        const baseDescription = await buildBusTransactionDescription(req.models, trip, stopId, bus, routeStops, stops);
+
         await req.models.Transaction.create({
             userId: req.session.firmUser.id,
             type: "expense",
             category: "payed_to_bus",
             amount: payedAmount,
-            description: `${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
+            description: baseDescription
         });
+
+        if (bus && payedAmount > 0) {
+            await req.models.BusTransaction.create({
+                busId: bus.id,
+                userId: req.session.firmUser.id,
+                type: "income",
+                amount: payedAmount,
+                description: baseDescription
+            });
+        }
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
@@ -709,16 +789,29 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
 
         const trip = await req.models.Trip.findOne({ where: { id: accountCut.tripId } })
         const bus = await req.models.Bus.findOne({ where: { id: trip.busId } })
-        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId } })
+        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+
+        const baseDescription = await buildBusTransactionDescription(req.models, trip, accountCut.stopId, bus, routeStops, stops);
+        const fullDescription = baseDescription ? `Hesap kesimi geri alındı | ${baseDescription}` : "Hesap kesimi geri alındı";
 
         await req.models.Transaction.create({
             userId: req.session.firmUser.id,
             type: "income",
             category: "payed_to_bus",
             amount: accountCut.payedAmount,
-            description: `Hesap kesimi geri alındı | ${bus ? bus.licensePlate + " | " : ""}${trip.date} ${trip.time} | ${stops.find(s => s.id == accountCut.stopId).title} - ${stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title}`
+            description: fullDescription
         });
+
+        if (bus && accountCut.payedAmount > 0) {
+            await req.models.BusTransaction.create({
+                busId: bus.id,
+                userId: req.session.firmUser.id,
+                type: "expense",
+                amount: accountCut.payedAmount,
+                description: fullDescription
+            });
+        }
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
@@ -2413,13 +2506,36 @@ exports.postDeleteBusPlan = async (req, res, next) => {
 };
 
 exports.getBusesList = async (req, res, next) => {
-    const buses = await req.models.Bus.findAll()
+    const [buses, busModels, transactions] = await Promise.all([
+        req.models.Bus.findAll(),
+        req.models.BusModel.findAll(),
+        req.models.BusTransaction.findAll({ attributes: ["busId", "type", "amount"], raw: true })
+    ]);
 
-    const busModels = await req.models.BusModel.findAll()
+    const totalsByBusId = new Map();
+    for (const tx of transactions) {
+        const key = String(tx.busId);
+        const amount = Number(tx.amount) || 0;
+        if (!totalsByBusId.has(key)) {
+            totalsByBusId.set(key, 0);
+        }
+        const current = totalsByBusId.get(key);
+        totalsByBusId.set(key, current + (tx.type === "expense" ? -amount : amount));
+    }
 
-    for (let i = 0; i < buses.length; i++) {
-        const b = buses[i];
-        b.busModelStr = await busModels.find(bm => bm.id == b.busModelId).title;
+    const modelTitleById = new Map(busModels.map(model => [String(model.id), model.title]));
+
+    const formatTotal = value => {
+        const number = Number(value) || 0;
+        return number.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    for (const bus of buses) {
+        const busKey = String(bus.id);
+        bus.busModelStr = modelTitleById.get(String(bus.busModelId)) || "";
+        const total = totalsByBusId.get(busKey) || 0;
+        bus.busAccountTotal = total;
+        bus.busAccountTotalFormatted = formatTotal(total);
     }
 
     res.render("mixins/busesList", { buses })
@@ -3542,6 +3658,26 @@ exports.getTransactions = async (req, res, next) => {
     }
 };
 
+exports.getBusTransactions = async (req, res, next) => {
+    try {
+        const busId = req.query.busId;
+        if (!busId) {
+            return res.render("mixins/busTransactionsList", { transactions: [] });
+        }
+
+        const transactions = await req.models.BusTransaction.findAll({
+            where: { busId },
+            order: [["createdAt", "DESC"]],
+            limit: 50
+        });
+
+        res.render("mixins/busTransactionsList", { transactions });
+    } catch (err) {
+        console.error("Get bus transactions error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 exports.getTransactionData = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.firmUser.id;
@@ -3667,6 +3803,48 @@ exports.postAddTransaction = async (req, res, next) => {
         res.status(500).json({ success: false, message: err.message });
     }
 }
+
+exports.postAddBusTransaction = async (req, res, next) => {
+    try {
+        const { transactionType, busId, amount, description } = req.body;
+        const allowedTypes = ["income", "expense"];
+
+        if (!req.session?.firmUser?.id) {
+            return res.status(401).json({ message: "Oturum bulunamadı." });
+        }
+
+        if (!allowedTypes.includes(transactionType)) {
+            return res.status(400).json({ message: "Geçersiz işlem tipi." });
+        }
+
+        if (!busId) {
+            return res.status(400).json({ message: "Otobüs bilgisi eksik." });
+        }
+
+        const normalizedAmount = Number(amount);
+        if (!amount || isNaN(normalizedAmount) || normalizedAmount <= 0) {
+            return res.status(400).json({ message: "Geçerli bir tutar giriniz." });
+        }
+
+        const bus = await req.models.Bus.findOne({ where: { id: busId } });
+        if (!bus) {
+            return res.status(404).json({ message: "Otobüs bulunamadı." });
+        }
+
+        const record = await req.models.BusTransaction.create({
+            busId: bus.id,
+            userId: req.session.firmUser.id,
+            type: transactionType,
+            amount: normalizedAmount,
+            description: description ? description.trim() : null
+        });
+
+        res.status(200).json({ success: true, transactionId: record.id });
+    } catch (err) {
+        console.error("Bus transaction error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
 
 exports.postResetRegister = async (req, res, next) => {
     try {

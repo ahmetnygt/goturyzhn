@@ -144,6 +144,30 @@ block content
                 button.btn.btn-outline-primary.add-transaction-button EKLE
                 button.btn.btn-outline-primary.add-transaction-close KAPAT
 
+    .bus-transaction
+        .gtr-header
+            span.bus-transaction-title FİLO GELİRİ EKLE
+        .bus-transaction-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Otobüs
+                select.form-select.bus-transaction-bus
+                    option(value="") Otobüs Seç
+            .input-group
+                span.input-group-text Miktar
+                input.form-control.bus-transaction-amount(type="text")
+            .input-group
+                span.input-group-text Açıklama
+                textarea.form-control.bus-transaction-description(type="text")
+            .bus-transaction-history
+                p.mb-2.fw-semibold Son Hareketler
+                .bus-transaction-list.d-flex.flex-column.gap-2
+                    p.text-center.text-muted.mb-0 Otobüs seçiniz.
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.bus-transaction-button KAYDET
+                button.btn.btn-outline-primary.bus-transaction-close KAPAT
+
     .transaction-transfer
         .gtr-header
             span KASA DEVİR
@@ -552,12 +576,14 @@ block content
                         | EKLE
                 .d-flex.align-items-center.mb-2
                     .d-flex.col-11
-                        .col-4
+                        .col-3
                             p.text-center.m-0 Plaka
-                        .col-4
+                        .col-3
                             p.text-center.m-0 Otobüs Modeli
-                        .col-4
+                        .col-3
                             p.text-center.m-0 Telefon
+                        .col-3
+                            p.text-center.m-0 Toplam Hesap
                     .col-1
                         p.text-center.m-0
                 .bus-list-nodes.d-flex.flex-column.gap-3
