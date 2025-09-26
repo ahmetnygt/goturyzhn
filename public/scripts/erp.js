@@ -3581,7 +3581,7 @@ const loadBusTransactions = async busId => {
 
 const openBusTransactionModal = async type => {
     busTransactionType = type;
-    const title = type === "income" ? "FİLO GELİRİ EKLE" : "FİLO GİDERİ EKLE";
+    const title = type === "income" ? "OTOBÜS GELİRİ EKLE" : "OTOBÜS GİDERİ EKLE";
     const buttonLabel = type === "income" ? "GELİR EKLE" : "GİDER EKLE";
     $(".bus-transaction-title").text(title);
     $(".bus-transaction-button").text(buttonLabel);

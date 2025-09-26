@@ -384,7 +384,8 @@ div.error-close,
 div.announcement-add-close,
 div.announcement-pop-up-close,
 div.reports-close,
-div.report-close {
+div.report-close,
+div.bus-transaction-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
