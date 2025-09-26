@@ -990,6 +990,8 @@ async function loadTrip(date, time, tripId) {
             selectedSeats = []
             selectedTakenSeats = []
 
+            highlightTripRowByData(currentTripDate, currentTripTime, currentTripId)
+
             fromId = $("#fromId").val()
             toId = $("#toId").val()
             fromStr = $("#fromStr").val()
@@ -1983,28 +1985,238 @@ async function loadTrip(date, time, tripId) {
 
 }
 
-// Site ilk açıldığında bugünün seferini yükler
+function normalizeDateString(value) {
+    if (!value) return "";
+
+    if (value instanceof Date) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, "0");
+        const day = String(value.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    const str = String(value).trim();
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+    }
+
+    const parsed = new Date(str);
+    if (Number.isNaN(parsed.getTime())) {
+        return "";
+    }
+
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function normalizeTimeString(value) {
+    if (value === undefined || value === null) {
+        return "";
+    }
+
+    const str = String(value).trim();
+    if (!str) return "";
+
+    if (/^\d{2}:\d{2}:\d{2}$/.test(str)) {
+        return str;
+    }
+
+    if (/^\d{2}:\d{2}$/.test(str)) {
+        return `${str}:00`;
+    }
+
+    if (/^\d{1,2}\.\d{1,2}$/.test(str)) {
+        const [hours, minutes] = str.split(".");
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
+    }
+
+    const parts = str.split(":");
+    if (parts.length >= 2) {
+        const [hours = "0", minutes = "0", seconds = "0"] = parts;
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    return str;
+}
+
+function formatDateForRequest(dateInput) {
+    if (dateInput instanceof Date) {
+        return normalizeDateString(dateInput);
+    }
+
+    if (typeof dateInput === "string") {
+        const normalized = normalizeDateString(dateInput);
+        return normalized || dateInput.trim();
+    }
+
+    return dateInput;
+}
+
+function getTripDateFromRow($row) {
+    const date = normalizeDateString($row.data("date"));
+    const time = normalizeTimeString($row.data("time"));
+
+    if (!date || !time) {
+        return null;
+    }
+
+    const parsed = new Date(`${date}T${time}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function selectTripRow($row) {
+    $(".tripRow").removeClass("selected");
+    if ($row && $row.length) {
+        $row.addClass("selected");
+    }
+}
+
+function findTripRow($rows, criteria = {}) {
+    const { date, time, tripId } = criteria;
+    const targetId = tripId != null ? String(tripId) : null;
+    const targetDate = normalizeDateString(date);
+    const targetTime = normalizeTimeString(time);
+
+    return $rows.filter((_, el) => {
+        const $row = $(el);
+        if (targetId !== null && String($row.data("tripid")) !== targetId) {
+            return false;
+        }
+
+        if (targetDate && normalizeDateString($row.data("date")) !== targetDate) {
+            return false;
+        }
+
+        if (targetTime && normalizeTimeString($row.data("time")) !== targetTime) {
+            return false;
+        }
+
+        return true;
+    }).first();
+}
+
+function findCurrentTripRow($rows) {
+    if (!currentTripId) {
+        return $();
+    }
+
+    return findTripRow($rows, {
+        date: currentTripDate,
+        time: currentTripTime,
+        tripId: currentTripId
+    });
+}
+
+function findClosestUpcomingTripRow($rows) {
+    const now = new Date();
+    let bestElement = null;
+    let bestDiff = Infinity;
+
+    $rows.each((_, el) => {
+        const $row = $(el);
+        if ($row.hasClass("disabled") || $row.hasClass("expired")) {
+            return;
+        }
+
+        const tripDate = getTripDateFromRow($row);
+        if (!tripDate) {
+            return;
+        }
+
+        const diff = tripDate.getTime() - now.getTime();
+        if (diff < 0) {
+            return;
+        }
+
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            bestElement = el;
+        }
+    });
+
+    return bestElement ? $(bestElement) : $();
+}
+
+function highlightTripRowByData(date, time, tripId) {
+    const $rows = $(".tripRow");
+    if (!$rows.length) {
+        return;
+    }
+
+    const $target = findTripRow($rows, { date, time, tripId });
+    if ($target.length) {
+        selectTripRow($target);
+    }
+}
+
+async function renderTripRows(html, options = {}) {
+    const { autoSelect = false } = options || {};
+
+    $(".tripRows").html(html);
+
+    const $rows = $(".tripRow");
+
+    $rows.off("click").on("click", async e => {
+        const $row = $(e.currentTarget);
+        selectTripRow($row);
+
+        const date = $row.data("date");
+        const time = $row.data("time");
+        const tripId = $row.data("tripid");
+
+        if (!date || !time || tripId === undefined) {
+            return;
+        }
+
+        try {
+            await loadTrip(date, time, tripId);
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    const $current = findCurrentTripRow($rows);
+    if ($current.length) {
+        selectTripRow($current);
+        return false;
+    }
+
+    if (!autoSelect) {
+        return false;
+    }
+
+    const $next = findClosestUpcomingTripRow($rows);
+    if ($next.length) {
+        selectTripRow($next);
+        try {
+            await loadTrip($next.data("date"), $next.data("time"), $next.data("tripid"));
+        } catch (err) {
+            console.error(err);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+// Site ilk açıldığında bugünün seferini yükler ve en yakın aktif seferi açar
 $(document).ready(function () {
-    // loadTrip('2025-05-12', '12:30:00', 1)
-    loadTripsList(new Date())
+    loadTripsList(new Date(), { autoSelect: true });
 })
 
 // Sefer listesini yükler
-async function loadTripsList(dateStr) {
+async function loadTripsList(dateInput, options = {}) {
+    const formattedDate = formatDateForRequest(dateInput);
+
     await $.ajax({
         url: "/get-day-trips-list",
         type: "GET",
-        data: { date: dateStr, stopId: currentStop, tripId: currentTripId },
-        success: function (response) {
-            $(".tripRows").html(response)
-            $(".tripRow").on("click", async e => {
-                const date = e.currentTarget.dataset.date
-                const time = e.currentTarget.dataset.time
-                const tripId = e.currentTarget.dataset.tripid
-                console.log(tripId)
-
-                loadTrip(date, time, tripId)
-            })
+        data: { date: formattedDate, stopId: currentStop, tripId: currentTripId },
+        success: async function (response) {
+            await renderTripRows(response, options);
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -2027,7 +2239,7 @@ flatpickr(calendar, {
     locale: "tr",
     defaultDate: new Date(),
     onChange: async function (selectedDates, dateStr, instance) {
-        loadTripsList(dateStr)
+        loadTripsList(dateStr, { autoSelect: true })
     },
 })
 const tripCalendar = $(".trip-settings-calendar")
@@ -2132,22 +2344,20 @@ $("#currentStop").on("change", async (e) => {
     currentStop = $sel.val();                               // seçilen value
     currentStopStr = $sel.find("option:selected").text().trim(); // seçilen option'un text'i
 
-    const response = await $.ajax({
-        url: "/get-day-trips-list",
-        type: "GET",
-        data: { date: calendar.val(), stopId: currentStop }
-    });
+    try {
+        const response = await $.ajax({
+            url: "/get-day-trips-list",
+            type: "GET",
+            data: { date: calendar.val(), stopId: currentStop }
+        });
 
-    $(".tripRows").html(response);
-    if (currentTripId)
-        loadTrip(currentTripDate, currentTripTime, currentTripId);
-
-    $(".tripRow").on("click", async e => {
-        const date = e.currentTarget.dataset.date;
-        const time = e.currentTarget.dataset.time;
-        const tripId = e.currentTarget.dataset.tripid;
-        loadTrip(date, time, tripId);
-    });
+        const autoLoaded = await renderTripRows(response, { autoSelect: true });
+        if (currentTripId && !autoLoaded) {
+            await loadTrip(currentTripDate, currentTripTime, currentTripId);
+        }
+    } catch (err) {
+        console.log(err);
+    }
 });
 
 
