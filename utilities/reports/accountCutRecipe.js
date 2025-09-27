@@ -3,6 +3,7 @@ const fs = require('fs');
 const Trip = require('../../models/tripModel');
 const Route = require('../../models/routeModel');
 const Ticket = require('../../models/ticketModel');
+const Cargo = require('../../models/cargoModel');
 const Bus = require('../../models/busModel');
 const Stop = require('../../models/stopModel');
 const RouteStop = require('../../models/routeStopModel');
@@ -89,6 +90,9 @@ function generateAccountReceipt(data, output) {
   y += 15;
   drawSummary('Toplam Kesilen : ', summary.ticketTotal + "₺" || 0, leftX, y);
   drawSummary('Çorba : ', summary.tip + "₺" || 0, rightX, y);
+  y += 15;
+  drawSummary('Kargo Adedi : ', summary.cargoCount || 0, leftX, y);
+  drawSummary('Kargo Tutarı : ', summary.cargoTotal + "₺" || 0, rightX, y);
   y += 15;
   drawSummary('Komisyon : ', summary.commission + "₺" || 0, leftX, y);
   drawSummary('Ödenmesi Gereken : ', summary.needToPay + "₺" || 0, rightX, y);
@@ -207,6 +211,7 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     RouteStop: RouteStopModel = RouteStop,
     Stop: StopModel = Stop,
     Ticket: TicketModel = Ticket,
+    Cargo: CargoModel = Cargo,
     Bus: BusModel = Bus,
     Staff: StaffModel = Staff,
     BusAccountCut: BusAccountCutModel = BusAccountCut,
@@ -249,6 +254,10 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     order: [["seatNo", "ASC"]]
   });
 
+  const cargos = await CargoModel.findAll({
+    where: { tripId, fromStopId: stopId }
+  });
+
   const passengers = tickets.map(t => ({
     no: t.seatNo,
     price: (t.price || 0).toFixed(2),
@@ -258,7 +267,9 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     gender: t.gender === 'f' ? 'K' : 'E'
   }));
 
-  const total = tickets.reduce((sum, t) => sum + (t.price || 0), 0).toFixed(2);
+  const ticketTotal = tickets.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+  const cargoTotal = cargos.reduce((sum, c) => sum + (Number(c.price) || 0), 0);
+  const combinedTotal = ticketTotal + cargoTotal;
 
   const accountCut = await BusAccountCutModel.findOne({ where: { tripId: trip.id, stopId: stopId } });
 
@@ -275,6 +286,8 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
   const needToPay = Number(accountCut?.needToPayAmount || 0);
   const payedAmount = Number(accountCut?.payedAmount || 0);
   const tipAmount = Number(accountCut?.tip || 0);
+  const afterCommission = combinedTotal - commissionAmount;
+  const remainingAmount = needToPay - payedAmount;
 
   const data = {
     header: {
@@ -287,14 +300,16 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     },
     summary: {
       ticketCount: tickets.length,
-      ticketTotal: Number(total),
-      commission: commissionAmount,
-      cut: totalCut,
-      tip: tipAmount,
-      needToPay: needToPay,
-      payed: payedAmount,
-      afterComission: Number(total) - commissionAmount,
-      remaining: needToPay - payedAmount
+      ticketTotal: combinedTotal.toFixed(2),
+      cargoCount: cargos.length,
+      cargoTotal: cargoTotal.toFixed(2),
+      commission: commissionAmount.toFixed(2),
+      cut: totalCut.toFixed(2),
+      tip: tipAmount.toFixed(2),
+      needToPay: needToPay.toFixed(2),
+      payed: payedAmount.toFixed(2),
+      afterComission: afterCommission.toFixed(2),
+      remaining: remainingAmount.toFixed(2)
     },
     passengers
   };

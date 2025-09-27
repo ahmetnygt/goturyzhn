@@ -116,7 +116,17 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         raw: true
     });
 
-    const userIds = [...new Set(tickets.map(t => t.userId).filter(Boolean))];
+    const cargos = await models.Cargo.findAll({
+        where: {
+            tripId,
+            fromStopId: stopId
+        },
+        raw: true
+    });
+
+    const ticketUserIds = tickets.map(t => t.userId).filter(Boolean);
+    const cargoUserIds = cargos.map(c => c.userId).filter(Boolean);
+    const userIds = [...new Set([...ticketUserIds, ...cargoUserIds])];
     const users = await models.FirmUser.findAll({
         where: { id: { [Op.in]: userIds } },
         raw: true
@@ -124,24 +134,43 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
     const userBranch = {};
     users.forEach(u => userBranch[u.id] = u.branchId);
 
-    const totalCount = tickets.length;
+    const totalCount = tickets.length + cargos.length;
     let totalAmount = 0;
     let myCash = 0, myCard = 0, otherBranches = 0;
+    let cargoCount = 0;
+    let cargoAmount = 0;
 
-    tickets.forEach(t => {
-        const amount = Number(t.price);
-        totalAmount += amount;
-        const branchId = userBranch[t.userId];
-        if (t.userId === user.id) {
-            if (t.payment === "cash") myCash += amount;
-            else if (t.payment === "card") myCard += amount;
-        } else if (branchId !== user.branchId) {
+    const parseAmount = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+    };
+
+    const accumulateByOwner = (amount, payment, ownerId) => {
+        const branchId = userBranch[ownerId];
+        if (ownerId === user.id) {
+            if (payment === "cash") myCash += amount;
+            else if (payment === "card") myCard += amount;
+        } else if (branchId !== undefined && branchId !== null && branchId !== user.branchId) {
             otherBranches += amount;
         }
+    };
+
+    tickets.forEach(t => {
+        const amount = parseAmount(t.price);
+        totalAmount += amount;
+        accumulateByOwner(amount, t.payment, t.userId);
+    });
+
+    cargos.forEach(c => {
+        const amount = parseAmount(c.price);
+        cargoCount += 1;
+        cargoAmount += amount;
+        totalAmount += amount;
+        accumulateByOwner(amount, c.payment, c.userId);
     });
 
     const allTotal = myCash + myCard + otherBranches;
-    return { totalCount, totalAmount, myCash, myCard, otherBranches, allTotal };
+    return { totalCount, totalAmount, myCash, myCard, otherBranches, allTotal, cargoCount, cargoAmount };
 }
 
 function addTime(baseTime, addTime) {
@@ -479,6 +508,7 @@ exports.getTrip = async (req, res, next) => {
         trip.timeString = `${hours}.${minutes}`
 
         const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
+        const cargos = await req.models.Cargo.findAll({ where: { tripId: trip.id, fromStopId: stopId } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
         console.log(users)
         const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.firmUser.branchId] } } })
@@ -513,6 +543,8 @@ exports.getTrip = async (req, res, next) => {
         let currentReservedAmount = 0
         let totalReservedCount = 0
         let totalReservedAmount = 0
+        let cargoCount = 0
+        let cargoAmount = 0
         for (let i = 0; i < tickets.length; i++) {
             const ticket = tickets[i].get({ plain: true });
             const ticketPlaceOrder = routeStopOrderMap[ticket.fromRouteStopId];
@@ -557,6 +589,15 @@ exports.getTrip = async (req, res, next) => {
                 }
             }
         }
+
+        cargos.forEach(cargoInstance => {
+            const cargo = cargoInstance.get({ plain: true });
+            const amount = Number(cargo.price);
+            cargoCount += 1
+            if (!Number.isNaN(amount)) {
+                cargoAmount += amount
+            }
+        })
         const fromStr = stops.find(s => s.id == stopId).title
         const toStr = stops.find(s => s.id == routeStops[routeStops.length - 1].stopId).title
         const incomes = {
@@ -568,8 +609,10 @@ exports.getTrip = async (req, res, next) => {
             currentReservedAmount,
             totalReservedCount,
             totalReservedAmount,
-            grandCount: totalSoldCount + totalReservedCount,
-            grandAmount: totalSoldAmount + totalReservedAmount
+            cargoCount,
+            cargoAmount,
+            grandCount: totalSoldCount + totalReservedCount + cargoCount,
+            grandAmount: totalSoldAmount + totalReservedAmount + cargoAmount
         }
 
         // res.json({ trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
@@ -847,6 +890,8 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
             myCard: data.myCard,
             otherBranches: data.otherBranches,
             allTotal: data.allTotal,
+            cargoCount: data.cargoCount,
+            cargoAmount: data.cargoAmount,
             comissionPercent: record.comissionPercent,
             comissionAmount: record.comissionAmount,
             deduction1: record.deduction1,
@@ -869,8 +914,16 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
     try {
         const { id } = req.body;
         const accountCut = await req.models.BusAccountCut.findOne({ where: { id } });
+        if (!accountCut) {
+            return res.status(404).json({ message: "Hesap bulunamadı." });
+        }
 
+        const payedAmount = Number(accountCut.payedAmount) || 0;
         const trip = await req.models.Trip.findOne({ where: { id: accountCut.tripId } })
+        if (!trip) {
+            await accountCut.destroy();
+            return res.json({ message: "OK" });
+        }
         const bus = await req.models.Bus.findOne({ where: { id: trip.busId } })
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
@@ -882,25 +935,27 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
             userId: req.session.firmUser.id,
             type: "income",
             category: "payed_to_bus",
-            amount: accountCut.payedAmount,
+            amount: payedAmount,
             description: fullDescription
         });
 
-        if (bus && accountCut.payedAmount > 0) {
+        if (bus && payedAmount > 0) {
             await req.models.BusTransaction.create({
                 busId: bus.id,
                 userId: req.session.firmUser.id,
                 type: "expense",
-                amount: accountCut.payedAmount,
+                amount: payedAmount,
                 description: fullDescription
             });
         }
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (register) {
-            register.cash_balance = (register.cash_balance || 0) + (accountCut.payedAmount || 0);
+            register.cash_balance = (register.cash_balance || 0) + payedAmount;
             await register.save();
         }
+
+        await accountCut.destroy();
 
         res.json({ message: "OK" });
     } catch (err) {
