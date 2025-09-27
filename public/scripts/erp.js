@@ -4637,25 +4637,6 @@ const syncRouteStopsState = () => {
 
 $(document).on("change", ".route-stops .duration-input", syncRouteStopsState);
 
-$(document).on("click", ".remove-route-stop", e => {
-    const $stop = $(e.currentTarget).closest(".route-stop");
-    if (!$stop.length) return;
-
-    const stopId = $stop.data("stopId");
-    const wasFirst = $stop.is(":first-child");
-    $stop.remove();
-    routeStops = routeStops.filter(rs => String(rs.stopId) !== String(stopId));
-
-    if (wasFirst) {
-        const $newFirst = $(".route-stop").first();
-        if ($newFirst.length) {
-            $newFirst.find("._route-stop-duration").remove();
-            $newFirst.attr("data-duration", "00:00");
-        }
-    }
-
-    syncRouteStopsState();
-});
 $(".route-nav").on("click", async e => {
     routeStops = []
     await $.ajax({
@@ -4807,6 +4788,26 @@ $(".add-route-stop-button").on("click", async e => {
                 $(".route-stop-duration").val("")
                 $(".route-stops").append(response)
                 syncRouteStopsState();
+
+                $(".remove-route-stop").off().on("click", e => {
+                    const $stop = $(e.currentTarget).closest(".route-stop");
+                    if (!$stop.length) return;
+
+                    const stopId = $stop.data("stopId");
+                    const wasFirst = $stop.is(":first-child");
+                    $stop.remove();
+                    routeStops = routeStops.filter(rs => String(rs.stopId) !== String(stopId));
+
+                    if (wasFirst) {
+                        const $newFirst = $(".route-stop").first();
+                        if ($newFirst.length) {
+                            $newFirst.find("._route-stop-duration").remove();
+                            $newFirst.attr("data-duration", "00:00");
+                        }
+                    }
+
+                    syncRouteStopsState();
+                });
 
                 const timeInput = document.querySelector(".route-stops .route-stop:last-of-type .duration-input");
 
