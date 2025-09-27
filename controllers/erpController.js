@@ -1891,6 +1891,23 @@ exports.getTicketRow = async (req, res, next) => {
         order: [["order", "ASC"]],
     });
 
+    const findPriceForStops = async (fromStopId, toStopId) => {
+        if (!fromStopId || !toStopId) return null;
+
+        let priceRecord = await req.models.Price.findOne({ where: { fromStopId, toStopId } });
+        if (!priceRecord) {
+            priceRecord = await req.models.Price.findOne({
+                where: {
+                    fromStopId: toStopId,
+                    toStopId: fromStopId,
+                    isBidirectional: true,
+                },
+            });
+        }
+
+        return priceRecord;
+    };
+
     const routeStopOrder = stopId
         ? routeStops.find((rs) => String(rs.stopId) === String(stopId))?.order
         : null;
@@ -1911,7 +1928,7 @@ exports.getTicketRow = async (req, res, next) => {
         const { fromId, toId, count } = req.query;
         let price = 0;
         if (fromId && toId) {
-            const p = await req.models.Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+            const p = await findPriceForStops(fromId, toId);
             price = p ? p : 0;
         }
 
@@ -1970,7 +1987,7 @@ exports.getTicketRow = async (req, res, next) => {
                     const key = `${fromStopId}-${toStopId}`;
 
                     if (!(key in priceCache)) {
-                        priceCache[key] = await req.models.Price.findOne({ where: { fromStopId, toStopId } });
+                        priceCache[key] = await findPriceForStops(fromStopId, toStopId);
                     }
 
                     priceForSeat = priceCache[key];
@@ -1988,7 +2005,7 @@ exports.getTicketRow = async (req, res, next) => {
     const gender = seats ? seats.map((s) => genderParam) : [];
     let price = 0;
     if (fromId && toId) {
-        const p = await req.models.Price.findOne({ where: { fromStopId: fromId, toStopId: toId } });
+        const p = await findPriceForStops(fromId, toId);
         price = p ? p : null;
     }
 
@@ -2975,7 +2992,8 @@ exports.getPricesList = async (req, res, next) => {
             toTitle: stopMap[p.toStopId] || p.toStopId,
             validFrom: obj.validFrom ? new Date(obj.validFrom).toLocaleDateString() : "",
             validUntil: obj.validUntil ? new Date(obj.validUntil).toLocaleDateString() : "",
-            hourLimit: obj.hourLimit ? obj.hourLimit : ""
+            hourLimit: obj.hourLimit ? obj.hourLimit : "",
+            isBidirectional: Boolean(obj.isBidirectional)
         };
     });
 
@@ -2994,11 +3012,22 @@ exports.postSavePrices = async (req, res, next) => {
             return Number.isFinite(num) && num > 0 ? num : null;
         };
 
+        const toBoolean = val => {
+            if (typeof val === "boolean") return val;
+            if (typeof val === "number") return val === 1;
+            if (typeof val === "string") {
+                const normalized = val.trim().toLowerCase();
+                return normalized === "true" || normalized === "1" || normalized === "on";
+            }
+            return false;
+        };
+
         for (const price of prices) {
             const {
                 id,
                 fromStopId,
                 toStopId,
+                isBidirectional,
                 price1,
                 price2,
                 price3,
@@ -3017,6 +3046,7 @@ exports.postSavePrices = async (req, res, next) => {
                 {
                     fromStopId,
                     toStopId,
+                    isBidirectional: toBoolean(isBidirectional),
                     price1: toNullIfNotPositive(price1),
                     price2: toNullIfNotPositive(price2),
                     price3: toNullIfNotPositive(price3),
@@ -3046,6 +3076,7 @@ exports.postAddPrice = async (req, res, next) => {
         const {
             fromStopId,
             toStopId,
+            isBidirectional,
             price1,
             price2,
             price3,
@@ -3065,9 +3096,20 @@ exports.postAddPrice = async (req, res, next) => {
             return Number.isFinite(num) && num > 0 ? num : null;
         };
 
+        const toBoolean = val => {
+            if (typeof val === "boolean") return val;
+            if (typeof val === "number") return val === 1;
+            if (typeof val === "string") {
+                const normalized = val.trim().toLowerCase();
+                return normalized === "true" || normalized === "1" || normalized === "on";
+            }
+            return false;
+        };
+
         await req.models.Price.create({
             fromStopId,
             toStopId,
+            isBidirectional: toBoolean(isBidirectional),
             price1: toNullIfNotPositive(price1),
             price2: toNullIfNotPositive(price2),
             price3: toNullIfNotPositive(price3),

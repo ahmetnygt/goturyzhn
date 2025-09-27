@@ -7,6 +7,8 @@ each p in prices
             .col
                 p.text-center.m-0(data-value=p.toStopId) #{p.toTitle}
             .col
+                p.text-center.m-0(data-value=p.isBidirectional) #{p.isBidirectional ? "Evet" : "Hayır"}
+            .col
                 p.text-center.m-0 #{p.price1}
             .col
                 p.text-center.m-0 #{p.price2}

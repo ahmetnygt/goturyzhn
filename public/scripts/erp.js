@@ -5076,7 +5076,13 @@ const resetPriceAddRow = () => {
         });
         $(this).html(options);
     });
-    row.find("input").val("");
+    row.find("input.price-button-input").val("");
+    row.find(".price-bidirectional").prop("checked", false);
+    row.find(".date-picker").each(function () {
+        if (this._flatpickr) {
+            this._flatpickr.clear();
+        }
+    });
     flatpickr(row.find(".date-picker").toArray(), {
         dateFormat: "Y-m-d",
         altInput: true,
@@ -5126,12 +5132,23 @@ $(".price-row, .price-add-row").off().on("click", function () {
             });
             select += '</select>';
             p.replaceWith(select);
+        } else if (index === 2) {
+            const isChecked = value === true || value === "true" || value === 1 || value === "1";
+            const checkbox = $("<input>", {
+                type: "checkbox",
+                class: "form-check-input price-bidirectional"
+            });
+            checkbox.prop("checked", isChecked);
+            p.replaceWith(checkbox);
+            $(this).addClass("d-flex justify-content-center align-items-center");
         } else {
-            let cls = "price-button-input";
+            const classes = ["price-button-input"];
             let type = "text";
-            if (index === 11) { cls += " hour-limit"; type = "number"; }
-            if (index === 12 || index === 13) cls += " date-picker";
-            p.replaceWith(`<input class="${cls}" type="${type}" value="${value ?? ''}">`);
+            if (index === 12) { classes.push("hour-limit"); type = "number"; }
+            if (index === 13 || index === 14) classes.push("date-picker");
+            const input = $("<input>", { type, value: value ?? "" });
+            input.addClass(classes.join(" "));
+            p.replaceWith(input);
         }
     });
     flatpickr(row.find(".date-picker").toArray(), {
@@ -5146,7 +5163,8 @@ $(".price-save").on("click", async function () {
     $(".price-list-nodes .price-button-inputs").each(function () {
         const row = $(this);
         const selects = row.find("select");
-        const inputs = row.find("input");
+        const priceInputs = row.find("input.price-button-input");
+        const bidirectionalInput = row.find(".price-bidirectional");
         const toNullIfNotPositive = val => {
             const num = Number(val);
             return Number.isFinite(num) && num > 0 ? num : null;
@@ -5155,18 +5173,19 @@ $(".price-save").on("click", async function () {
             id: row.data("id"),
             fromStopId: selects.eq(0).val(),
             toStopId: selects.eq(1).val(),
-            price1: toNullIfNotPositive(inputs.eq(0).val()),
-            price2: toNullIfNotPositive(inputs.eq(1).val()),
-            price3: toNullIfNotPositive(inputs.eq(2).val()),
-            webPrice: toNullIfNotPositive(inputs.eq(3).val()),
-            singleSeatPrice1: toNullIfNotPositive(inputs.eq(4).val()),
-            singleSeatPrice2: toNullIfNotPositive(inputs.eq(5).val()),
-            singleSeatPrice3: toNullIfNotPositive(inputs.eq(6).val()),
-            singleSeatWebPrice: toNullIfNotPositive(inputs.eq(7).val()),
-            seatLimit: inputs.eq(8).val(),
-            hourLimit: inputs.eq(9).val() ? Number(inputs.eq(9).val()) : null,
-            validFrom: inputs.eq(10).val() ? `${inputs.eq(10).val()}T00:00` : null,
-            validUntil: inputs.eq(11).val() ? `${inputs.eq(11).val()}T00:00` : null
+            isBidirectional: bidirectionalInput.is(":checked"),
+            price1: toNullIfNotPositive(priceInputs.eq(0).val()),
+            price2: toNullIfNotPositive(priceInputs.eq(1).val()),
+            price3: toNullIfNotPositive(priceInputs.eq(2).val()),
+            webPrice: toNullIfNotPositive(priceInputs.eq(3).val()),
+            singleSeatPrice1: toNullIfNotPositive(priceInputs.eq(4).val()),
+            singleSeatPrice2: toNullIfNotPositive(priceInputs.eq(5).val()),
+            singleSeatPrice3: toNullIfNotPositive(priceInputs.eq(6).val()),
+            singleSeatWebPrice: toNullIfNotPositive(priceInputs.eq(7).val()),
+            seatLimit: priceInputs.eq(8).val(),
+            hourLimit: priceInputs.eq(9).val() ? Number(priceInputs.eq(9).val()) : null,
+            validFrom: priceInputs.eq(10).val() ? `${priceInputs.eq(10).val()}T00:00` : null,
+            validUntil: priceInputs.eq(11).val() ? `${priceInputs.eq(11).val()}T00:00` : null
         };
         data.push(obj);
     });
@@ -5202,7 +5221,8 @@ const savePriceAdd = async closeAfterSave => {
     const row = popup.find(".price-add-row");
     if (!row.hasClass("price-button-inputs")) row.click();
     const selects = row.find("select");
-    const inputs = row.find("input");
+    const priceInputs = row.find("input.price-button-input");
+    const bidirectionalInput = row.find(".price-bidirectional");
     const toNullIfNotPositive = val => {
         const num = Number(val);
         return Number.isFinite(num) && num > 0 ? num : null;
@@ -5210,18 +5230,19 @@ const savePriceAdd = async closeAfterSave => {
     const data = {
         fromStopId: selects.eq(0).val(),
         toStopId: selects.eq(1).val(),
-        price1: toNullIfNotPositive(inputs.eq(0).val()),
-        price2: toNullIfNotPositive(inputs.eq(1).val()),
-        price3: toNullIfNotPositive(inputs.eq(2).val()),
-        webPrice: toNullIfNotPositive(inputs.eq(3).val()),
-        singleSeatPrice1: toNullIfNotPositive(inputs.eq(4).val()),
-        singleSeatPrice2: toNullIfNotPositive(inputs.eq(5).val()),
-        singleSeatPrice3: toNullIfNotPositive(inputs.eq(6).val()),
-        singleSeatWebPrice: toNullIfNotPositive(inputs.eq(7).val()),
-        seatLimit: inputs.eq(8).val(),
-        hourLimit: inputs.eq(9).val(),
-        validFrom: inputs.eq(10).val(),
-        validUntil: inputs.eq(11).val()
+        isBidirectional: bidirectionalInput.is(":checked"),
+        price1: toNullIfNotPositive(priceInputs.eq(0).val()),
+        price2: toNullIfNotPositive(priceInputs.eq(1).val()),
+        price3: toNullIfNotPositive(priceInputs.eq(2).val()),
+        webPrice: toNullIfNotPositive(priceInputs.eq(3).val()),
+        singleSeatPrice1: toNullIfNotPositive(priceInputs.eq(4).val()),
+        singleSeatPrice2: toNullIfNotPositive(priceInputs.eq(5).val()),
+        singleSeatPrice3: toNullIfNotPositive(priceInputs.eq(6).val()),
+        singleSeatWebPrice: toNullIfNotPositive(priceInputs.eq(7).val()),
+        seatLimit: priceInputs.eq(8).val(),
+        hourLimit: priceInputs.eq(9).val(),
+        validFrom: priceInputs.eq(10).val(),
+        validUntil: priceInputs.eq(11).val()
     };
 
     await $.ajax({
