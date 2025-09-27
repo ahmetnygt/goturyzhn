@@ -1630,7 +1630,9 @@ exports.getErp = async (req, res, next) => {
 
     await req.session.save()
 
-    res.render('erpscreen', { title: 'ERP', busModel, staff, user, places, stops, branches });
+    const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId).stopId).id
+
+    res.render('erpscreen', { title: 'ERP', busModel, staff, user, places, stops, branches, branchStopId});
 }
 
 exports.getErpLogin = async (req, res, next) => {

@@ -1582,7 +1582,10 @@ block content
 
         .col-3.h-100.right-panel
             input#calendar(type="hidden" name="")
-            select#currentStop.form-select.form-select-sm
+            select#currentStop.form-select.form-select-sm(value=branchStopId)
                 each s in stops
-                    option(value=s.id) #{s.title}
+                    if(s.id == branchStopId)
+                        option(value=s.id selected) #{s.title}
+                    else
+                        option(value=s.id) #{s.title}
             .tripRows 

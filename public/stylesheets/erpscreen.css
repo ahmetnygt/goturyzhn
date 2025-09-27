@@ -1099,12 +1099,6 @@ div.ticket-cancel-refund-open-close {
     white-space: nowrap;
 }
 
-.tripRow.selected {
-    background-color: #2660ff;
-    color: white;
-    border-color: #2660ff;
-}
-
 .tripRow.disabled,
 .tripRow.disabled.expired,
 .tripRow.disabled:hover,
@@ -1147,8 +1141,18 @@ div.ticket-cancel-refund-open-close {
     border-right: 1px solid #7d7d7d;
 }
 
-.tripRow.selected div {
-    border-color: white;
+.tripRow.selected {
+    background-color: #2660ff;
+    color: white;
+    border-color: #2660ff;
+}
+
+.tripRow.selected:hover {
+    background-color: #1f4fd3;
+}
+
+.tripRow.selected:active {
+    background-color: #193fa6;
 }
 
 .tripRow div:last-child {
