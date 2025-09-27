@@ -1855,6 +1855,27 @@ async function loadTrip(date, time, tripId) {
                     $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
                     $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
                     $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
+                    for (let i = 1; i <= 5; i++) {
+                        $(".account-cut-deductions-popup .account-deduction" + i).val("");
+                        $(".account-cut-popup .account-deduction" + i).val("");
+                    }
+                    $(".account-cut-deductions-popup .account-tip").val("");
+                    $(".account-cut-popup .account-tip").val("");
+                    if (Array.isArray(accountCutData.defaultDeductions)) {
+                        accountCutData.defaultDeductions.forEach((value, index) => {
+                            const selector = ".account-cut-deductions-popup .account-deduction" + (index + 1);
+                            if (value === null || value === undefined || value === "") {
+                                $(selector).val("");
+                                return;
+                            }
+                            const numeric = Number(value);
+                            if (Number.isFinite(numeric)) {
+                                $(selector).val(numeric.toFixed(2));
+                            } else {
+                                $(selector).val(value);
+                            }
+                        });
+                    }
                 } catch (err) {
                     console.log(err);
                 }
@@ -5196,6 +5217,7 @@ setupDeleteHandler(".branch-delete", {
             $(".branch-title").val("");
             $(".branch-place").val("");
             $(".branch-main-branch").val("");
+            $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("");
             $(".branch-info").css("display", "none");
             $(".branch-settings").css("display", "none");
             $(".branch").css("width", "");
@@ -5260,6 +5282,25 @@ $(".branch-settings-nav").on("click", async e => {
                         $(".branch-title").val(response.title)
                         $(".branch-place").val(response.stopId)
                         $(".branch-main-branch").val(response.mainBranchId)
+                        const setBranchField = (selector, value) => {
+                            const val = value ?? "";
+                            $(selector).val(val);
+                        };
+                        setBranchField(".branch-owner", response.ownerName)
+                        setBranchField(".branch-phone", response.phoneNumber)
+                        setBranchField(".branch-address", response.address)
+                        setBranchField(".branch-trade-title", response.tradeTitle)
+                        setBranchField(".branch-tax-office", response.taxOffice)
+                        setBranchField(".branch-tax-number", response.taxNumber)
+                        setBranchField(".branch-f1-document", response.f1DocumentCode)
+                        setBranchField(".branch-own-commission", response.ownStopSalesCommission)
+                        setBranchField(".branch-other-commission", response.otherStopSalesCommission)
+                        setBranchField(".branch-internet-commission", response.internetTicketCommission)
+                        setBranchField(".branch-deduction1", response.defaultDeduction1)
+                        setBranchField(".branch-deduction2", response.defaultDeduction2)
+                        setBranchField(".branch-deduction3", response.defaultDeduction3)
+                        setBranchField(".branch-deduction4", response.defaultDeduction4)
+                        setBranchField(".branch-deduction5", response.defaultDeduction5)
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -5303,6 +5344,7 @@ $(".add-branch").on("click", async e => {
     $(".branch-title").val("")
     $(".branch-place").val("")
     $(".branch-main-branch").val("")
+    $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("")
     editingBranchId = null
     $(".branch").css("width", "60vw")
     $(".branch-list").removeClass("col-12").addClass("col-4")
@@ -5317,11 +5359,48 @@ $(".save-branch").on("click", async e => {
     const title = $(".branch-title").val()
     const stop = $(".branch-place").val()
     const mainBranch = $(".branch-main-branch").val()
+    const ownerName = $(".branch-owner").val()
+    const phoneNumber = $(".branch-phone").val()
+    const address = $(".branch-address").val()
+    const tradeTitle = $(".branch-trade-title").val()
+    const taxOffice = $(".branch-tax-office").val()
+    const taxNumber = $(".branch-tax-number").val()
+    const f1DocumentCode = $(".branch-f1-document").val()
+    const ownStopSalesCommission = $(".branch-own-commission").val()
+    const otherStopSalesCommission = $(".branch-other-commission").val()
+    const internetTicketCommission = $(".branch-internet-commission").val()
+    const defaultDeduction1 = $(".branch-deduction1").val()
+    const defaultDeduction2 = $(".branch-deduction2").val()
+    const defaultDeduction3 = $(".branch-deduction3").val()
+    const defaultDeduction4 = $(".branch-deduction4").val()
+    const defaultDeduction5 = $(".branch-deduction5").val()
 
     await $.ajax({
         url: "/post-save-branch",
         type: "POST",
-        data: { id: editingBranchId, isActive, isMainBranch, title, stop, mainBranch },
+        data: {
+            id: editingBranchId,
+            isActive,
+            isMainBranch,
+            title,
+            stop,
+            mainBranch,
+            ownerName,
+            phoneNumber,
+            address,
+            tradeTitle,
+            taxOffice,
+            taxNumber,
+            f1DocumentCode,
+            ownStopSalesCommission,
+            otherStopSalesCommission,
+            internetTicketCommission,
+            defaultDeduction1,
+            defaultDeduction2,
+            defaultDeduction3,
+            defaultDeduction4,
+            defaultDeduction5,
+        },
         success: function (response) {
             editingBranchId = null
             $("#isBranchActive").prop('checked', false)
@@ -5329,6 +5408,7 @@ $(".save-branch").on("click", async e => {
             $(".branch-title").val("")
             $(".branch-place").val("")
             $(".branch-main-branch").val("")
+            $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("")
             $(".blackout").css("display", "none")
             $(".branch").css("display", "none")
             $(".branch-info").css("display", "none")

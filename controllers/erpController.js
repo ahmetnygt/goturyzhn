@@ -712,13 +712,50 @@ exports.getBusAccountCutData = async (req, res, next) => {
 
         const { tripId, stopId } = req.query;
         const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
-        const comissionAmount = data.allTotal * BUS_COMISSION_PERCENT / 100;
+
+        const parseOptionalNumber = value => {
+            if (value === null || value === undefined) {
+                return null;
+            }
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        let comissionPercent = BUS_COMISSION_PERCENT;
+        let defaultDeductions = null;
+        let autoFilledFromBranchStop = false;
+
+        const sessionBranchId = req.session?.firmUser?.branchId;
+        if (sessionBranchId) {
+            const branch = await req.models.Branch.findByPk(sessionBranchId, { raw: true });
+            if (branch && Number(branch.stopId) === Number(stopId)) {
+                autoFilledFromBranchStop = true;
+                const branchPercent = parseOptionalNumber(branch.ownStopSalesCommission);
+                if (branchPercent !== null) {
+                    comissionPercent = branchPercent;
+                }
+
+                const deductions = [
+                    branch.defaultDeduction1,
+                    branch.defaultDeduction2,
+                    branch.defaultDeduction3,
+                    branch.defaultDeduction4,
+                    branch.defaultDeduction5,
+                ].map(parseOptionalNumber);
+
+                defaultDeductions = deductions;
+            }
+        }
+
+        const comissionAmount = data.allTotal * comissionPercent / 100;
         const needToPay = data.allTotal - comissionAmount;
         res.json({
             ...data,
-            comissionPercent: BUS_COMISSION_PERCENT,
+            comissionPercent,
             comissionAmount,
-            needToPay
+            needToPay,
+            defaultDeductions,
+            autoFilledFromBranchStop,
         });
     } catch (err) {
         console.error("getBusAccountCutData error:", err);
@@ -3449,20 +3486,63 @@ exports.getBranch = async (req, res, next) => {
 
 exports.postSaveBranch = async (req, res, next) => {
     try {
-        console.log("Gelen veri:", req.body);
-
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, isActive, isMainBranch, title, stop, mainBranch } = data;
+        const {
+            id,
+            isActive,
+            isMainBranch,
+            title,
+            stop,
+            mainBranch,
+            ownerName,
+            phoneNumber,
+            address,
+            tradeTitle,
+            taxOffice,
+            taxNumber,
+            f1DocumentCode,
+            ownStopSalesCommission,
+            otherStopSalesCommission,
+            internetTicketCommission,
+            defaultDeduction1,
+            defaultDeduction2,
+            defaultDeduction3,
+            defaultDeduction4,
+            defaultDeduction5,
+        } = data;
+
+        const parseNullableNumber = value => {
+            if (value === null || value === undefined || value === "") {
+                return null;
+            }
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
 
         const [branch, created] = await req.models.Branch.upsert(
             {
                 id,
                 title,
-                stopId: stop,
+                stopId: parseNullableNumber(stop),
                 isMainBranch,
-                mainBranchId: isMainBranch ? null : mainBranch,
+                mainBranchId: isMainBranch ? null : parseNullableNumber(mainBranch),
                 isActive,
+                ownerName,
+                phoneNumber,
+                address,
+                tradeTitle,
+                taxOffice,
+                taxNumber,
+                f1DocumentCode,
+                ownStopSalesCommission: parseNullableNumber(ownStopSalesCommission),
+                otherStopSalesCommission: parseNullableNumber(otherStopSalesCommission),
+                internetTicketCommission: parseNullableNumber(internetTicketCommission),
+                defaultDeduction1: parseNullableNumber(defaultDeduction1),
+                defaultDeduction2: parseNullableNumber(defaultDeduction2),
+                defaultDeduction3: parseNullableNumber(defaultDeduction3),
+                defaultDeduction4: parseNullableNumber(defaultDeduction4),
+                defaultDeduction5: parseNullableNumber(defaultDeduction5),
             },
             { returning: true }
         );
