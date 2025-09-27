@@ -85,7 +85,7 @@
             | #{trip.toPlaceString.toUpperCase()}
     .d-flex.justify-content-between.mb-1.captain-info
         b.m-0.captain-name #{captain ? captain.name + " " + captain.surname : ""}
-        b.m-0.captain-phone #{captain ? captain.phoneNumber : ""}
+        b.m-0.captain-phone #{captain ? captain.phoneNumber.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4") : ""}
     .d-flex.justify-content-between.mb-3
         if permissions.includes('TRIP_BUS_ASSIGN')
             select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
