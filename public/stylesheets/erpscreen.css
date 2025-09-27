@@ -1115,7 +1115,8 @@ div.ticket-cancel-refund-open-close {
 
 .tripRows {
     width: 100%;
-    overflow-x: auto;
+    overflow: auto;
+    height: -webkit-fill-available;
 }
 
 .tripRow {
@@ -1124,6 +1125,7 @@ div.ticket-cancel-refund-open-close {
     display: flex;
     padding: 0 .2rem;
     margin-bottom: .5rem;
+    min-width: 100%;
     width: max-content;
     cursor: pointer;
     border: 2px solid transparent;
@@ -1197,6 +1199,16 @@ div.ticket-cancel-refund-open-close {
 .tripRow div p {
     margin: .3rem .3rem;
     user-select: none;
+}
+
+.firm-logo {
+    height: 100%;
+    width: 50%;
+    object-fit: contain;
+}
+
+#clock {
+    font-size: 2rem !important;
 }
 
 .passenger-info-popup {

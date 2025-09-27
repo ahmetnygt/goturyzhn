@@ -1663,7 +1663,7 @@ async function loadTrip(date, time, tripId) {
             })
 
             // Tek handler: önce eskileri kaldır, sonra bağla
-            $(".seat").off("click.seat").on("click.seat", function (e) {
+            $(".seat").off("click").on("click", function (e) {
                 e.stopPropagation();
 
                 const $seat = $(this);
@@ -2434,16 +2434,16 @@ $(".ticket-button-action").on("click", async e => {
             await $.ajax({
                 url: "/post-tickets",
                 type: "POST",
-            data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
-            success: async function (response) {
-                ticketClose()
-                loadTrip(currentTripDate, currentTripTime, currentTripId)
-            },
-            error: function (xhr, status, error) {
-                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
-                showError(message);
-            }
-        });
+                data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+                success: async function (response) {
+                    ticketClose()
+                    loadTrip(currentTripDate, currentTripTime, currentTripId)
+                },
+                error: function (xhr, status, error) {
+                    const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                    showError(message);
+                }
+            });
         }
     }
     else if (e.currentTarget.dataset.action == "complete") {
@@ -4834,11 +4834,14 @@ const timeInput = document.querySelector(".route-stop-duration");
 // Yazarken 2 haneden sonra ":" ekle
 timeInput.addEventListener("input", () => {
     let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
-    if (val.length >= 2) {
-        val = val.slice(0, 3) + ":" + val.slice(3, 4);
+
+    if (val.length > 2) {
+        val = val.slice(0, 2) + ":" + val.slice(2, 4);
     }
+
     timeInput.value = val;
 });
+
 
 // Odak kaybedince kontrol et
 timeInput.addEventListener("blur", () => {
@@ -5098,6 +5101,48 @@ $(".price-nav").on("click", async e => {
             $(".price-list-nodes").html(response);
             const stopsData = $("#price-stops-data").text();
             priceStops = stopsData ? JSON.parse(stopsData) : [];
+
+            $(".price-row, .price-add-row").off().on("click", function () {
+                const row = $(this);
+                if (row.hasClass("price-button-inputs")) return;
+                row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
+                row.children(".col").each(function (index) {
+                    const p = $(this).find("p");
+                    if (!p.length) return;
+                    const value = p.data("value") ?? p.text().trim();
+                    if (index === 0 || index === 1) {
+                        let select = '<select class="price-button-select">';
+                        priceStops.forEach(pl => {
+                            select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
+                        });
+                        select += '</select>';
+                        p.replaceWith(select);
+                    } else if (index === 2) {
+                        const isChecked = value === true || value === "true" || value === 1 || value === "1";
+                        const checkbox = $("<input>", {
+                            type: "checkbox",
+                            class: "form-check-input price-bidirectional"
+                        });
+                        checkbox.prop("checked", isChecked);
+                        p.replaceWith(checkbox);
+                        $(this).addClass("d-flex justify-content-center align-items-center");
+                    } else {
+                        const classes = ["price-button-input"];
+                        let type = "text";
+                        if (index === 12) { classes.push("hour-limit"); type = "number"; }
+                        if (index === 13 || index === 14) classes.push("date-picker");
+                        const input = $("<input>", { type, value: value ?? "" });
+                        input.addClass(classes.join(" "));
+                        p.replaceWith(input);
+                    }
+                });
+                flatpickr(row.find(".date-picker").toArray(), {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "d F Y",
+                });
+            });
+
             $("#price-stops-data").remove();
             $(".prices").css("display", "block");
             $(".blackout").css("display", "block");
@@ -5116,47 +5161,6 @@ $(".price-close").on("click", e => {
     $(".prices").css("display", "none");
     $(".blackout").css("display", "none");
 })
-
-$(".price-row, .price-add-row").off().on("click", function () {
-    const row = $(this);
-    if (row.hasClass("price-button-inputs")) return;
-    row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
-    row.children(".col").each(function (index) {
-        const p = $(this).find("p");
-        if (!p.length) return;
-        const value = p.data("value") ?? p.text().trim();
-        if (index === 0 || index === 1) {
-            let select = '<select class="price-button-select">';
-            priceStops.forEach(pl => {
-                select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
-            });
-            select += '</select>';
-            p.replaceWith(select);
-        } else if (index === 2) {
-            const isChecked = value === true || value === "true" || value === 1 || value === "1";
-            const checkbox = $("<input>", {
-                type: "checkbox",
-                class: "form-check-input price-bidirectional"
-            });
-            checkbox.prop("checked", isChecked);
-            p.replaceWith(checkbox);
-            $(this).addClass("d-flex justify-content-center align-items-center");
-        } else {
-            const classes = ["price-button-input"];
-            let type = "text";
-            if (index === 12) { classes.push("hour-limit"); type = "number"; }
-            if (index === 13 || index === 14) classes.push("date-picker");
-            const input = $("<input>", { type, value: value ?? "" });
-            input.addClass(classes.join(" "));
-            p.replaceWith(input);
-        }
-    });
-    flatpickr(row.find(".date-picker").toArray(), {
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "d F Y",
-    });
-});
 
 $(".price-save").on("click", async function () {
     const data = [];

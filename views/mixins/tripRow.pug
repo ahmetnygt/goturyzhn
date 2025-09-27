@@ -4,7 +4,7 @@ each t in trips
             p #{t.dateString}
         div 
             p #{t.timeString}
-        div 
+        div(style="width: -webkit-fill-available;")
             p #{t.fromPlaceString} -> #{t.toPlaceString}
         div 
             p #{t.fullness}

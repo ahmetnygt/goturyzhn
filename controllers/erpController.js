@@ -643,7 +643,7 @@ exports.getTrip = async (req, res, next) => {
             return acc;
         }, {});
 
-        trip.isOwnBranchStop = (stopId == branchMap[req.session.firmUser.branchId].stopId).toString()
+        trip.isOwnBranchStop = (stopId == branchMap[req.session.firmUser.branchId]?.stopId).toString()
 
         let newTicketArray = []
         const soldStatuses = ["completed", "web"]
@@ -1746,7 +1746,7 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
     const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
 
-    const isOwnBranchStop = (stopId == branch.stopId).toString()
+    const isOwnBranchStop = (stopId == branch?.stopId).toString()
 
     const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
@@ -1797,7 +1797,7 @@ exports.getErp = async (req, res, next) => {
 
     await req.session.save()
 
-    const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId).stopId).id
+    const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId)?.stopId)?.id
 
     res.render('erpscreen', { title: 'ERP', busModel, staff, user, places, stops, branches, branchStopId});
 }
