@@ -2434,15 +2434,16 @@ $(".ticket-button-action").on("click", async e => {
             await $.ajax({
                 url: "/post-tickets",
                 type: "POST",
-                data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
-                success: async function (response) {
-                    ticketClose()
-                    loadTrip(currentTripDate, currentTripTime, currentTripId)
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            });
+            data: { pendingIds: $("#pendingIds").val(), tickets: ticketsStr, tripDate: currentTripDate, tripTime: currentTripTime, fromId: currentStop, toId, tripId: currentTripId, status: "completed" },
+            success: async function (response) {
+                ticketClose()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+            },
+            error: function (xhr, status, error) {
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
+            }
+        });
         }
     }
     else if (e.currentTarget.dataset.action == "complete") {
@@ -2607,7 +2608,8 @@ $(".ticket-button-action").on("click", async e => {
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
             }
         });
 
@@ -3091,7 +3093,8 @@ $(".moving-confirm").on("click", async e => {
             loadTrip(currentTripDate, currentTripTime, currentTripId)
         },
         error: function (xhr, status, error) {
-            console.log(error);
+            const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+            showError(message);
         }
     });
 })
@@ -4637,6 +4640,78 @@ const syncRouteStopsState = () => {
 
 $(document).on("change", ".route-stops .duration-input", syncRouteStopsState);
 
+const ROUTE_ACTIVE_TAB_CLASS = "active";
+const ROUTE_TAB_DEFAULT_ID = "route-stops-tab";
+const ROUTE_TIME_PICKER_OPTIONS = {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    allowInput: true,
+};
+
+const formatRouteTimeValue = value => {
+    if (!value) return "";
+    const stringValue = String(value);
+    const match = stringValue.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) {
+        return stringValue;
+    }
+    const [, hours, minutes] = match;
+    return `${hours.padStart(2, "0")}:${minutes}`;
+};
+
+const setRouteActiveTab = targetId => {
+    if (!targetId) return;
+    const tabs = document.querySelectorAll(".route-tab");
+    tabs.forEach(tab => {
+        const isActive = tab.dataset.target === targetId;
+        tab.classList.toggle(ROUTE_ACTIVE_TAB_CLASS, isActive);
+        if (isActive) {
+            tab.classList.add("btn-primary");
+            tab.classList.remove("btn-outline-primary");
+        } else {
+            tab.classList.remove("btn-primary");
+            tab.classList.add("btn-outline-primary");
+        }
+    });
+
+    const panels = document.querySelectorAll(".route-tab-panel");
+    panels.forEach(panel => {
+        panel.classList.toggle(ROUTE_ACTIVE_TAB_CLASS, panel.id === targetId);
+    });
+};
+
+const initializeRouteTimePickers = () => {
+    if (typeof flatpickr !== "function") {
+        return;
+    }
+    const inputs = document.querySelectorAll(".route-settings .time-flatpickr");
+    inputs.forEach(input => {
+        if (!input) return;
+        const currentValue = input.value;
+        if (input._flatpickr) {
+            input._flatpickr.destroy();
+        }
+        const instance = flatpickr(input, ROUTE_TIME_PICKER_OPTIONS);
+        if (currentValue) {
+            instance.setDate(currentValue, false, "H:i");
+        }
+    });
+};
+
+$(document).on("click", ".route-tab", e => {
+    const targetId = e.currentTarget?.dataset?.target;
+    if (!targetId) return;
+    setRouteActiveTab(targetId);
+});
+
+$(function () {
+    const initialTab = document.querySelector(".route-tab.active")?.dataset?.target || ROUTE_TAB_DEFAULT_ID;
+    setRouteActiveTab(initialTab);
+    initializeRouteTimePickers();
+});
+
 $(".route-nav").on("click", async e => {
     routeStops = []
     await $.ajax({
@@ -4676,6 +4751,20 @@ $(".route-nav").on("click", async e => {
                         $(".route-from").val(response.fromStopId)
                         $(".route-to").val(response.toStopId)
                         $(".route-description").val(response.description)
+                        $(".route-reservation-option-time").val(formatRouteTimeValue(response.reservationOptionTime))
+                        $(".route-transfer-option-time").val(formatRouteTimeValue(response.refundTransferOptionTime))
+                        $(".route-max-reservation-count").val(
+                            response.maxReservationCount !== undefined && response.maxReservationCount !== null
+                                ? response.maxReservationCount
+                                : ""
+                        )
+                        $(".route-max-single-seat-count").val(
+                            response.maxSingleSeatCount !== undefined && response.maxSingleSeatCount !== null
+                                ? response.maxSingleSeatCount
+                                : ""
+                        )
+                        initializeRouteTimePickers()
+                        setRouteActiveTab(ROUTE_TAB_DEFAULT_ID)
 
                         await $.ajax({
                             url: "/get-route-stops-list",
@@ -4723,6 +4812,10 @@ $(".add-route").on("click", e => {
     $(".route-from").val("")
     $(".route-to").val("")
     $(".route-description").val("")
+    $(".route-reservation-option-time").val("")
+    $(".route-transfer-option-time").val("")
+    $(".route-max-reservation-count").val("")
+    $(".route-max-single-seat-count").val("")
     $(".route-stops").html("")
     $(".route-stop-duration").css("display", "none")
     routeStops = []
@@ -4732,6 +4825,8 @@ $(".add-route").on("click", e => {
     $(".route-info").css("display", "flex")
     $(".route-settings").css("display", "block")
     $(".save-route").html("EKLE")
+    setRouteActiveTab(ROUTE_TAB_DEFAULT_ID)
+    initializeRouteTimePickers()
 })
 
 const timeInput = document.querySelector(".route-stop-duration");
@@ -4862,13 +4957,29 @@ $(".save-route").on("click", async e => {
     const routeFrom = $(".route-from").val()
     const routeTo = $(".route-to").val()
     const routeDescription = $(".route-description").val()
+    const reservationOptionTime = $(".route-reservation-option-time").val()?.trim() || ""
+    const refundTransferOptionTime = $(".route-transfer-option-time").val()?.trim() || ""
+    const maxReservationCount = $(".route-max-reservation-count").val()?.trim() || ""
+    const maxSingleSeatCount = $(".route-max-single-seat-count").val()?.trim() || ""
     syncRouteStopsState()
     const routeStopsSTR = JSON.stringify(routeStops)
 
     await $.ajax({
         url: "/post-save-route",
         type: "POST",
-        data: { id: editingRouteId, routeCode, routeDescription, routeTitle, routeFrom, routeTo, routeStopsSTR },
+        data: {
+            id: editingRouteId,
+            routeCode,
+            routeDescription,
+            routeTitle,
+            routeFrom,
+            routeTo,
+            reservationOptionTime,
+            refundTransferOptionTime,
+            maxReservationCount,
+            maxSingleSeatCount,
+            routeStopsSTR
+        },
         success: function (response) {
             editingRouteId = null
             $(".route-code").val("")
@@ -4876,11 +4987,17 @@ $(".save-route").on("click", async e => {
             $(".route-from").val("")
             $(".route-to").val("")
             $(".route-description").val("")
+            $(".route-reservation-option-time").val("")
+            $(".route-transfer-option-time").val("")
+            $(".route-max-reservation-count").val("")
+            $(".route-max-single-seat-count").val("")
             routeStops = []
             $(".blackout").css("display", "none")
             $(".route").css("display", "none")
             $(".route-info").css("display", "none")
             $(".route-settings").css("display", "none")
+            setRouteActiveTab(ROUTE_TAB_DEFAULT_ID)
+            initializeRouteTimePickers()
         },
         error: function (xhr, status, error) {
             console.log(error);

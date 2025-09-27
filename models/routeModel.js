@@ -27,5 +27,21 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
+    reservationOptionTime: {
+      type: DataTypes.TIME,
+      allowNull: true,
+    },
+    refundTransferOptionTime: {
+      type: DataTypes.TIME,
+      allowNull: true,
+    },
+    maxReservationCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    maxSingleSeatCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   });
 };

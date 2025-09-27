@@ -781,12 +781,31 @@ block content
                     input.route-description.form-control(type="text" )
                 button.save-route.btn.btn-outline-primary KAYDET
             .route-settings.h-100
-                .input-group.mb-3
-                    select.route-stop-place.form-select()
-                        option(value="" selected)
-                    input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;" pattern="^([01]\d|2[0-3]):([0-5]\d)$")
-                    button.add-route-stop-button.btn.btn-outline-primary(type="button") EKLE
-                .route-stops.d-flex.flex-column.gap-3
+                .route-tabs.d-flex.mb-3
+                    button.route-tab.btn.btn-outline-primary.active(type="button" data-target="route-stops-tab") Hat Durakları
+                    button.route-tab.btn.btn-outline-primary(type="button" data-target="route-config-tab") Ayarlar
+                .route-tab-panels
+                    .route-tab-panel#route-stops-tab.active
+                        .input-group.mb-3
+                            select.route-stop-place.form-select()
+                                option(value="" selected)
+                            input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;" pattern="^([01]\d|2[0-3]):([0-5]\d)$")
+                            button.add-route-stop-button.btn.btn-outline-primary(type="button") EKLE
+                        .route-stops.d-flex.flex-column.gap-3
+                    .route-tab-panel#route-config-tab
+                        .input-group.mb-3
+                            span.input-group-text Rezervasyon Opsiyon Süresi
+                            input.route-reservation-option-time.form-control.time-flatpickr(type="text" placeholder="00:00" autocomplete="off")
+                        p.form-text.text-muted.mb-3 Boş bırakırsanız rezervasyonlar sefer saatinde düşer
+                        .input-group.mb-3
+                            span.input-group-text İade Transfer Opsiyon Süresi
+                            input.route-transfer-option-time.form-control.time-flatpickr(type="text" placeholder="00:00" autocomplete="off")
+                        .input-group.mb-3
+                            span.input-group-text Max Rezervasyon Sayısı
+                            input.route-max-reservation-count.form-control(type="number" min="0" step="1" placeholder="Sınırsız")
+                        .input-group
+                            span.input-group-text Max Tek Koltuk Sayısı
+                            input.route-max-single-seat-count.form-control(type="number" min="0" step="1" placeholder="Sınırsız")
 
     .trip
         .gtr-header

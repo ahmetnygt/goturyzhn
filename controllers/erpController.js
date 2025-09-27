@@ -365,6 +365,118 @@ function getSeatTypes(planBinary) {
 
 exports.getSeatTypes = getSeatTypes;
 
+const ACTIVE_TICKET_STATUSES_FOR_SINGLE_SEAT_LIMIT = ["completed", "reservation", "web", "gotur"];
+
+function normalizeTimeInput(value) {
+    if (!value && value !== 0) {
+        return null;
+    }
+
+    if (typeof value !== "string") {
+        return value;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+        return trimmed;
+    }
+
+    if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+        return `${trimmed}:00`;
+    }
+
+    return trimmed;
+}
+
+function toIntegerOrNull(value) {
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+        return null;
+    }
+
+    return parsed;
+}
+
+async function checkReservationLimit(models, trip, route, newReservationCount) {
+    if (!trip || !route) {
+        return { exceeded: false };
+    }
+
+    const limit = toIntegerOrNull(route.maxReservationCount);
+    if (!limit || limit <= 0) {
+        return { exceeded: false };
+    }
+
+    const existingCount = await models.Ticket.count({
+        where: { tripId: trip.id, status: "reservation" },
+    });
+
+    if (existingCount + newReservationCount > limit) {
+        return { exceeded: true, limit, existingCount };
+    }
+
+    return { exceeded: false, limit, existingCount };
+}
+
+async function checkSingleSeatLimit(models, trip, route, seatNumbers, excludedTicketIds = []) {
+    if (!trip || !route || !Array.isArray(seatNumbers) || !seatNumbers.length) {
+        return { exceeded: false };
+    }
+
+    const limit = toIntegerOrNull(route.maxSingleSeatCount);
+    if (!limit || limit <= 0) {
+        return { exceeded: false };
+    }
+
+    const busModel = await models.BusModel.findByPk(trip.busModelId, { raw: true });
+    if (!busModel?.planBinary) {
+        return { exceeded: false };
+    }
+
+    const seatTypes = getSeatTypes(busModel.planBinary);
+    const singleSeatNumbers = Object.entries(seatTypes)
+        .filter(([, type]) => type === "single")
+        .map(([seat]) => Number(seat))
+        .filter(num => !Number.isNaN(num));
+
+    if (!singleSeatNumbers.length) {
+        return { exceeded: false };
+    }
+
+    const uniqueSeatNumbers = [...new Set(seatNumbers.map(num => Number(num)).filter(num => !Number.isNaN(num)))];
+    const newSingleSeatCount = uniqueSeatNumbers.filter(seat => singleSeatNumbers.includes(seat)).length;
+
+    if (!newSingleSeatCount) {
+        return { exceeded: false, limit };
+    }
+
+    const where = {
+        tripId: trip.id,
+        status: { [Op.in]: ACTIVE_TICKET_STATUSES_FOR_SINGLE_SEAT_LIMIT },
+        seatNo: { [Op.in]: singleSeatNumbers },
+    };
+
+    if (excludedTicketIds.length) {
+        where.id = { [Op.notIn]: excludedTicketIds };
+    }
+
+    const existingCount = await models.Ticket.count({ where });
+
+    if (existingCount + newSingleSeatCount > limit) {
+        return { exceeded: true, limit, existingCount, newSingleSeatCount };
+    }
+
+    return { exceeded: false, limit, existingCount, newSingleSeatCount };
+}
+
 exports.test = async (req, res, next) => {
     try {
         const tripId = 13;
@@ -1943,6 +2055,29 @@ exports.postTickets = async (req, res, next) => {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
+        const route = trip.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
+
+        if (status === "reservation") {
+            const reservationCheck = await checkReservationLimit(req.models, trip, route, tickets.length);
+            if (reservationCheck.exceeded) {
+                return res.status(400).json({
+                    message: `Maksimum rezervasyon limiti (${reservationCheck.limit}) aşılamaz.`,
+                });
+            }
+        }
+
+        if (status === "reservation" || status === "completed") {
+            const seatNumbers = tickets
+                .map(t => t?.seatNumber)
+                .filter(seat => seat !== undefined && seat !== null && seat !== "");
+            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, seatNumbers);
+            if (singleSeatCheck.exceeded) {
+                return res.status(400).json({
+                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                });
+            }
+        }
+
         // --- RouteStops ve Stops (boş dizi korumalı) ---
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
@@ -2597,6 +2732,18 @@ exports.postMoveTickets = async (req, res, next) => {
         console.log(`${trip.date} ${trip.modifiedTime}`)
 
         const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
+
+        const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
+        const newSeatNumbers = Array.isArray(newSeats) ? newSeats : [];
+        if (route) {
+            const excludeIds = tickets.map(t => t.id);
+            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, newSeatNumbers, excludeIds);
+            if (singleSeatCheck.exceeded) {
+                return res.status(400).json({
+                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                });
+            }
+        }
 
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i];
@@ -3379,9 +3526,21 @@ exports.postSaveRoute = async (req, res, next) => {
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, routeCode, routeDescription, routeTitle, routeFrom, routeTo, routeStopsSTR } = data;
+        const {
+            id,
+            routeCode,
+            routeDescription,
+            routeTitle,
+            routeFrom,
+            routeTo,
+            routeStopsSTR,
+            reservationOptionTime,
+            refundTransferOptionTime,
+            maxReservationCount,
+            maxSingleSeatCount,
+        } = data;
 
-        const routeStops = JSON.parse(routeStopsSTR)
+        const routeStops = routeStopsSTR ? JSON.parse(routeStopsSTR) : [];
 
         const [route, created] = await req.models.Route.upsert(
             {
@@ -3391,6 +3550,10 @@ exports.postSaveRoute = async (req, res, next) => {
                 title: routeTitle,
                 fromStopId: routeFrom,
                 toStopId: routeTo,
+                reservationOptionTime: normalizeTimeInput(reservationOptionTime),
+                refundTransferOptionTime: normalizeTimeInput(refundTransferOptionTime),
+                maxReservationCount: toIntegerOrNull(maxReservationCount),
+                maxSingleSeatCount: toIntegerOrNull(maxSingleSeatCount),
             },
             { returning: true }
         );

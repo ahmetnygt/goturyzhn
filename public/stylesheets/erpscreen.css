@@ -553,6 +553,41 @@ select.price-button-select {
     width: 5vw;
 }
 
+.route-settings .time-flatpickr {
+    width: 6rem;
+}
+
+.route-tabs {
+    gap: 0.5rem;
+}
+
+.route-tab {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.route-tab.active {
+    background-color: #2660ff;
+    color: #fff;
+    border-color: #2660ff;
+}
+
+.route-tab-panels {
+    height: calc(100% - 3rem);
+}
+
+.route-tab-panel {
+    display: none;
+    height: 100%;
+}
+
+.route-tab-panel.active {
+    display: block;
+}
+
+.route-tab-panel .form-text {
+    font-size: 0.875rem;
+}
+
 .route-info {
     flex: 0 0 auto;
     width: 33.33333333%;
