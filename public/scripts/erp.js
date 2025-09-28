@@ -836,128 +836,100 @@ initTcknInputs(".trip-cargo-sender-identity");
 
 // Seferi yükler
 async function loadTrip(date, time, tripId) {
-    await $.ajax({
-        url: "/get-trip",
-        type: "GET",
-        data: { date: date, time: time, stopId: currentStop, tripId: tripId },
-        success: async function (response) {
-            console.log(date)
-            console.log(time)
-            console.log(tripId)
-            await $.ajax({
-                url: "/get-passengers-table",
-                type: "GET",
-                data: { date: date, time: time, tripId, stopId: currentStop },
-                success: function (response) {
-                    $(".passenger-table").html(response)
-                    $(".passenger-table tbody tr").off().on("click", function (e) {
-                        const $row = $(this);
-                        if (!$row.closest('#activeTickets').length) return;
+    try {
+        console.log(date);
+        console.log(time);
+        console.log(tripId);
 
-                        const $popup = $(".taken-ticket-ops-pop-up");
+        const commonData = { date, time, tripId, stopId: currentStop };
 
-                        // Eğer aynı satıra tıklandıysa popup kapat
-                        if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
-                            $popup.hide();
-                            currentPassengerRow = null;
-                            selectedTakenSeats = [];
-                            $(".passenger-table tbody tr").removeClass("selected");
-                            return;
-                        }
+        // Birbiriyle bağımsız istekleri aynı anda göndererek ardışık await kaynaklı gecikmeyi azaltıyoruz.
+        const [
+            tripResponse,
+            passengersResponse,
+            ticketOpsResponse,
+            tripNotesResponse,
+            routeStopsResponse,
+        ] = await Promise.all([
+            $.ajax({ url: "/get-trip", type: "GET", data: commonData }),
+            $.ajax({ url: "/get-passengers-table", type: "GET", data: commonData }),
+            $.ajax({ url: "/get-ticketops-popup", type: "GET", data: commonData }),
+            $.ajax({ url: "/get-trip-notes", type: "GET", data: { date, time, tripId } }),
+            $.ajax({ url: "/get-route-stops-time-list", type: "GET", data: { date, time, tripId } }),
+        ]);
 
-                        currentPassengerRow = $row;
-                        $(".seat").removeClass("selected");
-                        $(".passenger-table tbody tr").removeClass("selected");
+        $(".busPlan").html(tripResponse);
+        document.querySelectorAll('.seat-row').forEach(row => {
+            const seats = row.querySelectorAll('.seat');
 
-                        currentGroupId = $row.data("group-id");
-                        selectedTicketStopId = $row.data("stop-id");
+            if (
+                Array.from(seats).every(seat =>
+                    seat.classList.contains('hidden') || seat.classList.contains('none')
+                )
+            ) {
+                row.remove();
+            }
+        });
 
-                        const seatNumbers = [];
-                        $(`.passenger-table tbody tr[data-group-id='${currentGroupId}']`).each(function () {
-                            seatNumbers.push($(this).data("seat-number"));
-                            $(this).addClass("selected");
-                        });
-                        selectedTakenSeats = seatNumbers;
+        $(".ticket-ops-pop-up").html(ticketOpsResponse);
+        $(".trip-notes").html(tripNotesResponse);
+        $(".stops-times").html(routeStopsResponse);
 
-                        updateTakenTicketOpsVisibility($row);
+        $(".passenger-table").html(passengersResponse);
+        $(".passenger-table tbody tr").off().on("click", function (e) {
+            const $row = $(this);
+            if (!$row.closest('#activeTickets').length) return;
 
-                        // Popup'ı mouse konumuna yerleştir
-                        let left = e.pageX + 10;
-                        let top = e.pageY + 10;
+            const $popup = $(".taken-ticket-ops-pop-up");
 
-                        const popupWidth = $popup.outerWidth();
-                        const popupHeight = $popup.outerHeight();
-                        const viewportWidth = $(window).width();
-                        const viewportHeight = $(window).height();
+            // Eğer aynı satıra tıklandıysa popup kapat
+            if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
+                $popup.hide();
+                currentPassengerRow = null;
+                selectedTakenSeats = [];
+                $(".passenger-table tbody tr").removeClass("selected");
+                return;
+            }
 
-                        // Sağ kenarı taşmasın
-                        if (left + popupWidth > viewportWidth) {
-                            left = e.pageX - popupWidth - 10;
-                            if (left < 0) left = 0;
-                        }
+            currentPassengerRow = $row;
+            $(".seat").removeClass("selected");
+            $(".passenger-table tbody tr").removeClass("selected");
 
-                        // Alt kenarı taşmasın
-                        if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
-                            top = e.pageY - popupHeight - 10;
-                            if (top < 0) top = 0;
-                        }
+            currentGroupId = $row.data("group-id");
+            selectedTicketStopId = $row.data("stop-id");
 
-                        $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
-                    });
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            })
-
-            await $.ajax({
-                url: "/get-ticketops-popup",
-                type: "GET",
-                data: { date: date, time: time, tripId, stopId: currentStop },
-                success: function (response) {
-                    $(".ticket-ops-pop-up").html(response)
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            })
-
-            await $.ajax({
-                url: "/get-trip-notes",
-                type: "GET",
-                data: { date: date, time: time, tripId },
-                success: function (response) {
-                    $(".trip-notes").html(response)
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            })
-
-            await $.ajax({
-                url: "/get-route-stops-time-list",
-                type: "GET",
-                data: { date: date, time: time, tripId: tripId },
-                success: function (response) {
-                    $(".stops-times").html(response)
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            })
-
-            $(".busPlan").html(response)
-            document.querySelectorAll('.seat-row').forEach(row => {
-                const seats = row.querySelectorAll('.seat');
-
-                if (
-                    Array.from(seats).every(seat =>
-                        seat.classList.contains('hidden') || seat.classList.contains('none')
-                    )
-                ) {
-                    row.remove();
-                }
+            const seatNumbers = [];
+            $(`.passenger-table tbody tr[data-group-id='${currentGroupId}']`).each(function () {
+                seatNumbers.push($(this).data("seat-number"));
+                $(this).addClass("selected");
             });
+            selectedTakenSeats = seatNumbers;
+
+            updateTakenTicketOpsVisibility($row);
+
+            // Popup'ı mouse konumuna yerleştir
+            let left = e.pageX + 10;
+            let top = e.pageY + 10;
+
+            const popupWidth = $popup.outerWidth();
+            const popupHeight = $popup.outerHeight();
+            const viewportWidth = $(window).width();
+            const viewportHeight = $(window).height();
+
+            // Sağ kenarı taşmasın
+            if (left + popupWidth > viewportWidth) {
+                left = e.pageX - popupWidth - 10;
+                if (left < 0) left = 0;
+            }
+
+            // Alt kenarı taşmasın
+            if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
+                top = e.pageY - popupHeight - 10;
+                if (top < 0) top = 0;
+            }
+
+            $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
+        });
 
             // Tek handler: önce eskileri kaldır, sonra bağla
             $(".seat").on("click", function (e) {
@@ -2003,6 +1975,9 @@ async function loadTrip(date, time, tripId) {
         }
     });
 
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 function normalizeDateString(value) {
