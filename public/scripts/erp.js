@@ -960,7 +960,7 @@ async function loadTrip(date, time, tripId) {
             });
 
             // Tek handler: önce eskileri kaldır, sonra bağla
-            $(".seat").on("click", function (e) {
+            $(".seat").off("click").on("click", function (e) {
                 console.log("koltuğa tıklandı")
 
                 const $seat = $(this);
@@ -1787,7 +1787,7 @@ async function loadTrip(date, time, tripId) {
                 });
             })
 
-            $(".seat").off().on("mouseenter", function (e) {
+            $(".seat").off("mouseenter").on("mouseenter", function (e) {
                 const data = e.currentTarget.dataset
 
                 const rect = this.getBoundingClientRect();
@@ -1830,7 +1830,7 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
-            $(".seat").off().on("mouseleave", function () {
+            $(".seat").off("mouseleave").on("mouseleave", function () {
                 $(".passenger-info-popup").hide();
             });
             $(".account-cut").off().on("click", async () => {

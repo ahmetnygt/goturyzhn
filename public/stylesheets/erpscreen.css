@@ -1780,6 +1780,8 @@ div.ticket-cancel-refund-open-close {
     top: 0;
     z-index: 100;
     display: none;
+    font-size: .75rem;
+    font-weight: 600;
 }
 
 .search-ticket-ops-pop-up {
@@ -1833,7 +1835,7 @@ div.ticket-cancel-refund-open-close {
     background-color: white;
     border: 1px solid #dee2e6;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 40%) !important;
-    font-size: .85rem;
+    font-size: 1rem;
     width: max-content;
 }
 
