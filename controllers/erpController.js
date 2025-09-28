@@ -1884,7 +1884,7 @@ exports.getTicketRow = async (req, res, next) => {
     if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
 
     const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } });
-    const isOwnBranch = stopId ? branch.stopId == stopId : false;
+    const isOwnBranch = stopId ? branch?.stopId == stopId : false;
 
     const routeStops = await req.models.RouteStop.findAll({
         where: { routeId: trip.routeId },

@@ -959,6 +959,131 @@ async function loadTrip(date, time, tripId) {
                 }
             });
 
+            // Tek handler: önce eskileri kaldır, sonra bağla
+            $(".seat").on("click", function (e) {
+                console.log("koltuğa tıklandı")
+
+                const $seat = $(this);
+                const rect = this.getBoundingClientRect();
+                const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
+                const isTaken = Boolean(createdAt); // dolu koltuk mu?
+
+                // ---- Taşıma modu ----
+                if (isMovingActive) {
+                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
+                    $(".move-to-trip-place").html(`${currentStopStr}`)
+                    $(".move-to").css("display", "flex")
+                    // DOLU koltuklarda (grup) davranış
+                    if (isTaken) {
+                        if (selectedTakenSeats.length > 0) {
+                            // varsa temizle
+                            selectedTakenSeats = [];
+                            $(".seat").removeClass("selected");
+                        } else {
+                            // grupça seç
+                            const seatNumbers = [];
+                            $(".seat").each((i, el) => {
+                                if (el.dataset.groupId == groupId) {
+                                    seatNumbers.push(el.dataset.seatNumber);
+                                    el.classList.add("selected");
+                                }
+                            });
+                            selectedTakenSeats = seatNumbers;
+                        }
+                        return;
+                    }
+
+                    // BOŞ koltuklarda hedef seçim
+                    const already = selectedSeats.includes(seatNumber);
+                    const targetCount = movingSelectedSeats.length;
+
+                    if (already) {
+                        // seçimi kaldır
+                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                        $seat.removeClass("selected");
+                        return;
+                    }
+
+                    if (selectedSeats.length >= targetCount) {
+                        alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
+                        return;
+                    }
+
+                    selectedSeats.push(seatNumber);
+                    $seat.addClass("selected");
+
+                    // İlgili buton metnini güncelle (mevcut mantığını korudum)
+                    const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
+                    if ($btn.length) {
+                        $btn.html($btn.html() + ` => ${seatNumber}`);
+                    }
+
+                    return; // taşıma modunda popup yok
+                }
+
+                // ---- Normal mod (popup + seçim) ----
+                const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
+
+                $(".ticket-op").css("display", "flex")
+
+                if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none")
+                else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none")
+
+                // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
+                if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
+                    $popup.hide();
+                    currentSeat = null;
+                } else {
+                    currentSeat = $seat;
+
+                    // Popup pozisyonu
+                    let left = rect.right + window.scrollX + 10;
+                    let top = rect.top + window.scrollY + 25;
+
+                    $popup.css({ left: left + "px", top: top + "px", display: "block" });
+
+                    // Aşağı taşarsa yukarı al
+                    const popupHeight = $popup.outerHeight();
+                    const viewportBottom = window.scrollY + window.innerHeight;
+                    if (top + popupHeight > viewportBottom) {
+                        top = rect.top + window.scrollY - popupHeight - 10;
+                        if (top < 0) top = 0;
+                        $popup.css("top", top + "px");
+                    }
+                }
+
+                // Seçim davranışı (normal mod)
+                if (!isTaken) {
+                    // boş koltuk toggle
+                    if (!selectedSeats.includes(seatNumber)) {
+                        selectedSeats.push(seatNumber);
+                        $seat.addClass("selected");
+                    } else {
+                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                        $seat.removeClass("selected");
+                    }
+                } else {
+                    // dolu koltuk: grupça seç/kaldır
+                    currentGroupId = $seat.data("group-id")
+                    selectedTicketStopId = currentStop;
+                    updateTakenTicketOpsVisibility($seat)
+
+                    if (selectedTakenSeats.length > 0) {
+                        selectedTakenSeats = [];
+                        $(".seat").removeClass("selected");
+                    } else {
+                        const seatNumbers = [];
+                        $(".seat").each((i, el) => {
+                            if (el.dataset.groupId == groupId) {
+                                seatNumbers.push(el.dataset.seatNumber);
+                                el.classList.add("selected");
+                            }
+                        });
+                        selectedTakenSeats = seatNumbers;
+                    }
+                }
+            });
+
             // Adjacent seat gender indicators
             document.querySelectorAll('.seat').forEach(seat => {
                 const gender = seat.dataset.gender;
@@ -1133,11 +1258,11 @@ async function loadTrip(date, time, tripId) {
                 }
             })
 
-            // $(document).on("click", function () {
-            //     $(".ticket-ops-pop-up").hide();
-            //     $(".taken-ticket-ops-pop-up").hide();
-            //     currentSeat = null;
-            // });
+            $(document).on("click", function () {
+                $(".ticket-ops-pop-up").hide();
+                $(".taken-ticket-ops-pop-up").hide();
+                currentSeat = null;
+            });
 
             $(".trip-option-revenues").off().on("click", async function (e) {
                 e.stopPropagation();
@@ -1661,132 +1786,6 @@ async function loadTrip(date, time, tripId) {
                     }
                 });
             })
-
-            // Tek handler: önce eskileri kaldır, sonra bağla
-            $(".seat").off("click").on("click", function (e) {
-                e.stopPropagation();
-
-                const $seat = $(this);
-                const rect = this.getBoundingClientRect();
-                const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
-                const isTaken = Boolean(createdAt); // dolu koltuk mu?
-
-                // ---- Taşıma modu ----
-                if (isMovingActive) {
-                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
-                    $(".move-to-trip-place").html(`${currentStopStr}`)
-                    $(".move-to").css("display", "flex")
-                    // DOLU koltuklarda (grup) davranış
-                    if (isTaken) {
-                        if (selectedTakenSeats.length > 0) {
-                            // varsa temizle
-                            selectedTakenSeats = [];
-                            $(".seat").removeClass("selected");
-                        } else {
-                            // grupça seç
-                            const seatNumbers = [];
-                            $(".seat").each((i, el) => {
-                                if (el.dataset.groupId == groupId) {
-                                    seatNumbers.push(el.dataset.seatNumber);
-                                    el.classList.add("selected");
-                                }
-                            });
-                            selectedTakenSeats = seatNumbers;
-                        }
-                        return;
-                    }
-
-                    // BOŞ koltuklarda hedef seçim
-                    const already = selectedSeats.includes(seatNumber);
-                    const targetCount = movingSelectedSeats.length;
-
-                    if (already) {
-                        // seçimi kaldır
-                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
-                        $seat.removeClass("selected");
-                        return;
-                    }
-
-                    if (selectedSeats.length >= targetCount) {
-                        alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
-                        return;
-                    }
-
-                    selectedSeats.push(seatNumber);
-                    $seat.addClass("selected");
-
-                    // İlgili buton metnini güncelle (mevcut mantığını korudum)
-                    const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
-                    if ($btn.length) {
-                        $btn.html($btn.html() + ` => ${seatNumber}`);
-                    }
-
-                    return; // taşıma modunda popup yok
-                }
-
-                // ---- Normal mod (popup + seçim) ----
-                const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
-
-                $(".ticket-op").css("display", "flex")
-
-                if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none")
-                else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none")
-
-                // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
-                if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
-                    $popup.hide();
-                    currentSeat = null;
-                } else {
-                    currentSeat = $seat;
-
-                    // Popup pozisyonu
-                    let left = rect.right + window.scrollX + 10;
-                    let top = rect.top + window.scrollY + 25;
-
-                    $popup.css({ left: left + "px", top: top + "px", display: "block" });
-
-                    // Aşağı taşarsa yukarı al
-                    const popupHeight = $popup.outerHeight();
-                    const viewportBottom = window.scrollY + window.innerHeight;
-                    if (top + popupHeight > viewportBottom) {
-                        top = rect.top + window.scrollY - popupHeight - 10;
-                        if (top < 0) top = 0;
-                        $popup.css("top", top + "px");
-                    }
-                }
-
-                // Seçim davranışı (normal mod)
-                if (!isTaken) {
-                    // boş koltuk toggle
-                    if (!selectedSeats.includes(seatNumber)) {
-                        selectedSeats.push(seatNumber);
-                        $seat.addClass("selected");
-                    } else {
-                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
-                        $seat.removeClass("selected");
-                    }
-                } else {
-                    // dolu koltuk: grupça seç/kaldır
-                    currentGroupId = $seat.data("group-id")
-                    selectedTicketStopId = currentStop;
-                    updateTakenTicketOpsVisibility($seat)
-
-                    if (selectedTakenSeats.length > 0) {
-                        selectedTakenSeats = [];
-                        $(".seat").removeClass("selected");
-                    } else {
-                        const seatNumbers = [];
-                        $(".seat").each((i, el) => {
-                            if (el.dataset.groupId == groupId) {
-                                seatNumbers.push(el.dataset.seatNumber);
-                                el.classList.add("selected");
-                            }
-                        });
-                        selectedTakenSeats = seatNumbers;
-                    }
-                }
-            });
-
 
             $(".seat").off().on("mouseenter", function (e) {
                 const data = e.currentTarget.dataset

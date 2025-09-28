@@ -1,14 +1,14 @@
 extends erplayout
 
 block content
-    .d-flex.justify-content-center
-        img(src="/images/anafartalar.png" style="")
-    form(action="/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
-        div
-            label.form-label Kullanıcı Adı
-            input.username.form-control(type="text" name="username" required)
-            label.form-label Şifre
-            input.password.form-control(type="password" name="password" required)
-            button.btn.btn-outline-primary(type="submit") GİRİŞ YAP
+    .d-flex.flex-column.justify-content-center.align-items-center.gap-2.mt-3.h-100
+        img(src="/images/gotur_yzhn_logo.png" style="")
+        form(action="/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
+            .d-flex.flex-column
+                label.form-label Kullanıcı Adı
+                input.username.form-control(type="text" name="username" required)
+                label.form-label Şifre
+                input.password.form-control(type="password" name="password" required)
+                button.btn.btn-primary.mt-2(type="submit") GİRİŞ YAP
 block scripts 
     script(src="/scripts/erplogin.js")
