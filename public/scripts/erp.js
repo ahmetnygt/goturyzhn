@@ -1001,11 +1001,24 @@ async function loadTrip(date, time, tripId) {
             if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none");
             else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none");
 
-            // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
-            if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
+            const isSameSeat = currentSeat && currentSeat.is($seat) && $popup.is(":visible");
+            let shouldHidePopup = false;
+
+            if (isSameSeat) {
+                if (isTaken) {
+                    shouldHidePopup = true;
+                } else {
+                    const remainingSeatCount = selectedSeats.filter(s => s !== seatNumber).length;
+                    if (remainingSeatCount === 0) {
+                        shouldHidePopup = true;
+                    }
+                }
+            }
+
+            if (shouldHidePopup) {
                 $popup.hide();
                 currentSeat = null;
-            } else {
+            } else if (!isSameSeat) {
                 currentSeat = $seat;
 
                 // Popup pozisyonu
@@ -1026,8 +1039,15 @@ async function loadTrip(date, time, tripId) {
 
             // Seçim davranışı (normal mod)
             if (!isTaken) {
+                const isSeatSelected = selectedSeats.includes(seatNumber);
+
+                if (!isSeatSelected && selectedTakenSeats.length > 0) {
+                    alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
+                    return;
+                }
+
                 // boş koltuk toggle
-                if (!selectedSeats.includes(seatNumber)) {
+                if (!isSeatSelected) {
                     selectedSeats.push(seatNumber);
                     $seat.addClass("selected");
                 } else {
@@ -1035,6 +1055,20 @@ async function loadTrip(date, time, tripId) {
                     $seat.removeClass("selected");
                 }
             } else {
+                if (selectedSeats.length > 0) {
+                    alert("Boş koltuk seçiliyken dolu koltuk seçemezsiniz.");
+                    return;
+                }
+
+                const activeGroupId = selectedTakenSeats.length > 0
+                    ? $(`.seat[data-seat-number="${selectedTakenSeats[0]}"]`).attr("data-group-id")
+                    : null;
+
+                if (activeGroupId && activeGroupId !== groupId) {
+                    alert("Başka bir bilet grubu zaten seçili. Önce mevcut seçimi kaldırın.");
+                    return;
+                }
+
                 // dolu koltuk: grupça seç/kaldır
                 currentGroupId = $seat.data("group-id");
                 selectedTicketStopId = currentStop;
@@ -1042,14 +1076,14 @@ async function loadTrip(date, time, tripId) {
 
                 if (selectedTakenSeats.length > 0) {
                     selectedTakenSeats = [];
-                    $(".seat").removeClass("selected");
+                    $(`.seat[data-group-id='${groupId}']`).each((i, el) => {
+                        el.classList.remove("selected");
+                    });
                 } else {
                     const seatNumbers = [];
-                    $(".seat").each((i, el) => {
-                        if (el.dataset.groupId == groupId) {
-                            seatNumbers.push(el.dataset.seatNumber);
-                            el.classList.add("selected");
-                        }
+                    $(`.seat[data-group-id='${groupId}']`).each((i, el) => {
+                        seatNumbers.push(el.dataset.seatNumber);
+                        el.classList.add("selected");
                     });
                     selectedTakenSeats = seatNumbers;
                 }
