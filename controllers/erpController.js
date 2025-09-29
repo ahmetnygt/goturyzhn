@@ -5571,12 +5571,12 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             const toRouteStopId = toKey(ticket.toRouteStopId);
             if (toRouteStopId) {
                 const toRouteStop = routeStopMap.get(toRouteStopId);
+                console.log("GİDİŞ:", toRouteStop)
                 if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
                     toStopTitle = stopMap.get(toKey(toRouteStop.stopId)) || "";
                 }
             }
 
-            const routeTitle = toStopTitle ? `${fromStopTitle} - ${toStopTitle}` : fromStopTitle;
             const paymentType = normalizePayment(ticket.payment);
             const ticketPrice = Number(ticket.price) || 0;
 
@@ -5585,8 +5585,8 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 user: user.name || "Belirtilmemiş Kullanıcı",
                 transactionDate: ticket.createdAt ? new Date(ticket.createdAt) : null,
                 tripInfo: {
-                    route: routeTitle,
                     departureStop: fromStopTitle,
+                    arrivalStop: toStopTitle,
                     departureTime: departureDate
                 },
                 payment: paymentLabel(paymentType, ticket.payment),
@@ -5594,6 +5594,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 pnr: ticket.pnr || "-",
                 price: ticketPrice
             };
+
 
             userBucket.tickets.push(ticketRecord);
             userBucket.totals.count += 1;
