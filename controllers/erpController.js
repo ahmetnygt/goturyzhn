@@ -6041,3 +6041,132 @@ exports.postAnnouncementSeen = async (req, res, next) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+function destroySessionAndRespond(req, res) {
+    const successPayload = { success: true, redirect: "/login" };
+
+    if (!req.session) {
+        res.json(successPayload);
+        return;
+    }
+
+    req.session.destroy(err => {
+        if (err) {
+            console.error("Session destroy error:", err);
+            res.status(500).json({ message: "Oturum kapatılırken bir hata oluştu." });
+            return;
+        }
+        res.clearCookie("connect.sid");
+        res.json(successPayload);
+    });
+}
+
+exports.postUpdateProfile = async (req, res, next) => {
+    try {
+        if (!req.session?.firmUser?.id) {
+            return res.status(401).json({ message: "Oturum bulunamadı." });
+        }
+
+        const userId = req.session.firmUser.id;
+        const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+        const username = typeof req.body.username === "string" ? req.body.username.trim() : "";
+        const rawPhone = typeof req.body.phoneNumber === "string" ? req.body.phoneNumber : "";
+
+        if (!name) {
+            return res.status(400).json({ message: "Ad soyad boş bırakılamaz." });
+        }
+
+        if (!username) {
+            return res.status(400).json({ message: "Kullanıcı adı boş bırakılamaz." });
+        }
+
+        const existingUser = await req.models.FirmUser.findOne({
+            where: {
+                username,
+                id: { [Op.ne]: userId }
+            }
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ message: "Bu kullanıcı adı kullanılmaktadır." });
+        }
+
+        const digits = rawPhone.replace(/\D/g, "");
+        let formattedPhone = null;
+
+        if (digits) {
+            if (digits.length !== 10) {
+                return res.status(400).json({ message: "Telefon numarası 10 haneli olmalıdır." });
+            }
+            formattedPhone = `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+        }
+
+        const user = await req.models.FirmUser.findByPk(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+        }
+
+        await user.update({
+            name,
+            username,
+            phoneNumber: formattedPhone,
+        });
+
+        return destroySessionAndRespond(req, res);
+    } catch (err) {
+        console.error("Profil güncelleme hatası:", err);
+        res.status(500).json({ message: "Profil güncellenemedi." });
+    }
+};
+
+exports.postChangePassword = async (req, res, next) => {
+    try {
+        if (!req.session?.firmUser?.id) {
+            return res.status(401).json({ message: "Oturum bulunamadı." });
+        }
+
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        if (!currentPassword) {
+            return res.status(400).json({ message: "Eski şifre gereklidir." });
+        }
+
+        if (!newPassword) {
+            return res.status(400).json({ message: "Yeni şifre gereklidir." });
+        }
+
+        if (typeof newPassword !== "string" || newPassword.length < 6) {
+            return res.status(400).json({ message: "Yeni şifre en az 6 karakter olmalıdır." });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ message: "Yeni şifreler uyuşmuyor." });
+        }
+
+        const user = await req.models.FirmUser.findByPk(req.session.firmUser.id);
+
+        if (!user) {
+            return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+        }
+
+        const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+
+        if (!isCurrentValid) {
+            return res.status(400).json({ message: "Eski şifre hatalı." });
+        }
+
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({ message: "Yeni şifre eski şifre ile aynı olamaz." });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await user.update({ password: hashedPassword });
+
+        return destroySessionAndRespond(req, res);
+    } catch (err) {
+        console.error("Şifre güncelleme hatası:", err);
+        res.status(500).json({ message: "Şifre güncellenemedi." });
+    }
+};
