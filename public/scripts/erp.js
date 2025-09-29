@@ -5956,6 +5956,41 @@ $(".report-item").on("click", async e => {
         popup.data("initialized", true);
     }
 
+    if (report === "externalReturnTickets" && !popup.data("initialized")) {
+        try {
+            const branches = await fetch("/get-branches-list?onlyData=true").then(r => r.json());
+            const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+            branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
+
+            branchSel.off("change").on("change", async function () {
+                const id = $(this).val();
+                const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+                if (id) {
+                    try {
+                        const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
+                        users.forEach(u => userSel.append(`<option value="${u.id}">${u.name}</option>`));
+                    } catch (err) {
+                        console.error("externalReturnTickets users load error", err);
+                    }
+                }
+            });
+
+            const startInput = popup.find(".report-start")[0];
+            if (startInput) {
+                flatpickr(startInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+            }
+
+            const endInput = popup.find(".report-end")[0];
+            if (endInput) {
+                flatpickr(endInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+            }
+
+            popup.data("initialized", true);
+        } catch (err) {
+            console.error("externalReturnTickets init error", err);
+        }
+    }
+
     if (report === "dailyUserAccount" && !popup.data("initialized")) {
         try {
             const users = await fetch("/get-users-list?onlyData=true").then(r => r.json());
