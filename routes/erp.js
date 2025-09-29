@@ -147,7 +147,6 @@ router.get('/salesAndRefunds', auth, erpController.getSalesRefundsReport);
 router.get('/webTickets', auth, erpController.getWebTicketsReport);
 router.get('/dailyUserAccount', auth, erpController.getDailyUserAccountReport);
 router.get('/upcomingTickets', auth, erpController.getUpcomingTicketsReport);
-router.get('/externalReturnTickets', auth, erpController.getExternalReturnTicketsReport);
 router.get('/busTransactions', auth, erpController.getBusTransactionsReport);
 
 module.exports = router;

@@ -104,12 +104,12 @@ function generateBusTransactionsReport(data, output) {
     doc.moveDown(0.8);
   };
 
-  const drawGroupTotals = (groupTotals) => {
+  const drawGroupTotals = (groupTotals, busTitle) => {
     const items = [
+      { label: 'Plaka', value: busTitle },
       { label: 'Gelir', value: formatCurrency(groupTotals.income) },
       { label: 'Gider', value: formatCurrency(groupTotals.expense) },
       { label: 'Net', value: formatCurrency(groupTotals.net) },
-      { label: 'Kayıt', value: formatCount(groupTotals.count) },
     ];
     drawKeyValueRow(items);
   };
@@ -241,7 +241,7 @@ function generateBusTransactionsReport(data, output) {
 
     doc.moveDown(0.4);
     doc.font('Bold');
-    drawGroupTotals(group.totals || {});
+    drawGroupTotals(group.totals || {}, busTitle);
     doc.font('Regular');
 
     if (index < groups.length - 1) {
