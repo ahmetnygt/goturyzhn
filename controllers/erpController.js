@@ -5576,7 +5576,6 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 }
             }
 
-            const routeTitle = toStopTitle ? `${fromStopTitle} - ${toStopTitle}` : fromStopTitle;
             const paymentType = normalizePayment(ticket.payment);
             const ticketPrice = Number(ticket.price) || 0;
 
@@ -5585,8 +5584,8 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 user: user.name || "Belirtilmemiş Kullanıcı",
                 transactionDate: ticket.createdAt ? new Date(ticket.createdAt) : null,
                 tripInfo: {
-                    route: routeTitle,
                     departureStop: fromStopTitle,
+                    arrivalStop: toStopTitle,
                     departureTime: departureDate
                 },
                 payment: paymentLabel(paymentType, ticket.payment),
