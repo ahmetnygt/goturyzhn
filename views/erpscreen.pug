@@ -21,6 +21,7 @@ block content
                 li.list-group-item.report-item(data-report="webTickets") Web Biletleri
                 li.list-group-item.report-item(data-report="dailyUserAccount") Günlük Kullanıcı Hesabı
                 li.list-group-item.report-item(data-report="upcomingTickets") İleri Tarihli Satışlar
+                li.list-group-item.report-item(data-report="externalReturnTickets") Dış Bölge (Dönüş) Biletleri
 
     .salesAndRefunds-report-popup.report-popup
         .gtr-header
@@ -121,6 +122,29 @@ block content
             .input-group
                 span.input-group-text Bitiş
                 input.form-control.report-end(type="text")
+            .input-group
+                span.input-group-text Kullanıcı
+                select.form-select.report-user
+                    option(value="") Seçiniz
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button OLUŞTUR
+
+    .externalReturnTickets-report-popup.report-popup
+        .gtr-header
+            span DIŞ BÖLGE (DÖNÜŞ) BİLETLERİ
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Başlangıç
+                input.form-control.report-start(type="text")
+            .input-group
+                span.input-group-text Bitiş
+                input.form-control.report-end(type="text")
+            .input-group
+                span.input-group-text Şube
+                select.form-select.report-branch
+                    option(value="") Seçiniz
             .input-group
                 span.input-group-text Kullanıcı
                 select.form-select.report-user
