@@ -5238,6 +5238,417 @@ exports.getWebTicketsReport = async (req, res, next) => {
     }
 };
 
+exports.getExternalReturnTicketsReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate, branchId, userId } = req.query || {};
+
+        const parseDate = (value) => {
+            if (!value) {
+                return null;
+            }
+
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        let start = parseDate(startDate) || new Date("1970-01-01T00:00:00Z");
+        let end = parseDate(endDate) || new Date();
+
+        if (start > end) {
+            const temp = start;
+            start = end;
+            end = temp;
+        }
+
+        const [branchRecord, userRecord] = await Promise.all([
+            branchId
+                ? req.models.Branch.findOne({
+                    where: { id: branchId },
+                    attributes: ["id", "title", "stopId"],
+                    raw: true
+                })
+                : null,
+            userId
+                ? req.models.FirmUser.findOne({
+                    where: { id: userId },
+                    attributes: ["id", "name", "branchId"],
+                    raw: true
+                })
+                : null
+        ]);
+
+        const where = {
+            status: { [Op.in]: ["completed", "web", "gotur"] },
+            fromRouteStopId: { [Op.ne]: null },
+            createdAt: { [Op.between]: [start, end] }
+        };
+
+        if (userId) {
+            where.userId = userId;
+        } else {
+            where.userId = { [Op.ne]: null };
+        }
+
+        let tickets = await req.models.Ticket.findAll({
+            where,
+            raw: true,
+            order: [["createdAt", "ASC"]]
+        });
+
+        if (branchId) {
+            const branchUserRecords = await req.models.FirmUser.findAll({
+                where: { branchId },
+                attributes: ["id"],
+                raw: true
+            });
+
+            const allowedUserIds = new Set(branchUserRecords.map(u => String(u.id)));
+            tickets = tickets.filter(t => allowedUserIds.has(String(t.userId)));
+        }
+
+        const userIds = [...new Set(tickets.map(t => t.userId).filter(id => id !== null && id !== undefined))];
+        const users = userIds.length
+            ? await req.models.FirmUser.findAll({
+                where: { id: { [Op.in]: userIds } },
+                attributes: ["id", "name", "branchId"],
+                raw: true
+            })
+            : [];
+
+        const branchIds = [...new Set(users.map(u => u.branchId).filter(Boolean))];
+        const branches = branchIds.length
+            ? await req.models.Branch.findAll({
+                where: { id: { [Op.in]: branchIds } },
+                attributes: ["id", "title", "stopId"],
+                raw: true
+            })
+            : [];
+
+        const tripIds = [...new Set(tickets.map(t => t.tripId).filter(Boolean))];
+        const trips = tripIds.length
+            ? await req.models.Trip.findAll({
+                where: { id: { [Op.in]: tripIds } },
+                attributes: ["id", "routeId", "date", "time"],
+                raw: true
+            })
+            : [];
+
+        const routeStopIdsFromTickets = [
+            ...new Set(
+                tickets
+                    .flatMap(t => [t.fromRouteStopId, t.toRouteStopId])
+                    .filter(id => id !== null && id !== undefined)
+            )
+        ];
+
+        const routeStopsSubset = routeStopIdsFromTickets.length
+            ? await req.models.RouteStop.findAll({
+                where: { id: { [Op.in]: routeStopIdsFromTickets } },
+                raw: true
+            })
+            : [];
+
+        const routeIds = [
+            ...new Set([
+                ...trips.map(trip => trip.routeId).filter(Boolean),
+                ...routeStopsSubset.map(rs => rs.routeId).filter(Boolean)
+            ])
+        ];
+
+        const routeStops = routeIds.length
+            ? await req.models.RouteStop.findAll({
+                where: { routeId: { [Op.in]: routeIds } },
+                order: [["routeId", "ASC"], ["order", "ASC"]],
+                raw: true
+            })
+            : [...routeStopsSubset];
+
+        const tripStopTimes = tripIds.length
+            ? await req.models.TripStopTime.findAll({
+                where: { tripId: { [Op.in]: tripIds } },
+                raw: true
+            })
+            : [];
+
+        const toKey = value => (value === undefined || value === null) ? "" : String(value);
+
+        const userMap = new Map(users.map(u => [toKey(u.id), u]));
+        const branchMap = new Map(branches.map(b => [toKey(b.id), b]));
+        const tripMap = new Map(trips.map(trip => [toKey(trip.id), trip]));
+
+        const routeStopMap = new Map(routeStops.map(rs => [toKey(rs.id), rs]));
+        routeStopsSubset.forEach(rs => {
+            const key = toKey(rs.id);
+            if (!routeStopMap.has(key)) {
+                routeStopMap.set(key, rs);
+                routeStops.push(rs);
+            }
+        });
+
+        const routeStopsByRoute = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = toKey(rs.routeId);
+            if (!routeStopsByRoute.has(routeKey)) {
+                routeStopsByRoute.set(routeKey, []);
+            }
+            routeStopsByRoute.get(routeKey).push(rs);
+        });
+
+        routeStopsByRoute.forEach(list => {
+            list.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        });
+
+        const tripStopTimesByTrip = new Map();
+        tripStopTimes.forEach(row => {
+            const key = toKey(row.tripId);
+            if (!tripStopTimesByTrip.has(key)) {
+                tripStopTimesByTrip.set(key, []);
+            }
+            tripStopTimesByTrip.get(key).push(row);
+        });
+
+        const stopIdsSet = new Set();
+        routeStops.forEach(rs => {
+            if (rs.stopId !== null && rs.stopId !== undefined) {
+                stopIdsSet.add(rs.stopId);
+            }
+        });
+        branches.forEach(branch => {
+            if (branch.stopId !== null && branch.stopId !== undefined) {
+                stopIdsSet.add(branch.stopId);
+            }
+        });
+
+        const stops = stopIdsSet.size
+            ? await req.models.Stop.findAll({
+                where: { id: { [Op.in]: Array.from(stopIdsSet) } },
+                attributes: ["id", "title"],
+                raw: true
+            })
+            : [];
+
+        const stopMap = new Map(stops.map(stop => [toKey(stop.id), stop.title]));
+
+        const parseDurationToSeconds = (duration) => {
+            if (!duration) {
+                return 0;
+            }
+
+            const [hours = 0, minutes = 0, seconds = 0] = String(duration).split(":").map(Number);
+            const safeHours = Number.isFinite(hours) ? hours : 0;
+            const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
+            const safeSeconds = Number.isFinite(seconds) ? seconds : 0;
+
+            return safeHours * 3600 + safeMinutes * 60 + safeSeconds;
+        };
+
+        const combineDateAndTime = (dateStr, timeStr) => {
+            if (!dateStr) {
+                return null;
+            }
+
+            const [year, month, day] = String(dateStr).split("-").map(Number);
+            if (!year || !month || !day) {
+                return null;
+            }
+
+            const [hour = 0, minute = 0, second = 0] = String(timeStr || "00:00:00").split(":").map(Number);
+            return new Date(year, (month || 1) - 1, day || 1, hour || 0, minute || 0, second || 0);
+        };
+
+        const stopTimesCache = new Map();
+        const getRouteStopDeparture = (trip, routeStop) => {
+            if (!trip || !routeStop) {
+                return null;
+            }
+
+            const tripKey = toKey(trip.id);
+            const routeKey = toKey(routeStop.routeId || trip.routeId);
+            const cacheKey = `${tripKey}|${routeKey}`;
+
+            if (!stopTimesCache.has(cacheKey)) {
+                const routeList = routeStopsByRoute.get(routeKey) || [];
+                const offsetRows = tripStopTimesByTrip.get(tripKey) || [];
+                const offsetMap = buildOffsetMap(offsetRows);
+                const computed = computeRouteStopTimes(trip, routeList, offsetMap);
+                const timeMap = new Map(computed.map(item => [toKey(item.routeStopId), item.time]));
+                stopTimesCache.set(cacheKey, timeMap);
+            }
+
+            const timeMap = stopTimesCache.get(cacheKey);
+            const timeString = timeMap?.get(toKey(routeStop.id));
+
+            if (timeString) {
+                return combineDateAndTime(trip.date, timeString);
+            }
+
+            const routeList = routeStopsByRoute.get(routeKey) || [];
+            let cumulativeSeconds = 0;
+            for (const rs of routeList) {
+                cumulativeSeconds += parseDurationToSeconds(rs.duration);
+                if (toKey(rs.id) === toKey(routeStop.id)) {
+                    break;
+                }
+            }
+
+            const baseDate = combineDateAndTime(trip.date, trip.time);
+            return baseDate ? new Date(baseDate.getTime() + cumulativeSeconds * 1000) : null;
+        };
+
+        const normalizePayment = (value) => {
+            const lowered = (value || "").toString().toLowerCase();
+            if (lowered === "cash") return "cash";
+            if (lowered === "card") return "card";
+            if (lowered === "point") return "point";
+            return "other";
+        };
+
+        const paymentLabel = (type, original) => {
+            if (type === "cash") return "Nakit";
+            if (type === "card") return "K.Kartı";
+            if (type === "point") return "Puan";
+            return original ? original.toString().toUpperCase() : "-";
+        };
+
+        const branchBuckets = new Map();
+        const totals = { count: 0, amount: 0 };
+
+        tickets.forEach(ticket => {
+            const userKey = toKey(ticket.userId);
+            const user = userMap.get(userKey);
+            if (!user) {
+                return;
+            }
+
+            const branchIdValue = user.branchId !== undefined && user.branchId !== null ? user.branchId : null;
+            const branchKey = branchIdValue !== null ? toKey(branchIdValue) : `none-${userKey}`;
+            const branch = branchIdValue !== null ? branchMap.get(toKey(branchIdValue)) : null;
+
+            const branchTitle = branch?.title || "Belirtilmemiş Şube";
+            const branchStopId = branch?.stopId ?? null;
+
+            const fromRouteStop = routeStopMap.get(toKey(ticket.fromRouteStopId));
+            if (!fromRouteStop) {
+                return;
+            }
+
+            const routeStopStopId = fromRouteStop.stopId ?? null;
+            if (
+                branchStopId !== null && branchStopId !== undefined &&
+                routeStopStopId !== null && routeStopStopId !== undefined &&
+                Number(branchStopId) === Number(routeStopStopId)
+            ) {
+                return;
+            }
+
+            if (!branchBuckets.has(branchKey)) {
+                branchBuckets.set(branchKey, {
+                    id: branch?.id ?? branchIdValue,
+                    title: branchTitle,
+                    users: new Map(),
+                    totals: { count: 0, amount: 0 }
+                });
+            }
+
+            const branchBucket = branchBuckets.get(branchKey);
+
+            if (!branchBucket.users.has(userKey)) {
+                branchBucket.users.set(userKey, {
+                    id: user.id,
+                    name: user.name || "Belirtilmemiş Kullanıcı",
+                    tickets: [],
+                    totals: { count: 0, amount: 0 }
+                });
+            }
+
+            const userBucket = branchBucket.users.get(userKey);
+
+            const trip = tripMap.get(toKey(ticket.tripId));
+            const departureDate = getRouteStopDeparture(trip, fromRouteStop);
+            const fromStopTitle = stopMap.get(toKey(fromRouteStop.stopId)) || "-";
+
+            let toStopTitle = "";
+            const toRouteStopId = toKey(ticket.toRouteStopId);
+            if (toRouteStopId) {
+                const toRouteStop = routeStopMap.get(toRouteStopId);
+                if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
+                    toStopTitle = stopMap.get(toKey(toRouteStop.stopId)) || "";
+                }
+            }
+
+            const routeTitle = toStopTitle ? `${fromStopTitle} - ${toStopTitle}` : fromStopTitle;
+            const paymentType = normalizePayment(ticket.payment);
+            const ticketPrice = Number(ticket.price) || 0;
+
+            const ticketRecord = {
+                branch: branchTitle,
+                user: user.name || "Belirtilmemiş Kullanıcı",
+                transactionDate: ticket.createdAt ? new Date(ticket.createdAt) : null,
+                tripInfo: {
+                    route: routeTitle,
+                    departureStop: fromStopTitle,
+                    departureTime: departureDate
+                },
+                payment: paymentLabel(paymentType, ticket.payment),
+                gender: ticket.gender === "f" ? "K" : ticket.gender === "m" ? "E" : "",
+                pnr: ticket.pnr || "-",
+                price: ticketPrice
+            };
+
+            userBucket.tickets.push(ticketRecord);
+            userBucket.totals.count += 1;
+            userBucket.totals.amount += ticketPrice;
+
+            branchBucket.totals.count += 1;
+            branchBucket.totals.amount += ticketPrice;
+
+            totals.count += 1;
+            totals.amount += ticketPrice;
+        });
+
+        const preparedBranches = Array.from(branchBuckets.values()).map(branch => {
+            const usersArray = Array.from(branch.users.values()).map(user => {
+                user.tickets.sort((a, b) => {
+                    const timeA = a.transactionDate ? new Date(a.transactionDate).getTime() : 0;
+                    const timeB = b.transactionDate ? new Date(b.transactionDate).getTime() : 0;
+                    return timeA - timeB;
+                });
+                return {
+                    id: user.id,
+                    name: user.name,
+                    tickets: user.tickets,
+                    totals: user.totals
+                };
+            }).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"));
+
+            return {
+                id: branch.id,
+                title: branch.title,
+                users: usersArray,
+                totals: branch.totals
+            };
+        }).sort((a, b) => a.title.localeCompare(b.title, "tr-TR"));
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline; filename=\"external_return_tickets.pdf\"");
+
+        await generateExternalReturnTicketsReport({
+            generatedAt: new Date(),
+            query: {
+                startDate: startDate || "",
+                endDate: endDate || "",
+                branch: branchRecord?.title || "Tümü",
+                user: userRecord?.name || "Tümü"
+            },
+            totals,
+            branches: preparedBranches
+        }, res);
+    } catch (err) {
+        console.error("getExternalReturnTicketsReport error:", err);
+        res.status(500).json({ message: "Dış bölge bilet raporu oluşturulamadı." });
+    }
+};
+
 exports.getUpcomingTicketsReport = async (req, res, next) => {
     try {
         const now = new Date();
