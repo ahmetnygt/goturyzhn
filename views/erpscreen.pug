@@ -22,7 +22,7 @@ block content
                 li.list-group-item.report-item(data-report="dailyUserAccount") Günlük Kullanıcı Hesabı
                 li.list-group-item.report-item(data-report="upcomingTickets") İleri Tarihli Satışlar
                 li.list-group-item.report-item(data-report="externalReturnTickets") Dış Bölge (Dönüş) Biletleri
-
+                li.list-group-item.report-item(data-report="busTransactions") Otobüs Gelir Gideri
     .salesAndRefunds-report-popup.report-popup
         .gtr-header
             span SATIŞLAR VE İADELER
@@ -149,6 +149,24 @@ block content
                 span.input-group-text Kullanıcı
                 select.form-select.report-user
                     option(value="") Seçiniz
+            .d-flex.gap-3.justify-content-end
+                button.btn.btn-outline-primary.report-create-button OLUŞTUR
+    .busTransactions-report-popup.report-popup
+        .gtr-header
+            span OTOBÜS GELİR GİDERİ
+        .report-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-3.p-3
+            .input-group
+                span.input-group-text Başlangıç
+                input.form-control.report-start(type="text")
+            .input-group
+                span.input-group-text Bitiş
+                input.form-control.report-end(type="text")
+            .input-group
+                span.input-group-text Otobüs
+                select.form-select.report-bus
+                    option(value="") Tümü
             .d-flex.gap-3.justify-content-end
                 button.btn.btn-outline-primary.report-create-button OLUŞTUR
 

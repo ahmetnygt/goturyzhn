@@ -5920,12 +5920,9 @@ $(".reports-close").on("click", e => {
 });
 
 var report = null;
-$(".report-item").on("click", async e => {
-    report = $(e.currentTarget).data("report");
-    $(".reports-popup").css("display", "none");
-    const popup = $(`.${report}-report-popup`).css("display", "flex");
 
-    if ((report === "salesAndRefunds" || report === "webTickets") && !popup.data("initialized")) {
+const initializeReportPopup = async (reportKey, popup) => {
+    if ((reportKey === "salesAndRefunds" || reportKey === "webTickets") && !popup.data("initialized")) {
         const [branches, stops] = await Promise.all([
             fetch("/get-branches-list?onlyData=true").then(r => r.json()),
             fetch("/get-stops-list?onlyData=true").then(r => r.json())
@@ -5954,6 +5951,40 @@ $(".report-item").on("click", async e => {
         flatpickr(popup.find(".report-end")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
 
         popup.data("initialized", true);
+    }
+    if (report === "externalReturnTickets" && !popup.data("initialized")) {
+        try {
+            const branches = await fetch("/get-branches-list?onlyData=true").then(r => r.json());
+            const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+            branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
+
+            branchSel.off("change").on("change", async function () {
+                const id = $(this).val();
+                const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+                if (id) {
+                    try {
+                        const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
+                        users.forEach(u => userSel.append(`<option value="${u.id}">${u.name}</option>`));
+                    } catch (err) {
+                        console.error("externalReturnTickets users load error", err);
+                    }
+                }
+            });
+
+            const startInput = popup.find(".report-start")[0];
+            if (startInput) {
+                flatpickr(startInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+            }
+
+            const endInput = popup.find(".report-end")[0];
+            if (endInput) {
+                flatpickr(endInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+            }
+
+            popup.data("initialized", true);
+        } catch (err) {
+            console.error("externalReturnTickets init error", err);
+        }
     }
 
     if (report === "externalReturnTickets" && !popup.data("initialized")) {
@@ -6028,15 +6059,16 @@ $(".report-item").on("click", async e => {
         popup.data("initialized", true);
     }
 
-    if (report === "dailyUserAccount" && !popup.data("initialized")) {
+    if (reportKey === "busTransactions" && !popup.data("initialized")) {
         try {
-            const users = await fetch("/get-users-list?onlyData=true").then(r => r.json());
-            const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
-            users.forEach(u => {
-                userSel.append(`<option value="${u.id}">${u.name}</option>`);
+            const buses = await fetch("/get-buses-data").then(r => r.json());
+            const busSelect = popup.find(".report-bus").empty().append('<option value="">Tümü</option>');
+            buses.forEach(bus => {
+                const title = bus.licensePlate ? bus.licensePlate : `Otobüs #${bus.id}`;
+                busSelect.append(`<option value="${bus.id}">${title}</option>`);
             });
         } catch (err) {
-            console.error("dailyUserAccount users load error", err);
+            console.error("busTransactions buses load error", err);
         }
 
         const now = new Date();
@@ -6064,14 +6096,65 @@ $(".report-item").on("click", async e => {
 
         popup.data("initialized", true);
     }
+};
+
+const showReportPopup = async (reportKey, source = "reports") => {
+    const popup = $(`.${reportKey}-report-popup`);
+    if (!popup.length) {
+        return;
+    }
+
+    report = reportKey;
+    popup.data("source", source);
+
+    if (reportKey === "busTransactions") {
+        const busSelect = popup.find(".report-bus");
+        if (busSelect.length) {
+            busSelect.val("");
+        }
+    }
+
+    $(".blackout").css("display", "block");
+    $(".reports-popup").css("display", "none");
+    popup.css("display", "flex");
+
+    try {
+        await initializeReportPopup(reportKey, popup);
+    } catch (err) {
+        console.error(`${reportKey} popup init error`, err);
+    }
+};
+
+$(".bus-transactions-report-nav").on("click", async e => {
+    e.preventDefault();
+    await showReportPopup("busTransactions", "nav");
+});
+
+$(".report-item").on("click", async e => {
+    const reportKey = $(e.currentTarget).data("report");
+    await showReportPopup(reportKey, "reports");
 });
 
 $(".report-close").on("click", e => {
-    $(e.currentTarget).closest(".report-popup").css("display", "none");
-    $(".reports-popup").css("display", "flex");
+    const popup = $(e.currentTarget).closest(".report-popup");
+    popup.css("display", "none");
+    const source = popup.data("source");
+    popup.removeData("source");
+
+    if (source === "reports") {
+        $(".reports-popup").css("display", "flex");
+    } else {
+        $(".blackout").css("display", "none");
+    }
+
+    report = null;
 });
 
 $(".report-create-button").on("click", e => {
+    if (!report) {
+        return;
+    }
+
     const popup = $(e.currentTarget).closest(".report-popup");
     const startDate = popup.find(".report-start").val();
     const endDate = popup.find(".report-end").val();
@@ -6082,6 +6165,7 @@ $(".report-create-button").on("click", e => {
     const toStopId = popup.find(".report-to").val();
     const groupSelect = popup.find(".report-group");
     const groupBy = groupSelect.length && !groupSelect.prop("disabled") ? groupSelect.val() : null;
+    const busId = popup.find(".report-bus").val();
 
     const params = new URLSearchParams();
     if (startDate) params.set("startDate", startDate);
@@ -6092,6 +6176,7 @@ $(".report-create-button").on("click", e => {
     if (fromStopId) params.set("fromStopId", fromStopId);
     if (toStopId) params.set("toStopId", toStopId);
     if (groupBy) params.set("groupBy", groupBy);
+    if (busId) params.set("busId", busId);
 
     window.open(`/${report}?${params.toString()}`, "_blank");
 });
