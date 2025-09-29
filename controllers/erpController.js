@@ -13,6 +13,7 @@ const generateWebTicketsReportByStopSummary = require('../utilities/reports/webT
 const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = require('../utilities/reports/dailyUserAccountReport');
 const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTicketsReport");
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
+const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
 
 async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -205,6 +206,42 @@ function timeToSeconds(timeString) {
 
     const [hours = 0, minutes = 0, seconds = 0] = parts;
     return hours * 3600 + minutes * 60 + seconds;
+}
+
+function parseDateTimeInput(value) {
+    if (!value || typeof value !== "string") {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const [datePart, timePart = ""] = trimmed.split(/\s+/);
+    if (!datePart) {
+        return null;
+    }
+
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (![year, month, day].every(num => Number.isFinite(num))) {
+        return null;
+    }
+
+    const [hourRaw = 0, minuteRaw = 0] = timePart.split(":").map(Number);
+    const hour = Number.isFinite(hourRaw) ? hourRaw : 0;
+    const minute = Number.isFinite(minuteRaw) ? minuteRaw : 0;
+
+    const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
+    }
+
+    return date;
 }
 
 function secondsToTime(totalSeconds) {
@@ -5791,6 +5828,152 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
     } catch (err) {
         console.error("getExternalReturnTicketsReport error:", err);
         res.status(500).json({ message: "Dış bölge (dönüş) bilet raporu oluşturulamadı." });
+exports.getBusTransactionsReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate, busId } = req.query || {};
+
+        const now = new Date();
+        const defaultStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+        const start = parseDateTimeInput(startDate) || defaultStart;
+        const end = parseDateTimeInput(endDate) || now;
+
+        if (start > end) {
+            return res.status(400).json({ message: "Başlangıç tarihi bitiş tarihinden büyük olamaz." });
+        }
+
+        let busIdNum = null;
+        const where = {
+            createdAt: { [Op.between]: [start, end] }
+        };
+
+        if (busId) {
+            busIdNum = Number(busId);
+            if (!Number.isFinite(busIdNum)) {
+                return res.status(400).json({ message: "Geçersiz otobüs bilgisi." });
+            }
+            where.busId = busIdNum;
+        }
+
+        const transactions = await req.models.BusTransaction.findAll({
+            where,
+            order: [["busId", "ASC"], ["createdAt", "ASC"]],
+            raw: true
+        });
+
+        const collectedBusIds = new Set(
+            transactions
+                .map(t => Number(t.busId))
+                .filter(id => Number.isFinite(id))
+        );
+
+        if (Number.isFinite(busIdNum) && !collectedBusIds.has(busIdNum)) {
+            collectedBusIds.add(busIdNum);
+        }
+
+        const busRecords = collectedBusIds.size
+            ? await req.models.Bus.findAll({
+                where: { id: { [Op.in]: Array.from(collectedBusIds) } },
+                attributes: ["id", "licensePlate"],
+                raw: true
+            })
+            : [];
+
+        const busMap = new Map(busRecords.map(b => [Number(b.id), b.licensePlate || `Otobüs #${b.id}`]));
+        const fallbackBusTitle = id => {
+            const numeric = Number(id);
+            return Number.isFinite(numeric) ? `Otobüs #${numeric}` : "Otobüs";
+        };
+
+        const toAmount = value => {
+            const num = Number(value);
+            return Number.isFinite(num) ? num : 0;
+        };
+
+        const overallTotals = {
+            income: 0,
+            expense: 0,
+            net: 0,
+            count: transactions.length
+        };
+
+        transactions.forEach(tx => {
+            const amount = toAmount(tx.amount);
+            if (tx.type === "income") {
+                overallTotals.income += amount;
+                overallTotals.net += amount;
+            } else {
+                overallTotals.expense += amount;
+                overallTotals.net -= amount;
+            }
+        });
+
+        const groups = [];
+        if (transactions.length) {
+            const grouped = new Map();
+            transactions.forEach(tx => {
+                const busKey = Number(tx.busId);
+                if (!grouped.has(busKey)) {
+                    grouped.set(busKey, []);
+                }
+                grouped.get(busKey).push(tx);
+            });
+
+            grouped.forEach((rows, busKey) => {
+                const totals = rows.reduce((acc, row) => {
+                    const amount = toAmount(row.amount);
+                    if (row.type === "income") {
+                        acc.income += amount;
+                        acc.net += amount;
+                    } else {
+                        acc.expense += amount;
+                        acc.net -= amount;
+                    }
+                    acc.count += 1;
+                    return acc;
+                }, { income: 0, expense: 0, net: 0, count: 0 });
+
+                groups.push({
+                    busId: busKey,
+                    busTitle: busMap.get(busKey) || fallbackBusTitle(busKey),
+                    totals,
+                    rows: rows.map(row => ({
+                        date: row.createdAt,
+                        description: row.description || "",
+                        type: row.type,
+                        amount: toAmount(row.amount)
+                    }))
+                });
+            });
+        } else if (Number.isFinite(busIdNum)) {
+            groups.push({
+                busId: busIdNum,
+                busTitle: busMap.get(busIdNum) || fallbackBusTitle(busIdNum),
+                totals: { income: 0, expense: 0, net: 0, count: 0 },
+                rows: []
+            });
+        }
+
+        groups.sort((a, b) => a.busTitle.localeCompare(b.busTitle, "tr-TR", { sensitivity: "base", numeric: true }));
+
+        const queryInfo = {
+            startDate: start,
+            endDate: end,
+            bus: Number.isFinite(busIdNum) ? (busMap.get(busIdNum) || fallbackBusTitle(busIdNum)) : "Tümü"
+        };
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline; filename=\"bus_transactions_report.pdf\"");
+
+        await generateBusTransactionsReport({
+            generatedAt: now,
+            query: queryInfo,
+            totals: overallTotals,
+            groups
+        }, res);
+    } catch (err) {
+        console.error("getBusTransactionsReport error:", err);
+        res.status(500).json({ message: "Otobüs gelir gider raporu oluşturulamadı." });
     }
 };
 
