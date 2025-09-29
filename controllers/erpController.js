@@ -5567,13 +5567,22 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             const departureDate = getRouteStopDeparture(trip, fromRouteStop);
             const fromStopTitle = stopMap.get(toKey(fromRouteStop.stopId)) || "-";
 
-            let toStopTitle = "";
+            let toStopTitle = "-";
             const toRouteStopId = toKey(ticket.toRouteStopId);
             if (toRouteStopId) {
                 const toRouteStop = routeStopMap.get(toRouteStopId);
-                console.log("GİDİŞ:", toRouteStop)
                 if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
-                    toStopTitle = stopMap.get(toKey(toRouteStop.stopId)) || "";
+                    const mappedStopTitle = stopMap.get(toKey(toRouteStop.stopId));
+                    if (mappedStopTitle) {
+                        toStopTitle = mappedStopTitle;
+                    }
+                }
+
+                if (toStopTitle === "-" && toRouteStop) {
+                    const fallbackTitle = toRouteStop.title || toRouteStop.name || toRouteStop.description;
+                    if (fallbackTitle) {
+                        toStopTitle = String(fallbackTitle);
+                    }
                 }
             }
 
