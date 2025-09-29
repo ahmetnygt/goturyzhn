@@ -131,9 +131,9 @@ function generateExternalReturnTicketsReport(data, output) {
     { key: 'branch', label: 'Şube', width: 46, align: 'left' },
     { key: 'user', label: 'Kullanıcı', width: 62, align: 'left' },
     { key: 'transactionDate', label: 'İşlem Tarihi', width: 68, align: 'center' },
-    { key: 'tripInfo', label: 'Sefer Bilgisi', width: 162, align: 'left' },
-    { key: 'payment', label: 'Tahsilat', width: 45, align: 'center' },
-    { key: 'gender', label: 'C', width: 20, align: 'center' },
+    { key: 'tripInfo', label: 'Sefer Bilgisi', width: 158, align: 'left' },
+    { key: 'payment', label: 'Tahsilat Tipi', width: 60, align: 'center' },
+    { key: 'gender', label: 'Cinsiyet', width: 36, align: 'center' },
     { key: 'pnr', label: 'PNR', width: 60, align: 'center' },
     { key: 'price', label: 'Ücret', width: 50, align: 'right' },
   ];
