@@ -14,7 +14,6 @@ const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = 
 const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTicketsReport");
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
 const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
-
 async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -5566,6 +5565,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         }
 
         const toKey = value => (value === undefined || value === null) ? "" : String(value);
+        const makeRouteStopKey = (routeId, stopId) => `${toKey(safeId(routeId))}|${toKey(safeId(stopId))}`;
 
         const userIds = [...new Set(tickets.map(t => safeId(t.userId)).filter(id => id !== null))];
         const users = userIds.length ? await req.models.FirmUser.findAll({
@@ -5626,6 +5626,15 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         const tripMap = new Map(trips.map(trip => [toKey(trip.id), trip]));
         const routeMap = new Map(routes.map(route => [toKey(route.id), route]));
         const routeStopMap = new Map(routeStops.map(rs => [toKey(rs.id), rs]));
+        const routeStopByRouteAndStop = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = safeId(rs.routeId);
+            const stopKey = safeId(rs.stopId);
+            if (routeKey === null || stopKey === null) {
+                return;
+            }
+            routeStopByRouteAndStop.set(makeRouteStopKey(routeKey, stopKey), rs);
+        });
         const stopMap = new Map(stops.map(stop => [toKey(stop.id), stop.title]));
 
         const routeStopsByRoute = new Map();
@@ -5723,7 +5732,8 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
 
             const baseDate = combineDateAndTime(trip.date, trip.time);
             let departureDate = baseDate ? new Date(baseDate) : null;
-            const fromRouteStop = ticket.fromRouteStopId ? routeStopMap.get(toKey(ticket.fromRouteStopId)) : null;
+            const fromRouteStopKey = makeRouteStopKey(route?.id, ticket.fromRouteStopId);
+            const fromRouteStop = fromRouteStopKey ? routeStopByRouteAndStop.get(fromRouteStopKey) : null;
             if (fromRouteStop && departureDate) {
                 const offset = cumulativeDurationByRouteStopId.get(toKey(fromRouteStop.id));
                 if (typeof offset === "number") {
@@ -5731,13 +5741,14 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 }
             }
 
-            const fromStopTitle = fromRouteStop
-                ? stopMap.get(toKey(fromRouteStop.stopId)) || ""
-                : (stopMap.get(toKey(ticket.fromRouteStopId)) || "");
-            const toRouteStop = ticket.toRouteStopId ? routeStopMap.get(toKey(ticket.toRouteStopId)) : null;
-            const toStopTitle = toRouteStop
-                ? stopMap.get(toKey(toRouteStop.stopId)) || ""
-                : (stopMap.get(toKey(ticket.toRouteStopId)) || "");
+            const fromStopTitle = stopMap.get(toKey(ticket.fromRouteStopId))
+                || (fromRouteStop ? stopMap.get(toKey(fromRouteStop.stopId)) : "")
+                || "";
+            const toRouteStopKey = makeRouteStopKey(route?.id, ticket.toRouteStopId);
+            const toRouteStop = toRouteStopKey ? routeStopByRouteAndStop.get(toRouteStopKey) : null;
+            const toStopTitle = stopMap.get(toKey(ticket.toRouteStopId))
+                || (toRouteStop ? stopMap.get(toKey(toRouteStop.stopId)) : "")
+                || "";
             const fallbackFrom = route.fromStopId ? stopMap.get(toKey(route.fromStopId)) : "";
             const fallbackTo = route.toStopId ? stopMap.get(toKey(route.toStopId)) : "";
 
