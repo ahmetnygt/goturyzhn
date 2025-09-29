@@ -132,8 +132,8 @@ function generateExternalReturnTicketsReport(data, output) {
     { key: 'user', label: 'Kullanıcı', width: 62, align: 'center' },
     { key: 'transactionDate', label: 'İşlem Tarihi', width: 68, align: 'center' },
     { key: 'tripInfo', label: 'Sefer Bilgisi', width: 158, align: 'center' },
-    { key: 'payment', label: 'Tahsilat Tipi', width: 60, align: 'center' },
-    { key: 'gender', label: 'Cinsiyet', width: 36, align: 'center' },
+    { key: 'payment', label: 'Tahsilat', width: 60, align: 'center' },
+    { key: 'gender', label: 'C', width: 36, align: 'center' },
     { key: 'pnr', label: 'PNR', width: 60, align: 'center' },
     { key: 'price', label: 'Ücret', width: 50, align: 'center' },
   ];
@@ -292,7 +292,7 @@ function generateExternalReturnTicketsReport(data, output) {
 
       ensureSpace(14);
       doc.font('Bold').fontSize(8).text(
-        `(${userName}) toplamı: ${formatCount(user.totals?.count)} bilet | ${formatCurrency(user.totals?.amount)}`,
+        `${userName} toplamı: ${formatCount(user.totals?.count)} bilet | ${formatCurrency(user.totals?.amount)}`,
         xStart,
         doc.y,
       );
@@ -302,7 +302,7 @@ function generateExternalReturnTicketsReport(data, output) {
 
     ensureSpace(16);
     doc.font('Bold').fontSize(9).text(
-      `(${branchTitle}) toplamı: ${formatCount(branch.totals?.count)} bilet | ${formatCurrency(branch.totals?.amount)}`,
+      `${branchTitle} toplamı: ${formatCount(branch.totals?.count)} bilet | ${formatCurrency(branch.totals?.amount)}`,
       xStart,
       doc.y,
     );

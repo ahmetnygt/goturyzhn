@@ -5571,6 +5571,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             const toRouteStopId = toKey(ticket.toRouteStopId);
             if (toRouteStopId) {
                 const toRouteStop = routeStopMap.get(toRouteStopId);
+                console.log("GİDİŞ:", toRouteStop)
                 if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
                     toStopTitle = stopMap.get(toKey(toRouteStop.stopId)) || "";
                 }
@@ -5593,6 +5594,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 pnr: ticket.pnr || "-",
                 price: ticketPrice
             };
+
 
             userBucket.tickets.push(ticketRecord);
             userBucket.totals.count += 1;
