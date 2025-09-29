@@ -660,8 +660,6 @@ initPhoneInput(".search-phone");
 initPhoneInput(".member-search-phone");
 initPhoneInput(".profile-phone-input");
 
-const bootstrapLib = typeof bootstrap !== "undefined" ? bootstrap : null;
-
 function getNavbarUserData() {
     const toggle = document.querySelector(".navbar-user-toggle");
     if (!toggle) {
@@ -706,10 +704,8 @@ function showInlineError($element, message) {
     showError(message);
 }
 
-const userProfileModalEl = document.getElementById("userProfileModal");
-const changePasswordModalEl = document.getElementById("changePasswordModal");
-const userProfileModal = userProfileModalEl && bootstrapLib ? new bootstrapLib.Modal(userProfileModalEl) : null;
-const changePasswordModal = changePasswordModalEl && bootstrapLib ? new bootstrapLib.Modal(changePasswordModalEl) : null;
+const userProfilePopupEl = document.querySelector(".user-profile-popup");
+const changePasswordPopupEl = document.querySelector(".change-password-popup");
 
 function populateProfileForm() {
     const data = getNavbarUserData();
@@ -718,43 +714,71 @@ function populateProfileForm() {
     $("#profilePhoneInput").val(data.phone || "");
 }
 
-if (userProfileModalEl) {
-    populateProfileForm();
-    userProfileModalEl.addEventListener("hidden.bs.modal", () => {
-        populateProfileForm();
-        hideInlineError($("#userProfileError"));
-    });
-}
-
-if (changePasswordModalEl) {
-    changePasswordModalEl.addEventListener("hidden.bs.modal", () => {
-        const form = document.getElementById("changePasswordForm");
-        if (form) {
-            form.reset();
-        }
-        hideInlineError($("#changePasswordError"));
-    });
-}
-
-$(document).on("click", ".user-menu-profile", e => {
-    e.preventDefault();
-    hideInlineError($("#userProfileError"));
-    populateProfileForm();
-    if (userProfileModal) {
-        userProfileModal.show();
+function hideUserProfilePopup() {
+    if (!userProfilePopupEl) {
+        return;
     }
-});
+    $(userProfilePopupEl).css("display", "none");
+    populateProfileForm();
+    hideInlineError($("#userProfileError"));
+}
 
-$(document).on("click", ".user-menu-password", e => {
-    e.preventDefault();
-    hideInlineError($("#changePasswordError"));
+function showUserProfilePopup() {
+    if (!userProfilePopupEl) {
+        return;
+    }
+    populateProfileForm();
+    hideInlineError($("#userProfileError"));
+    $(userProfilePopupEl).css("display", "block");
+}
+
+function resetChangePasswordForm() {
     const form = document.getElementById("changePasswordForm");
     if (form) {
         form.reset();
     }
-    if (changePasswordModal) {
-        changePasswordModal.show();
+}
+
+function hideChangePasswordPopup() {
+    if (!changePasswordPopupEl) {
+        return;
     }
+    $(changePasswordPopupEl).css("display", "none");
+    resetChangePasswordForm();
+    hideInlineError($("#changePasswordError"));
+}
+
+function showChangePasswordPopup() {
+    if (!changePasswordPopupEl) {
+        return;
+    }
+    resetChangePasswordForm();
+    hideInlineError($("#changePasswordError"));
+    $(changePasswordPopupEl).css("display", "block");
+}
+
+if (userProfilePopupEl) {
+    populateProfileForm();
+}
+
+$(document).on("click", ".user-menu-profile", e => {
+    e.preventDefault();
+    showUserProfilePopup();
+});
+
+$(document).on("click", ".user-profile-close, .user-profile-cancel", e => {
+    e.preventDefault();
+    hideUserProfilePopup();
+});
+
+$(document).on("click", ".user-menu-password", e => {
+    e.preventDefault();
+    showChangePasswordPopup();
+});
+
+$(document).on("click", ".change-password-close, .change-password-cancel", e => {
+    e.preventDefault();
+    hideChangePasswordPopup();
 });
 
 $("#userProfileForm").on("submit", async e => {
