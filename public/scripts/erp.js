@@ -761,22 +761,30 @@ if (userProfilePopupEl) {
     populateProfileForm();
 }
 
-$(document).on("click", ".user-menu-profile", e => {
+$(".user-menu-profile").on("click", e => {
     e.preventDefault();
     showUserProfilePopup();
 });
 
-$(document).on("click", ".user-profile-close, .user-profile-cancel", e => {
+$(".user-profile-close").on("click", e => {
+    e.preventDefault();
+    hideUserProfilePopup();
+});
+$(".user-profile-cancel").on("click", e => {
     e.preventDefault();
     hideUserProfilePopup();
 });
 
-$(document).on("click", ".user-menu-password", e => {
+$(".user-menu-password").on("click",  e => {
     e.preventDefault();
     showChangePasswordPopup();
 });
 
-$(document).on("click", ".change-password-close, .change-password-cancel", e => {
+$(".change-password-close").on("click", e => {
+    e.preventDefault();
+    hideChangePasswordPopup();
+});
+$(".change-password-cancel").on("click", e => {
     e.preventDefault();
     hideChangePasswordPopup();
 });
@@ -1233,7 +1241,7 @@ async function loadTrip(date, time, tripId) {
                     shouldHidePopup = true;
                 } else {
                     const remainingSeatCount = selectedSeats.filter(s => s !== seatNumber).length;
-                    if (remainingSeatCount === 0) {
+                    if (remainingSeatCount === 1) {
                         shouldHidePopup = true;
                     }
                 }
