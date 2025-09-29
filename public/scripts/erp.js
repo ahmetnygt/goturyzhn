@@ -843,7 +843,7 @@ async function loadTrip(date, time, tripId) {
 
         const commonData = { date, time, tripId, stopId: currentStop };
 
-        // Birbiriyle bağımsız istekleri aynı anda göndererek ardışık await kaynaklı gecikmeyi azaltıyoruz.
+        // Bağımsız istekleri paralel çalıştır
         const [
             tripResponse,
             passengersResponse,
@@ -858,23 +858,23 @@ async function loadTrip(date, time, tripId) {
             $.ajax({ url: "/get-route-stops-time-list", type: "GET", data: { date, time, tripId } }),
         ]);
 
+        // Trip HTML
         $(".busPlan").html(tripResponse);
+
+        // Boş satırları temizle
         document.querySelectorAll('.seat-row').forEach(row => {
             const seats = row.querySelectorAll('.seat');
-
-            if (
-                Array.from(seats).every(seat =>
-                    seat.classList.contains('hidden') || seat.classList.contains('none')
-                )
-            ) {
+            if (Array.from(seats).every(seat => seat.classList.contains('hidden') || seat.classList.contains('none'))) {
                 row.remove();
             }
         });
 
+        // Diğer alanlar
         $(".ticket-ops-pop-up").html(ticketOpsResponse);
         $(".trip-notes").html(tripNotesResponse);
         $(".stops-times").html(routeStopsResponse);
 
+        // Yolcu tablosu ve satır tıklama
         $(".passenger-table").html(passengersResponse);
         $(".passenger-table tbody tr").off().on("click", function (e) {
             const $row = $(this);
@@ -882,7 +882,7 @@ async function loadTrip(date, time, tripId) {
 
             const $popup = $(".taken-ticket-ops-pop-up");
 
-            // Eğer aynı satıra tıklandıysa popup kapat
+            // Aynı satıra tıklanırsa popup kapat
             if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
                 $popup.hide();
                 currentPassengerRow = null;
@@ -931,119 +931,28 @@ async function loadTrip(date, time, tripId) {
             $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
         });
 
-            // Tek handler: önce eskileri kaldır, sonra bağla
-            $(".seat").off("click").on("click", function (e) {
-                console.log("koltuğa tıklandı")
+        // Koltuk tıklama
+        $(".seat").off("click").on("click", function (e) {
+            console.log("koltuğa tıklandı");
 
-                const $seat = $(this);
-                const rect = this.getBoundingClientRect();
-                const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
-                const isTaken = Boolean(createdAt); // dolu koltuk mu?
+            const $seat = $(this);
+            const rect = this.getBoundingClientRect();
+            const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
+            const isTaken = Boolean(createdAt); // dolu koltuk mu?
 
-                // ---- Taşıma modu ----
-                if (isMovingActive) {
-                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
-                    $(".move-to-trip-place").html(`${currentStopStr}`)
-                    $(".move-to").css("display", "flex")
-                    // DOLU koltuklarda (grup) davranış
-                    if (isTaken) {
-                        if (selectedTakenSeats.length > 0) {
-                            // varsa temizle
-                            selectedTakenSeats = [];
-                            $(".seat").removeClass("selected");
-                        } else {
-                            // grupça seç
-                            const seatNumbers = [];
-                            $(".seat").each((i, el) => {
-                                if (el.dataset.groupId == groupId) {
-                                    seatNumbers.push(el.dataset.seatNumber);
-                                    el.classList.add("selected");
-                                }
-                            });
-                            selectedTakenSeats = seatNumbers;
-                        }
-                        return;
-                    }
-
-                    // BOŞ koltuklarda hedef seçim
-                    const already = selectedSeats.includes(seatNumber);
-                    const targetCount = movingSelectedSeats.length;
-
-                    if (already) {
-                        // seçimi kaldır
-                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
-                        $seat.removeClass("selected");
-                        return;
-                    }
-
-                    if (selectedSeats.length >= targetCount) {
-                        alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
-                        return;
-                    }
-
-                    selectedSeats.push(seatNumber);
-                    $seat.addClass("selected");
-
-                    // İlgili buton metnini güncelle (mevcut mantığını korudum)
-                    const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
-                    if ($btn.length) {
-                        $btn.html($btn.html() + ` => ${seatNumber}`);
-                    }
-
-                    return; // taşıma modunda popup yok
-                }
-
-                // ---- Normal mod (popup + seçim) ----
-                const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
-
-                $(".ticket-op").css("display", "flex")
-
-                if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none")
-                else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none")
-
-                // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
-                if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
-                    $popup.hide();
-                    currentSeat = null;
-                } else {
-                    currentSeat = $seat;
-
-                    // Popup pozisyonu
-                    let left = rect.right + window.scrollX + 10;
-                    let top = rect.top + window.scrollY + 25;
-
-                    $popup.css({ left: left + "px", top: top + "px", display: "block" });
-
-                    // Aşağı taşarsa yukarı al
-                    const popupHeight = $popup.outerHeight();
-                    const viewportBottom = window.scrollY + window.innerHeight;
-                    if (top + popupHeight > viewportBottom) {
-                        top = rect.top + window.scrollY - popupHeight - 10;
-                        if (top < 0) top = 0;
-                        $popup.css("top", top + "px");
-                    }
-                }
-
-                // Seçim davranışı (normal mod)
-                if (!isTaken) {
-                    // boş koltuk toggle
-                    if (!selectedSeats.includes(seatNumber)) {
-                        selectedSeats.push(seatNumber);
-                        $seat.addClass("selected");
-                    } else {
-                        selectedSeats = selectedSeats.filter(s => s !== seatNumber);
-                        $seat.removeClass("selected");
-                    }
-                } else {
-                    // dolu koltuk: grupça seç/kaldır
-                    currentGroupId = $seat.data("group-id")
-                    selectedTicketStopId = currentStop;
-                    updateTakenTicketOpsVisibility($seat)
-
+            // ---- Taşıma modu ----
+            if (isMovingActive) {
+                $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                $(".move-to-trip-place").html(`${currentStopStr}`);
+                $(".move-to").css("display", "flex");
+                // DOLU koltuklarda (grup) davranış
+                if (isTaken) {
                     if (selectedTakenSeats.length > 0) {
+                        // varsa temizle
                         selectedTakenSeats = [];
                         $(".seat").removeClass("selected");
                     } else {
+                        // grupça seç
                         const seatNumbers = [];
                         $(".seat").each((i, el) => {
                             if (el.dataset.groupId == groupId) {
@@ -1053,927 +962,1033 @@ async function loadTrip(date, time, tripId) {
                         });
                         selectedTakenSeats = seatNumbers;
                     }
-                }
-            });
-
-            // Adjacent seat gender indicators
-            document.querySelectorAll('.seat').forEach(seat => {
-                const gender = seat.dataset.gender;
-                if (gender !== 'm' && gender !== 'f') return;
-
-                const row = seat.closest('.seat-row');
-                const seats = Array.from(row.querySelectorAll('.seat')).filter(s => !s.classList.contains('none'));
-                const index = seats.indexOf(seat);
-
-                if (index > 0) {
-                    const leftSeat = seats[index - 1];
-                    if (!leftSeat.dataset.gender) {
-                        leftSeat.dataset.onlyGender = gender;
-                    }
+                    return;
                 }
 
-                if (index < seats.length - 1) {
-                    const rightSeat = seats[index + 1];
-                    if (!rightSeat.dataset.gender) {
-                        rightSeat.dataset.onlyGender = gender;
-                    }
-                }
-            });
+                // BOŞ koltuklarda hedef seçim
+                const already = selectedSeats.includes(seatNumber);
+                const targetCount = movingSelectedSeats.length;
 
-            currentTripDate = $("#tripDate").val()
-            currentTripTime = $("#tripTime").val()
-            currentTripPlaceTime = $("#tripPlaceTime").val()
-            currentTripId = $("#tripId").val()
-            selectedSeats = []
-            selectedTakenSeats = []
-
-            highlightTripRowByData(currentTripDate, currentTripTime, currentTripId)
-
-            fromId = $("#fromId").val()
-            toId = $("#toId").val()
-            fromStr = $("#fromStr").val()
-            toStr = $("#toStr").val()
-
-            $("#tickets").remove()
-            $("#tripDate").remove()
-            $("#tripTime").remove()
-            $("#tripPlaceTime").remove()
-            $("#tripId").remove()
-            $("#fromId").remove()
-            $("#toId").remove()
-            $("#fromStr").remove()
-            $("#toStr").remove()
-
-            $(".ticket-info-pop-up_from").html(fromStr.toUpperCase())
-            $(".ticket-info-pop-up_to").html(toStr.toUpperCase())
-
-            const tripBusId = $(".trip-bus-license-plate").data("current-bus-id")
-            const tripBusModelId = $(".trip-bus-plan").data("current-bus-model-id")
-
-            try {
-                const [busModels, buses] = await Promise.all([
-                    $.get("/get-bus-models-data"),
-                    $.get("/get-buses-data")
-                ])
-
-                const $planEl = $(".trip-bus-plan")
-                const $plateEl = $(".trip-bus-license-plate")
-
-                if ($planEl.is("select")) {
-                    const planOpts = [$("<option>").val("").html("Koltuk planı seçiniz.").prop("disabled", true).prop("selected", true)]
-                    busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)))
-                    $planEl.html(planOpts)
-                    if (tripBusModelId) $planEl.val(tripBusModelId)
-                    $planEl.off().on("change", async function () {
-                        const busModelId = $(this).val()
-
-                        $plateEl.val("")
-                        $(".captain-name").html("")
-                        $(".captain-phone").html("")
-
-                        try {
-                            await $.post("/post-trip-bus-plan", { tripId: currentTripId, busModelId: busModelId })
-                            loadTrip(currentTripDate, currentTripTime, currentTripId)
-                        } catch (err) {
-                            console.log(err)
-                        }
-                    })
-                } else if ($planEl.is("input")) {
-                    const modelTitle = busModels.find(bm => bm.id === tripBusModelId)?.title || ""
-                    $planEl.val(modelTitle)
+                if (already) {
+                    // seçimi kaldır
+                    selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                    $seat.removeClass("selected");
+                    return;
                 }
 
-                if ($plateEl.is("select")) {
-                    const plateOpts = [$("<option>").val("").html("Plaka seçiniz.").prop("disabled", true).prop("selected", true)]
-                    buses.forEach(b => {
-                        const busModel = busModels.find(bm => bm.id === b.busModelId)
-                        const opt = $("<option>")
-                            .val(b.id)
-                            .html(b.licensePlate)
-                            .attr("data-bus-model-id", b.busModelId)
-                            .attr("data-bus-model-title", busModel ? busModel.title : "")
-                            .attr("data-captain-name", b.captain ? `${b.captain.name} ${b.captain.surname}` : "")
-                            .attr("data-captain-phone", b.captain ? b.captain.phoneNumber : "")
-                        plateOpts.push(opt)
-                    })
-                    $plateEl.html(plateOpts)
-                    if (tripBusId) $plateEl.val(tripBusId)
-
-                    $plateEl.off().on("change", async function () {
-                        const busId = $(this).val()
-                        const selected = $(this).find("option:selected")
-                        const busModelId = selected.data("bus-model-id")
-                        const busModelTitle = selected.data("bus-model-title")
-                        const captainName = selected.data("captain-name")
-                        const captainPhone = selected.data("captain-phone")
-
-                        if ($planEl.is("select")) {
-                            $planEl.val(busModelId)
-                        } else {
-                            $planEl.val(busModelTitle || "")
-                        }
-                        $(".captain-name").html(captainName || "")
-                        $(".captain-phone").html(captainPhone || "")
-
-                        try {
-                            await $.post("/post-trip-bus", { tripId: currentTripId, busId: busId })
-                            loadTrip(currentTripDate, currentTripTime, currentTripId)
-                        } catch (err) {
-                            console.log(err)
-                        }
-                    })
-                } else if ($plateEl.is("input")) {
-                    const selectedBus = buses.find(b => b.id === tripBusId)
-                    $plateEl.val(selectedBus ? selectedBus.licensePlate : "")
-                    if (selectedBus) {
-                        if ($planEl.is("select")) {
-                            $planEl.val(selectedBus.busModelId)
-                        } else {
-                            const modelTitle = busModels.find(bm => bm.id === selectedBus.busModelId)?.title || ""
-                            $planEl.val(modelTitle)
-                        }
-                        $(".captain-name").html(selectedBus.captain ? `${selectedBus.captain.name} ${selectedBus.captain.surname}` : "")
-                        $(".captain-phone").html(selectedBus.captain ? selectedBus.captain.phoneNumber : "")
-                    }
+                if (selectedSeats.length >= targetCount) {
+                    alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
+                    return;
                 }
-            } catch (err) {
-                console.log(err)
+
+                selectedSeats.push(seatNumber);
+                $seat.addClass("selected");
+
+                // İlgili buton metnini güncelle
+                const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
+                if ($btn.length) {
+                    $btn.html($btn.html() + ` => ${seatNumber}`);
+                }
+
+                return; // taşıma modunda popup yok
             }
 
-            await $.ajax({
-                url: "/get-route-stops-list-moving",
-                type: "GET",
-                data: { date: date, time: time, tripId: tripId, stopId: currentStop },
-                success: function (response) {
-                    console.log(response)
-                    let arr = []
-                    const opt = $("<option>").html("").val("")
-                    arr.push(opt)
-                    for (let i = 0; i < response.length; i++) {
-                        const rs = response[i];
-                        const opt = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId)
-                        if (rs.isRestricted) {
-                            opt.addClass("restricted")
-                            opt.prop("disabled", true)
+            // ---- Normal mod (popup + seçim) ----
+            const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
+
+            $(".ticket-op").css("display", "flex");
+
+            if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none");
+            else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none");
+
+            // Aynı koltuğa tekrar tıklandıysa ve popup açıksa kapat
+            if (currentSeat && currentSeat.is($seat) && $popup.is(":visible")) {
+                $popup.hide();
+                currentSeat = null;
+            } else {
+                currentSeat = $seat;
+
+                // Popup pozisyonu
+                let left = rect.right + window.scrollX + 10;
+                let top = rect.top + window.scrollY + 25;
+
+                $popup.css({ left: left + "px", top: top + "px", display: "block" });
+
+                // Aşağı taşarsa yukarı al
+                const popupHeight = $popup.outerHeight();
+                const viewportBottom = window.scrollY + window.innerHeight;
+                if (top + popupHeight > viewportBottom) {
+                    top = rect.top + window.scrollY - popupHeight - 10;
+                    if (top < 0) top = 0;
+                    $popup.css("top", top + "px");
+                }
+            }
+
+            // Seçim davranışı (normal mod)
+            if (!isTaken) {
+                // boş koltuk toggle
+                if (!selectedSeats.includes(seatNumber)) {
+                    selectedSeats.push(seatNumber);
+                    $seat.addClass("selected");
+                } else {
+                    selectedSeats = selectedSeats.filter(s => s !== seatNumber);
+                    $seat.removeClass("selected");
+                }
+            } else {
+                // dolu koltuk: grupça seç/kaldır
+                currentGroupId = $seat.data("group-id");
+                selectedTicketStopId = currentStop;
+                updateTakenTicketOpsVisibility($seat);
+
+                if (selectedTakenSeats.length > 0) {
+                    selectedTakenSeats = [];
+                    $(".seat").removeClass("selected");
+                } else {
+                    const seatNumbers = [];
+                    $(".seat").each((i, el) => {
+                        if (el.dataset.groupId == groupId) {
+                            seatNumbers.push(el.dataset.seatNumber);
+                            el.classList.add("selected");
                         }
-                        arr.push(opt)
+                    });
+                    selectedTakenSeats = seatNumbers;
+                }
+            }
+        });
+
+        // Komşu koltuk cinsiyet bilgisi
+        document.querySelectorAll('.seat').forEach(seat => {
+            const gender = seat.dataset.gender;
+            if (gender !== 'm' && gender !== 'f') return;
+
+            const row = seat.closest('.seat-row');
+            const seats = Array.from(row.querySelectorAll('.seat')).filter(s => !s.classList.contains('none'));
+            const index = seats.indexOf(seat);
+
+            if (index > 0) {
+                const leftSeat = seats[index - 1];
+                if (!leftSeat.dataset.gender) {
+                    leftSeat.dataset.onlyGender = gender;
+                }
+            }
+
+            if (index < seats.length - 1) {
+                const rightSeat = seats[index + 1];
+                if (!rightSeat.dataset.gender) {
+                    rightSeat.dataset.onlyGender = gender;
+                }
+            }
+        });
+
+        // Hidden input'lardan güncel verileri çek
+        currentTripDate = $("#tripDate").val();
+        currentTripTime = $("#tripTime").val();
+        currentTripPlaceTime = $("#tripPlaceTime").val();
+        currentTripId = $("#tripId").val();
+        selectedSeats = [];
+        selectedTakenSeats = [];
+
+        highlightTripRowByData(currentTripDate, currentTripTime, currentTripId);
+
+        fromId = $("#fromId").val();
+        toId = $("#toId").val();
+        fromStr = $("#fromStr").val();
+        toStr = $("#toStr").val();
+
+        $("#tickets").remove();
+        $("#tripDate").remove();
+        $("#tripTime").remove();
+        $("#tripPlaceTime").remove();
+        $("#tripId").remove();
+        $("#fromId").remove();
+        $("#toId").remove();
+        $("#fromStr").remove();
+        $("#toStr").remove();
+
+        $(".ticket-info-pop-up_from").html(fromStr.toUpperCase());
+        $(".ticket-info-pop-up_to").html(toStr.toUpperCase());
+
+        const tripBusId = $(".trip-bus-license-plate").data("current-bus-id");
+        const tripBusModelId = $(".trip-bus-plan").data("current-bus-model-id");
+
+        // Bus model ve bus listelerini paralel al
+        try {
+            const [busModels, buses] = await Promise.all([
+                $.get("/get-bus-models-data"),
+                $.get("/get-buses-data")
+            ]);
+
+            const $planEl = $(".trip-bus-plan");
+            const $plateEl = $(".trip-bus-license-plate");
+
+            if ($planEl.is("select")) {
+                const planOpts = [$("<option>").val("").html("Koltuk planı seçiniz.").prop("disabled", true).prop("selected", true)];
+                busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)));
+                $planEl.html(planOpts);
+                if (tripBusModelId) $planEl.val(tripBusModelId);
+                $planEl.off().on("change", async function () {
+                    const busModelId = $(this).val();
+
+                    $plateEl.val("");
+                    $(".captain-name").html("");
+                    $(".captain-phone").html("");
+
+                    try {
+                        await $.post("/post-trip-bus-plan", { tripId: currentTripId, busModelId });
+                        loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    } catch (err) {
+                        console.log(err);
                     }
-                    $(".move-to-trip-place-select").html(arr)
-                    if (isMovingActive) {
-                        $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`)
-                        $(".move-to-trip-place").html(`${currentStopStr}`)
-                        $(".move-to").css("display", "flex")
+                });
+            } else if ($planEl.is("input")) {
+                const modelTitle = busModels.find(bm => bm.id === tripBusModelId)?.title || "";
+                $planEl.val(modelTitle);
+            }
+
+            if ($plateEl.is("select")) {
+                const plateOpts = [$("<option>").val("").html("Plaka seçiniz.").prop("disabled", true).prop("selected", true)];
+                buses.forEach(b => {
+                    const busModel = busModels.find(bm => bm.id === b.busModelId);
+                    const opt = $("<option>")
+                        .val(b.id)
+                        .html(b.licensePlate)
+                        .attr("data-bus-model-id", b.busModelId)
+                        .attr("data-bus-model-title", busModel ? busModel.title : "")
+                        .attr("data-captain-name", b.captain ? `${b.captain.name} ${b.captain.surname}` : "")
+                        .attr("data-captain-phone", b.captain ? b.captain.phoneNumber : "");
+                    plateOpts.push(opt);
+                });
+                $plateEl.html(plateOpts);
+                if (tripBusId) $plateEl.val(tripBusId);
+
+                $plateEl.off().on("change", async function () {
+                    const busId = $(this).val();
+                    const selected = $(this).find("option:selected");
+                    const busModelId = selected.data("bus-model-id");
+                    const busModelTitle = selected.data("bus-model-title");
+                    const captainName = selected.data("captain-name");
+                    const captainPhone = selected.data("captain-phone");
+
+                    if ($planEl.is("select")) {
+                        $planEl.val(busModelId);
+                    } else {
+                        $planEl.val(busModelTitle || "");
                     }
+                    $(".captain-name").html(captainName || "");
+                    $(".captain-phone").html(captainPhone || "");
+
+                    try {
+                        await $.post("/post-trip-bus", { tripId: currentTripId, busId });
+                        loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    } catch (err) {
+                        console.log(err);
+                    }
+                });
+            } else if ($plateEl.is("input")) {
+                const selectedBus = buses.find(b => b.id === tripBusId);
+                $plateEl.val(selectedBus ? selectedBus.licensePlate : "");
+                if (selectedBus) {
+                    if ($planEl.is("select")) {
+                        $planEl.val(selectedBus.busModelId);
+                    } else {
+                        const modelTitle = busModels.find(bm => bm.id === selectedBus.busModelId)?.title || "";
+                        $planEl.val(modelTitle);
+                    }
+                    $(".captain-name").html(selectedBus.captain ? `${selectedBus.captain.name} ${selectedBus.captain.surname}` : "");
+                    $(".captain-phone").html(selectedBus.captain ? selectedBus.captain.phoneNumber : "");
+                }
+            }
+        } catch (err) {
+            console.log(err);
+        }
+
+        // Move-to listesi (ayrı istek)
+        await $.ajax({
+            url: "/get-route-stops-list-moving",
+            type: "GET",
+            data: { date, time, tripId, stopId: currentStop },
+            success: function (response) {
+                console.log(response);
+                let arr = [];
+                const opt = $("<option>").html("").val("");
+                arr.push(opt);
+                for (let i = 0; i < response.length; i++) {
+                    const rs = response[i];
+                    const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
+                    if (rs.isRestricted) {
+                        opt2.addClass("restricted");
+                        opt2.prop("disabled", true);
+                    }
+                    arr.push(opt2);
+                }
+                $(".move-to-trip-place-select").html(arr);
+                if (isMovingActive) {
+                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                    $(".move-to-trip-place").html(`${currentStopStr}`);
+                    $(".move-to").css("display", "flex");
+                }
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+
+        // Dışarı tıklama → popup kapat
+        $(document).on("click", function () {
+            $(".ticket-ops-pop-up").hide();
+            $(".taken-ticket-ops-pop-up").hide();
+            currentSeat = null;
+        });
+
+        // Revenues
+        $(".trip-option-revenues").off().on("click", async function (e) {
+            e.stopPropagation();
+            try {
+                const revenues = await $.get("/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
+                const rows = [];
+                revenues.branches.forEach(b => {
+                    rows.push(`
+                        <tr>
+                            <td>${b.title}</td>
+                            <td>${b.currentCount}</td>
+                            <td>${b.currentAmount}₺</td>
+                            <td>${b.totalCount}</td>
+                            <td>${b.totalAmount}₺</td>
+                        </tr>`);
+                });
+                $(".trip-revenue-rows").html(rows.join(""));
+                $(".trip-revenue-total-current-count").html(revenues.totals.currentCount);
+                $(".trip-revenue-total-current-amount").html(revenues.totals.currentAmount + "₺");
+                $(".trip-revenue-total-all-count").html(revenues.totals.totalCount);
+                $(".trip-revenue-total-all-amount").html(revenues.totals.totalAmount + "₺");
+                $(".trip-revenue-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Staff
+        $(".trip-option-staff").off().on("click", async function (e) {
+            e.stopPropagation();
+            try {
+                const staffs = await $.get("/get-staffs-list", { onlyData: true });
+                tripStaffList = staffs;
+                if ($(".trip-staff-captain").is("select")) {
+                    const drivers = staffs.filter(s => s.duty === "driver");
+                    const assistants = staffs.filter(s => s.duty === "assistant");
+                    const hostesses = staffs.filter(s => s.duty === "hostess");
+                    const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
+                    const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
+                    const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
+                    $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
+                    $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
+                    $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
+                    $(".trip-staff-captain").val($("#captainId").val());
+                    $(".trip-staff-second").val($("#driver2Id").val());
+                    $(".trip-staff-third").val($("#driver3Id").val());
+                    $(".trip-staff-assistant").val($("#assistantId").val());
+                    $(".trip-staff-hostess").val($("#hostessId").val());
+                    updateTripStaffPhones();
+                } else {
+                    const getName = id => {
+                        const staff = tripStaffList.find(s => s.id == id);
+                        return staff ? `${staff.name} ${staff.surname}` : "";
+                    };
+                    $(".trip-staff-captain").val(getName($("#captainId").val()));
+                    $(".trip-staff-second").val(getName($("#driver2Id").val()));
+                    $(".trip-staff-third").val(getName($("#driver3Id").val()));
+                    $(".trip-staff-assistant").val(getName($("#assistantId").val()));
+                    $(".trip-staff-hostess").val(getName($("#hostessId").val()));
+                    updateTripStaffPhones();
+                }
+                tripStaffInitial = {
+                    captainId: $(".trip-staff-captain").val() || "",
+                    driver2Id: $(".trip-staff-second").val() || "",
+                    driver3Id: $(".trip-staff-third").val() || "",
+                    assistantId: $(".trip-staff-assistant").val() || "",
+                    hostessId: $(".trip-staff-hostess").val() || ""
+                };
+                $(".trip-staff-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Cargo ekleme
+        $(".trip-cargo-add").off().on("click", async function () {
+            try {
+                const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
+                resetTripCargoForm();
+                populateTripCargoStops(stops, { fromStopId: fromId, toStopId: toId });
+                $(".trip-cargo-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Cargo liste
+        $(".trip-cargo-list").off().on("click", async function (e) {
+            e.preventDefault();
+            if (!currentTripId) {
+                showError("Sefer bilgisi bulunamadı.");
+                return;
+            }
+
+            $(".trip-cargo-list-nodes").html(tripCargoListLoadingHtml);
+            $(".trip-cargo-list-pop-up").css("display", "block");
+            $(".blackout").css("display", "block");
+
+            try {
+                const html = await $.get("/get-trip-cargo-list", { tripId: currentTripId });
+                $(".trip-cargo-list-nodes").html(html);
+                $(".trip-cargo-refund").off().on("click", async function (e2) {
+                    e2.preventDefault();
+                    e2.stopPropagation();
+
+                    const $button = $(this);
+                    const cargoId = Number($button.data("id"));
+
+                    if (!cargoId) {
+                        showError("Kargo bilgisi bulunamadı.");
+                        return;
+                    }
+
+                    const confirmMessage = "Bu kargo kaydını iade etmek istediğinize emin misiniz?";
+                    if (!window.confirm(confirmMessage)) {
+                        return;
+                    }
+
+                    const originalHtml = $button.html();
+                    $button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                    try {
+                        await $.post("/post-refund-cargo", { cargoId });
+                    } catch (err) {
+                        const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
+                        showError(message);
+                        $button.prop("disabled", false).html(originalHtml);
+                        return;
+                    }
+
+                    const $group = $button.closest(".btn-group");
+                    const $container = $group.closest(".trip-cargo-list-nodes");
+                    $group.remove();
+
+                    if (!$container.find(".btn-group").length) {
+                        $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
+                    }
+                });
+            } catch (err) {
+                console.log(err);
+                showError("Kargo listesi alınamadı.");
+                $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Kargo listesi alınamadı.</p>');
+            }
+        });
+
+        // Trip iptal/aktif
+        $(".trip-option-cancel-trip").off().on("click", async function (e) {
+            e.stopPropagation();
+            if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
+            try {
+                await $.post("/post-trip-active", { tripId: currentTripId, isActive: false });
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+                loadTripsList(calendar.val());
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        $(".trip-option-active-trip").off().on("click", async function (e) {
+            e.stopPropagation();
+            if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
+            try {
+                await $.post("/post-trip-active", { tripId: currentTripId, isActive: true });
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+                loadTripsList(calendar.val());
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Stop restriction aç
+        $(".trip-option-stop-restriction").off().on("click", function (e) {
+            e.stopPropagation();
+            $.ajax({
+                url: "/get-trip-stop-restriction",
+                type: "GET",
+                data: { tripId: currentTripId },
+                success: function (response) {
+                    $(".trip-stop-restriction-content").html(response);
+                    tripStopRestrictionChanges = {};
+                    tripStopRestrictionDirty = false;
+                    $(".trip-stop-restriction-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
                 },
                 error: function (xhr, status, error) {
                     console.log(error);
                 }
-            })
-
-            $(document).on("click", function () {
-                $(".ticket-ops-pop-up").hide();
-                $(".taken-ticket-ops-pop-up").hide();
-                currentSeat = null;
             });
-
-            $(".trip-option-revenues").off().on("click", async function (e) {
-                e.stopPropagation();
-                try {
-                    const revenues = await $.get("/get-trip-revenues", { tripId: currentTripId, stopId: fromId });
-                    const rows = [];
-                    revenues.branches.forEach(b => {
-                        rows.push(`
-                            <tr>
-                                <td>${b.title}</td>
-                                <td>${b.currentCount}</td>
-                                <td>${b.currentAmount}₺</td>
-                                <td>${b.totalCount}</td>
-                                <td>${b.totalAmount}₺</td>
-                            </tr>`);
-                    });
-                    $(".trip-revenue-rows").html(rows.join(""));
-                    $(".trip-revenue-total-current-count").html(revenues.totals.currentCount);
-                    $(".trip-revenue-total-current-amount").html(revenues.totals.currentAmount + "₺");
-                    $(".trip-revenue-total-all-count").html(revenues.totals.totalCount);
-                    $(".trip-revenue-total-all-amount").html(revenues.totals.totalAmount + "₺");
-                    $(".trip-revenue-pop-up").css("display", "block");
-                    $(".blackout").css("display", "block");
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".trip-option-staff").off().on("click", async function (e) {
-                e.stopPropagation();
-                try {
-                    const staffs = await $.get("/get-staffs-list", { onlyData: true });
-                    tripStaffList = staffs;
-                    if ($(".trip-staff-captain").is("select")) {
-                        const drivers = staffs.filter(s => s.duty === "driver");
-                        const assistants = staffs.filter(s => s.duty === "assistant");
-                        const hostesses = staffs.filter(s => s.duty === "hostess");
-                        const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
-                        const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
-                        const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
-                        $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
-                        $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
-                        $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
-                        $(".trip-staff-captain").val($("#captainId").val());
-                        $(".trip-staff-second").val($("#driver2Id").val());
-                        $(".trip-staff-third").val($("#driver3Id").val());
-                        $(".trip-staff-assistant").val($("#assistantId").val());
-                        $(".trip-staff-hostess").val($("#hostessId").val());
-                        updateTripStaffPhones();
-                    } else {
-                        const getName = id => {
-                            const staff = tripStaffList.find(s => s.id == id);
-                            return staff ? `${staff.name} ${staff.surname}` : "";
-                        };
-                        $(".trip-staff-captain").val(getName($("#captainId").val()));
-                        $(".trip-staff-second").val(getName($("#driver2Id").val()));
-                        $(".trip-staff-third").val(getName($("#driver3Id").val()));
-                        $(".trip-staff-assistant").val(getName($("#assistantId").val()));
-                        $(".trip-staff-hostess").val(getName($("#hostessId").val()));
-                        updateTripStaffPhones();
-                    }
-                    tripStaffInitial = {
-                        captainId: $(".trip-staff-captain").val() || "",
-                        driver2Id: $(".trip-staff-second").val() || "",
-                        driver3Id: $(".trip-staff-third").val() || "",
-                        assistantId: $(".trip-staff-assistant").val() || "",
-                        hostessId: $(".trip-staff-hostess").val() || ""
-                    };
-                    $(".trip-staff-pop-up").css("display", "block");
-                    $(".blackout").css("display", "block");
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".trip-cargo-add").off().on("click", async function (e) {
-                try {
-                    const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
-                    resetTripCargoForm();
-                    populateTripCargoStops(stops, { fromStopId: fromId, toStopId: toId });
-                    $(".trip-cargo-pop-up").css("display", "block");
-                    $(".blackout").css("display", "block");
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".trip-cargo-list").off().on("click", async function (e) {
-                e.preventDefault();
-                if (!currentTripId) {
-                    showError("Sefer bilgisi bulunamadı.");
-                    return;
-                }
-
-                $(".trip-cargo-list-nodes").html(tripCargoListLoadingHtml);
-                $(".trip-cargo-list-pop-up").css("display", "block");
-                $(".blackout").css("display", "block");
-
-                try {
-                    const html = await $.get("/get-trip-cargo-list", { tripId: currentTripId });
-                    $(".trip-cargo-list-nodes").html(html);
-                    $(".trip-cargo-refund").off().on("click", async function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        const $button = $(this);
-                        const cargoId = Number($button.data("id"));
-
-                        if (!cargoId) {
-                            showError("Kargo bilgisi bulunamadı.");
-                            return;
-                        }
-
-                        const confirmMessage = "Bu kargo kaydını iade etmek istediğinize emin misiniz?";
-
-                        if (!window.confirm(confirmMessage)) {
-                            return;
-                        }
-
-                        const originalHtml = $button.html();
-                        $button
-                            .prop("disabled", true)
-                            .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
-
-                        try {
-                            await $.post("/post-refund-cargo", { cargoId });
-                        } catch (err) {
-                            const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
-                            showError(message);
-                            $button.prop("disabled", false).html(originalHtml);
-                            return;
-                        }
-
-                        const $group = $button.closest(".btn-group");
-                        const $container = $group.closest(".trip-cargo-list-nodes");
-                        $group.remove();
-
-                        if (!$container.find(".btn-group").length) {
-                            $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
-                        }
-                    });
-                } catch (err) {
-                    console.log(err);
-                    showError("Kargo listesi alınamadı.");
-                    $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Kargo listesi alınamadı.</p>');
-                }
-            });
-
-            $(".trip-option-cancel-trip").off().on("click", async function (e) {
-                e.stopPropagation();
-                if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
-                try {
-                    await $.post("/post-trip-active", { tripId: currentTripId, isActive: false });
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                    loadTripsList(calendar.val())
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".trip-option-active-trip").off().on("click", async function (e) {
-                e.stopPropagation();
-                if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
-                try {
-                    await $.post("/post-trip-active", { tripId: currentTripId, isActive: true });
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                    loadTripsList(calendar.val())
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".trip-option-stop-restriction").off().on("click", function (e) {
-                e.stopPropagation();
-                $.ajax({
-                    url: "/get-trip-stop-restriction",
-                    type: "GET",
-                    data: { tripId: currentTripId },
-                    success: function (response) {
-                        $(".trip-stop-restriction-content").html(response);
-                        tripStopRestrictionChanges = {};
-                        tripStopRestrictionDirty = false;
-                        $(".trip-stop-restriction-pop-up").css("display", "block");
-                        $(".blackout").css("display", "block");
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                });
-            });
-
-            $(".trip-option-change-time").off().on("click", async function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (!currentTripId) {
-                    showError("Sefer bilgisi bulunamadı.");
-                    return;
-                }
-
-                try {
-                    const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
-                    resetTripTimeAdjustForm();
-                    populateTripTimeAdjustStops(stops);
-                    $(".trip-time-adjust-pop-up").css("display", "block");
-                    $(".blackout").css("display", "block");
-                } catch (err) {
-                    console.log(err);
-                    showError("Durak listesi alınamadı.");
-                }
-            });
-
-            $(".trip-time-adjust-confirm").off().on("click", async function () {
-                if (!currentTripId) {
-                    showError("Sefer bilgisi bulunamadı.");
-                    return;
-                }
-
-                const routeStopId = $(".trip-time-adjust-stop").val();
-                const direction = $("input[name='trip-time-adjust-direction']:checked").val();
-                const amount = $(".trip-time-adjust-amount").val();
-
-                if (!routeStopId) {
-                    showError("Lütfen bir durak seçiniz.");
-                    return;
-                }
-
-                if (!direction) {
-                    showError("Lütfen yön seçiniz.");
-                    return;
-                }
-
-                if (!amount) {
-                    showError("Lütfen süre seçiniz.");
-                    return;
-                }
-
-                const [hours, minutes] = amount.split(":").map(Number);
-                if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-                    showError("Geçerli bir süre giriniz.");
-                    return;
-                }
-
-                if (hours * 60 + minutes === 0) {
-                    showError("Süre 0 olamaz.");
-                    return;
-                }
-
-                const $button = $(this);
-                if ($button.prop("disabled")) {
-                    return;
-                }
-
-                $button.prop("disabled", true);
-
-                try {
-                    await $.post("/post-trip-time-adjustment", {
-                        tripId: currentTripId,
-                        routeStopId,
-                        direction,
-                        amount
-                    });
-                    closeTripTimeAdjustPopup();
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                    if (calendar && typeof calendar.val === "function") {
-                        loadTripsList(calendar.val());
-                    }
-                } catch (err) {
-                    console.log(err);
-                    const message = err?.responseJSON?.message || err?.responseText || err?.statusText || "Sefer saati güncellenemedi.";
-                    showError(message);
-                } finally {
-                    $button.prop("disabled", false);
-                }
-            });
-
-            $(".trip-stop-restriction-checkbox").off().on("change", function () {
-
-                const fromId = this.dataset.from;
-                const toId = this.dataset.to;
-                const key = `${fromId}-${toId}`;
-                const initial = this.dataset.initial === "true";
-                const isAllowed = this.checked;
-                if (isAllowed === initial) {
-                    delete tripStopRestrictionChanges[key];
-                } else {
-                    tripStopRestrictionChanges[key] = isAllowed;
-                }
-                tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
-            });
-
-            $(".trip-stop-restriction-save").off().on("click", async function () {
-                const entries = Object.entries(tripStopRestrictionChanges);
-                if (entries.length === 0) {
-                    closeTripStopRestriction();
-                    return;
-                }
-                try {
-                    await Promise.all(entries.map(([key, isAllowed]) => {
-                        const [fromId, toId] = key.split("-");
-                        return $.post("/post-trip-stop-restriction", {
-                            tripId: currentTripId,
-                            fromId,
-                            toId,
-                            isAllowed: isAllowed ? 1 : 0
-                        });
-                    }));
-                    entries.forEach(([key, isAllowed]) => {
-                        const [fromId, toId] = key.split("-");
-                        const checkbox = document.querySelector(`.trip-stop-restriction-checkbox[data-from='${fromId}'][data-to='${toId}']`);
-                        if (checkbox) {
-                            checkbox.dataset.initial = String(isAllowed);
-                        }
-                    });
-                    tripStopRestrictionChanges = {};
-                    tripStopRestrictionDirty = false;
-                    closeTripStopRestriction();
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(document).on("change", ".trip-staff-captain, .trip-staff-second, .trip-staff-third, .trip-staff-assistant, .trip-staff-hostess", updateTripStaffPhones);
-
-            $(".ticket-op").on("click", e => {
-                e.stopPropagation();
-
-                $(".ticket-op ul").css("display", "none");
-
-                const ul = e.currentTarget.querySelector("ul");
-                const isVisible = $(ul).css("display") === "flex";
-
-                if (!isVisible) {
-                    $(ul).css("display", "flex");
-                }
-            });
-
-            $(document).off("click").on("click", () => {
-                $(".ticket-op ul").css("display", "none");
-            });
-
-            $(".ticket-op-button").on("click", async e => {
-                const button = e.currentTarget
-                const action = e.currentTarget.dataset.action
-                const fromId = currentStop
-                const toId = button.dataset.stopId
-
-                for (let i = 0; i < selectedSeats.length; i++) {
-                    const seat = selectedSeats[i];
-                    seatTypes.push($(`.seat-${seat}`).data("seat-type"))
-                }
-
-                $(".ticket-ops-pop-up").hide()
-                await $.ajax({
-                    url: "/get-ticket-row",
-                    type: "GET",
-                    data: { action: e.currentTarget.dataset.action, gender: button.dataset.gender, seats: selectedSeats, seatTypes: seatTypes, fromId: fromId, toId: toId, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
-                    success: function (response) {
-                        $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase())
-                        $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase())
-                        $(".ticket-row").remove()
-                        $(".ticket-info").remove()
-                        $(".ticket-button-action").attr("data-action", action)
-                        $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET")
-                        $(".ticket-rows").prepend(response)
-
-                        seatTypes = []
-
-                        initTcknInputs(".identity input")
-                        initPhoneInput(".phone input")
-                        initializeTicketRowPriceControls()
-                        $(".identity input").on("blur", async e => {
-                            const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e.currentTarget.value } });
-                            if (customer) {
-                                const row = e.currentTarget.parentElement.parentElement
-                                const rows = [...document.querySelectorAll('.ticket-row')];
-                                const originalPrice = originalPrices[rows.indexOf(e.currentTarget.closest('.ticket-row'))];
-                                $(row).find(".name").find("input").val(customer.name)
-                                $(row).find(".surname").find("input").val(customer.surname)
-                                $(row).find(".category").find("input").val(customer.customerCategory)
-                                $(row).find(".type").find("input").val(customer.customerType)
-                                $(row).find(".nationality").find("input").val(customer.nationality)
-                                $(row).find(".price").find("span.customer-point")
-                                    .html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%")
-                                    .addClass("text-danger")
-                                    .data("pointorpercent", customer.pointOrPercent)
-                                    .data("pointamount", customer.point_amount)
-                                $(row).find(".price").find("input").val(originalPrice)
-                                if (customer.pointOrPercent == "percent") {
-                                    const discount = Number(customer.percent)
-                                    const newPrice = originalPrice - (originalPrice / 100 * discount)
-                                    $(row).find(".price").find("input").val(newPrice)
-                                }
-                                else if (!customer.pointOrPercent) {
-                                    $(row).find(".price").find("span.customer-point")
-                                        .html("")
-                                        .removeClass("text-danger")
-                                        .data("pointorpercent", "")
-                                        .data("pointamount", "")
-                                }
-                                if (customer.gender == "m") {
-                                    $(row).find(".gender").find("input.male").prop("checked", true)
-                                    $(row).find(".gender").find("input.female").prop("checked", false)
-                                    $(row).addClass("m").removeClass("f")
-                                }
-                                else if (customer.gender == "f") {
-                                    $(row).find(".gender").find("input.male").prop("checked", false)
-                                    $(row).find(".gender").find("input.female").prop("checked", true)
-                                    $(row).addClass("f").removeClass("m")
-                                }
-                                $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber)
-                            }
-                        })
-
-                        $(".ticket-info-pop-up").css("display", "block")
-                        $(".blackout").css("display", "block")
-
-                        flatpickr($(".reservation-expire input.changable.date"), {
-                            locale: "tr",
-                            altInput: true,
-                            altFormat: "d F Y",
-                        })
-                        flatpickr($(".reservation-expire input.changable.time"), {
-                            locale: "tr",
-                            enableTime: true,
-                            noCalendar: true,
-                        })
-
-                        $(document).on("change", ".ticket-row input[type='radio']", function () {
-                            const $row = $(this).closest(".ticket-row");
-
-                            $row.removeClass("m f");
-
-                            if ($(this).val() === "m") {
-                                $row.addClass("m");
-                            } else if ($(this).val() === "f") {
-                                $row.addClass("f");
-                            }
-                        });
-
-                        $(".price-arrow").off().on("click", function (e) {
-                            e.preventDefault();
-
-                            const $button = $(this);
-                            const isUp = $button.hasClass("price-arrow-up");
-                            const $priceContainer = $button.closest(".price");
-                            const priceLists = getPriceLists($priceContainer);
-                            const options = priceLists.activeList;
-
-                            if (!options.length) {
-                                return;
-                            }
-
-                            const $row = $button.closest(".ticket-row");
-                            const rowIndex = $(".ticket-row").index($row);
-                            const $input = $priceContainer.find("input").first();
-
-                            const currentValue = Number($input.val());
-                            let currentIndex = options.findIndex(p => Number(p) === currentValue);
-
-                            if (currentIndex === -1 && rowIndex > -1) {
-                                const originalPrice = originalPrices[rowIndex];
-
-                                if (originalPrice !== undefined && originalPrice !== null) {
-                                    currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
-                                }
-                            }
-
-                            let nextIndex;
-
-                            if (currentIndex === -1) {
-                                nextIndex = isUp ? 0 : options.length - 1;
-                            } else if (isUp) {
-                                nextIndex = (currentIndex + 1) % options.length;
-                            } else {
-                                nextIndex = (currentIndex - 1 + options.length) % options.length;
-                            }
-
-                            const newBasePrice = Number(options[nextIndex]);
-
-                            if (Number.isNaN(newBasePrice)) {
-                                return;
-                            }
-
-                            if (rowIndex > -1) {
-                                originalPrices[rowIndex] = newBasePrice;
-                            }
-
-                            let finalPrice = newBasePrice;
-                            const $discountInfo = $priceContainer.find("span.customer-point");
-                            const pointOrPercent = $discountInfo.data("pointorpercent");
-
-                            if (pointOrPercent === "percent") {
-                                const percentText = ($discountInfo.text() || "").trim();
-                                const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
-
-                                if (percentMatch) {
-                                    const percentValue = parseFloat(percentMatch[0].replace(",", "."));
-
-                                    if (!Number.isNaN(percentValue)) {
-                                        finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
-                                    }
-                                }
-                            }
-
-                            $input.val(finalPrice);
-
-                            if ($input.length && $input[0]) {
-                                const inputEvent = new Event("input", { bubbles: true });
-                                const changeEvent = new Event("change", { bubbles: true });
-                                $input[0].dispatchEvent(inputEvent);
-                                $input[0].dispatchEvent(changeEvent);
-                            }
-                        });
-
-                        $(".seat").removeClass("selected")
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                });
-            })
-
-            $(".seat").off("mouseenter").on("mouseenter", function (e) {
-                const data = e.currentTarget.dataset
-
-                const rect = this.getBoundingClientRect();
-                const popupLeft = rect.right + window.scrollX + 10;
-                const popupTop = rect.top + window.scrollY;
-
-                $(".passenger-info-popup .name-phone-container").css("display", "block")
-                $(".passenger-info-popup .price-container").css("display", "block")
-                $(".passenger-info-popup .payment-container").css("display", "block")
-                $(".passenger-info-popup .pnr-container").css("display", "block")
-                if (data.createdAt) {
-                    $(".passenger-info-popup").removeClass("m").removeClass("f").removeClass("p")
-                    if (data.status == "pending") {
-                        $(".passenger-info-popup").addClass("p")
-                        $(".passenger-info-popup .name-phone-container").css("display", "none")
-                        $(".passenger-info-popup .price-container").css("display", "none")
-                        $(".passenger-info-popup .payment-container").css("display", "none")
-                        $(".passenger-info-popup .pnr-container").css("display", "none")
-                    }
-                    else
-                        $(".passenger-info-popup").addClass(data.gender)
-                    $(".passenger-info-popup .seat-number").html(data.seatNumber)
-                    $(".passenger-info-popup .from").html(data.from)
-                    $(".passenger-info-popup .to").html(data.to)
-                    $(".passenger-info-popup .name").html(data.name)
-                    $(".passenger-info-popup .username").html(data.userName)
-                    $(".passenger-info-popup .userBranch").html(data.branch)
-                    $(".passenger-info-popup .phone").html(data.phone)
-                    $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "")
-                    $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "")
-                    $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "")
-                    const date = new Date(data.createdAt)
-                    $(".passenger-info-popup .createdAt").html(date.toLocaleDateString() + " " + date.toLocaleTimeString())
-
-                    $(".passenger-info-popup").css({
-                        left: popupLeft + "px",
-                        top: popupTop + "px",
-                        display: "block"
-                    });
-                }
-            });
-
-            $(".seat").off("mouseleave").on("mouseleave", function () {
-                $(".passenger-info-popup").hide();
-            });
-            $(".account-cut").off().on("click", async () => {
-                $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", false);
-                $(".account-cut-save").show();
-                $(".account-cut-undo-btn").hide();
-                accountCutId = null;
-                try {
-                    accountCutData = await $.ajax({
-                        url: "/get-bus-account-cut",
-                        type: "GET",
-                        data: { tripId: currentTripId, stopId: currentStop }
-                    });
-                    $(".account-cut-total-count").val(accountCutData.totalCount);
-                    $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
-                    $(".account-comission-percent").val(accountCutData.comissionPercent.toFixed(2));
-                    $(".account-cut-popup .my-cash").val(accountCutData.myCash.toFixed(2));
-                    $(".account-cut-popup .my-card").val(accountCutData.myCard.toFixed(2));
-                    $(".account-cut-popup .other-branches").val(accountCutData.otherBranches.toFixed(2));
-                    $(".account-cut-popup .all-total").val(accountCutData.allTotal.toFixed(2));
-                    $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
-                    $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
-                    $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
-                    for (let i = 1; i <= 5; i++) {
-                        $(".account-cut-deductions-popup .account-deduction" + i).val("");
-                        $(".account-cut-popup .account-deduction" + i).val("");
-                    }
-                    $(".account-cut-deductions-popup .account-tip").val("");
-                    $(".account-cut-popup .account-tip").val("");
-                    if (Array.isArray(accountCutData.defaultDeductions)) {
-                        accountCutData.defaultDeductions.forEach((value, index) => {
-                            const selector = ".account-cut-deductions-popup .account-deduction" + (index + 1);
-                            if (value === null || value === undefined || value === "") {
-                                $(selector).val("");
-                                return;
-                            }
-                            const numeric = Number(value);
-                            if (Number.isFinite(numeric)) {
-                                $(selector).val(numeric.toFixed(2));
-                            } else {
-                                $(selector).val(value);
-                            }
-                        });
-                    }
-                } catch (err) {
-                    console.log(err);
-                }
-                $(".account-cut-deductions-popup").css("display", "block");
-                $(".blackout").css("display", "block");
-            });
-
-            $(".accountCut").off().on("click", e => {
-                e.preventDefault();
-                window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
-            });
-
-            $(".trip-seat-plan-report").off().on("click", e => {
-                e.preventDefault();
-                if (!currentTripId) return;
-                const params = new URLSearchParams({ tripId: currentTripId });
-                if (currentStop !== undefined && currentStop !== null && currentStop !== "") {
-                    params.append("stopId", currentStop);
-                }
-                window.open(`/trip-seat-plan?${params.toString()}`, "_blank", "width=900,height=700");
-            });
-
-            $(".account-cut-undo").off().on("click", async () => {
-                try {
-                    const data = await $.ajax({
-                        url: "/get-bus-account-cut-record",
-                        type: "GET",
-                        data: { tripId: currentTripId, stopId: currentStop }
-                    });
-                    accountCutId = data.id;
-                    $(".account-cut-popup .my-cash").val(Number(data.myCash).toFixed(2));
-                    $(".account-cut-popup .my-card").val(Number(data.myCard).toFixed(2));
-                    $(".account-cut-popup .other-branches").val(Number(data.otherBranches).toFixed(2));
-                    $(".account-cut-popup .all-total").val(Number(data.allTotal).toFixed(2));
-                    $(".account-cut-popup .account-commission").val(Number(data.comissionAmount).toFixed(2));
-                    for (let i = 1; i <= 5; i++) {
-                        $(".account-cut-popup .account-deduction" + i).val(data["deduction" + i]);
-                    }
-                    $(".account-cut-popup .account-tip").val(data.tip);
-                    $(".account-cut-popup .account-description").val(data.description);
-                    $(".account-cut-popup .account-needtopay").val(Number(data.needToPay).toFixed(2));
-                    $(".account-cut-popup .account-payed").val(Number(data.payedAmount).toFixed(2));
-                    $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", true);
-                    $(".account-cut-save").hide();
-                    $(".account-cut-undo-btn").show();
-                    $(".account-cut-popup").css("display", "block");
-                    $(".blackout").css("display", "block");
-                } catch (err) {
-                    console.log(err);
-                }
-            });
-
-            $(".account-cut-undo-btn").off().on("click", async () => {
-                if (!accountCutId) return;
-                try {
-                    await $.ajax({ url: "/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                } catch (err) {
-                    console.log(err);
-                }
-                $(".account-cut-popup").css("display", "none");
-                $(".blackout").css("display", "none");
-            });
-
-            $(".account-cut-deductions-cancel").off().on("click", () => {
-                $(".account-cut-deductions-popup").css("display", "none");
-                $(".blackout").css("display", "none");
-            });
-
-            $(".account-cut-deductions-continue").off().on("click", () => {
-                for (let i = 1; i <= 5; i++) {
-                    const val = $(".account-cut-deductions-popup .account-deduction" + i).val();
-                    $(".account-cut-popup .account-deduction" + i).val(val);
-                }
-                const tip = $(".account-cut-deductions-popup .account-tip").val();
-                $(".account-cut-popup .account-tip").val(tip);
-                $(".account-cut-deductions-popup").css("display", "none");
-                $(".account-cut-popup").css("display", "block");
-                updateAccountNeedToPay();
-            });
-
-            $(".account-cut-close").off().on("click", () => {
-                $(".account-cut-popup").css("display", "none");
-                $(".blackout").css("display", "none");
-            });
-
-            $(".account-cut-save").off("click").on("click", async () => {
-                const data = {
-                    tripId: currentTripId,
-                    stopId: currentStop,
-                    comissionPercent: $(".account-comission-percent").val(),
-                    deduction1: $(".account-cut-popup .account-deduction1").val(),
-                    deduction2: $(".account-cut-popup .account-deduction2").val(),
-                    deduction3: $(".account-cut-popup .account-deduction3").val(),
-                    deduction4: $(".account-cut-popup .account-deduction4").val(),
-                    deduction5: $(".account-cut-popup .account-deduction5").val(),
-                    tip: $(".account-cut-popup .account-tip").val(),
-                    description: $(".account-cut-popup .account-description").val(),
-                    payedAmount: $(".account-cut-popup .account-payed").val()
-                };
-                try {
-                    await $.ajax({ url: "/post-bus-account-cut", type: "POST", data });
-                    loadTrip(currentTripDate, currentTripTime, currentTripId);
-                } catch (err) {
-                    console.log(err);
-                }
-                $(".account-cut-popup").css("display", "none");
-                $(".blackout").css("display", "none");
-            });
-
-            function updateAccountNeedToPay() {
-                if (!accountCutData) return;
-                let deductions = 0;
-                for (let i = 1; i <= 5; i++) {
-                    deductions += Number($(".account-cut-popup .account-deduction" + i).val()) || 0;
-                }
-                deductions += Number($(".account-cut-popup .account-tip").val()) || 0;
-                const need = accountCutData.allTotal - accountCutData.comissionAmount - deductions;
-                $(".account-cut-popup .account-needtopay").val(need.toFixed(2));
+        });
+
+        // Time change popup
+        $(".trip-option-change-time").off().on("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!currentTripId) {
+                showError("Sefer bilgisi bulunamadı.");
+                return;
             }
 
-            $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip").on("input", updateAccountNeedToPay);
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
+            try {
+                const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
+                resetTripTimeAdjustForm();
+                populateTripTimeAdjustStops(stops);
+                $(".trip-time-adjust-pop-up").css("display", "block");
+                $(".blackout").css("display", "block");
+            } catch (err) {
+                console.log(err);
+                showError("Durak listesi alınamadı.");
+            }
+        });
+
+        // Time change confirm
+        $(".trip-time-adjust-confirm").off().on("click", async function () {
+            if (!currentTripId) {
+                showError("Sefer bilgisi bulunamadı.");
+                return;
+            }
+
+            const routeStopId = $(".trip-time-adjust-stop").val();
+            const direction = $("input[name='trip-time-adjust-direction']:checked").val();
+            const amount = $(".trip-time-adjust-amount").val();
+
+            if (!routeStopId) {
+                showError("Lütfen bir durak seçiniz.");
+                return;
+            }
+
+            if (!direction) {
+                showError("Lütfen yön seçiniz.");
+                return;
+            }
+
+            if (!amount) {
+                showError("Lütfen süre seçiniz.");
+                return;
+            }
+
+            const [hours, minutes] = amount.split(":").map(Number);
+            if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+                showError("Geçerli bir süre giriniz.");
+                return;
+            }
+
+            if (hours * 60 + minutes === 0) {
+                showError("Süre 0 olamaz.");
+                return;
+            }
+
+            const $button = $(this);
+            if ($button.prop("disabled")) {
+                return;
+            }
+
+            $button.prop("disabled", true);
+
+            try {
+                await $.post("/post-trip-time-adjustment", {
+                    tripId: currentTripId,
+                    routeStopId,
+                    direction,
+                    amount
+                });
+                closeTripTimeAdjustPopup();
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+                if (calendar && typeof calendar.val === "function") {
+                    loadTripsList(calendar.val());
+                }
+            } catch (err) {
+                console.log(err);
+                const message = err?.responseJSON?.message || err?.responseText || err?.statusText || "Sefer saati güncellenemedi.";
+                showError(message);
+            } finally {
+                $button.prop("disabled", false);
+            }
+        });
+
+        // Stop restriction checkbox
+        $(".trip-stop-restriction-checkbox").off().on("change", function () {
+            const fromId2 = this.dataset.from;
+            const toId2 = this.dataset.to;
+            const key = `${fromId2}-${toId2}`;
+            const initial = this.dataset.initial === "true";
+            const isAllowed = this.checked;
+            if (isAllowed === initial) {
+                delete tripStopRestrictionChanges[key];
+            } else {
+                tripStopRestrictionChanges[key] = isAllowed;
+            }
+            tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
+        });
+
+        // Stop restriction save
+        $(".trip-stop-restriction-save").off().on("click", async function () {
+            const entries = Object.entries(tripStopRestrictionChanges);
+            if (entries.length === 0) {
+                closeTripStopRestriction();
+                return;
+            }
+            try {
+                await Promise.all(entries.map(([key, isAllowed]) => {
+                    const [fromId3, toId3] = key.split("-");
+                    return $.post("/post-trip-stop-restriction", {
+                        tripId: currentTripId,
+                        fromId: fromId3,
+                        toId: toId3,
+                        isAllowed: isAllowed ? 1 : 0
+                    });
+                }));
+                entries.forEach(([key, isAllowed]) => {
+                    const [fromId3, toId3] = key.split("-");
+                    const checkbox = document.querySelector(`.trip-stop-restriction-checkbox[data-from='${fromId3}'][data-to='${toId3}']`);
+                    if (checkbox) {
+                        checkbox.dataset.initial = String(isAllowed);
+                    }
+                });
+                tripStopRestrictionChanges = {};
+                tripStopRestrictionDirty = false;
+                closeTripStopRestriction();
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Ticket operations menüsü aç/kapat
+        $(".ticket-op").on("click", e => {
+            e.stopPropagation();
+            $(".ticket-op ul").css("display", "none");
+            const ul = e.currentTarget.querySelector("ul");
+            const isVisible = $(ul).css("display") === "flex";
+            if (!isVisible) {
+                $(ul).css("display", "flex");
+            }
+        });
+
+        // (Dikkat: bu satır önceki document click handler'ını kaldırır)
+        $(document).off("click").on("click", () => {
+            $(".ticket-op ul").css("display", "none");
+        });
+
+        // Ticket-op butonu
+        $(".ticket-op-button").on("click", async e => {
+            const button = e.currentTarget;
+            const action = e.currentTarget.dataset.action;
+            const fromIdLocal = currentStop;
+            const toIdLocal = button.dataset.stopId;
+
+            for (let i = 0; i < selectedSeats.length; i++) {
+                const seat = selectedSeats[i];
+                seatTypes.push($(`.seat-${seat}`).data("seat-type"));
+            }
+
+            $(".ticket-ops-pop-up").hide();
+
+            await $.ajax({
+                url: "/get-ticket-row",
+                type: "GET",
+                data: {
+                    action: e.currentTarget.dataset.action,
+                    gender: button.dataset.gender,
+                    seats: selectedSeats,
+                    seatTypes: seatTypes,
+                    fromId: fromIdLocal,
+                    toId: toIdLocal,
+                    date: currentTripDate,
+                    time: currentTripTime,
+                    tripId: currentTripId,
+                    stopId: currentStop
+                },
+                success: function (response) {
+                    $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase());
+                    $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase());
+                    $(".ticket-row").remove();
+                    $(".ticket-info").remove();
+                    $(".ticket-button-action").attr("data-action", action);
+                    $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET");
+                    $(".ticket-rows").prepend(response);
+
+                    seatTypes = [];
+
+                    initTcknInputs(".identity input");
+                    initPhoneInput(".phone input");
+                    initializeTicketRowPriceControls();
+
+                    $(".identity input").on("blur", async e2 => {
+                        const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e2.currentTarget.value } });
+                        if (customer) {
+                            const row = e2.currentTarget.parentElement.parentElement;
+                            const rows = [...document.querySelectorAll('.ticket-row')];
+                            const originalPrice = originalPrices[rows.indexOf(e2.currentTarget.closest('.ticket-row'))];
+                            $(row).find(".name").find("input").val(customer.name);
+                            $(row).find(".surname").find("input").val(customer.surname);
+                            $(row).find(".category").find("input").val(customer.customerCategory);
+                            $(row).find(".type").find("input").val(customer.customerType);
+                            $(row).find(".nationality").find("input").val(customer.nationality);
+                            $(row).find(".price").find("span.customer-point")
+                                .html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%")
+                                .addClass("text-danger")
+                                .data("pointorpercent", customer.pointOrPercent)
+                                .data("pointamount", customer.point_amount);
+                            $(row).find(".price").find("input").val(originalPrice);
+                            if (customer.pointOrPercent == "percent") {
+                                const discount = Number(customer.percent);
+                                const newPrice = originalPrice - (originalPrice / 100 * discount);
+                                $(row).find(".price").find("input").val(newPrice);
+                            } else if (!customer.pointOrPercent) {
+                                $(row).find(".price").find("span.customer-point")
+                                    .html("")
+                                    .removeClass("text-danger")
+                                    .data("pointorpercent", "")
+                                    .data("pointamount", "");
+                            }
+                            if (customer.gender == "m") {
+                                $(row).find(".gender").find("input.male").prop("checked", true);
+                                $(row).find(".gender").find("input.female").prop("checked", false);
+                                $(row).addClass("m").removeClass("f");
+                            } else if (customer.gender == "f") {
+                                $(row).find(".gender").find("input.male").prop("checked", false);
+                                $(row).find(".gender").find("input.female").prop("checked", true);
+                                $(row).addClass("f").removeClass("m");
+                            }
+                            $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber);
+                        }
+                    });
+
+                    $(".ticket-info-pop-up").css("display", "block");
+                    $(".blackout").css("display", "block");
+
+                    flatpickr($(".reservation-expire input.changable.date"), {
+                        locale: "tr",
+                        altInput: true,
+                        altFormat: "d F Y",
+                    });
+                    flatpickr($(".reservation-expire input.changable.time"), {
+                        locale: "tr",
+                        enableTime: true,
+                        noCalendar: true,
+                    });
+
+                    $(document).on("change", ".ticket-row input[type='radio']", function () {
+                        const $row = $(this).closest(".ticket-row");
+                        $row.removeClass("m f");
+                        if ($(this).val() === "m") {
+                            $row.addClass("m");
+                        } else if ($(this).val() === "f") {
+                            $row.addClass("f");
+                        }
+                    });
+
+                    $(".price-arrow").off().on("click", function (e3) {
+                        e3.preventDefault();
+
+                        const $button = $(this);
+                        const isUp = $button.hasClass("price-arrow-up");
+                        const $priceContainer = $button.closest(".price");
+                        const priceLists = getPriceLists($priceContainer);
+                        const options = priceLists.activeList;
+
+                        if (!options.length) {
+                            return;
+                        }
+
+                        const $row = $button.closest(".ticket-row");
+                        const rowIndex = $(".ticket-row").index($row);
+                        const $input = $priceContainer.find("input").first();
+
+                        const currentValue = Number($input.val());
+                        let currentIndex = options.findIndex(p => Number(p) === currentValue);
+
+                        if (currentIndex === -1 && rowIndex > -1) {
+                            const originalPrice = originalPrices[rowIndex];
+                            if (originalPrice !== undefined && originalPrice !== null) {
+                                currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
+                            }
+                        }
+
+                        let nextIndex;
+                        if (currentIndex === -1) {
+                            nextIndex = isUp ? 0 : options.length - 1;
+                        } else if (isUp) {
+                            nextIndex = (currentIndex + 1) % options.length;
+                        } else {
+                            nextIndex = (currentIndex - 1 + options.length) % options.length;
+                        }
+
+                        const newBasePrice = Number(options[nextIndex]);
+                        if (Number.isNaN(newBasePrice)) return;
+
+                        if (rowIndex > -1) {
+                            originalPrices[rowIndex] = newBasePrice;
+                        }
+
+                        let finalPrice = newBasePrice;
+                        const $discountInfo = $priceContainer.find("span.customer-point");
+                        const pointOrPercent = $discountInfo.data("pointorpercent");
+
+                        if (pointOrPercent === "percent") {
+                            const percentText = ($discountInfo.text() || "").trim();
+                            const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
+                            if (percentMatch) {
+                                const percentValue = parseFloat(percentMatch[0].replace(",", "."));
+                                if (!Number.isNaN(percentValue)) {
+                                    finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+                                }
+                            }
+                        }
+
+                        $input.val(finalPrice);
+                        if ($input.length && $input[0]) {
+                            const inputEvent = new Event("input", { bubbles: true });
+                            const changeEvent = new Event("change", { bubbles: true });
+                            $input[0].dispatchEvent(inputEvent);
+                            $input[0].dispatchEvent(changeEvent);
+                        }
+                    });
+
+                    $(".seat").removeClass("selected");
+                },
+                error: function (xhr, status, error) {
+                    console.log(error);
+                }
+            });
+        });
+
+        // Seat hover popup
+        $(".seat").off("mouseenter").on("mouseenter", function (e) {
+            const data = e.currentTarget.dataset;
+
+            const rect = this.getBoundingClientRect();
+            const popupLeft = rect.right + window.scrollX + 10;
+            const popupTop = rect.top + window.scrollY;
+
+            $(".passenger-info-popup .name-phone-container").css("display", "block");
+            $(".passenger-info-popup .price-container").css("display", "block");
+            $(".passenger-info-popup .payment-container").css("display", "block");
+            $(".passenger-info-popup .pnr-container").css("display", "block");
+            if (data.createdAt) {
+                $(".passenger-info-popup").removeClass("m").removeClass("f").removeClass("p");
+                if (data.status == "pending") {
+                    $(".passenger-info-popup").addClass("p");
+                    $(".passenger-info-popup .name-phone-container").css("display", "none");
+                    $(".passenger-info-popup .price-container").css("display", "none");
+                    $(".passenger-info-popup .payment-container").css("display", "none");
+                    $(".passenger-info-popup .pnr-container").css("display", "none");
+                }
+                else {
+                    $(".passenger-info-popup").addClass(data.gender);
+                }
+                $(".passenger-info-popup .seat-number").html(data.seatNumber);
+                $(".passenger-info-popup .from").html(data.from);
+                $(".passenger-info-popup .to").html(data.to);
+                $(".passenger-info-popup .name").html(data.name);
+                $(".passenger-info-popup .username").html(data.userName);
+                $(".passenger-info-popup .userBranch").html(data.branch);
+                $(".passenger-info-popup .phone").html(data.phone);
+                $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "");
+                $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "");
+                $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "");
+                const date2 = new Date(data.createdAt);
+                $(".passenger-info-popup .createdAt").html(date2.toLocaleDateString() + " " + date2.toLocaleTimeString());
+
+                $(".passenger-info-popup").css({
+                    left: popupLeft + "px",
+                    top: popupTop + "px",
+                    display: "block"
+                });
+            }
+        });
+
+        $(".seat").off("mouseleave").on("mouseleave", function () {
+            $(".passenger-info-popup").hide();
+        });
+
+        // Hesap kesim aç
+        $(".account-cut").off().on("click", async () => {
+            $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", false);
+            $(".account-cut-save").show();
+            $(".account-cut-undo-btn").hide();
+            accountCutId = null;
+            try {
+                accountCutData = await $.ajax({
+                    url: "/get-bus-account-cut",
+                    type: "GET",
+                    data: { tripId: currentTripId, stopId: currentStop }
+                });
+                $(".account-cut-total-count").val(accountCutData.totalCount);
+                $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
+                $(".account-comission-percent").val(accountCutData.comissionPercent.toFixed(2));
+                $(".account-cut-popup .my-cash").val(accountCutData.myCash.toFixed(2));
+                $(".account-cut-popup .my-card").val(accountCutData.myCard.toFixed(2));
+                $(".account-cut-popup .other-branches").val(accountCutData.otherBranches.toFixed(2));
+                $(".account-cut-popup .all-total").val(accountCutData.allTotal.toFixed(2));
+                $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
+                $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
+                $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
+                for (let i = 1; i <= 5; i++) {
+                    $(".account-cut-deductions-popup .account-deduction" + i).val("");
+                    $(".account-cut-popup .account-deduction" + i).val("");
+                }
+                $(".account-cut-deductions-popup .account-tip").val("");
+                $(".account-cut-popup .account-tip").val("");
+                if (Array.isArray(accountCutData.defaultDeductions)) {
+                    accountCutData.defaultDeductions.forEach((value, index) => {
+                        const selector = ".account-cut-deductions-popup .account-deduction" + (index + 1);
+                        if (value === null || value === undefined || value === "") {
+                            $(selector).val("");
+                            return;
+                        }
+                        const numeric = Number(value);
+                        if (Number.isFinite(numeric)) {
+                            $(selector).val(numeric.toFixed(2));
+                        } else {
+                            $(selector).val(value);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.log(err);
+            }
+            $(".account-cut-deductions-popup").css("display", "block");
+            $(".blackout").css("display", "block");
+        });
+
+        // Hesap kesim çıktı
+        $(".accountCut").off().on("click", e => {
+            e.preventDefault();
+            window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
+        });
+
+        // Koltuk planı raporu
+        $(".trip-seat-plan-report").off().on("click", e => {
+            e.preventDefault();
+            if (!currentTripId) return;
+            const params = new URLSearchParams({ tripId: currentTripId });
+            if (currentStop !== undefined && currentStop !== null && currentStop !== "") {
+                params.append("stopId", currentStop);
+            }
+            window.open(`/trip-seat-plan?${params.toString()}`, "_blank", "width=900,height=700");
+        });
+
+        // Hesap kesim geri al
+        $(".account-cut-undo").off().on("click", async () => {
+            try {
+                const data2 = await $.ajax({
+                    url: "/get-bus-account-cut-record",
+                    type: "GET",
+                    data: { tripId: currentTripId, stopId: currentStop }
+                });
+                accountCutId = data2.id;
+                $(".account-cut-popup .my-cash").val(Number(data2.myCash).toFixed(2));
+                $(".account-cut-popup .my-card").val(Number(data2.myCard).toFixed(2));
+                $(".account-cut-popup .other-branches").val(Number(data2.otherBranches).toFixed(2));
+                $(".account-cut-popup .all-total").val(Number(data2.allTotal).toFixed(2));
+                $(".account-cut-popup .account-commission").val(Number(data2.comissionAmount).toFixed(2));
+                for (let i = 1; i <= 5; i++) {
+                    $(".account-cut-popup .account-deduction" + i).val(data2["deduction" + i]);
+                }
+                $(".account-cut-popup .account-tip").val(data2.tip);
+                $(".account-cut-popup .account-description").val(data2.description);
+                $(".account-cut-popup .account-needtopay").val(Number(data2.needToPay).toFixed(2));
+                $(".account-cut-popup .account-payed").val(Number(data2.payedAmount).toFixed(2));
+                $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", true);
+                $(".account-cut-save").hide();
+                $(".account-cut-undo-btn").show();
+                $(".account-cut-popup").css("display", "block");
+                $(".blackout").css("display", "block");
+            } catch (err) {
+                console.log(err);
+            }
+        });
+
+        // Hesap kesim geri al butonu
+        $(".account-cut-undo-btn").off().on("click", async () => {
+            if (!accountCutId) return;
+            try {
+                await $.ajax({ url: "/post-delete-bus-account-cut", type: "POST", data: { id: accountCutId } });
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+            } catch (err) {
+                console.log(err);
+            }
+            $(".account-cut-popup").css("display", "none");
+            $(".blackout").css("display", "none");
+        });
+
+        // Hesap kesim kesintileri popup cancel/continue
+        $(".account-cut-deductions-cancel").off().on("click", () => {
+            $(".account-cut-deductions-popup").css("display", "none");
+            $(".blackout").css("display", "none");
+        });
+
+        $(".account-cut-deductions-continue").off().on("click", () => {
+            for (let i = 1; i <= 5; i++) {
+                const val = $(".account-cut-deductions-popup .account-deduction" + i).val();
+                $(".account-cut-popup .account-deduction" + i).val(val);
+            }
+            const tip = $(".account-cut-deductions-popup .account-tip").val();
+            $(".account-cut-popup .account-tip").val(tip);
+            $(".account-cut-deductions-popup").css("display", "none");
+            $(".account-cut-popup").css("display", "block");
+            updateAccountNeedToPay();
+        });
+
+        $(".account-cut-close").off().on("click", () => {
+            $(".account-cut-popup").css("display", "none");
+            $(".blackout").css("display", "none");
+        });
+
+        $(".account-cut-save").off("click").on("click", async () => {
+            const data3 = {
+                tripId: currentTripId,
+                stopId: currentStop,
+                comissionPercent: $(".account-comission-percent").val(),
+                deduction1: $(".account-cut-popup .account-deduction1").val(),
+                deduction2: $(".account-cut-popup .account-deduction2").val(),
+                deduction3: $(".account-cut-popup .account-deduction3").val(),
+                deduction4: $(".account-cut-popup .account-deduction4").val(),
+                deduction5: $(".account-cut-popup .account-deduction5").val(),
+                tip: $(".account-cut-popup .account-tip").val(),
+                description: $(".account-cut-popup .account-description").val(),
+                payedAmount: $(".account-cut-popup .account-payed").val()
+            };
+            try {
+                await $.ajax({ url: "/post-bus-account-cut", type: "POST", data: data3 });
+                window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+
+            } catch (err) {
+                console.log(err);
+            }
+            $(".account-cut-popup").css("display", "none");
+            $(".blackout").css("display", "none");
+        });
+
+        function updateAccountNeedToPay() {
+            if (!accountCutData) return;
+            let deductions = 0;
+            for (let i = 1; i <= 5; i++) {
+                deductions += Number($(".account-cut-popup .account-deduction" + i).val()) || 0;
+            }
+            deductions += Number($(".account-cut-popup .account-tip").val()) || 0;
+            const need = accountCutData.allTotal - accountCutData.comissionAmount - deductions;
+            $(".account-cut-popup .account-needtopay").val(need.toFixed(2));
         }
-    });
+
+        $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip").on("input", updateAccountNeedToPay);
 
     } catch (error) {
         console.log(error);
@@ -3915,7 +3930,7 @@ $(".bus-plans-nav").on("click", async e => {
                     </div>
                 `)
             })
-            $(".bus-plan-button").off().on("click", async e => {
+            $(".bus-plan-button").off("click").on("click", async e => {
                 const id = e.currentTarget.dataset.id
                 editingBusPlanId = id
 
@@ -3928,7 +3943,7 @@ $(".bus-plans-nav").on("click", async e => {
 
                         attachBusPlanInputEvents()
 
-                        $(".save-bus-plan").on("click", async e => {
+                        $(".save-bus-plan").off("click").on("click", async e => {
                             const title = $(".bus-plan-title").val()
                             const description = $(".bus-plan-description").val()
 
@@ -3939,7 +3954,7 @@ $(".bus-plans-nav").on("click", async e => {
                                 plan.push(e.value ? e.value : 0)
                                 if (e.value && e.value !== "Ş" && e.value !== ">") {
                                     planBinary = `${planBinary}${1}`
-                                    maxPassenger++;
+                                    maxPassenger += 1;
                                 }
                                 else {
                                     planBinary = `${planBinary}${0}`
@@ -5847,6 +5862,46 @@ $(".member-nav").on("click", async e => {
             $(".member-list-nodes").html(response)
             $(".blackout").css("display", "block")
             $(".members").css("display", "block")
+
+            $(".member-row").off("click").on("click", function () {
+                const idNumber = $(this).data("idnumber");
+                const name = $(this).data("name");
+                const surname = $(this).data("surname");
+                const phone = $(this).data("phone");
+                const gender = $(this).data("gender");
+                const type = $(this).data("customertype");
+                const category = $(this).data("customercategory");
+                const pointOrPercent = $(this).data("pointorpercent");
+                const pointAmount = $(this).data("pointamount");
+                const percent = $(this).data("percent");
+
+                $(".member-info-idNumber").val(idNumber);
+                $(".member-info-name").val(name);
+                $(".member-info-surname").val(surname);
+                $(".member-info-phone").val(phone);
+                $(".member-info-gender").val(gender);
+                $(".member-info-type").val(type);
+                $(".member-info-category").val(category);
+                $(".member-info-pointorpercent").val(pointOrPercent);
+                $(".member-info-pointamount").val(pointAmount);
+                $(".member-info-percent").val(percent);
+
+                $(".members").css("display", "none");
+                $(".member-info").css("display", "block");
+                $(".blackout").css("display", "block");
+
+                $.ajax({
+                    url: "/get-member-tickets",
+                    type: "GET",
+                    data: { idNumber },
+                    success: function (resp) {
+                        $(".member-ticket-list").html(resp);
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+            });
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -6010,46 +6065,6 @@ $(".members-close").on("click", e => {
     $(".blackout").css("display", "none")
     $(".members").css("display", "none")
 })
-
-$(".member-row").off().on("click", function () {
-    const idNumber = $(this).data("idnumber");
-    const name = $(this).data("name");
-    const surname = $(this).data("surname");
-    const phone = $(this).data("phone");
-    const gender = $(this).data("gender");
-    const type = $(this).data("customertype");
-    const category = $(this).data("customercategory");
-    const pointOrPercent = $(this).data("pointorpercent");
-    const pointAmount = $(this).data("pointamount");
-    const percent = $(this).data("percent");
-
-    $(".member-info-idNumber").val(idNumber);
-    $(".member-info-name").val(name);
-    $(".member-info-surname").val(surname);
-    $(".member-info-phone").val(phone);
-    $(".member-info-gender").val(gender);
-    $(".member-info-type").val(type);
-    $(".member-info-category").val(category);
-    $(".member-info-pointorpercent").val(pointOrPercent);
-    $(".member-info-pointamount").val(pointAmount);
-    $(".member-info-percent").val(percent);
-
-    $(".members").css("display", "none");
-    $(".member-info").css("display", "block");
-    $(".blackout").css("display", "block");
-
-    $.ajax({
-        url: "/get-member-tickets",
-        type: "GET",
-        data: { idNumber },
-        success: function (resp) {
-            $(".member-ticket-list").html(resp);
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
-    });
-});
 
 $(".member-info-close").on("click", e => {
     $(".member-info").css("display", "none");

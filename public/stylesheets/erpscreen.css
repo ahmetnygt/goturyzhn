@@ -1807,6 +1807,14 @@ div.ticket-cancel-refund-open-close {
     position: relative;
 }
 
+/* .ticket-op.f {
+    background: linear-gradient(90deg, rgba(221, 176, 202, 1) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.ticket-op.m {
+    background: linear-gradient(90deg, #2986cc 0%, rgba(255, 255, 255, 1) 100%);
+} */
+
 .ticket-op:hover,
 .ticket-op-button:hover {
     background-color: #f0f0f0

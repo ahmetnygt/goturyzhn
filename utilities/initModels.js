@@ -40,7 +40,6 @@ function initModels(sequelize) {
   const Cargo = CargoFactory(sequelize);
   const CashRegister = CashRegisterFactory(sequelize);
   const Customer = CustomerFactory(sequelize);
-  const Firm = FirmFactory(sequelize);
   const FirmUser = FirmUserFactory(sequelize);
   const FirmUserPermission = FirmUserPermissionFactory(sequelize);
   const Payment = PaymentFactory(sequelize);
@@ -70,7 +69,6 @@ function initModels(sequelize) {
     Cargo,
     CashRegister,
     Customer,
-    Firm,
     FirmUser,
     FirmUserPermission,
     Payment,

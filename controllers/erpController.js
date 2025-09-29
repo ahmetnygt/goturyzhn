@@ -1799,7 +1799,7 @@ exports.getErp = async (req, res, next) => {
 
     const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId)?.stopId)?.id
 
-    res.render('erpscreen', { title: 'ERP', busModel, staff, user, places, stops, branches, branchStopId});
+    res.render('erpscreen', { title: req.session?.firm?.displayName || "GötürYZHN", busModel, staff, user, places, stops, branches, branchStopId });
 }
 
 exports.getErpLogin = async (req, res, next) => {
@@ -1822,6 +1822,7 @@ exports.postErpLogin = async (req, res, next) => {
 
         req.session.firmUser = u;
         req.session.isAuthenticated = true;
+        req.session.firm = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } })
 
         const userPerms = await req.models.FirmUserPermission.findAll({
             where: { firmUserId: u.id, allow: true },

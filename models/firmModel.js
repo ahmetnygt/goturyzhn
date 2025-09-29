@@ -1,15 +1,27 @@
 const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
-  return sequelize.define("firm", {
+  return sequelize.define("Firm", {
     id: {
       type: DataTypes.BIGINT,
-      primaryKey: true,
       autoIncrement: true,
+      primaryKey: true,
     },
-    title: {
+    key: {
+      type: DataTypes.STRING,
+      primaryKey: true,
+    },
+    dbName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    displayName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM("active", "inactive"),
+      defaultValue: "active",
     },
   });
 };
