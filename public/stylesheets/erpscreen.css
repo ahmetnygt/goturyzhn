@@ -385,13 +385,36 @@ div.announcement-add-close,
 div.announcement-pop-up-close,
 div.reports-close,
 div.report-close,
-div.bus-transaction-close {
+div.bus-transaction-close,
+div.user-profile-close,
+div.change-password-close {
     position: absolute;
     top: .5rem;
     right: .5rem;
     cursor: pointer;
     color: white;
     font-weight: bold;
+}
+
+.user-profile-popup,
+.change-password-popup {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 110;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    width: 28rem;
+    max-width: 90vw;
+    display: none;
+    overflow: hidden;
+}
+
+.user-profile-popup #userProfileError,
+.change-password-popup #changePasswordError {
+    margin: 0;
 }
 
 .bus {

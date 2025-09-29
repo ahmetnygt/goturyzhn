@@ -658,6 +658,230 @@ initPhoneInput(".user-phone");
 initPhoneInput(".staff-phone");
 initPhoneInput(".search-phone");
 initPhoneInput(".member-search-phone");
+initPhoneInput(".profile-phone-input");
+
+function getNavbarUserData() {
+    const toggle = document.querySelector(".navbar-user-toggle");
+    if (!toggle) {
+        return { name: "", username: "", phone: "" };
+    }
+
+    return {
+        name: toggle.dataset.userName || "",
+        username: toggle.dataset.userUsername || "",
+        phone: toggle.dataset.userPhone || "",
+    };
+}
+
+function setNavbarUserData(data = {}) {
+    const toggle = document.querySelector(".navbar-user-toggle");
+    if (!toggle) {
+        return;
+    }
+
+    if (typeof data.name === "string") {
+        toggle.dataset.userName = data.name;
+    }
+    if (typeof data.username === "string") {
+        toggle.dataset.userUsername = data.username;
+    }
+    if (typeof data.phone === "string") {
+        toggle.dataset.userPhone = data.phone;
+    }
+}
+
+function hideInlineError($element) {
+    if ($element && $element.length) {
+        $element.text("").addClass("d-none");
+    }
+}
+
+function showInlineError($element, message) {
+    if ($element && $element.length) {
+        $element.text(message || "Bilinmeyen hata").removeClass("d-none");
+        return;
+    }
+    showError(message);
+}
+
+const userProfilePopupEl = document.querySelector(".user-profile-popup");
+const changePasswordPopupEl = document.querySelector(".change-password-popup");
+
+function populateProfileForm() {
+    const data = getNavbarUserData();
+    $("#profileNameInput").val(data.name || "");
+    $("#profileUsernameInput").val(data.username || "");
+    $("#profilePhoneInput").val(data.phone || "");
+}
+
+function hideUserProfilePopup() {
+    if (!userProfilePopupEl) {
+        return;
+    }
+    $(userProfilePopupEl).css("display", "none");
+    populateProfileForm();
+    hideInlineError($("#userProfileError"));
+}
+
+function showUserProfilePopup() {
+    if (!userProfilePopupEl) {
+        return;
+    }
+    populateProfileForm();
+    hideInlineError($("#userProfileError"));
+    $(userProfilePopupEl).css("display", "block");
+}
+
+function resetChangePasswordForm() {
+    const form = document.getElementById("changePasswordForm");
+    if (form) {
+        form.reset();
+    }
+}
+
+function hideChangePasswordPopup() {
+    if (!changePasswordPopupEl) {
+        return;
+    }
+    $(changePasswordPopupEl).css("display", "none");
+    resetChangePasswordForm();
+    hideInlineError($("#changePasswordError"));
+}
+
+function showChangePasswordPopup() {
+    if (!changePasswordPopupEl) {
+        return;
+    }
+    resetChangePasswordForm();
+    hideInlineError($("#changePasswordError"));
+    $(changePasswordPopupEl).css("display", "block");
+}
+
+if (userProfilePopupEl) {
+    populateProfileForm();
+}
+
+$(document).on("click", ".user-menu-profile", e => {
+    e.preventDefault();
+    showUserProfilePopup();
+});
+
+$(document).on("click", ".user-profile-close, .user-profile-cancel", e => {
+    e.preventDefault();
+    hideUserProfilePopup();
+});
+
+$(document).on("click", ".user-menu-password", e => {
+    e.preventDefault();
+    showChangePasswordPopup();
+});
+
+$(document).on("click", ".change-password-close, .change-password-cancel", e => {
+    e.preventDefault();
+    hideChangePasswordPopup();
+});
+
+$("#userProfileForm").on("submit", async e => {
+    e.preventDefault();
+    const $error = $("#userProfileError");
+    hideInlineError($error);
+
+    const name = $("#profileNameInput").val().trim();
+    const username = $("#profileUsernameInput").val().trim();
+    const phoneNumber = $("#profilePhoneInput").val().trim();
+
+    if (!name) {
+        showInlineError($error, "Ad soyad boş bırakılamaz.");
+        return;
+    }
+
+    if (!username) {
+        showInlineError($error, "Kullanıcı adı boş bırakılamaz.");
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await $.ajax({
+            url: "/post-update-profile",
+            type: "POST",
+            data: { name, username, phoneNumber },
+        });
+        hideLoading();
+
+        const redirectUrl = response && response.redirect ? response.redirect : "/login";
+        const updatedData = {
+            name,
+            username,
+            phone: phoneNumber,
+        };
+        setNavbarUserData(updatedData);
+        window.location.href = redirectUrl;
+    } catch (err) {
+        hideLoading();
+        const message =
+            err?.responseJSON?.message ||
+            err?.responseJSON?.error ||
+            err?.responseText ||
+            err?.statusText ||
+            err?.message ||
+            "Bilinmeyen hata";
+        showInlineError($error, message);
+    }
+});
+
+$("#changePasswordForm").on("submit", async e => {
+    e.preventDefault();
+    const $error = $("#changePasswordError");
+    hideInlineError($error);
+
+    const currentPassword = $("#currentPasswordInput").val();
+    const newPassword = $("#newPasswordInput").val();
+    const confirmPassword = $("#confirmPasswordInput").val();
+
+    if (!currentPassword) {
+        showInlineError($error, "Eski şifreyi giriniz.");
+        return;
+    }
+
+    if (!newPassword) {
+        showInlineError($error, "Yeni şifreyi giriniz.");
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showInlineError($error, "Yeni şifre en az 6 karakter olmalıdır.");
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showInlineError($error, "Yeni şifreler eşleşmiyor.");
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await $.ajax({
+            url: "/post-change-password",
+            type: "POST",
+            data: { currentPassword, newPassword, confirmPassword },
+        });
+        hideLoading();
+
+        const redirectUrl = response && response.redirect ? response.redirect : "/login";
+        window.location.href = redirectUrl;
+    } catch (err) {
+        hideLoading();
+        const message =
+            err?.responseJSON?.message ||
+            err?.responseJSON?.error ||
+            err?.responseText ||
+            err?.statusText ||
+            err?.message ||
+            "Bilinmeyen hata";
+        showInlineError($error, message);
+    }
+});
 initPhoneInput(".customer-search-phone");
 initPhoneInput(".trip-cargo-sender-phone");
 
