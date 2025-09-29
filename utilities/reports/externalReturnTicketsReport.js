@@ -128,30 +128,21 @@ function generateExternalReturnTicketsReport(data, output) {
   };
 
   const columns = [
-    { key: 'branch', label: 'Şube', width: 46, align: 'left' },
-    { key: 'user', label: 'Kullanıcı', width: 62, align: 'left' },
+    { key: 'branch', label: 'Şube', width: 46, align: 'center' },
+    { key: 'user', label: 'Kullanıcı', width: 62, align: 'center' },
     { key: 'transactionDate', label: 'İşlem Tarihi', width: 68, align: 'center' },
-    { key: 'tripInfo', label: 'Sefer Bilgisi', width: 162, align: 'left' },
-    { key: 'payment', label: 'Tahsilat', width: 45, align: 'center' },
-    { key: 'gender', label: 'C', width: 20, align: 'center' },
+    { key: 'tripInfo', label: 'Sefer Bilgisi', width: 158, align: 'center' },
+    { key: 'payment', label: 'Tahsilat Tipi', width: 60, align: 'center' },
+    { key: 'gender', label: 'Cinsiyet', width: 36, align: 'center' },
     { key: 'pnr', label: 'PNR', width: 60, align: 'center' },
-    { key: 'price', label: 'Ücret', width: 50, align: 'right' },
+    { key: 'price', label: 'Ücret', width: 50, align: 'center' },
   ];
 
   const formatTripInfo = (info) => {
     if (!info) return '';
-    const parts = [];
-    if (info.route) {
-      parts.push(info.route);
-    }
     const departureTime = formatDateTime(info.departureTime);
-    const departurePieces = [];
-    if (info.departureStop) departurePieces.push(info.departureStop);
-    if (departureTime) departurePieces.push(departureTime);
-    if (departurePieces.length) {
-      parts.push(`Kalkış: ${departurePieces.join(' ')}`);
-    }
-    return parts.join('\n');
+    const stops = [info.departureStop, info.arrivalStop].filter(Boolean).join(' - ');
+    return [departureTime, stops].filter(Boolean).join(' ');
   };
 
   const formatColumnValue = (ticket, key) => {
@@ -180,6 +171,7 @@ function generateExternalReturnTicketsReport(data, output) {
       const text = formatColumnValue(ticket, col.key);
       const textHeight = doc.heightOfString(String(text), {
         width: col.width,
+        align: col.align || 'left',
       });
       height = Math.max(height, textHeight + 4);
     });
@@ -300,7 +292,7 @@ function generateExternalReturnTicketsReport(data, output) {
 
       ensureSpace(14);
       doc.font('Bold').fontSize(8).text(
-        `Kullanıcı Toplamı: ${formatCount(user.totals?.count)} bilet | ${formatCurrency(user.totals?.amount)}`,
+        `(${userName}) toplamı: ${formatCount(user.totals?.count)} bilet | ${formatCurrency(user.totals?.amount)}`,
         xStart,
         doc.y,
       );
@@ -310,7 +302,7 @@ function generateExternalReturnTicketsReport(data, output) {
 
     ensureSpace(16);
     doc.font('Bold').fontSize(9).text(
-      `Şube Toplamı: ${formatCount(branch.totals?.count)} bilet | ${formatCurrency(branch.totals?.amount)}`,
+      `(${branchTitle}) toplamı: ${formatCount(branch.totals?.count)} bilet | ${formatCurrency(branch.totals?.amount)}`,
       xStart,
       doc.y,
     );
