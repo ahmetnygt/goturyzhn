@@ -5828,6 +5828,9 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
     } catch (err) {
         console.error("getExternalReturnTicketsReport error:", err);
         res.status(500).json({ message: "Dış bölge (dönüş) bilet raporu oluşturulamadı." });
+    }
+};
+
 exports.getBusTransactionsReport = async (req, res, next) => {
     try {
         const { startDate, endDate, busId } = req.query || {};
