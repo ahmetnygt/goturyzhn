@@ -115,10 +115,10 @@ function generateBusTransactionsReport(data, output) {
   };
 
   const columns = [
-    { key: 'date', label: 'Tarih', width: 120, align: 'center' },
-    { key: 'description', label: 'Açıklama', width: usableWidth - 280, align: 'left' },
-    { key: 'type', label: 'Tür', width: 80, align: 'center' },
-    { key: 'amount', label: 'Tutar', width: 80, align: 'right' },
+    { key: 'date', label: 'Tarih', width: 100, align: 'center' },
+    { key: 'description', label: 'Açıklama', width: usableWidth - 220, align: 'left' },
+    { key: 'type', label: 'Tür', width: 60, align: 'center' },
+    { key: 'amount', label: 'Tutar', width: 60, align: 'right' },
   ];
 
   const formatColumnValue = (row, key) => {
@@ -155,14 +155,17 @@ function generateBusTransactionsReport(data, output) {
 
     doc.font('Bold');
     columns.forEach((col) => {
-      doc.text(col.label, x, headerY, {
+      doc.rect(x, headerY, col.width, 20).stroke();
+
+      doc.text(col.label, x, headerY + 5, {
         width: col.width,
         align: 'center',
       });
+
       x += col.width;
     });
     doc.font('Regular');
-    doc.moveDown(0.6);
+    doc.y = headerY + 25; // Alt satıra geç
   };
 
   const drawTableRow = (row) => {
@@ -191,7 +194,6 @@ function generateBusTransactionsReport(data, output) {
   doc.font('Regular').fontSize(9);
 
   drawKeyValueRow([
-    { label: 'Rapor Tarihi', value: formatDateTime(generatedAt || new Date()) },
     { label: 'Başlangıç', value: formatDateTime(query.startDate) },
     { label: 'Bitiş', value: formatDateTime(query.endDate) },
     { label: 'Plaka', value: query.bus || 'Tümü' },
@@ -201,7 +203,6 @@ function generateBusTransactionsReport(data, output) {
     { label: 'Toplam Gelir', value: formatCurrency(totals.income) },
     { label: 'Toplam Gider', value: formatCurrency(totals.expense) },
     { label: 'Net Tutar', value: formatCurrency(totals.net) },
-    { label: 'Toplam Kayıt', value: formatCount(totals.count) },
   ]);
 
   if (!groups.length) {
@@ -216,6 +217,8 @@ function generateBusTransactionsReport(data, output) {
       stream.on('error', reject);
     });
   }
+
+  doc.moveDown();
 
   groups.forEach((group, index) => {
     const busTitle = group.busTitle || 'Otobüs';
@@ -248,7 +251,6 @@ function generateBusTransactionsReport(data, output) {
       doc.moveDown(0.6);
       const separatorY = doc.y;
       ensureSpace(10);
-      doc.moveTo(xStart, separatorY).lineTo(xStart + usableWidth, separatorY).stroke();
       doc.moveDown(0.6);
     }
   });
