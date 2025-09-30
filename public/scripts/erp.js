@@ -1165,8 +1165,6 @@ async function loadTrip(date, time, tripId) {
 
         // Koltuk tıklama
         $(".seat").off("click").on("click", function (e) {
-            console.log("koltuğa tıklandı");
-
             const $seat = $(this);
             const rect = this.getBoundingClientRect();
             const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
@@ -1242,7 +1240,7 @@ async function loadTrip(date, time, tripId) {
                 } else {
                     const remainingSeatCount = selectedSeats.filter(s => s !== seatNumber).length;
                     console.log(remainingSeatCount)
-                    if (remainingSeatCount === 1) {
+                    if (remainingSeatCount === 0) {
                         shouldHidePopup = true;
                     }
                 }

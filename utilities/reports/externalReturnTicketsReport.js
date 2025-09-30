@@ -142,7 +142,7 @@ function generateExternalReturnTicketsReport(data, output) {
     if (!info) return '';
     const departureTime = formatDateTime(info.departureTime);
     const stops = [info.departureStop, info.arrivalStop].filter(Boolean).join(' - ');
-    return [departureTime, stops].filter(Boolean).join(' ');
+    return [stops, departureTime].filter(Boolean).join(' ');
   };
 
   const formatColumnValue = (ticket, key) => {
