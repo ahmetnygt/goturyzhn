@@ -1232,6 +1232,26 @@ async function loadTrip(date, time, tripId) {
             else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none");
 
             const isSelectedSeat = $popup.is(":visible") && ((!isTaken && selectedSeats.includes(seatNumber)) || (isTaken && selectedTakenSeats.includes(seatNumber)));
+            const movePopupToSeat = targetSeat => {
+                if (!targetSeat || !targetSeat.length) {
+                    return;
+                }
+
+                const seatRect = targetSeat[0].getBoundingClientRect();
+                let nextLeft = seatRect.right + window.scrollX + 10;
+                let nextTop = seatRect.top + window.scrollY + 25;
+
+                $popup.css({ left: `${nextLeft}px`, top: `${nextTop}px`, display: "block" });
+
+                const popupHeight = $popup.outerHeight();
+                const viewportBottom = window.scrollY + window.innerHeight;
+
+                if (nextTop + popupHeight > viewportBottom) {
+                    nextTop = seatRect.top + window.scrollY - popupHeight - 10;
+                    if (nextTop < 0) nextTop = 0;
+                    $popup.css("top", `${nextTop}px`);
+                }
+            };
             let shouldHidePopup = false;
 
             if (isSelectedSeat) {
@@ -1251,26 +1271,13 @@ async function loadTrip(date, time, tripId) {
                 currentSeat = null;
             } else if (!isSelectedSeat) {
                 currentSeat = $seat;
-
-                // Popup pozisyonu
-                let left = rect.right + window.scrollX + 10;
-                let top = rect.top + window.scrollY + 25;
-
-                $popup.css({ left: left + "px", top: top + "px", display: "block" });
-
-                // Aşağı taşarsa yukarı al
-                const popupHeight = $popup.outerHeight();
-                const viewportBottom = window.scrollY + window.innerHeight;
-                if (top + popupHeight > viewportBottom) {
-                    top = rect.top + window.scrollY - popupHeight - 10;
-                    if (top < 0) top = 0;
-                    $popup.css("top", top + "px");
-                }
+                movePopupToSeat($seat);
             }
 
             // Seçim davranışı (normal mod)
             if (!isTaken) {
                 const isSeatSelected = selectedSeats.includes(seatNumber);
+                const seatIndex = isSeatSelected ? selectedSeats.indexOf(seatNumber) : -1;
 
                 if (!isSeatSelected && selectedTakenSeats.length > 0) {
                     alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
@@ -1284,6 +1291,17 @@ async function loadTrip(date, time, tripId) {
                 } else {
                     selectedSeats = selectedSeats.filter(s => s !== seatNumber);
                     $seat.removeClass("selected");
+
+                    if ($popup.is(":visible") && selectedSeats.length > 0) {
+                        const focusIndex = seatIndex > 0 ? seatIndex - 1 : 0;
+                        const focusSeatNumber = selectedSeats[focusIndex] || selectedSeats[selectedSeats.length - 1];
+                        const $focusSeat = $(`.seat[data-seat-number='${focusSeatNumber}']`);
+
+                        if ($focusSeat.length) {
+                            currentSeat = $focusSeat;
+                            movePopupToSeat($focusSeat);
+                        }
+                    }
                 }
             } else {
                 if (selectedSeats.length > 0) {
