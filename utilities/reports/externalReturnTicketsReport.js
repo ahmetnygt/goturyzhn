@@ -193,7 +193,7 @@ function generateExternalReturnTicketsReport(data, output) {
       x += col.width;
     });
 
-    doc.moveDown(0.4);
+    doc.moveDown(1);
     doc.font('Regular').fontSize(8);
   };
 

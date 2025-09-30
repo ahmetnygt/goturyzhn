@@ -5569,8 +5569,10 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
 
             let toStopTitle = "-";
             const toRouteStopId = toKey(ticket.toRouteStopId);
+            console.log("ID:", toRouteStopId)
             if (toRouteStopId) {
                 const toRouteStop = routeStopMap.get(toRouteStopId);
+                console.log("STOP:", toRouteStop)
                 if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
                     const mappedStopTitle = stopMap.get(toKey(toRouteStop.stopId));
                     if (mappedStopTitle) {

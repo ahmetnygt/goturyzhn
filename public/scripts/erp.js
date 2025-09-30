@@ -1241,6 +1241,7 @@ async function loadTrip(date, time, tripId) {
                     shouldHidePopup = true;
                 } else {
                     const remainingSeatCount = selectedSeats.filter(s => s !== seatNumber).length;
+                    console.log(remainingSeatCount)
                     if (remainingSeatCount === 1) {
                         shouldHidePopup = true;
                     }
