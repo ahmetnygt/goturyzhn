@@ -1233,10 +1233,10 @@ async function loadTrip(date, time, tripId) {
             if ($seat.data("only-gender") == "m") $(".ticket-op.f").css("display", "none");
             else if ($seat.data("only-gender") == "f") $(".ticket-op.m").css("display", "none");
 
-            const isSameSeat = currentSeat && currentSeat.is($seat) && $popup.is(":visible");
+            const isSelectedSeat = $popup.is(":visible") && ((!isTaken && selectedSeats.includes(seatNumber)) || (isTaken && selectedTakenSeats.includes(seatNumber)));
             let shouldHidePopup = false;
 
-            if (isSameSeat) {
+            if (isSelectedSeat) {
                 if (isTaken) {
                     shouldHidePopup = true;
                 } else {
@@ -1251,7 +1251,7 @@ async function loadTrip(date, time, tripId) {
             if (shouldHidePopup) {
                 $popup.hide();
                 currentSeat = null;
-            } else if (!isSameSeat) {
+            } else if (!isSelectedSeat) {
                 currentSeat = $seat;
 
                 // Popup pozisyonu
