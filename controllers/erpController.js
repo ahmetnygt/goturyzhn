@@ -5333,25 +5333,9 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             })
             : [];
 
-        const routeStopIdsFromTickets = [
-            ...new Set(
-                tickets
-                    .flatMap(t => [t.fromRouteStopId, t.toRouteStopId])
-                    .filter(id => id !== null && id !== undefined)
-            )
-        ];
-
-        const routeStopsSubset = routeStopIdsFromTickets.length
-            ? await req.models.RouteStop.findAll({
-                where: { id: { [Op.in]: routeStopIdsFromTickets } },
-                raw: true
-            })
-            : [];
-
         const routeIds = [
             ...new Set([
-                ...trips.map(trip => trip.routeId).filter(Boolean),
-                ...routeStopsSubset.map(rs => rs.routeId).filter(Boolean)
+                ...trips.map(trip => trip.routeId).filter(Boolean)
             ])
         ];
 
@@ -5361,7 +5345,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 order: [["routeId", "ASC"], ["order", "ASC"]],
                 raw: true
             })
-            : [...routeStopsSubset];
+            : [];
 
         const tripStopTimes = tripIds.length
             ? await req.models.TripStopTime.findAll({
@@ -5376,15 +5360,6 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         const branchMap = new Map(branches.map(b => [toKey(b.id), b]));
         const tripMap = new Map(trips.map(trip => [toKey(trip.id), trip]));
 
-        const routeStopMap = new Map(routeStops.map(rs => [toKey(rs.id), rs]));
-        routeStopsSubset.forEach(rs => {
-            const key = toKey(rs.id);
-            if (!routeStopMap.has(key)) {
-                routeStopMap.set(key, rs);
-                routeStops.push(rs);
-            }
-        });
-
         const routeStopsByRoute = new Map();
         routeStops.forEach(rs => {
             const routeKey = toKey(rs.routeId);
@@ -5396,6 +5371,20 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
 
         routeStopsByRoute.forEach(list => {
             list.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        });
+
+        const routeStopByRouteAndStop = new Map();
+        routeStops.forEach(rs => {
+            const routeKey = toKey(rs.routeId);
+            const stopKey = toKey(rs.stopId);
+            if (!routeKey || !stopKey) {
+                return;
+            }
+
+            const compositeKey = `${routeKey}|${stopKey}`;
+            if (!routeStopByRouteAndStop.has(compositeKey)) {
+                routeStopByRouteAndStop.set(compositeKey, rs);
+            }
         });
 
         const tripStopTimesByTrip = new Map();
@@ -5411,6 +5400,14 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         routeStops.forEach(rs => {
             if (rs.stopId !== null && rs.stopId !== undefined) {
                 stopIdsSet.add(rs.stopId);
+            }
+        });
+        tickets.forEach(ticket => {
+            if (ticket.fromRouteStopId !== null && ticket.fromRouteStopId !== undefined) {
+                stopIdsSet.add(ticket.fromRouteStopId);
+            }
+            if (ticket.toRouteStopId !== null && ticket.toRouteStopId !== undefined) {
+                stopIdsSet.add(ticket.toRouteStopId);
             }
         });
         branches.forEach(branch => {
@@ -5457,6 +5454,22 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         };
 
         const stopTimesCache = new Map();
+
+        const getRouteStopForTripStop = (trip, stopId) => {
+            if (!trip) {
+                return null;
+            }
+
+            const routeKey = toKey(trip.routeId);
+            const stopKey = toKey(stopId);
+            if (!routeKey || !stopKey) {
+                return null;
+            }
+
+            const compositeKey = `${routeKey}|${stopKey}`;
+            return routeStopByRouteAndStop.get(compositeKey) || null;
+        };
+
         const getRouteStopDeparture = (trip, routeStop) => {
             if (!trip || !routeStop) {
                 return null;
@@ -5527,12 +5540,15 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             const branchTitle = branch?.title || "Belirtilmemiş Şube";
             const branchStopId = branch?.stopId ?? null;
 
-            const fromRouteStop = routeStopMap.get(toKey(ticket.fromRouteStopId));
-            if (!fromRouteStop) {
+            const fromStopId = ticket.fromRouteStopId;
+            if (fromStopId === null || fromStopId === undefined) {
                 return;
             }
 
-            const routeStopStopId = fromRouteStop.stopId ?? null;
+            const trip = tripMap.get(toKey(ticket.tripId));
+            const fromRouteStop = getRouteStopForTripStop(trip, fromStopId);
+
+            const routeStopStopId = fromRouteStop?.stopId ?? fromStopId ?? null;
             if (
                 branchStopId !== null && branchStopId !== undefined &&
                 routeStopStopId !== null && routeStopStopId !== undefined &&
@@ -5563,27 +5579,29 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
 
             const userBucket = branchBucket.users.get(userKey);
 
-            const trip = tripMap.get(toKey(ticket.tripId));
             const departureDate = getRouteStopDeparture(trip, fromRouteStop);
-            const fromStopTitle = stopMap.get(toKey(fromRouteStop.stopId)) || "-";
+            const fromStopTitle = stopMap.get(toKey(fromStopId)) || "-";
 
             let toStopTitle = "-";
-            const toRouteStopId = toKey(ticket.toRouteStopId);
-            console.log("ID:", toRouteStopId)
-            if (toRouteStopId) {
-                const toRouteStop = routeStopMap.get(toRouteStopId);
-                console.log("STOP:", toRouteStop)
-                if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
-                    const mappedStopTitle = stopMap.get(toKey(toRouteStop.stopId));
-                    if (mappedStopTitle) {
-                        toStopTitle = mappedStopTitle;
+            const toStopId = ticket.toRouteStopId;
+            if (toStopId !== null && toStopId !== undefined) {
+                const mappedStopTitle = stopMap.get(toKey(toStopId));
+                if (mappedStopTitle) {
+                    toStopTitle = mappedStopTitle;
+                } else {
+                    const toRouteStop = getRouteStopForTripStop(trip, toStopId);
+                    if (toRouteStop?.stopId !== undefined && toRouteStop?.stopId !== null) {
+                        const stopTitle = stopMap.get(toKey(toRouteStop.stopId));
+                        if (stopTitle) {
+                            toStopTitle = stopTitle;
+                        }
                     }
-                }
 
-                if (toStopTitle === "-" && toRouteStop) {
-                    const fallbackTitle = toRouteStop.title || toRouteStop.name || toRouteStop.description;
-                    if (fallbackTitle) {
-                        toStopTitle = String(fallbackTitle);
+                    if (toStopTitle === "-" && toRouteStop) {
+                        const fallbackTitle = toRouteStop.title || toRouteStop.name || toRouteStop.description;
+                        if (fallbackTitle) {
+                            toStopTitle = String(fallbackTitle);
+                        }
                     }
                 }
             }
