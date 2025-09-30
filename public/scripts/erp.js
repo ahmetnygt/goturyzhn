@@ -1224,6 +1224,24 @@ async function loadTrip(date, time, tripId) {
             }
 
             // ---- Normal mod (popup + seçim) ----
+
+            const hideAllSeatPopups = () => {
+                $(".ticket-ops-pop-up, .taken-ticket-ops-pop-up").hide();
+                currentSeat = null;
+            };
+
+            if (!isTaken && selectedTakenSeats.length > 0) {
+                alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
+                hideAllSeatPopups();
+                return;
+            }
+
+            if (isTaken && selectedSeats.length > 0) {
+                alert("Boş koltuk seçiliyken dolu koltuk seçemezsiniz.");
+                hideAllSeatPopups();
+                return;
+            }
+
             const $popup = isTaken ? $(".taken-ticket-ops-pop-up") : $(".ticket-ops-pop-up");
 
             $(".ticket-op").css("display", "flex");
@@ -1279,11 +1297,6 @@ async function loadTrip(date, time, tripId) {
                 const isSeatSelected = selectedSeats.includes(seatNumber);
                 const seatIndex = isSeatSelected ? selectedSeats.indexOf(seatNumber) : -1;
 
-                if (!isSeatSelected && selectedTakenSeats.length > 0) {
-                    alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
-                    return;
-                }
-
                 // boş koltuk toggle
                 if (!isSeatSelected) {
                     selectedSeats.push(seatNumber);
@@ -1304,11 +1317,6 @@ async function loadTrip(date, time, tripId) {
                     }
                 }
             } else {
-                if (selectedSeats.length > 0) {
-                    alert("Boş koltuk seçiliyken dolu koltuk seçemezsiniz.");
-                    return;
-                }
-
                 const activeGroupId = selectedTakenSeats.length > 0
                     ? $(`.seat[data-seat-number="${selectedTakenSeats[0]}"]`).attr("data-group-id")
                     : null;
