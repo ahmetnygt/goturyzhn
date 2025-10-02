@@ -1225,20 +1225,15 @@ async function loadTrip(date, time, tripId) {
 
             // ---- Normal mod (popup + seçim) ----
 
-            const hideAllSeatPopups = () => {
-                $(".ticket-ops-pop-up, .taken-ticket-ops-pop-up").hide();
-                currentSeat = null;
-            };
-
             if (!isTaken && selectedTakenSeats.length > 0) {
                 alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
-                hideAllSeatPopups();
+                $(".ticket-ops-pop-up").hide();
                 return;
             }
 
             if (isTaken && selectedSeats.length > 0) {
                 alert("Boş koltuk seçiliyken dolu koltuk seçemezsiniz.");
-                hideAllSeatPopups();
+                $(".ticket-ops-pop-up").hide();
                 return;
             }
 

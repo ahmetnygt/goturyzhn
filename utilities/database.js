@@ -12,15 +12,26 @@ async function getTenantConnection(subdomain) {
   // subdomain = database adı
   const sequelize = new Sequelize(
     subdomain,
-    "doadmin",
-    "AVNS_rfP7FS1Hdg-KSHpn02u",
+    "root",
+    "anadolutat1071",
     {
-      host: "dbaas-db-5929049-do-user-22627641-0.g.db.ondigitalocean.com",
-      port: 25060,
+      host: "localhost",
+      port: 3306,
       dialect: "mysql",
       logging: false,
     }
   );
+  // const sequelize = new Sequelize(
+  //   subdomain,
+  //   "doadmin",
+  //   "AVNS_rfP7FS1Hdg-KSHpn02u",
+  //   {
+  //     host: "dbaas-db-5929049-do-user-22627641-0.g.db.ondigitalocean.com",
+  //     port: 25060,
+  //     dialect: "mysql",
+  //     logging: false,
+  //   }
+  // );
 
   const models = initModels(sequelize);
 

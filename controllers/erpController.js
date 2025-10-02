@@ -711,13 +711,13 @@ exports.getTrip = async (req, res, next) => {
             }
 
             const user = userMap[ticket.userId];
-            const branch = branchMap[user.branchId];
+            const branch = branchMap[user?.branchId];
             ticket.from = stopsMap[ticket.fromRouteStopId];
             ticket.to = stopsMap[ticket.toRouteStopId];
-            ticket.user = user.name;
-            ticket.userBranch = branch.title;
-            ticket.isOwnBranchTicket = (user.branchId == req.session.firmUser.branchId).toString();
-            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.firmUser.branchId]?.stopId).toString()
+            ticket.user = user?.name;
+            ticket.userBranch = branch?.title;
+            ticket.isOwnBranchTicket = (user?.branchId == req.session.firmUser?.branchId).toString();
+            ticket.isOwnBranchStop = (ticket.fromRouteStopId == branchMap[req.session.firmUser?.branchId]?.stopId).toString()
             ticket.tripRefundOptionDate = trip.refundOptionDate
 
             newTicketArray[ticket.seatNo] = ticket
