@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 const bcrypt = require("bcrypt")
 const { Op } = require('sequelize');
+const fs = require("fs");
+const path = require("path");
 const { generateAccountReceiptFromDb } = require('../utilities/reports/accountCutRecipe');
 const generateTripSeatPlanReport = require('../utilities/reports/tripSeatPlanReport');
 const generateSalesRefundReportDetailed = require('../utilities/reports/salesRefundReportDetailed');
@@ -50,6 +52,66 @@ function emptyLikeToNull(value) {
         return null;
     }
     return value;
+}
+
+const LOGO_EXTENSIONS = [".png", ".jpg", ".jpeg", ".svg", ".webp"];
+const DEFAULT_LOGIN_LOGO = "gotur_yzhn_logo.png";
+const LOGIN_LOGO_DIRECTORY = path.join(__dirname, "..", "public", "images");
+
+function sanitizeForLogoLookup(value) {
+    if (!value) {
+        return "";
+    }
+
+    return value
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "")
+        .trim();
+}
+
+async function resolveFirmLoginLogo(req) {
+    const candidates = [];
+
+    if (req.tenantKey) {
+        candidates.push(req.tenantKey);
+    }
+
+    if (req.commonModels?.Firm && req.tenantKey) {
+        try {
+            const firm = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } });
+            if (firm?.displayName) {
+                candidates.push(firm.displayName);
+            }
+        } catch (error) {
+            console.error("Firm lookup error:", error);
+        }
+    }
+
+    const seen = new Set();
+
+    for (const candidate of candidates) {
+        const sanitized = sanitizeForLogoLookup(candidate);
+
+        if (!sanitized || seen.has(sanitized)) {
+            continue;
+        }
+
+        seen.add(sanitized);
+
+        for (const ext of LOGO_EXTENSIONS) {
+            const fileName = `${sanitized}${ext}`;
+            const filePath = path.join(LOGIN_LOGO_DIRECTORY, fileName);
+
+            if (fs.existsSync(filePath)) {
+                return fileName;
+            }
+        }
+    }
+
+    return DEFAULT_LOGIN_LOGO;
 }
 
 function convertEmptyFieldsToNull(obj) {
@@ -1840,7 +1902,13 @@ exports.getErp = async (req, res, next) => {
 }
 
 exports.getErpLogin = async (req, res, next) => {
-    res.render("erplogin", { isNoNavbar: true })
+    try {
+        const firmLogo = await resolveFirmLoginLogo(req);
+        res.render("erplogin", { isNoNavbar: true, firmLogo });
+    } catch (error) {
+        console.error("Login logo resolution failed:", error);
+        res.render("erplogin", { isNoNavbar: true, firmLogo: DEFAULT_LOGIN_LOGO });
+    }
 }
 
 exports.postErpLogin = async (req, res, next) => {
