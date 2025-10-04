@@ -1884,174 +1884,183 @@ async function loadTrip(date, time, tripId) {
 
             $(".ticket-ops-pop-up").hide();
 
-            await $.ajax({
-                url: "/get-ticket-row",
-                type: "GET",
-                data: {
-                    action: e.currentTarget.dataset.action,
-                    gender: button.dataset.gender,
-                    seats: selectedSeats,
-                    seatTypes: seatTypes,
-                    fromId: fromIdLocal,
-                    toId: toIdLocal,
-                    date: currentTripDate,
-                    time: currentTripTime,
-                    tripId: currentTripId,
-                    stopId: currentStop
-                },
-                success: function (response) {
-                    $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase());
-                    $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase());
-                    $(".ticket-row").remove();
-                    $(".ticket-info").remove();
-                    $(".ticket-button-action").attr("data-action", action);
-                    $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET");
-                    $(".ticket-rows").prepend(response);
+            try {
+                await $.ajax({
+                    url: "/get-ticket-row",
+                    type: "GET",
+                    data: {
+                        action: e.currentTarget.dataset.action,
+                        gender: button.dataset.gender,
+                        seats: selectedSeats,
+                        seatTypes: seatTypes,
+                        fromId: fromIdLocal,
+                        toId: toIdLocal,
+                        date: currentTripDate,
+                        time: currentTripTime,
+                        tripId: currentTripId,
+                        stopId: currentStop
+                    },
+                    success: function (response) {
+                        $(".ticket-info-pop-up_from").html(currentStopStr.toLocaleUpperCase());
+                        $(".ticket-info-pop-up_to").html(button.dataset.routeStop.toLocaleUpperCase());
+                        $(".ticket-row").remove();
+                        $(".ticket-info").remove();
+                        $(".ticket-button-action").attr("data-action", action);
+                        $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET");
+                        $(".ticket-rows").prepend(response);
 
-                    seatTypes = [];
+                        seatTypes = [];
 
-                    initTcknInputs(".identity input");
-                    initPhoneInput(".phone input");
-                    initializeTicketRowPriceControls();
+                        initTcknInputs(".identity input");
+                        initPhoneInput(".phone input");
+                        initializeTicketRowPriceControls();
 
-                    $(".identity input").on("blur", async e2 => {
-                        const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e2.currentTarget.value } });
-                        if (customer) {
-                            const row = e2.currentTarget.parentElement.parentElement;
-                            const rows = [...document.querySelectorAll('.ticket-row')];
-                            const originalPrice = originalPrices[rows.indexOf(e2.currentTarget.closest('.ticket-row'))];
-                            $(row).find(".name").find("input").val(customer.name);
-                            $(row).find(".surname").find("input").val(customer.surname);
-                            $(row).find(".category").find("input").val(customer.customerCategory);
-                            $(row).find(".type").find("input").val(customer.customerType);
-                            $(row).find(".nationality").find("input").val(customer.nationality);
-                            $(row).find(".price").find("span.customer-point")
-                                .html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%")
-                                .addClass("text-danger")
-                                .data("pointorpercent", customer.pointOrPercent)
-                                .data("pointamount", customer.point_amount);
-                            $(row).find(".price").find("input").val(originalPrice);
-                            if (customer.pointOrPercent == "percent") {
-                                const discount = Number(customer.percent);
-                                const newPrice = originalPrice - (originalPrice / 100 * discount);
-                                $(row).find(".price").find("input").val(newPrice);
-                            } else if (!customer.pointOrPercent) {
+                        $(".identity input").on("blur", async e2 => {
+                            const customer = await $.ajax({ url: "/get-customer", type: "GET", data: { idNumber: e2.currentTarget.value } });
+                            if (customer) {
+                                const row = e2.currentTarget.parentElement.parentElement;
+                                const rows = [...document.querySelectorAll('.ticket-row')];
+                                const originalPrice = originalPrices[rows.indexOf(e2.currentTarget.closest('.ticket-row'))];
+                                $(row).find(".name").find("input").val(customer.name);
+                                $(row).find(".surname").find("input").val(customer.surname);
+                                $(row).find(".category").find("input").val(customer.customerCategory);
+                                $(row).find(".type").find("input").val(customer.customerType);
+                                $(row).find(".nationality").find("input").val(customer.nationality);
                                 $(row).find(".price").find("span.customer-point")
-                                    .html("")
-                                    .removeClass("text-danger")
-                                    .data("pointorpercent", "")
-                                    .data("pointamount", "");
+                                    .html(customer.pointOrPercent == "point" ? customer.point_amount + " p" : customer.percent + "%")
+                                    .addClass("text-danger")
+                                    .data("pointorpercent", customer.pointOrPercent)
+                                    .data("pointamount", customer.point_amount);
+                                $(row).find(".price").find("input").val(originalPrice);
+                                if (customer.pointOrPercent == "percent") {
+                                    const discount = Number(customer.percent);
+                                    const newPrice = originalPrice - (originalPrice / 100 * discount);
+                                    $(row).find(".price").find("input").val(newPrice);
+                                } else if (!customer.pointOrPercent) {
+                                    $(row).find(".price").find("span.customer-point")
+                                        .html("")
+                                        .removeClass("text-danger")
+                                        .data("pointorpercent", "")
+                                        .data("pointamount", "");
+                                }
+                                if (customer.gender == "m") {
+                                    $(row).find(".gender").find("input.male").prop("checked", true);
+                                    $(row).find(".gender").find("input.female").prop("checked", false);
+                                    $(row).addClass("m").removeClass("f");
+                                } else if (customer.gender == "f") {
+                                    $(row).find(".gender").find("input.male").prop("checked", false);
+                                    $(row).find(".gender").find("input.female").prop("checked", true);
+                                    $(row).addClass("f").removeClass("m");
+                                }
+                                $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber);
                             }
-                            if (customer.gender == "m") {
-                                $(row).find(".gender").find("input.male").prop("checked", true);
-                                $(row).find(".gender").find("input.female").prop("checked", false);
-                                $(row).addClass("m").removeClass("f");
-                            } else if (customer.gender == "f") {
-                                $(row).find(".gender").find("input.male").prop("checked", false);
-                                $(row).find(".gender").find("input.female").prop("checked", true);
-                                $(row).addClass("f").removeClass("m");
+                        });
+
+                        $(".ticket-info-pop-up").css("display", "block");
+                        $(".blackout").css("display", "block");
+
+                        flatpickr($(".reservation-expire input.changable.date"), {
+                            locale: "tr",
+                            altInput: true,
+                            altFormat: "d F Y",
+                        });
+                        flatpickr($(".reservation-expire input.changable.time"), {
+                            locale: "tr",
+                            enableTime: true,
+                            noCalendar: true,
+                        });
+
+                        $(document).on("change", ".ticket-row input[type='radio']", function () {
+                            const $row = $(this).closest(".ticket-row");
+                            $row.removeClass("m f");
+                            if ($(this).val() === "m") {
+                                $row.addClass("m");
+                            } else if ($(this).val() === "f") {
+                                $row.addClass("f");
                             }
-                            $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber);
-                        }
-                    });
+                        });
 
-                    $(".ticket-info-pop-up").css("display", "block");
-                    $(".blackout").css("display", "block");
+                        $(".price-arrow").off().on("click", function (e3) {
+                            e3.preventDefault();
 
-                    flatpickr($(".reservation-expire input.changable.date"), {
-                        locale: "tr",
-                        altInput: true,
-                        altFormat: "d F Y",
-                    });
-                    flatpickr($(".reservation-expire input.changable.time"), {
-                        locale: "tr",
-                        enableTime: true,
-                        noCalendar: true,
-                    });
+                            const $button = $(this);
+                            const isUp = $button.hasClass("price-arrow-up");
+                            const $priceContainer = $button.closest(".price");
+                            const priceLists = getPriceLists($priceContainer);
+                            const options = priceLists.activeList;
 
-                    $(document).on("change", ".ticket-row input[type='radio']", function () {
-                        const $row = $(this).closest(".ticket-row");
-                        $row.removeClass("m f");
-                        if ($(this).val() === "m") {
-                            $row.addClass("m");
-                        } else if ($(this).val() === "f") {
-                            $row.addClass("f");
-                        }
-                    });
-
-                    $(".price-arrow").off().on("click", function (e3) {
-                        e3.preventDefault();
-
-                        const $button = $(this);
-                        const isUp = $button.hasClass("price-arrow-up");
-                        const $priceContainer = $button.closest(".price");
-                        const priceLists = getPriceLists($priceContainer);
-                        const options = priceLists.activeList;
-
-                        if (!options.length) {
-                            return;
-                        }
-
-                        const $row = $button.closest(".ticket-row");
-                        const rowIndex = $(".ticket-row").index($row);
-                        const $input = $priceContainer.find("input").first();
-
-                        const currentValue = Number($input.val());
-                        let currentIndex = options.findIndex(p => Number(p) === currentValue);
-
-                        if (currentIndex === -1 && rowIndex > -1) {
-                            const originalPrice = originalPrices[rowIndex];
-                            if (originalPrice !== undefined && originalPrice !== null) {
-                                currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
+                            if (!options.length) {
+                                return;
                             }
-                        }
 
-                        let nextIndex;
-                        if (currentIndex === -1) {
-                            nextIndex = isUp ? 0 : options.length - 1;
-                        } else if (isUp) {
-                            nextIndex = (currentIndex + 1) % options.length;
-                        } else {
-                            nextIndex = (currentIndex - 1 + options.length) % options.length;
-                        }
+                            const $row = $button.closest(".ticket-row");
+                            const rowIndex = $(".ticket-row").index($row);
+                            const $input = $priceContainer.find("input").first();
 
-                        const newBasePrice = Number(options[nextIndex]);
-                        if (Number.isNaN(newBasePrice)) return;
+                            const currentValue = Number($input.val());
+                            let currentIndex = options.findIndex(p => Number(p) === currentValue);
 
-                        if (rowIndex > -1) {
-                            originalPrices[rowIndex] = newBasePrice;
-                        }
-
-                        let finalPrice = newBasePrice;
-                        const $discountInfo = $priceContainer.find("span.customer-point");
-                        const pointOrPercent = $discountInfo.data("pointorpercent");
-
-                        if (pointOrPercent === "percent") {
-                            const percentText = ($discountInfo.text() || "").trim();
-                            const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
-                            if (percentMatch) {
-                                const percentValue = parseFloat(percentMatch[0].replace(",", "."));
-                                if (!Number.isNaN(percentValue)) {
-                                    finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+                            if (currentIndex === -1 && rowIndex > -1) {
+                                const originalPrice = originalPrices[rowIndex];
+                                if (originalPrice !== undefined && originalPrice !== null) {
+                                    currentIndex = options.findIndex(p => Number(p) === Number(originalPrice));
                                 }
                             }
-                        }
 
-                        $input.val(finalPrice);
-                        if ($input.length && $input[0]) {
-                            const inputEvent = new Event("input", { bubbles: true });
-                            const changeEvent = new Event("change", { bubbles: true });
-                            $input[0].dispatchEvent(inputEvent);
-                            $input[0].dispatchEvent(changeEvent);
-                        }
-                    });
+                            let nextIndex;
+                            if (currentIndex === -1) {
+                                nextIndex = isUp ? 0 : options.length - 1;
+                            } else if (isUp) {
+                                nextIndex = (currentIndex + 1) % options.length;
+                            } else {
+                                nextIndex = (currentIndex - 1 + options.length) % options.length;
+                            }
 
-                    $(".seat").removeClass("selected");
-                },
-                error: function (xhr, status, error) {
-                    console.log(error);
-                }
-            });
+                            const newBasePrice = Number(options[nextIndex]);
+                            if (Number.isNaN(newBasePrice)) return;
+
+                            if (rowIndex > -1) {
+                                originalPrices[rowIndex] = newBasePrice;
+                            }
+
+                            let finalPrice = newBasePrice;
+                            const $discountInfo = $priceContainer.find("span.customer-point");
+                            const pointOrPercent = $discountInfo.data("pointorpercent");
+
+                            if (pointOrPercent === "percent") {
+                                const percentText = ($discountInfo.text() || "").trim();
+                                const percentMatch = percentText.match(/-?\d+(?:[.,]\d+)?/);
+                                if (percentMatch) {
+                                    const percentValue = parseFloat(percentMatch[0].replace(",", "."));
+                                    if (!Number.isNaN(percentValue)) {
+                                        finalPrice = newBasePrice - ((newBasePrice / 100) * percentValue);
+                                    }
+                                }
+                            }
+
+                            $input.val(finalPrice);
+                            if ($input.length && $input[0]) {
+                                const inputEvent = new Event("input", { bubbles: true });
+                                const changeEvent = new Event("change", { bubbles: true });
+                                $input[0].dispatchEvent(inputEvent);
+                                $input[0].dispatchEvent(changeEvent);
+                            }
+                        });
+
+                        $(".seat").removeClass("selected");
+                    }
+                });
+            } catch (err) {
+                seatTypes = [];
+                const message =
+                    err?.responseJSON?.message ||
+                    err?.responseJSON?.error ||
+                    err?.responseText ||
+                    err?.statusText ||
+                    err?.message ||
+                    "Bilinmeyen hata";
+                showError(message);
+            }
         });
 
         // Seat hover popup
