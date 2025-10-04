@@ -1,7 +1,6 @@
 const { Op } = require('sequelize');
 const { getTenantConnection } = require('../utilities/database');
-
-const DEFAULT_TENANT = process.env.TENANT_KEY;
+const { DEFAULT_TENANT_KEY } = require('../utilities/tenantConfig');
 
 // Try to use node-cron; fall back to setInterval if unavailable
 let cron;
@@ -69,7 +68,7 @@ async function cancelExpiredReservations() {
 
   let tenant;
   try {
-    tenant = await getTenantConnection(DEFAULT_TENANT);
+    tenant = await getTenantConnection(DEFAULT_TENANT_KEY);
   } catch (err) {
     console.error('Tenant connection error for reservation cleanup job:', err);
     return;
