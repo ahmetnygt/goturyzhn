@@ -2140,6 +2140,8 @@ async function loadTrip(date, time, tripId) {
             $(".passenger-info-popup .price-container").css("display", "block");
             $(".passenger-info-popup .payment-container").css("display", "block");
             $(".passenger-info-popup .pnr-container").css("display", "block");
+            $(".passenger-info-popup .take-on-container").css("display", "block");
+            $(".passenger-info-popup .take-off-container").css("display", "block");
             if (data.createdAt) {
                 $(".passenger-info-popup").removeClass("m").removeClass("f").removeClass("p");
                 if (data.status == "pending") {
@@ -2148,9 +2150,15 @@ async function loadTrip(date, time, tripId) {
                     $(".passenger-info-popup .price-container").css("display", "none");
                     $(".passenger-info-popup .payment-container").css("display", "none");
                     $(".passenger-info-popup .pnr-container").css("display", "none");
+                    $(".passenger-info-popup .take-on-container").css("display", "none");
+                    $(".passenger-info-popup .take-off-container").css("display", "none");
                 }
                 else {
                     $(".passenger-info-popup").addClass(data.gender);
+                    const hasTakeOn = Boolean(data.takeOn);
+                    const hasTakeOff = Boolean(data.takeOff);
+                    $(".passenger-info-popup .take-on-container").css("display", hasTakeOn ? "block" : "none");
+                    $(".passenger-info-popup .take-off-container").css("display", hasTakeOff ? "block" : "none");
                 }
                 $(".passenger-info-popup .seat-number").html(data.seatNumber);
                 $(".passenger-info-popup .from").html(data.from);
@@ -2159,6 +2167,8 @@ async function loadTrip(date, time, tripId) {
                 $(".passenger-info-popup .username").html(data.userName);
                 $(".passenger-info-popup .userBranch").html(data.branch);
                 $(".passenger-info-popup .phone").html(data.phone);
+                $(".passenger-info-popup .take-on").html(data.takeOn || "");
+                $(".passenger-info-popup .take-off").html(data.takeOff || "");
                 $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "");
                 $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "");
                 $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "");
