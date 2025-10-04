@@ -11,9 +11,61 @@ try {
   console.warn('node-cron not installed, using setInterval fallback');
 }
 
+function buildExpirationDate(optionDate, optionTime, fallbackDateParts) {
+  if (!optionDate && !optionTime) {
+    return null;
+  }
+
+  let year;
+  let month;
+  let day;
+
+  if (optionDate) {
+    const [y, m, d] = String(optionDate)
+      .split('-')
+      .map((value) => Number(value));
+
+    if ([y, m, d].some((value) => Number.isNaN(value))) {
+      return null;
+    }
+
+    year = y;
+    month = m;
+    day = d;
+  } else if (fallbackDateParts) {
+    [year, month, day] = fallbackDateParts;
+  } else {
+    return null;
+  }
+
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  if (optionTime instanceof Date) {
+    hours = optionTime.getHours();
+    minutes = optionTime.getMinutes();
+    seconds = optionTime.getSeconds();
+  } else if (optionTime) {
+    const normalized = String(optionTime).split('.')[0];
+    const [h = '0', m = '0', s = '0'] = normalized.split(':');
+    hours = Number(h) || 0;
+    minutes = Number(m) || 0;
+    seconds = Number(s) || 0;
+  }
+
+  const expiration = new Date(year, month - 1, day, hours, minutes, seconds);
+  return Number.isNaN(expiration.getTime()) ? null : expiration;
+}
+
 // Task that cancels expired reservations and deletes expired pendings
 async function cancelExpiredReservations() {
   const now = new Date();
+  const fallbackDateParts = [
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+  ];
 
   let tenant;
   try {
@@ -33,26 +85,36 @@ async function cancelExpiredReservations() {
 
   try {
     // Tek sorgu ile al, sonra ayır
-    const expiredTickets = await Ticket.findAll({
+    const candidateTickets = await Ticket.findAll({
       where: {
         status: { [Op.in]: ['reservation', 'pending'] },
-        optionTime: { [Op.lt]: now }
       },
-      attributes: ['id', 'status'] // performans
+      attributes: ['id', 'status', 'optionDate', 'optionTime'],
+      raw: true,
     });
-    console.log("İptal edilesi biletler sorgulandı.")
+    console.log('İptal edilesi biletler sorgulandı.');
+
+    const expiredTickets = candidateTickets.filter((ticket) => {
+      const expiresAt = buildExpirationDate(
+        ticket.optionDate,
+        ticket.optionTime,
+        fallbackDateParts
+      );
+
+      return expiresAt && expiresAt <= now;
+    });
 
     if (expiredTickets.length === 0) {
-      console.log("İptal edilesi bilet bulunamadı.")
-      return
-    };
-
-    const reservationIds = [];
-    const pendingIds = [];
-    for (const t of expiredTickets) {
-      if (t.status === 'reservation') reservationIds.push(t.id);
-      else if (t.status === 'pending') pendingIds.push(t.id);
+      console.log('İptal edilesi bilet bulunamadı.');
+      return;
     }
+
+    const reservationIds = expiredTickets
+      .filter((ticket) => ticket.status === 'reservation')
+      .map((ticket) => ticket.id);
+    const pendingIds = expiredTickets
+      .filter((ticket) => ticket.status === 'pending')
+      .map((ticket) => ticket.id);
 
     // İşlemleri atomik yapmak için transaction
     await sequelize.transaction(async (tx) => {
