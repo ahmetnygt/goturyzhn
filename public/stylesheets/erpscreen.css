@@ -756,7 +756,6 @@ select.price-button-select {
     background-color: white;
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
-    width: 80vw;
     min-height: 40vh;
     overflow: hidden;
     display: none;
@@ -773,6 +772,10 @@ select.price-button-select {
 
 .member-info input {
     width: 100% !important;
+}
+
+.member-info-right{
+    width: 50vw;
 }
 
 .member-ticket-list {
