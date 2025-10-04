@@ -1,8 +1,6 @@
 const { Sequelize } = require("sequelize");
 const initModels = require("./initModels");
 const bcrypt = require("bcrypt");
-const { normalizeTenantKey } = require("./tenantConfig");
-
 const connections = {};
 
 const DB_USERNAME = process.env.DB_USERNAME || "root";
@@ -28,7 +26,7 @@ function buildConnectionOptions() {
 }
 
 async function getTenantConnection(subdomain) {
-  const tenantKey = normalizeTenantKey(subdomain);
+  const tenantKey = typeof subdomain === "string" ? subdomain.trim() : "";
 
   if (!tenantKey) {
     throw new Error("Tenant veritabanı adı belirtilmedi.");
@@ -167,4 +165,8 @@ async function getTenantConnection(subdomain) {
   return connections[tenantKey];
 }
 
-module.exports = { getTenantConnection };
+function getActiveTenantKeys() {
+  return Object.keys(connections);
+}
+
+module.exports = { getTenantConnection, getActiveTenantKeys };

@@ -1,6 +1,33 @@
 const { Op } = require('sequelize');
-const { getTenantConnection } = require('../utilities/database');
-const { DEFAULT_TENANT_KEY } = require('../utilities/tenantConfig');
+const {
+  getTenantConnection,
+  getActiveTenantKeys,
+} = require('../utilities/database');
+
+function readConfiguredTenantKeys() {
+  const configured = [];
+
+  if (process.env.RESERVATION_JOB_TENANT_KEY) {
+    configured.push(process.env.RESERVATION_JOB_TENANT_KEY);
+  }
+
+  if (process.env.RESERVATION_JOB_TENANT_KEYS) {
+    configured.push(...process.env.RESERVATION_JOB_TENANT_KEYS.split(','));
+  }
+
+  return configured
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function resolveTenantKeysForJob() {
+  const keys = new Set([
+    ...readConfiguredTenantKeys(),
+    ...getActiveTenantKeys(),
+  ]);
+
+  return Array.from(keys);
+}
 
 // Try to use node-cron; fall back to setInterval if unavailable
 let cron;
@@ -57,6 +84,107 @@ function buildExpirationDate(optionDate, optionTime, fallbackDateParts) {
   return Number.isNaN(expiration.getTime()) ? null : expiration;
 }
 
+async function cancelExpiredReservationsForTenant(tenantKey, now, fallbackDateParts) {
+  const tenant = await getTenantConnection(tenantKey);
+  const { models, sequelize } = tenant;
+  const { Ticket, SystemLog } = models;
+
+  if (!Ticket || !SystemLog) {
+    console.error(
+      `[${tenantKey}] Reservation cleanup job: Ticket veya SystemLog modeli bulunamadı.`
+    );
+    return;
+  }
+
+  // Tek sorgu ile al, sonra ayır
+  const candidateTickets = await Ticket.findAll({
+    where: {
+      status: { [Op.in]: ['reservation', 'pending'] },
+    },
+    attributes: ['id', 'status', 'optionDate', 'optionTime'],
+    raw: true,
+  });
+  console.log(`[${tenantKey}] İptal edilesi biletler sorgulandı.`);
+
+  const expiredTickets = candidateTickets.filter((ticket) => {
+    const expiresAt = buildExpirationDate(
+      ticket.optionDate,
+      ticket.optionTime,
+      fallbackDateParts
+    );
+
+    return expiresAt && expiresAt <= now;
+  });
+
+  if (expiredTickets.length === 0) {
+    console.log(`[${tenantKey}] İptal edilesi bilet bulunamadı.`);
+    return;
+  }
+
+  const reservationIds = expiredTickets
+    .filter((ticket) => ticket.status === 'reservation')
+    .map((ticket) => ticket.id);
+  const pendingIds = expiredTickets
+    .filter((ticket) => ticket.status === 'pending')
+    .map((ticket) => ticket.id);
+
+  // İşlemleri atomik yapmak için transaction
+  await sequelize.transaction(async (tx) => {
+    // 1) reservation → canceled
+    if (reservationIds.length) {
+      await Ticket.update(
+        { status: 'canceled' }, // modelde 'canceled' kullanıyoruz
+        { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
+      );
+
+      await SystemLog.bulkCreate(
+        reservationIds.map((id) => ({
+          userId: null,
+          branchId: null,
+          module: 'ticket',
+          action: 'auto_cancel',
+          referenceId: id,
+          newData: { status: 'canceled' }, // log da aynı
+          description: 'Reservation automatically canceled by scheduler',
+        })),
+        { transaction: tx }
+      );
+    }
+
+    // 2) pending → destroy
+    if (pendingIds.length) {
+      await Ticket.destroy({
+        where: { id: { [Op.in]: pendingIds } },
+        transaction: tx,
+      });
+
+      await SystemLog.bulkCreate(
+        pendingIds.map((id) => ({
+          userId: null,
+          branchId: null,
+          module: 'ticket',
+          action: 'auto_delete',
+          referenceId: id,
+          newData: { deleted: true },
+          description: 'Pending ticket automatically deleted by scheduler',
+        })),
+        { transaction: tx }
+      );
+    }
+  });
+
+  if (reservationIds.length) {
+    console.log(
+      `[Scheduler][${tenantKey}] Reservations canceled: ${reservationIds.join(', ')}`
+    );
+  }
+  if (pendingIds.length) {
+    console.log(
+      `[Scheduler][${tenantKey}] Pending tickets deleted: ${pendingIds.join(', ')}`
+    );
+  }
+}
+
 // Task that cancels expired reservations and deletes expired pendings
 async function cancelExpiredReservations() {
   const now = new Date();
@@ -66,112 +194,24 @@ async function cancelExpiredReservations() {
     now.getDate(),
   ];
 
-  let tenant;
-  if (!DEFAULT_TENANT_KEY) {
-    console.error('Reservation cleanup job skipped: DEFAULT_TENANT_KEY tanımlı değil.');
-    return;
-  }
-  try {
-    tenant = await getTenantConnection(DEFAULT_TENANT_KEY);
-  } catch (err) {
-    console.error('Tenant connection error for reservation cleanup job:', err);
+  const tenantKeys = resolveTenantKeysForJob();
+
+  if (tenantKeys.length === 0) {
+    console.warn(
+      'Reservation cleanup job çalıştırılmadı: aktif veya yapılandırılmış tenant anahtarı yok.'
+    );
     return;
   }
 
-  const { models, sequelize } = tenant;
-  const { Ticket, SystemLog } = models;
-
-  if (!Ticket || !SystemLog) {
-    console.error('Ticket or SystemLog model missing in reservation cleanup job.');
-    return;
-  }
-
-  try {
-    // Tek sorgu ile al, sonra ayır
-    const candidateTickets = await Ticket.findAll({
-      where: {
-        status: { [Op.in]: ['reservation', 'pending'] },
-      },
-      attributes: ['id', 'status', 'optionDate', 'optionTime'],
-      raw: true,
-    });
-    console.log('İptal edilesi biletler sorgulandı.');
-
-    const expiredTickets = candidateTickets.filter((ticket) => {
-      const expiresAt = buildExpirationDate(
-        ticket.optionDate,
-        ticket.optionTime,
-        fallbackDateParts
+  for (const tenantKey of tenantKeys) {
+    try {
+      await cancelExpiredReservationsForTenant(tenantKey, now, fallbackDateParts);
+    } catch (err) {
+      console.error(
+        `Tenant ${tenantKey} için rezervasyon temizleme hatası:`,
+        err
       );
-
-      return expiresAt && expiresAt <= now;
-    });
-
-    if (expiredTickets.length === 0) {
-      console.log('İptal edilesi bilet bulunamadı.');
-      return;
     }
-
-    const reservationIds = expiredTickets
-      .filter((ticket) => ticket.status === 'reservation')
-      .map((ticket) => ticket.id);
-    const pendingIds = expiredTickets
-      .filter((ticket) => ticket.status === 'pending')
-      .map((ticket) => ticket.id);
-
-    // İşlemleri atomik yapmak için transaction
-    await sequelize.transaction(async (tx) => {
-      // 1) reservation → canceled
-      if (reservationIds.length) {
-        await Ticket.update(
-          { status: 'canceled' }, // modelde 'canceled' kullanıyoruz
-          { where: { id: { [Op.in]: reservationIds } }, transaction: tx }
-        );
-
-        await SystemLog.bulkCreate(
-          reservationIds.map(id => ({
-            userId: null,
-            branchId: null,
-            module: 'ticket',
-            action: 'auto_cancel',
-            referenceId: id,
-            newData: { status: 'canceled' }, // log da aynı
-            description: 'Reservation automatically canceled by scheduler'
-          })),
-          { transaction: tx }
-        );
-      }
-
-      // 2) pending → destroy
-      if (pendingIds.length) {
-        await Ticket.destroy({
-          where: { id: { [Op.in]: pendingIds } },
-          transaction: tx
-        });
-
-        await SystemLog.bulkCreate(
-          pendingIds.map(id => ({
-            userId: null,
-            branchId: null,
-            module: 'ticket',
-            action: 'auto_delete',
-            referenceId: id,
-            newData: { deleted: true },
-            description: 'Pending ticket automatically deleted by scheduler'
-          })),
-          { transaction: tx }
-        );
-      }
-    });
-
-    if (reservationIds.length) {
-      console.log(`[Scheduler] Reservations canceled: ${reservationIds.join(', ')}`);
-    }
-    if (pendingIds.length) {
-      console.log(`[Scheduler] Pending tickets deleted: ${pendingIds.join(', ')}`);
-    }
-  } catch (err) {
-    console.error('Error canceling/deleting expired tickets:', err);
   }
 }
 

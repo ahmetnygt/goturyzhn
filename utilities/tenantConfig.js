@@ -1,36 +1,28 @@
-const DEFAULT_TENANT_KEY = process.env.TENANT_KEY || null;
-
-function normalizeTenantKey(candidate) {
-  if (typeof candidate !== "string") {
-    return null;
-  }
-
-  const trimmed = candidate.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function resolveTenantKey(hostname, explicitKey) {
-  const normalizedExplicit = normalizeTenantKey(explicitKey);
-  if (normalizedExplicit) {
-    return normalizedExplicit;
-  }
-
+function resolveTenantKey(hostname) {
   if (!hostname) {
     return null;
   }
 
   const normalizedHost = String(hostname).toLowerCase();
-  const labels = normalizedHost.split(".");
+  const labels = normalizedHost
+    .split(".")
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-  if (labels.length <= 1) {
+  if (labels.length < 2) {
     return null;
+  }
+
+  const [firstLabel, secondLabel] = labels;
+
+  if (firstLabel === "www") {
+    return secondLabel || null;
   }
 
   return normalizeTenantKey(labels[0]);
 }
 
 module.exports = {
-  DEFAULT_TENANT_KEY,
   resolveTenantKey,
   normalizeTenantKey,
 };
