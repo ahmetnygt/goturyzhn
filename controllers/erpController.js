@@ -54,6 +54,79 @@ function emptyLikeToNull(value) {
     return value;
 }
 
+const removeDiacritics = (value) =>
+    typeof value === "string"
+        ? value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        : value;
+
+function normalizeTakeText(value) {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return "";
+    }
+
+    let lowered;
+    try {
+        lowered = trimmed.toLocaleLowerCase("tr-TR");
+    } catch (error) {
+        lowered = trimmed.toLowerCase();
+    }
+
+    return removeDiacritics(lowered).replace(/\s+/g, " ").trim();
+}
+
+async function prepareTakeValueCache(model) {
+    if (!model) {
+        return null;
+    }
+
+    const entries = await model.findAll();
+    const map = new Map();
+
+    entries.forEach(entry => {
+        const key = normalizeTakeText(entry?.title || "");
+        if (key) {
+            map.set(key, entry);
+        }
+    });
+
+    return { model, map };
+}
+
+async function ensureTakeValue(cache, title) {
+    const trimmed = typeof title === "string" ? title.trim() : "";
+    if (!trimmed) {
+        return null;
+    }
+
+    if (!cache) {
+        return trimmed;
+    }
+
+    const normalized = normalizeTakeText(trimmed);
+    if (!normalized) {
+        return trimmed;
+    }
+
+    let record = cache.map.get(normalized) || null;
+
+    if (record) {
+        if (record.title !== trimmed) {
+            record.title = trimmed;
+            await record.save();
+        }
+        return record.title;
+    }
+
+    record = await cache.model.create({ title: trimmed });
+    cache.map.set(normalized, record);
+    return record.title;
+}
+
 const LOGO_EXTENSIONS = [".png", ".jpg", ".jpeg", ".svg", ".webp"];
 const DEFAULT_LOGIN_LOGO = "gotur_yzhn_logo.png";
 const LOGIN_LOGO_DIRECTORY = path.join(__dirname, "..", "public", "images");
@@ -2010,6 +2083,11 @@ exports.getTicketRow = async (req, res, next) => {
     const trip = await req.models.Trip.findOne({ where: tripWhere });
     if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
 
+    const [takeOnOptions, takeOffOptions] = await Promise.all([
+        req.models.TakeOn ? req.models.TakeOn.findAll({ order: [["title", "ASC"]] }) : [],
+        req.models.TakeOff ? req.models.TakeOff.findAll({ order: [["title", "ASC"]] }) : [],
+    ]);
+
     const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } });
     const isOwnBranch = stopId ? branch?.stopId == stopId : false;
 
@@ -2065,7 +2143,7 @@ exports.getTicketRow = async (req, res, next) => {
             seats.push(0)
             gender.push("m")
         }
-        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action });
+        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action, takeOnOptions, takeOffOptions });
     }
 
     // --- TAKEN CASE ---
@@ -2124,7 +2202,7 @@ exports.getTicketRow = async (req, res, next) => {
             }
         }
 
-        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action, price: pricesForTickets });
+        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action, price: pricesForTickets, takeOnOptions, takeOffOptions });
     }
 
     // --- ELSE CASE ---
@@ -2261,7 +2339,7 @@ exports.getTicketRow = async (req, res, next) => {
         pendingIds.push(ticket.id)
     }
 
-    return res.render("mixins/ticketRow", { gender, seats: seatArray, price, trip, isOwnBranch, seatTypes, action, pendingIds });
+    return res.render("mixins/ticketRow", { gender, seats: seatArray, price, trip, isOwnBranch, seatTypes, action, pendingIds, takeOnOptions, takeOffOptions });
 };
 
 exports.postTickets = async (req, res, next) => {
@@ -2337,6 +2415,9 @@ exports.postTickets = async (req, res, next) => {
         const pendingIds = Array.isArray(req.body.pendingIds) ? req.body.pendingIds : JSON.parse(req.body.pendingIds);
         console.log(pendingIds)
         console.log(req.body.pendingIds)
+
+        const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
+        const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
         // --- Tüm biletleri sırayla kaydet ---
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i]
@@ -2347,6 +2428,9 @@ exports.postTickets = async (req, res, next) => {
             const pendingTicketGroup = await req.models.TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
             await pendingTicket?.destroy().then(r => console.log("pending silindi"))
             await pendingTicketGroup?.destroy().then(r => console.log("pending grup silindi"))
+
+            const takeOnTitle = await ensureTakeValue(takeOnCache, t.takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, t.takeOff);
 
             const ticket = await req.models.Ticket.create({
                 seatNo: t.seatNumber,
@@ -2368,7 +2452,9 @@ exports.postTickets = async (req, res, next) => {
                 toRouteStopId: toId,
                 userId: req.session.firmUser.id,
                 pnr: pnr,
-                payment: t.payment
+                payment: t.payment,
+                takeOnText: takeOnTitle,
+                takeOffText: takeOffTitle,
             });
 
             // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
@@ -2489,6 +2575,9 @@ exports.postCompleteTickets = async (req, res, next) => {
 
         const foundTickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } } })
 
+        const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
+        const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
+
         for (let i = 0; i < foundTickets.length; i++) {
             const ticket = foundTickets[i];
             ticket.userId = req.session.firmUser.id
@@ -2505,6 +2594,11 @@ exports.postCompleteTickets = async (req, res, next) => {
             ticket.payment = tickets[i].payment
             ticket.status = "completed"
             ticket.createdAt = new Date()
+
+            const takeOnTitle = await ensureTakeValue(takeOnCache, tickets[i].takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, tickets[i].takeOff);
+            ticket.takeOnText = takeOnTitle;
+            ticket.takeOffText = takeOffTitle;
 
 
             // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
@@ -2587,7 +2681,13 @@ exports.postSellOpenTickets = async (req, res, next) => {
         // --- PNR ---
         const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
 
+        const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
+        const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
+
         for (const t of tickets) {
+            const takeOnTitle = await ensureTakeValue(takeOnCache, t.takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, t.takeOff);
+
             const ticket = await req.models.Ticket.create({
                 seatNo: 0,
                 gender: t.gender,
@@ -2607,7 +2707,9 @@ exports.postSellOpenTickets = async (req, res, next) => {
                 toRouteStopId: toId,
                 userId: req.session.firmUser.id,
                 pnr: pnr,
-                payment: t.payment
+                payment: t.payment,
+                takeOnText: takeOnTitle,
+                takeOffText: takeOffTitle,
             });
 
             // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
@@ -2686,7 +2788,10 @@ exports.postEditTicket = async (req, res, next) => {
             order: [["seatNo", "ASC"]] // sıralamayı garanti altına al
         });
 
-        await Promise.all(foundTickets.map((foundTicket, i) => {
+        const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
+        const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
+
+        await Promise.all(foundTickets.map(async (foundTicket, i) => {
             foundTicket.idNumber = tickets[i].idNumber;
             foundTicket.name = tickets[i].name;
             foundTicket.surname = tickets[i].surname;
@@ -2696,6 +2801,10 @@ exports.postEditTicket = async (req, res, next) => {
             foundTicket.customerType = tickets[i].type;
             foundTicket.customerCategory = tickets[i].category;
             foundTicket.price = tickets[i].price;
+            const takeOnTitle = await ensureTakeValue(takeOnCache, tickets[i].takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, tickets[i].takeOff);
+            foundTicket.takeOnText = takeOnTitle;
+            foundTicket.takeOffText = takeOffTitle;
             return foundTicket.save();
         }));
 
