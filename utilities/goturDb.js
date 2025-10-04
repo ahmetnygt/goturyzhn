@@ -33,7 +33,7 @@ const goturDB = new Sequelize(
 function initGoturModels() {
     const Firm = FirmFactory(goturDB); // 👈 mevcut modelini kullan
     const Place = PlaceFactory(goturDB); // 👈 mevcut modelini kullan
-    goturDB.sync();
+    goturDB.sync({ alter: true });
     return { Place, Firm };
 }
 

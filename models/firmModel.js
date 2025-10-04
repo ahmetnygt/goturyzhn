@@ -25,7 +25,8 @@ module.exports = (sequelize) => {
     },
     comissionRate: {
       type: DataTypes.DECIMAL,
-      allowNull: false
+      allowNull: false,
+      defaultValue: 20
     }
   });
 };

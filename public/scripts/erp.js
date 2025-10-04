@@ -6278,7 +6278,7 @@ $(".member-nav").on("click", async e => {
             $(".blackout").css("display", "block")
             $(".members").css("display", "block")
 
-            $(".member-row").off("click").on("click", function () {
+            $(".member-row").on("click", function () {
                 const idNumber = $(this).data("idnumber");
                 const name = $(this).data("name");
                 const surname = $(this).data("surname");

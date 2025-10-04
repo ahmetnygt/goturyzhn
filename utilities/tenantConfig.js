@@ -19,10 +19,9 @@ function resolveTenantKey(hostname) {
     return secondLabel || null;
   }
 
-  return normalizeTenantKey(labels[0]);
+  return firstLabel
 }
 
 module.exports = {
   resolveTenantKey,
-  normalizeTenantKey,
 };
