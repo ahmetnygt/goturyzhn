@@ -1,4 +1,4 @@
-const DEFAULT_TENANT_KEY = process.env.TENANT_KEY || "derseturizm";
+const DEFAULT_TENANT_KEY = process.env.TENANT_KEY;
 
 const LOCALHOST_TOKENS = new Set([
   "",

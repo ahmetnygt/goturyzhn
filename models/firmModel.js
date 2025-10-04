@@ -23,5 +23,9 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM("active", "inactive"),
       defaultValue: "active",
     },
+    comissionRate: {
+      type: DataTypes.DECIMAL,
+      allowNull: false
+    }
   });
 };
