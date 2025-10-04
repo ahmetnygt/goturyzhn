@@ -4471,7 +4471,8 @@ exports.getMemberTickets = async (req, res, next) => {
 
         const tickets = await req.models.Ticket.findAll({
             where: { customerId: customer.id },
-            order: [["createdAt", "DESC"]]
+            order: [["createdAt", "DESC"]],
+            raw: true
         });
 
         const stopIds = [];
@@ -4484,13 +4485,116 @@ exports.getMemberTickets = async (req, res, next) => {
         const stopMap = {};
         stops.forEach(s => stopMap[s.id] = s.title);
 
-        const ticketData = tickets.map(t => ({
-            pnr: t.pnr,
-            from: stopMap[t.fromRouteStopId] || "",
-            to: stopMap[t.toRouteStopId] || "",
-            price: t.price,
-            date: t.createdAt ? new Date(t.createdAt).toLocaleDateString("tr-TR") : ""
-        }));
+        const tripIds = tickets
+            .map(t => t.tripId)
+            .filter(id => id !== undefined && id !== null);
+        const uniqueTripIds = [...new Set(tripIds)];
+        let tripMap = {};
+        if (uniqueTripIds.length) {
+            const trips = await req.models.Trip.findAll({
+                where: { id: { [Op.in]: uniqueTripIds } },
+                raw: true
+            });
+            tripMap = trips.reduce((acc, trip) => {
+                acc[trip.id] = trip;
+                return acc;
+            }, {});
+        }
+
+        const formatCurrency = value => {
+            if (value === null || value === undefined || value === "") {
+                return "";
+            }
+            const number = Number(value);
+            if (Number.isNaN(number)) {
+                return "";
+            }
+            try {
+                return new Intl.NumberFormat("tr-TR", {
+                    style: "currency",
+                    currency: "TRY",
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(number);
+            } catch (error) {
+                return number.toFixed(2) + " ₺";
+            }
+        };
+
+        const formatDate = value => {
+            if (!value) {
+                return "";
+            }
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return value.toLocaleDateString("tr-TR");
+            }
+            if (typeof value === "string") {
+                const parsed = new Date(value);
+                if (!Number.isNaN(parsed.getTime())) {
+                    return parsed.toLocaleDateString("tr-TR");
+                }
+                const parts = value.split("-");
+                if (parts.length === 3) {
+                    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+                }
+            }
+            return "";
+        };
+
+        const formatTime = value => {
+            if (!value) {
+                return "";
+            }
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return value.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+            }
+            if (typeof value === "string") {
+                const parts = value.split(":");
+                if (parts.length >= 2) {
+                    const [hour, minute] = parts;
+                    return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+                }
+            }
+            return "";
+        };
+
+        const formatDateTime = value => {
+            if (!value) {
+                return "";
+            }
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return "";
+            }
+            return date.toLocaleString("tr-TR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        };
+
+        const ticketData = tickets.map(t => {
+            const trip = t.tripId ? tripMap[t.tripId] : null;
+            const tripDate = trip?.date || "";
+            const tripTime = trip?.time || "";
+
+            return {
+                pnr: t.pnr,
+                from: stopMap[t.fromRouteStopId] || trip?.fromPlaceString || "",
+                to: stopMap[t.toRouteStopId] || trip?.toPlaceString || "",
+                price: t.price,
+                priceDisplay: formatCurrency(t.price),
+                seatNo: t.seatNo,
+                tripId: trip?.id || null,
+                tripDate,
+                tripTime,
+                tripDateDisplay: formatDate(tripDate),
+                tripTimeDisplay: formatTime(tripTime),
+                purchaseDateDisplay: formatDateTime(t.createdAt)
+            };
+        });
 
         res.render("mixins/memberTickets", { tickets: ticketData });
     } catch (err) {

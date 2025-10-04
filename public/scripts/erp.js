@@ -174,6 +174,38 @@ const showError = message => {
 
 window.showError = showError;
 
+const clearMemberTicketFeedback = $element => {
+    if (!$element || !$element.length) {
+        return;
+    }
+
+    const $footer = $element.closest(".member-ticket-footer");
+    if (!$footer.length) {
+        return;
+    }
+
+    $footer.find(".member-ticket-feedback").remove();
+};
+
+const showMemberTicketFeedback = ($element, message) => {
+    if (!$element || !$element.length) {
+        return;
+    }
+
+    const $footer = $element.closest(".member-ticket-footer");
+    if (!$footer.length) {
+        return;
+    }
+
+    let $feedback = $footer.find(".member-ticket-feedback");
+    if (!$feedback.length) {
+        $feedback = $("<span>", { class: "member-ticket-feedback text-muted", role: "status" });
+        $footer.append($feedback);
+    }
+
+    $feedback.text(message || "");
+};
+
 $(".error-close").off().on("click", () => $(".error-popup").hide());
 
 const setupDeleteHandler = (selector, { url, getData, getConfirmMessage, onSuccess }) => {
@@ -6178,6 +6210,60 @@ const openCustomerInfoPopup = (row, origin) => {
         });
     }
 };
+
+$(document).on("click", ".member-ticket-go-trip", async function (e) {
+    e.preventDefault();
+
+    const $btn = $(this);
+    clearMemberTicketFeedback($btn);
+    const tripId = $btn.data("tripId");
+    const tripDate = $btn.data("tripDate");
+    const tripTime = $btn.data("tripTime");
+
+    if (!tripId || !tripDate || !tripTime) {
+        showMemberTicketFeedback($btn, "Bu bilet için aktif bir sefer bulunamadı.");
+        return;
+    }
+
+    const previousTripState = {
+        id: currentTripId,
+        date: currentTripDate,
+        time: currentTripTime
+    };
+
+    $btn.prop("disabled", true);
+
+    try {
+        await loadTrip(tripDate, tripTime, tripId);
+
+        currentTripId = tripId;
+        currentTripDate = tripDate;
+        currentTripTime = tripTime;
+
+        $(".member-info").css("display", "none");
+        $(".blackout").css("display", "none");
+    } catch (error) {
+        currentTripId = previousTripState.id;
+        currentTripDate = previousTripState.date;
+        currentTripTime = previousTripState.time;
+
+        const status = error?.status || error?.statusCode || error?.responseJSON?.status;
+        const errorCode = error?.responseJSON?.code || error?.responseJSON?.errorCode;
+        const notFound = status === 404 || errorCode === "TRIP_NOT_FOUND";
+
+        if (notFound) {
+            const fallbackMessage = "Bu bilet için aktif bir sefer bulunamadı.";
+            const message = error?.responseJSON?.message || fallbackMessage;
+            console.warn("Trip not found for ticket", { tripId, tripDate, tripTime, error });
+            showMemberTicketFeedback($btn, message);
+        } else {
+            console.error(error);
+            showError("Sefer bilgisi yüklenemedi.");
+        }
+    } finally {
+        $btn.prop("disabled", false);
+    }
+});
 
 $(".customer-nav").on("click", async e => {
     await $.ajax({
