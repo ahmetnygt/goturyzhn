@@ -6194,6 +6194,7 @@ $(".customer-nav").on("click", async e => {
                 const origin = row.hasClass("member-row") ? "members" : "customers";
                 openCustomerInfoPopup(row, origin);
             });
+            $(".member-info-pointorpercent").on("change", updateMemberPointInputsState);
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -6353,77 +6354,6 @@ const updateMemberPointInputsState = () => {
     }
 };
 
-const openCustomerInfoPopup = (row, origin) => {
-    const popup = $(".member-info");
-    const id = row.data("id") || null;
-    const idNumber = row.data("idnumber") || "";
-    const name = row.data("name") || "";
-    const surname = row.data("surname") || "";
-    const phone = row.data("phone") || "";
-    const gender = row.data("gender") || "";
-    const type = row.data("customertype") || "";
-    const category = row.data("customercategory") || "";
-    const pointOrPercent = row.data("pointorpercent") || "";
-    const pointAmount = row.data("pointamount");
-    const percent = row.data("percent");
-
-    popup.data("customerId", id);
-    popup.data("origin", origin);
-    popup.data("sourceRow", row.get(0));
-
-    $(".member-info-idNumber").val(idNumber);
-    $(".member-info-name").val(name);
-    $(".member-info-surname").val(surname);
-    $(".member-info-phone").val(phone);
-    $(".member-info-gender").val(gender);
-    $(".member-info-type").val(type);
-    $(".member-info-category").val(category);
-    $(".member-info-pointorpercent").val(pointOrPercent);
-    const pointAmountValue = pointAmount === undefined || pointAmount === null ? "" : pointAmount;
-    const percentValue = percent === undefined || percent === null ? "" : percent;
-    $(".member-info-pointamount").val(pointAmountValue);
-    $(".member-info-percent").val(percentValue);
-    updateMemberPointInputsState();
-
-    const saveBtn = $(".member-info-save");
-    if (!saveBtn.data("defaultText")) {
-        saveBtn.data("defaultText", saveBtn.text());
-    }
-    if (id) {
-        saveBtn.prop("disabled", false).text(saveBtn.data("defaultText"));
-    } else {
-        saveBtn.prop("disabled", true).text(saveBtn.data("defaultText"));
-    }
-
-    $(".members").css("display", "none");
-    $(".customers").css("display", "none");
-    popup.css("display", "block");
-    $(".blackout").css("display", "block");
-
-    $(".member-ticket-list").html("");
-    if (idNumber) {
-        $.ajax({
-            url: "/get-member-tickets",
-            type: "GET",
-            data: { idNumber },
-            success: function (resp) {
-                $(".member-ticket-list").html(resp);
-            },
-            error: function (xhr, status, error) {
-                console.log(error);
-            }
-        });
-    }
-};
-
-$(document).on("change", ".member-info-pointorpercent", updateMemberPointInputsState);
-
-$(document).on("click", ".member-row, .customer-row", function () {
-    const row = $(this);
-    const origin = row.hasClass("member-row") ? "members" : "customers";
-    openCustomerInfoPopup(row, origin);
-});
-
 $(".member-nav").on("click", async e => {
     await $.ajax({
         url: "/get-members-list",
@@ -6433,6 +6363,14 @@ $(".member-nav").on("click", async e => {
             $(".member-list-nodes").html(response)
             $(".blackout").css("display", "block")
             $(".members").css("display", "block")
+
+            $(".member-row").on("click", function () {
+                const row = $(this);
+                const origin = row.hasClass("member-row") ? "members" : "customers";
+                openCustomerInfoPopup(row, origin);
+            });
+
+            $(".member-info-pointorpercent").on("change", updateMemberPointInputsState);
         },
         error: function (xhr, status, error) {
             console.log(error);
