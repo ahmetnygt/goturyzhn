@@ -1649,7 +1649,7 @@ block content
 
         .col-3.h-100.right-panel
             input#calendar(type="hidden" name="")
-            select#currentStop.form-select.form-select-sm(value=branchStopId)
+            select#currentStop.form-select.form-select-sm(value=branchStopId data-searchable-select data-search-placeholder="Durak ara")
                 each s in stops
                     if(s.id == branchStopId)
                         option(value=s.id selected) #{s.title}
