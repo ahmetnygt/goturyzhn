@@ -1515,6 +1515,11 @@ block content
                     p.text-center.m-0 Puan veya İnd. Oranı
             .member-list-nodes.d-flex.flex-column.gap-3
 
+    -
+        const genderOptions = (customerFieldOptions && customerFieldOptions.gender) || [];
+        const customerTypeOptions = (customerFieldOptions && customerFieldOptions.customerType) || [];
+        const customerCategoryOptions = (customerFieldOptions && customerFieldOptions.customerCategory) || [];
+        const pointOrPercentOptions = (customerFieldOptions && customerFieldOptions.pointOrPercent) || [];
     .member-info
         .gtr-header
             span ABONE BİLGİLERİ
@@ -1536,16 +1541,28 @@ block content
                     input.member-info-phone.form-control(type="text")
                 .input-group
                     span.input-group-text Cinsiyet
-                    input.member-info-gender.form-control(type="text")
+                    select.member-info-gender.form-select
+                        option(value="") Seçiniz
+                        each option in genderOptions
+                            option(value=option.value)= option.label
                 .input-group
                     span.input-group-text Tip
-                    input.member-info-type.form-control(type="text")
+                    select.member-info-type.form-select
+                        option(value="") Seçiniz
+                        each option in customerTypeOptions
+                            option(value=option.value)= option.label
                 .input-group
                     span.input-group-text Kategori
-                    input.member-info-category.form-control(type="text")
+                    select.member-info-category.form-select
+                        option(value="") Seçiniz
+                        each option in customerCategoryOptions
+                            option(value=option.value)= option.label
                 .input-group
                     span.input-group-text Puan/İndirim
-                    input.member-info-pointorpercent.form-control(type="text")
+                    select.member-info-pointorpercent.form-select
+                        option(value="") Seçiniz
+                        each option in pointOrPercentOptions
+                            option(value=option.value)= option.label
                 .input-group
                     span.input-group-text Puan
                     input.member-info-pointamount.form-control(type="text")

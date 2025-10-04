@@ -2012,7 +2012,47 @@ exports.getErp = async (req, res, next) => {
 
     const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId)?.stopId)?.id
 
-    res.render('erpscreen', { title: req.session?.firm?.displayName || "GötürYZHN", busModel, staff, user, places, stops, branches, branchStopId });
+    const customerModel = req.models.Customer;
+    const getEnumValues = attributeName => {
+        if (!customerModel?.rawAttributes?.[attributeName]) {
+            return [];
+        }
+
+        const values = customerModel.rawAttributes[attributeName].values;
+        return Array.isArray(values) ? values : [];
+    };
+
+    const labelFromMap = (value, map) => (map && Object.prototype.hasOwnProperty.call(map, value) ? map[value] : value);
+
+    const genderLabelMap = { m: "Erkek", f: "Kadın" };
+    const typeLabelMap = {
+        adult: "Yetişkin",
+        child: "Çocuk",
+        student: "Öğrenci",
+        disabled: "Engelli",
+        retired: "Emekli",
+    };
+    const categoryLabelMap = { normal: "Normal", member: "Abone", guest: "Misafir" };
+    const pointOrPercentLabelMap = { point: "Puan", percent: "İndirim" };
+
+    const customerFieldOptions = {
+        gender: getEnumValues("gender").map(value => ({ value, label: labelFromMap(value, genderLabelMap) })),
+        customerType: getEnumValues("customerType").map(value => ({ value, label: labelFromMap(value, typeLabelMap) })),
+        customerCategory: getEnumValues("customerCategory").map(value => ({ value, label: labelFromMap(value, categoryLabelMap) })),
+        pointOrPercent: getEnumValues("pointOrPercent").map(value => ({ value, label: labelFromMap(value, pointOrPercentLabelMap) })),
+    };
+
+    res.render('erpscreen', {
+        title: req.session?.firm?.displayName || "GötürYZHN",
+        busModel,
+        staff,
+        user,
+        places,
+        stops,
+        branches,
+        branchStopId,
+        customerFieldOptions,
+    });
 }
 
 exports.getErpLogin = async (req, res, next) => {
