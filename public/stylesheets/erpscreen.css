@@ -1521,6 +1521,11 @@ div.ticket-cancel-refund-open-close {
 .ticket-info .up-row {
     display: flex;
     justify-content: space-between;
+    gap: .5rem;
+}
+
+.ticket-info .up-row div {
+    flex: 1;
 }
 
 .trip-info-settings {
