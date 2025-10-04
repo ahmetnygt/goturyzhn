@@ -67,5 +67,9 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: false,
     },
+    customCommissionRate: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
   });
 };

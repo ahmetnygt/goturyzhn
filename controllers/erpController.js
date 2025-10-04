@@ -1069,9 +1069,18 @@ exports.getBusAccountCutData = async (req, res, next) => {
             return Number.isFinite(parsed) ? parsed : null;
         };
 
-        let comissionPercent = BUS_COMISSION_PERCENT;
+        let comissionPercent = null;
         let defaultDeductions = null;
         let autoFilledFromBranchStop = false;
+
+        const trip = await req.models.Trip.findByPk(tripId, { raw: true });
+        if (trip?.busId) {
+            const bus = await req.models.Bus.findByPk(trip.busId, { raw: true });
+            const busCommission = parseOptionalNumber(bus?.customCommissionRate);
+            if (busCommission !== null) {
+                comissionPercent = busCommission;
+            }
+        }
 
         const sessionBranchId = req.session?.firmUser?.branchId;
         if (sessionBranchId) {
@@ -1079,7 +1088,7 @@ exports.getBusAccountCutData = async (req, res, next) => {
             if (branch && Number(branch.stopId) === Number(stopId)) {
                 autoFilledFromBranchStop = true;
                 const branchPercent = parseOptionalNumber(branch.ownStopSalesCommission);
-                if (branchPercent !== null) {
+                if (branchPercent !== null && comissionPercent === null) {
                     comissionPercent = branchPercent;
                 }
 
@@ -1093,6 +1102,17 @@ exports.getBusAccountCutData = async (req, res, next) => {
 
                 defaultDeductions = deductions;
             }
+        }
+
+        if (comissionPercent === null) {
+            const firmCommission = parseOptionalNumber(req.session?.firm?.comissionRate);
+            if (firmCommission !== null) {
+                comissionPercent = firmCommission;
+            }
+        }
+
+        if (comissionPercent === null) {
+            comissionPercent = BUS_COMISSION_PERCENT;
         }
 
         const comissionAmount = data.allTotal * comissionPercent / 100;
@@ -3501,6 +3521,7 @@ exports.postSaveBus = async (req, res, next) => {
             captainId,
             phoneNumber,
             owner,
+            customCommissionRate,
             hasPowerOutlet,
             hasCatering,
             hasUsbPort,
@@ -3519,6 +3540,15 @@ exports.postSaveBus = async (req, res, next) => {
             return Boolean(value);
         };
 
+        const parseCommissionRate = value => {
+            if (value === undefined || value === null || value === "") {
+                return null;
+            }
+
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
         const [bus, created] = await req.models.Bus.upsert(
             {
                 id,
@@ -3527,6 +3557,7 @@ exports.postSaveBus = async (req, res, next) => {
                 captainId,
                 phoneNumber,
                 owner,
+                customCommissionRate: parseCommissionRate(customCommissionRate),
                 hasPowerOutlet: parseBoolean(hasPowerOutlet),
                 hasCatering: parseBoolean(hasCatering),
                 hasUsbPort: parseBoolean(hasUsbPort),

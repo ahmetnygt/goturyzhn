@@ -4557,6 +4557,7 @@ $(".add-bus-plan").on("click", async e => {
 })
 
 const BUS_FEATURE_SELECTOR = ".bus-feature"
+const BUS_COMMISSION_RATE_SELECTOR = ".bus-custom-commission"
 
 function setBusFeatureValues(bus = {}) {
     $(BUS_FEATURE_SELECTOR).each((_, el) => {
@@ -4575,6 +4576,7 @@ function setBusFeatureValues(bus = {}) {
             el.checked = Boolean(value)
         }
     })
+    setBusCommissionRateInputValue(bus.customCommissionRate)
 }
 
 function resetBusFeatureDefaults() {
@@ -4586,6 +4588,7 @@ function resetBusFeatureDefaults() {
             el.checked = false
         }
     })
+    resetBusCommissionRateInput()
 }
 
 function collectBusFeatureValues() {
@@ -4596,6 +4599,27 @@ function collectBusFeatureValues() {
         result[field] = el.checked ? "true" : "false"
     })
     return result
+}
+
+function setBusCommissionRateInputValue(value) {
+    if (value === undefined || value === null || value === "") {
+        $(BUS_COMMISSION_RATE_SELECTOR).val("")
+        return
+    }
+
+    $(BUS_COMMISSION_RATE_SELECTOR).val(String(value))
+}
+
+function resetBusCommissionRateInput() {
+    $(BUS_COMMISSION_RATE_SELECTOR).val("")
+}
+
+function getBusCommissionRateInputValue() {
+    const value = $(BUS_COMMISSION_RATE_SELECTOR).val()
+    if (typeof value === "string") {
+        return value.trim()
+    }
+    return value
 }
 
 let editingBusId = null
@@ -4731,11 +4755,12 @@ $(".save-bus").on("click", async e => {
     const phoneNumber = $(".bus-phone").val()
     const owner = $(".bus-owner").val()
     const featureData = collectBusFeatureValues()
+    const customCommissionRate = getBusCommissionRateInputValue()
 
     await $.ajax({
         url: "/post-save-bus",
         type: "POST",
-        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, ...featureData },
+        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, customCommissionRate, ...featureData },
         success: function (response) {
             $(".bus-license-plate").val("")
             $(".bus-bus-model").val("")
