@@ -6359,7 +6359,7 @@ function updateMemberPointInputsState() {
 function updateMemberPointOrPercentAvailability() {
     const category = $(".member-info-category").val();
     const pointOrPercentSelect = $(".member-info-pointorpercent");
-    const isSubscriber = category === "abone";
+    const isSubscriber = category === "member";
 
     pointOrPercentSelect.prop("disabled", !isSubscriber);
 
