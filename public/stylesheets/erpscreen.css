@@ -778,6 +778,139 @@ select.price-button-select {
 .member-ticket-list {
     max-height: 60vh;
     overflow-y: auto;
+    background: #f8fafc;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid #e2e6ea;
+    box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.08);
+    gap: 1rem !important;
+}
+
+.member-ticket-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.member-ticket-list::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.25);
+    border-radius: 999px;
+}
+
+.member-ticket-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.member-ticket-card {
+    background: #ffffff;
+    border-radius: 0.85rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 0.75rem 1.75rem rgba(15, 23, 42, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.member-ticket-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.12);
+}
+
+.member-ticket-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.member-ticket-route {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: #1f2937;
+    letter-spacing: 0.01em;
+}
+
+.member-ticket-route-text {
+    font-size: 1rem;
+    text-transform: capitalize;
+}
+
+.member-ticket-route-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #0d6efd;
+    font-size: 1rem;
+}
+
+.member-ticket-pnr {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    letter-spacing: 0.08em;
+}
+
+.member-ticket-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.member-ticket-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(13, 110, 253, 0.08);
+    color: #1e293b;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    line-height: 1.2;
+}
+
+.member-ticket-meta-item i {
+    font-size: 0.75rem;
+    color: #0d6efd;
+}
+
+.member-ticket-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.member-ticket-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0d6efd;
+}
+
+.member-ticket-go-trip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.member-ticket-go-trip.disabled,
+.member-ticket-go-trip:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.member-ticket-missing {
+    font-size: 0.85rem;
+}
+
+.member-ticket-empty {
+    background: rgba(15, 23, 42, 0.04);
+    border-radius: 0.85rem;
 }
 
 .customers button {

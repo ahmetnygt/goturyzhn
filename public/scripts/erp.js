@@ -6178,6 +6178,38 @@ const openCustomerInfoPopup = (row, origin) => {
     }
 };
 
+$(document).on("click", ".member-ticket-go-trip", async function (e) {
+    e.preventDefault();
+
+    const $btn = $(this);
+    const tripId = $btn.data("tripId");
+    const tripDate = $btn.data("tripDate");
+    const tripTime = $btn.data("tripTime");
+
+    if (!tripId || !tripDate || !tripTime) {
+        showError("Sefer bilgisi bulunamadı.");
+        return;
+    }
+
+    $btn.prop("disabled", true);
+
+    try {
+        currentTripId = tripId;
+        currentTripDate = tripDate;
+        currentTripTime = tripTime;
+
+        $(".member-info").css("display", "none");
+        $(".blackout").css("display", "none");
+
+        await loadTrip(tripDate, tripTime, tripId);
+    } catch (error) {
+        console.log(error);
+        showError("Sefer bilgisi yüklenemedi.");
+    } finally {
+        $btn.prop("disabled", false);
+    }
+});
+
 $(".customer-nav").on("click", async e => {
     await $.ajax({
         url: "/get-customers-list",
