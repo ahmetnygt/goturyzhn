@@ -651,6 +651,9 @@ block content
                     input.bus-owner.form-control(type="text" )
                 button.save-bus.btn.btn-outline-primary KAYDET
             .bus-settings.h-100
+                .input-group.mb-3
+                    span.input-group-text Otobüse özel komisyon oranı (%)
+                    input.bus-custom-commission.form-control(type="number" min="0" step="0.01")
                 b Özellikler
                 .ms-3.mb-3
                     .form-check
@@ -1235,25 +1238,31 @@ block content
                 i.fa-solid.fa-route.mx-2
                 span.to 
         p.text-center.name-phone-container
-            span.name 
-            |   / 
-            span.phone 
-        p 
-            b İşlem Yapan:
+            span.name
+            |   /
+            span.phone
+        p
+            b.me-1 İşlem Yapan:
             span.username
             |   /
             span.userBranch
         p.price-container
-            b Ücret:
+            b.me-1 Ücret:
             span.price   
         p.payment-container
-            b Tahsilat Tipi:
+            b.me-1 Tahsilat Tipi:
             span.payment  
+        p.take-on-container
+            b.me-1 Biniş Yeri:
+            span.take-on
+        p.take-off-container
+            b.me-1 İniş Yeri:
+            span.take-off
         p.pnr-container
-            b PNR:
+            b.me-1 PNR:
             span.pnr  
         p 
-            b İşlem Zamanı:
+            b.me-1 İşlem Zamanı:
             span.createdAt
 
     .ticket-info-pop-up

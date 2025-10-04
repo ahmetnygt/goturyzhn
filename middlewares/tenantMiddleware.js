@@ -1,10 +1,17 @@
 const { getTenantConnection } = require("../utilities/database");
 const { initGoturModels } = require("../utilities/goturDB");
-const { resolveTenantKey } = require("../utilities/tenantConfig");
+const { DEFAULT_TENANT_KEY, resolveTenantKey } = require("../utilities/tenantConfig");
 
 module.exports = async (req, res, next) => {
     try {
-        const subdomain = resolveTenantKey(req.hostname);
+        const explicitTenantKey =
+            req.get("x-tenant-key") ||
+            req.get("x-tenant") ||
+            req.query.tenantKey ||
+            req.query.tenant ||
+            DEFAULT_TENANT_KEY;
+
+        const subdomain = resolveTenantKey(req.hostname, explicitTenantKey);
 
         if (!subdomain) {
             return res.status(400).json({ error: "Subdomain bulunamadı" });

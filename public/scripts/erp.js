@@ -2140,6 +2140,8 @@ async function loadTrip(date, time, tripId) {
             $(".passenger-info-popup .price-container").css("display", "block");
             $(".passenger-info-popup .payment-container").css("display", "block");
             $(".passenger-info-popup .pnr-container").css("display", "block");
+            $(".passenger-info-popup .take-on-container").css("display", "block");
+            $(".passenger-info-popup .take-off-container").css("display", "block");
             if (data.createdAt) {
                 $(".passenger-info-popup").removeClass("m").removeClass("f").removeClass("p");
                 if (data.status == "pending") {
@@ -2148,9 +2150,15 @@ async function loadTrip(date, time, tripId) {
                     $(".passenger-info-popup .price-container").css("display", "none");
                     $(".passenger-info-popup .payment-container").css("display", "none");
                     $(".passenger-info-popup .pnr-container").css("display", "none");
+                    $(".passenger-info-popup .take-on-container").css("display", "none");
+                    $(".passenger-info-popup .take-off-container").css("display", "none");
                 }
                 else {
                     $(".passenger-info-popup").addClass(data.gender);
+                    const hasTakeOn = Boolean(data.takeOn);
+                    const hasTakeOff = Boolean(data.takeOff);
+                    $(".passenger-info-popup .take-on-container").css("display", hasTakeOn ? "block" : "none");
+                    $(".passenger-info-popup .take-off-container").css("display", hasTakeOff ? "block" : "none");
                 }
                 $(".passenger-info-popup .seat-number").html(data.seatNumber);
                 $(".passenger-info-popup .from").html(data.from);
@@ -2159,6 +2167,8 @@ async function loadTrip(date, time, tripId) {
                 $(".passenger-info-popup .username").html(data.userName);
                 $(".passenger-info-popup .userBranch").html(data.branch);
                 $(".passenger-info-popup .phone").html(data.phone);
+                $(".passenger-info-popup .take-on").html(data.takeOn || "");
+                $(".passenger-info-popup .take-off").html(data.takeOff || "");
                 $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "");
                 $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "");
                 $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "");
@@ -4547,6 +4557,7 @@ $(".add-bus-plan").on("click", async e => {
 })
 
 const BUS_FEATURE_SELECTOR = ".bus-feature"
+const BUS_COMMISSION_RATE_SELECTOR = ".bus-custom-commission"
 
 function setBusFeatureValues(bus = {}) {
     $(BUS_FEATURE_SELECTOR).each((_, el) => {
@@ -4565,6 +4576,7 @@ function setBusFeatureValues(bus = {}) {
             el.checked = Boolean(value)
         }
     })
+    setBusCommissionRateInputValue(bus.customCommissionRate)
 }
 
 function resetBusFeatureDefaults() {
@@ -4576,6 +4588,7 @@ function resetBusFeatureDefaults() {
             el.checked = false
         }
     })
+    resetBusCommissionRateInput()
 }
 
 function collectBusFeatureValues() {
@@ -4586,6 +4599,27 @@ function collectBusFeatureValues() {
         result[field] = el.checked ? "true" : "false"
     })
     return result
+}
+
+function setBusCommissionRateInputValue(value) {
+    if (value === undefined || value === null || value === "") {
+        $(BUS_COMMISSION_RATE_SELECTOR).val("")
+        return
+    }
+
+    $(BUS_COMMISSION_RATE_SELECTOR).val(String(value))
+}
+
+function resetBusCommissionRateInput() {
+    $(BUS_COMMISSION_RATE_SELECTOR).val("")
+}
+
+function getBusCommissionRateInputValue() {
+    const value = $(BUS_COMMISSION_RATE_SELECTOR).val()
+    if (typeof value === "string") {
+        return value.trim()
+    }
+    return value
 }
 
 let editingBusId = null
@@ -4721,11 +4755,12 @@ $(".save-bus").on("click", async e => {
     const phoneNumber = $(".bus-phone").val()
     const owner = $(".bus-owner").val()
     const featureData = collectBusFeatureValues()
+    const customCommissionRate = getBusCommissionRateInputValue()
 
     await $.ajax({
         url: "/post-save-bus",
         type: "POST",
-        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, ...featureData },
+        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, customCommissionRate, ...featureData },
         success: function (response) {
             $(".bus-license-plate").val("")
             $(".bus-bus-model").val("")
