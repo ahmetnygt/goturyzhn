@@ -1163,9 +1163,65 @@ async function loadTrip(date, time, tripId) {
             $popup.css({ left: left + "px", top: top + "px", display: "block", position: "absolute" });
         });
 
+        const resetTicketOpButtons = () => {
+            $(".ticket-op-button").each((_, btn) => {
+                const $btn = $(btn);
+                if ($btn.data("hiddenBySeat")) {
+                    $btn.removeData("hiddenBySeat");
+                }
+                $btn.css("display", "");
+            });
+        };
+
+        const updateTicketOpButtonsForSelectedSeats = () => {
+            let limitOrder = null;
+
+            selectedSeats.forEach(seatNumber => {
+                const seatEl = document.querySelector(`.seat[data-seat-number='${seatNumber}']`);
+                if (!seatEl) return;
+
+                const { nextRouteStopOrder } = seatEl.dataset || {};
+                if (!nextRouteStopOrder) {
+                    return;
+                }
+
+                const numericOrder = Number(nextRouteStopOrder);
+                if (!Number.isFinite(numericOrder)) {
+                    return;
+                }
+
+                if (limitOrder === null || numericOrder < limitOrder) {
+                    limitOrder = numericOrder;
+                }
+            });
+
+            if (limitOrder === null) {
+                return;
+            }
+
+            $(".ticket-op-button").each((_, btn) => {
+                const { routeOrder } = btn.dataset || {};
+                if (!routeOrder) {
+                    return;
+                }
+
+                const numericRouteOrder = Number(routeOrder);
+                if (!Number.isFinite(numericRouteOrder)) {
+                    return;
+                }
+
+                if (numericRouteOrder > limitOrder) {
+                    const $btn = $(btn);
+                    $btn.data("hiddenBySeat", true);
+                    $btn.css("display", "none");
+                }
+            });
+        };
+
         // Koltuk tıklama
         $(".seat").off("click").on("click", function (e) {
             const $seat = $(this);
+            resetTicketOpButtons();
             const rect = this.getBoundingClientRect();
             const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
             const isTaken = Boolean(createdAt); // dolu koltuk mu?
@@ -1311,6 +1367,8 @@ async function loadTrip(date, time, tripId) {
                         }
                     }
                 }
+
+                updateTicketOpButtonsForSelectedSeats();
             } else {
                 const activeGroupId = selectedTakenSeats.length > 0
                     ? $(`.seat[data-seat-number="${selectedTakenSeats[0]}"]`).attr("data-group-id")

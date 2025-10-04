@@ -717,8 +717,9 @@ exports.getTrip = async (req, res, next) => {
         trip.dateString = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate);
         trip.timeString = `${hours}.${minutes}`
 
-        const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
+        const ticketRecords = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         const cargos = await req.models.Cargo.findAll({ where: { tripId: trip.id, fromStopId: stopId } });
+        const tickets = ticketRecords.map(t => t.get({ plain: true }));
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
         const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.firmUser.branchId] } } })
 
@@ -753,8 +754,27 @@ exports.getTrip = async (req, res, next) => {
         let totalReservedAmount = 0
         let cargoCount = 0
         let cargoAmount = 0
+        const seatFutureStopInfo = {}
+        if (currentStopOrder !== null && currentStopOrder !== undefined) {
+            for (let i = 0; i < tickets.length; i++) {
+                const ticket = tickets[i]
+                const futureOrder = routeStopOrderMap[ticket.fromRouteStopId]
+                if (typeof futureOrder !== "number" || futureOrder <= currentStopOrder) {
+                    continue
+                }
+
+                const existing = seatFutureStopInfo[ticket.seatNo]
+                if (!existing || futureOrder < existing.order) {
+                    seatFutureStopInfo[ticket.seatNo] = {
+                        order: futureOrder,
+                        stopId: ticket.fromRouteStopId,
+                    }
+                }
+            }
+        }
+
         for (let i = 0; i < tickets.length; i++) {
-            const ticket = tickets[i].get({ plain: true });
+            const ticket = tickets[i];
             const ticketPlaceOrder = routeStopOrderMap[ticket.fromRouteStopId];
 
             if (ticketPlaceOrder == currentStopOrder) {
@@ -768,6 +788,10 @@ exports.getTrip = async (req, res, next) => {
                 ticket.stopOrder = "before"
                 ticket.createdAt = null
             }
+
+            const futureInfo = seatFutureStopInfo[ticket.seatNo]
+            ticket.nextRouteStopOrder = futureInfo ? futureInfo.order : null
+            ticket.nextRouteStopId = futureInfo ? futureInfo.stopId : null
 
             const user = userMap[ticket.userId];
             const branch = branchMap[user?.branchId];
