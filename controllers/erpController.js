@@ -2104,12 +2104,105 @@ exports.getTicketRow = async (req, res, next) => {
     }
 
     // --- ELSE CASE ---
-    const { fromId, toId, seats, gender: genderParam } = req.query;
-    const gender = seats ? seats.map((s) => genderParam) : [];
+    const { fromId, toId, seats: seatParam, gender: genderParam } = req.query;
+    const seatArray = Array.isArray(seatParam)
+        ? seatParam
+        : seatParam !== undefined && seatParam !== null && seatParam !== ""
+            ? [seatParam]
+            : [];
+
+    if (!seatArray.length) {
+        return res.status(400).json({ message: "Lütfen en az bir koltuk seçiniz." });
+    }
+
+    const gender = seatArray.map(() => genderParam);
     let price = 0;
     if (fromId && toId) {
         const p = await findPriceForStops(fromId, toId);
         price = p ? p : null;
+    }
+
+    const routeStopOrderMap = routeStops.reduce((acc, rs) => {
+        acc[String(rs.stopId)] = Number(rs.order);
+        return acc;
+    }, {});
+
+    const fromOrder = routeStopOrderMap[String(fromId)];
+    const toOrder = routeStopOrderMap[String(toId)];
+
+    if (!Number.isFinite(fromOrder) || !Number.isFinite(toOrder)) {
+        return res.status(400).json({ message: "Seçilen durak bilgileri seferde bulunamadı." });
+    }
+
+    if (fromOrder >= toOrder) {
+        return res.status(400).json({ message: "Lütfen geçerli bir güzergâh seçiniz." });
+    }
+
+    const seatLabelMap = new Map();
+    for (const seat of seatArray) {
+        const numericSeat = Number(seat);
+        if (!Number.isFinite(numericSeat)) {
+            continue;
+        }
+        if (!seatLabelMap.has(numericSeat)) {
+            seatLabelMap.set(numericSeat, String(seat));
+        }
+    }
+
+    if (!seatLabelMap.size) {
+        return res.status(400).json({ message: "Geçerli koltuk seçimi bulunamadı." });
+    }
+
+    const seatNumbers = Array.from(seatLabelMap.keys());
+
+    const existingTickets = await req.models.Ticket.findAll({
+        where: {
+            tripId: trip.id,
+            seatNo: { [Op.in]: seatNumbers },
+            status: { [Op.notIn]: ["canceled", "cancelled", "refund"] },
+        },
+        attributes: ["seatNo", "fromRouteStopId", "toRouteStopId"],
+        raw: true,
+    });
+
+    const segmentsOverlap = (startA, endA, startB, endB) => {
+        const values = [startA, endA, startB, endB];
+        if (!values.every((value) => typeof value === "number" && Number.isFinite(value))) {
+            return true;
+        }
+
+        if (startA >= endA || startB >= endB) {
+            return true;
+        }
+
+        return startA < endB && startB < endA;
+    };
+
+    let conflictingSeatNumber = null;
+
+    for (const seatNumber of seatNumbers) {
+        const seatTickets = existingTickets.filter((ticket) => Number(ticket.seatNo) === seatNumber);
+
+        for (const ticket of seatTickets) {
+            const ticketFromOrder = routeStopOrderMap[String(ticket.fromRouteStopId)];
+            const ticketToOrder = routeStopOrderMap[String(ticket.toRouteStopId)];
+
+            if (segmentsOverlap(fromOrder, toOrder, ticketFromOrder, ticketToOrder)) {
+                conflictingSeatNumber = seatNumber;
+                break;
+            }
+        }
+
+        if (conflictingSeatNumber !== null) {
+            break;
+        }
+    }
+
+    if (conflictingSeatNumber !== null) {
+        const seatLabel = seatLabelMap.get(conflictingSeatNumber) ?? String(conflictingSeatNumber);
+        return res.status(409).json({
+            message: `${seatLabel} numaralı koltuk seçtiğiniz güzergâh için uygun değildir.`,
+        });
     }
 
     const group = await req.models.TicketGroup.create({ tripId: trip.id });
@@ -2122,8 +2215,8 @@ exports.getTicketRow = async (req, res, next) => {
 
     let pendingIds = []
 
-    for (let i = 0; i < seats.length; i++) {
-        const seatNumber = seats[i];
+    for (let i = 0; i < seatArray.length; i++) {
+        const seatNumber = seatArray[i];
 
         const ticket = await req.models.Ticket.create({
             seatNo: seatNumber,
@@ -2144,7 +2237,7 @@ exports.getTicketRow = async (req, res, next) => {
         pendingIds.push(ticket.id)
     }
 
-    return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action, pendingIds });
+    return res.render("mixins/ticketRow", { gender, seats: seatArray, price, trip, isOwnBranch, seatTypes, action, pendingIds });
 };
 
 exports.postTickets = async (req, res, next) => {
