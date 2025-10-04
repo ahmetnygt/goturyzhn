@@ -782,7 +782,7 @@ $(".user-profile-cancel").on("click", e => {
     hideUserProfilePopup();
 });
 
-$(".user-menu-password").on("click",  e => {
+$(".user-menu-password").on("click", e => {
     e.preventDefault();
     showChangePasswordPopup();
 });
@@ -2752,24 +2752,24 @@ $(".ticket-button-action").on("click", async e => {
         if ($(".ticket-rows").find(".payment").find("select").val() == "point" && pointAmount < price) {
             alert("Müşterinin puanı fiyatı karşılamıyor. Başka bir ödeme yöntemi deneyin.");
         }
-            else {
-                let usePointPayment = false;
-                if (firstTicket.length) {
-                    if (pointOrPercent === "point" && pointAmount >= price) {
-                        usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
-                        if (usePointPayment) {
-                            $(".ticket-rows").find(".payment").find("select").val("point");
-                        }
+        else {
+            let usePointPayment = false;
+            if (firstTicket.length) {
+                if (pointOrPercent === "point" && pointAmount >= price) {
+                    usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
+                    if (usePointPayment) {
+                        $(".ticket-rows").find(".payment").find("select").val("point");
                     }
                 }
+            }
 
-                let tickets = []
-                const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
-                const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
+            let tickets = []
+            const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+            const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
-                for (let i = 0; i < selectedSeats.length; i++) {
+            for (let i = 0; i < selectedSeats.length; i++) {
 
-                    const ticket = $(".ticket-row")[i]
+                const ticket = $(".ticket-row")[i]
 
                 const ticketObj = {
                     seatNumber: $(ticket).find(".seat-number").find("input").val(),
@@ -6116,6 +6116,68 @@ $(".users-close").on("click", e => {
     $(".users").css("display", "none")
 })
 
+const openCustomerInfoPopup = (row, origin) => {
+    const popup = $(".member-info");
+    const id = row.data("id") || null;
+    const idNumber = row.data("idnumber") || "";
+    const name = row.data("name") || "";
+    const surname = row.data("surname") || "";
+    const phone = row.data("phone") || "";
+    const gender = row.data("gender") || "";
+    const type = row.data("customertype") || "";
+    const category = row.data("customercategory") || "";
+    const pointOrPercent = row.data("pointorpercent") || "";
+    const pointAmount = row.data("pointamount");
+    const percent = row.data("percent");
+
+    popup.data("customerId", id);
+    popup.data("origin", origin);
+    popup.data("sourceRow", row.get(0));
+
+    $(".member-info-idNumber").val(idNumber);
+    $(".member-info-name").val(name);
+    $(".member-info-surname").val(surname);
+    $(".member-info-phone").val(phone);
+    $(".member-info-gender").val(gender);
+    $(".member-info-type").val(type);
+    $(".member-info-category").val(category);
+    $(".member-info-pointorpercent").val(pointOrPercent);
+    const pointAmountValue = pointAmount === undefined || pointAmount === null ? "" : pointAmount;
+    const percentValue = percent === undefined || percent === null ? "" : percent;
+    $(".member-info-pointamount").val(pointAmountValue);
+    $(".member-info-percent").val(percentValue);
+
+    const saveBtn = $(".member-info-save");
+    if (!saveBtn.data("defaultText")) {
+        saveBtn.data("defaultText", saveBtn.text());
+    }
+    if (id) {
+        saveBtn.prop("disabled", false).text(saveBtn.data("defaultText"));
+    } else {
+        saveBtn.prop("disabled", true).text(saveBtn.data("defaultText"));
+    }
+
+    $(".members").css("display", "none");
+    $(".customers").css("display", "none");
+    popup.css("display", "block");
+    $(".blackout").css("display", "block");
+
+    $(".member-ticket-list").html("");
+    if (idNumber) {
+        $.ajax({
+            url: "/get-member-tickets",
+            type: "GET",
+            data: { idNumber },
+            success: function (resp) {
+                $(".member-ticket-list").html(resp);
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
+};
+
 $(".customer-nav").on("click", async e => {
     await $.ajax({
         url: "/get-customers-list",
@@ -6126,6 +6188,12 @@ $(".customer-nav").on("click", async e => {
             $(".blacklist-reason-header").hide()
             $(".blackout").css("display", "block")
             $(".customers").css("display", "block")
+
+            $(".customer-row").on("click", function () {
+                const row = $(this);
+                const origin = row.hasClass("member-row") ? "members" : "customers";
+                openCustomerInfoPopup(row, origin);
+            });
         },
         error: function (xhr, status, error) {
             console.log(error);
