@@ -694,7 +694,6 @@ exports.getTrip = async (req, res, next) => {
         const seatTypes = getSeatTypes(busModel.planBinary)
         const accountCut = await req.models.BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
-        console.log(stopId)
         const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
         const currentStopOrder = currentRouteStop ? currentRouteStop.order : null
 
@@ -721,9 +720,7 @@ exports.getTrip = async (req, res, next) => {
         const tickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
         const cargos = await req.models.Cargo.findAll({ where: { tripId: trip.id, fromStopId: stopId } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.userId))] } } })
-        console.log(users)
         const branches = await req.models.Branch.findAll({ where: { id: { [Op.in]: [...new Set(users.map(u => u.branchId)), req.session.firmUser.branchId] } } })
-        console.log(branches)
 
         const routeStopOrderMap = routeStops.reduce((acc, rs) => {
             acc[rs.stopId] = rs.order;

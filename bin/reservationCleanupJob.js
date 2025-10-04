@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const { getTenantConnection } = require('../utilities/database');
 
-const DEFAULT_TENANT = process.env.TENANT_KEY || 'derseturizm';
+const DEFAULT_TENANT = process.env.TENANT_KEY;
 
 // Try to use node-cron; fall back to setInterval if unavailable
 let cron;
@@ -40,8 +40,12 @@ async function cancelExpiredReservations() {
       },
       attributes: ['id', 'status'] // performans
     });
+    console.log("İptal edilesi biletler sorgulandı.")
 
-    if (expiredTickets.length === 0) return;
+    if (expiredTickets.length === 0) {
+      console.log("İptal edilesi bilet bulunamadı.")
+      return
+    };
 
     const reservationIds = [];
     const pendingIds = [];
@@ -114,6 +118,7 @@ function start() {
   } else {
     jobInstance = setInterval(cancelExpiredReservations, 60 * 1000);
   }
+  console.log("Reservation Cleanup Job Started.")
 }
 
 function stop() {

@@ -2,7 +2,7 @@ extends erplayout
 
 block content
     .d-flex.flex-column.justify-content-center.align-items-center.gap-2.mt-3.h-100
-        img(src=`/images/${firmLogo || 'gotur_yzhn_logo.png'}` alt="Firma Logosu" style="")
+        img(src=`/images/${firmLogo || 'gotur_yzhn_logo.png'}` alt="Firma Logosu" style="height: 25vh;")
         form(action="/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
             .d-flex.flex-column
                 label.form-label Kullanıcı Adı
