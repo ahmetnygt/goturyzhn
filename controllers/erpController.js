@@ -4827,7 +4827,20 @@ exports.getAnnouncements = async (req, res, next) => {
         });
         const seenIds = seenRows.map(r => r.announcementId);
 
-        const ticker = announcements.filter(a => a.showTicker);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const ticker = announcements.filter(a => {
+            if (!a.showTicker) {
+                return false;
+            }
+
+            const createdAt = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            if (!(createdAt instanceof Date) || Number.isNaN(createdAt.getTime())) {
+                return false;
+            }
+
+            return createdAt >= twentyFourHoursAgo;
+        });
         const popup = announcements.filter(a => a.showPopup && !seenIds.includes(a.id));
 
         res.json({ ticker, popup });
