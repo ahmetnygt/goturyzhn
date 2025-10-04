@@ -6146,6 +6146,7 @@ const openCustomerInfoPopup = (row, origin) => {
     const percentValue = percent === undefined || percent === null ? "" : percent;
     $(".member-info-pointamount").val(pointAmountValue);
     $(".member-info-percent").val(percentValue);
+    updateMemberPointOrPercentAvailability();
 
     const saveBtn = $(".member-info-save");
     if (!saveBtn.data("defaultText")) {
@@ -6195,6 +6196,7 @@ $(".customer-nav").on("click", async e => {
                 openCustomerInfoPopup(row, origin);
             });
             $(".member-info-pointorpercent").on("change", updateMemberPointInputsState);
+            $(".member-info-category").on("change", updateMemberPointOrPercentAvailability);
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -6337,7 +6339,7 @@ $(".customers-close").on("click", e => {
     $(".customers").css("display", "none")
 })
 
-const updateMemberPointInputsState = () => {
+function updateMemberPointInputsState() {
     const mode = $(".member-info-pointorpercent").val();
     const pointInput = $(".member-info-pointamount");
     const percentInput = $(".member-info-percent");
@@ -6352,7 +6354,21 @@ const updateMemberPointInputsState = () => {
         pointInput.prop("disabled", true);
         percentInput.prop("disabled", true);
     }
-};
+}
+
+function updateMemberPointOrPercentAvailability() {
+    const category = $(".member-info-category").val();
+    const pointOrPercentSelect = $(".member-info-pointorpercent");
+    const isSubscriber = category === "abone";
+
+    pointOrPercentSelect.prop("disabled", !isSubscriber);
+
+    if (!isSubscriber) {
+        pointOrPercentSelect.val("");
+    }
+
+    updateMemberPointInputsState();
+}
 
 $(".member-nav").on("click", async e => {
     await $.ajax({
@@ -6371,6 +6387,7 @@ $(".member-nav").on("click", async e => {
             });
 
             $(".member-info-pointorpercent").on("change", updateMemberPointInputsState);
+            $(".member-info-category").on("change", updateMemberPointOrPercentAvailability);
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -6716,7 +6733,7 @@ $(".member-info-save").on("click", async e => {
                 $(".member-info-pointorpercent").val(valueOrEmpty(updated.pointOrPercent));
                 $(".member-info-pointamount").val(valueOrEmpty(updated.point_amount));
                 $(".member-info-percent").val(valueOrEmpty(updated.percent));
-                updateMemberPointInputsState();
+                updateMemberPointOrPercentAvailability();
                 popup.data("customerId", updated.id);
 
                 const sourceRowEl = popup.data("sourceRow");
