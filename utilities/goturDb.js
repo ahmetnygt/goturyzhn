@@ -2,24 +2,39 @@ const { Sequelize } = require("sequelize");
 const PlaceFactory = require("../models/placeModel");
 const FirmFactory = require("../models/firmModel");
 
-const goturDB = new Sequelize("gotur", "root", "anadolutat1071", {
-    host: "localhost",
-    port: 3306,
-    dialect: "mysql",
+const GOTUR_DB_NAME = process.env.GOTUR_DB_NAME || "gotur";
+const GOTUR_DB_USERNAME = process.env.GOTUR_DB_USERNAME || "root";
+const GOTUR_DB_PASSWORD = process.env.GOTUR_DB_PASSWORD || "anadolutat1071";
+
+const goturConnectionOptions = {
+    host: process.env.GOTUR_DB_HOST,
+    dialect: process.env.GOTUR_DB_DIALECT || "mysql",
     logging: false,
-});
-// const goturDB = new Sequelize("gotur", "doadmin", "AVNS_rfP7FS1Hdg-KSHpn02u", {
-//     host: "dbaas-db-5929049-do-user-22627641-0.g.db.ondigitalocean.com",
-//     port: 25060,
-//     dialect: "mysql",
-//     logging: false,
-// });
+};
+
+if (process.env.GOTUR_DB_PORT) {
+    goturConnectionOptions.port = Number(process.env.GOTUR_DB_PORT);
+}
+
+if (process.env.GOTUR_DB_TIMEZONE) {
+    goturConnectionOptions.timezone = process.env.GOTUR_DB_TIMEZONE;
+}
+
+const definedEntries = Object.entries(goturConnectionOptions).filter(([, value]) => value !== undefined && value !== "");
+const sanitizedOptions = Object.fromEntries(definedEntries);
+
+const goturDB = new Sequelize(
+    GOTUR_DB_NAME,
+    GOTUR_DB_USERNAME,
+    GOTUR_DB_PASSWORD,
+    sanitizedOptions
+);
 
 function initGoturModels() {
     const Firm = FirmFactory(goturDB); // 👈 mevcut modelini kullan
     const Place = PlaceFactory(goturDB); // 👈 mevcut modelini kullan
     goturDB.sync();
-    return { Place,Firm };
+    return { Place, Firm };
 }
 
 module.exports = { goturDB, initGoturModels };

@@ -1,38 +1,36 @@
-const DEFAULT_TENANT_KEY = process.env.TENANT_KEY;
+const DEFAULT_TENANT_KEY = process.env.TENANT_KEY || null;
 
-const LOCALHOST_TOKENS = new Set([
-  "",
-  "localhost",
-  "127",
-  "127.0.0.1",
-  "0",
-  "0.0.0.0",
-  "::1",
-]);
+function normalizeTenantKey(candidate) {
+  if (typeof candidate !== "string") {
+    return null;
+  }
 
-const IPV4_PATTERN = /^\d+(?:\.\d+){3}$/;
+  const trimmed = candidate.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
-function resolveTenantKey(hostname) {
+function resolveTenantKey(hostname, explicitKey) {
+  const normalizedExplicit = normalizeTenantKey(explicitKey);
+  if (normalizedExplicit) {
+    return normalizedExplicit;
+  }
+
   if (!hostname) {
-    return DEFAULT_TENANT_KEY || null;
+    return null;
   }
 
   const normalizedHost = String(hostname).toLowerCase();
+  const labels = normalizedHost.split(".");
 
-  if (LOCALHOST_TOKENS.has(normalizedHost) || IPV4_PATTERN.test(normalizedHost)) {
-    return DEFAULT_TENANT_KEY || null;
+  if (labels.length <= 1) {
+    return null;
   }
 
-  const [firstLabel] = normalizedHost.split(".");
-
-  if (!firstLabel || LOCALHOST_TOKENS.has(firstLabel)) {
-    return DEFAULT_TENANT_KEY || null;
-  }
-
-  return firstLabel;
+  return normalizeTenantKey(labels[0]);
 }
 
 module.exports = {
   DEFAULT_TENANT_KEY,
   resolveTenantKey,
+  normalizeTenantKey,
 };
