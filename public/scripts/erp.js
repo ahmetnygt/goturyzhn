@@ -6874,3 +6874,567 @@ async function loadAnnouncements() {
 }
 
 $(loadAnnouncements);
+
+(function () {
+    const SELECTOR = "select[data-searchable-select]";
+    const instances = new Set();
+    const selectToInstance = new WeakMap();
+    let idCounter = 0;
+
+    const toLocaleLower = value => {
+        if (typeof value !== "string") {
+            return "";
+        }
+
+        try {
+            return value.toLocaleLowerCase("tr-TR");
+        } catch (error) {
+            return value.toLowerCase();
+        }
+    };
+
+    class SearchableSelect {
+        constructor(select) {
+            this.select = select;
+            this.originalParent = select.parentNode;
+            this.originalNextSibling = select.nextSibling;
+            this.placeholder = select.getAttribute("data-placeholder")
+                || select.getAttribute("placeholder")
+                || "Seçiniz";
+            this.searchPlaceholder = select.getAttribute("data-search-placeholder") || "Ara...";
+            this.noResultsText = select.getAttribute("data-no-results-text") || "Sonuç bulunamadı";
+            this.id = `searchable-select-${++idCounter}`;
+            this.isOpen = false;
+            this.highlightIndex = -1;
+            this.filteredOptions = [];
+            this.options = [];
+            this.isSyncing = false;
+
+            this.build();
+            this.refreshOptions();
+            this.bindEvents();
+            this.syncFromSelect();
+            this.filter("");
+
+            this.select.dataset.searchableSelectReady = "true";
+        }
+
+        build() {
+            this.container = document.createElement("div");
+            this.container.className = "searchable-select";
+
+            if (this.originalParent) {
+                this.originalParent.insertBefore(this.container, this.select);
+            }
+
+            this.container.appendChild(this.select);
+
+            this.select.classList.add("searchable-select__native");
+            this.select.setAttribute("tabindex", "-1");
+
+            this.display = document.createElement("button");
+            this.display.type = "button";
+            this.display.className = "searchable-select__display";
+            this.display.setAttribute("role", "combobox");
+            this.display.setAttribute("aria-haspopup", "listbox");
+            this.display.setAttribute("aria-expanded", "false");
+            this.display.setAttribute("aria-controls", `${this.id}-listbox`);
+
+            this.displayText = document.createElement("span");
+            this.displayText.className = "searchable-select__text";
+            this.display.appendChild(this.displayText);
+
+            this.dropdown = document.createElement("div");
+            this.dropdown.className = "searchable-select__dropdown";
+
+            this.searchInput = document.createElement("input");
+            this.searchInput.type = "text";
+            this.searchInput.className = "searchable-select__search";
+            this.searchInput.placeholder = this.searchPlaceholder;
+            this.searchInput.setAttribute("autocomplete", "off");
+            this.dropdown.appendChild(this.searchInput);
+
+            this.optionsList = document.createElement("div");
+            this.optionsList.className = "searchable-select__options";
+            this.optionsList.id = `${this.id}-listbox`;
+            this.optionsList.setAttribute("role", "listbox");
+            this.dropdown.appendChild(this.optionsList);
+
+            this.container.appendChild(this.display);
+            this.container.appendChild(this.dropdown);
+        }
+
+        refreshOptions() {
+            const optionElements = Array.from(this.select.options || []);
+            this.options = optionElements
+                .filter(option => !option.disabled && !option.hidden)
+                .map(option => {
+                    const rawLabel = option.textContent != null ? option.textContent : "";
+                    const label = rawLabel.trim() || option.label || option.value || "";
+                    const searchSource = option.dataset && option.dataset.searchText
+                        ? option.dataset.searchText
+                        : `${label} ${option.value}`;
+                    return {
+                        value: option.value,
+                        label,
+                        searchText: toLocaleLower(searchSource),
+                    };
+                });
+        }
+
+        bindEvents() {
+            this.handleDisplayClick = event => {
+                event.preventDefault();
+                this.toggle();
+            };
+
+            this.handleDisplayKeydown = event => {
+                if (event.key === " " || event.key === "Spacebar" || event.key === "Enter") {
+                    event.preventDefault();
+                    this.toggle(true);
+                    return;
+                }
+
+                if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    if (!this.isOpen) {
+                        this.open();
+                    }
+                    this.moveHighlight(1);
+                    return;
+                }
+
+                if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    if (!this.isOpen) {
+                        this.open();
+                    }
+                    this.moveHighlight(-1);
+                    return;
+                }
+
+                if (event.key && event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                    this.open();
+                    this.searchInput.value = event.key;
+                    this.filter(this.searchInput.value);
+                    window.requestAnimationFrame(() => {
+                        const length = this.searchInput.value.length;
+                        this.searchInput.setSelectionRange(length, length);
+                    });
+                    event.preventDefault();
+                }
+            };
+
+            this.handleSearchInput = event => {
+                this.filter(event.target.value);
+            };
+
+            this.handleSearchKeydown = event => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    this.close();
+                    this.display.focus();
+                    return;
+                }
+
+                if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    this.moveHighlight(1);
+                    return;
+                }
+
+                if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    this.moveHighlight(-1);
+                    return;
+                }
+
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (this.highlightIndex >= 0) {
+                        const option = this.filteredOptions[this.highlightIndex];
+                        if (option) {
+                            this.chooseOption(option);
+                        }
+                    }
+                }
+            };
+
+            this.handleNativeChange = () => {
+                if (this.isSyncing) {
+                    return;
+                }
+                this.refreshOptions();
+                this.syncFromSelect();
+            };
+
+            this.display.addEventListener("click", this.handleDisplayClick);
+            this.display.addEventListener("keydown", this.handleDisplayKeydown);
+            this.searchInput.addEventListener("input", this.handleSearchInput);
+            this.searchInput.addEventListener("keydown", this.handleSearchKeydown);
+            this.select.addEventListener("change", this.handleNativeChange);
+        }
+
+        toggle(forceOpen = false) {
+            if (forceOpen && this.isOpen) {
+                return;
+            }
+
+            if (forceOpen || !this.isOpen) {
+                this.open();
+            } else {
+                this.close();
+            }
+        }
+
+        open() {
+            instances.forEach(instance => {
+                if (instance !== this) {
+                    instance.close();
+                }
+            });
+
+            this.isOpen = true;
+            this.container.classList.add("searchable-select_open");
+            this.display.setAttribute("aria-expanded", "true");
+            this.refreshOptions();
+            this.searchInput.value = "";
+            this.filter("");
+
+            window.requestAnimationFrame(() => {
+                this.searchInput.focus();
+            });
+        }
+
+        close() {
+            if (!this.isOpen) {
+                return;
+            }
+
+            this.isOpen = false;
+            this.container.classList.remove("searchable-select_open");
+            this.display.setAttribute("aria-expanded", "false");
+            this.display.removeAttribute("aria-activedescendant");
+        }
+
+        moveHighlight(delta) {
+            if (!this.filteredOptions.length) {
+                this.highlightIndex = -1;
+                this.updateHighlight();
+                return;
+            }
+
+            if (this.highlightIndex === -1) {
+                this.highlightIndex = delta > 0 ? 0 : this.filteredOptions.length - 1;
+            } else {
+                this.highlightIndex = Math.max(0, Math.min(this.filteredOptions.length - 1, this.highlightIndex + delta));
+            }
+
+            this.updateHighlight();
+        }
+
+        filter(term) {
+            const normalized = toLocaleLower(term).trim();
+            if (!normalized) {
+                this.filteredOptions = this.options.slice();
+            } else {
+                this.filteredOptions = this.options.filter(option => option.searchText.includes(normalized));
+            }
+
+            const selectedValue = this.select.value;
+            const selectedIndex = this.filteredOptions.findIndex(option => option.value === selectedValue);
+            if (selectedIndex !== -1) {
+                this.highlightIndex = selectedIndex;
+            } else {
+                this.highlightIndex = this.filteredOptions.length ? 0 : -1;
+            }
+
+            this.renderOptions();
+        }
+
+        renderOptions() {
+            this.optionsList.innerHTML = "";
+
+            if (!this.filteredOptions.length) {
+                const empty = document.createElement("div");
+                empty.className = "searchable-select__empty";
+                empty.textContent = this.noResultsText;
+                this.optionsList.appendChild(empty);
+                this.display.removeAttribute("aria-activedescendant");
+                return;
+            }
+
+            const currentValue = this.select.value;
+
+            this.filteredOptions.forEach((option, index) => {
+                const optionEl = document.createElement("div");
+                optionEl.className = "searchable-select__option";
+                optionEl.setAttribute("role", "option");
+                optionEl.id = `${this.id}-option-${index}`;
+                optionEl.textContent = option.label;
+                optionEl.dataset.value = option.value;
+
+                const isSelected = option.value === currentValue;
+                if (isSelected) {
+                    optionEl.classList.add("is-selected");
+                    optionEl.setAttribute("aria-selected", "true");
+                } else {
+                    optionEl.setAttribute("aria-selected", "false");
+                }
+
+                if (index === this.highlightIndex) {
+                    optionEl.classList.add("is-highlighted");
+                    this.display.setAttribute("aria-activedescendant", optionEl.id);
+                }
+
+                optionEl.addEventListener("pointerdown", event => {
+                    event.preventDefault();
+                    this.chooseOption(option);
+                });
+
+                optionEl.addEventListener("mouseenter", () => {
+                    this.setHighlight(index);
+                });
+
+                this.optionsList.appendChild(optionEl);
+            });
+
+            if (this.highlightIndex === -1) {
+                this.display.removeAttribute("aria-activedescendant");
+            } else {
+                this.scrollHighlightedIntoView();
+            }
+        }
+
+        setHighlight(index) {
+            if (index < 0 || index >= this.filteredOptions.length) {
+                this.highlightIndex = -1;
+            } else {
+                this.highlightIndex = index;
+            }
+            this.updateHighlight();
+        }
+
+        updateHighlight() {
+            const optionElements = this.optionsList.querySelectorAll(".searchable-select__option");
+            optionElements.forEach((element, index) => {
+                const isHighlighted = index === this.highlightIndex;
+                element.classList.toggle("is-highlighted", isHighlighted);
+                if (isHighlighted) {
+                    this.display.setAttribute("aria-activedescendant", element.id);
+                }
+            });
+
+            if (this.highlightIndex === -1) {
+                this.display.removeAttribute("aria-activedescendant");
+            } else {
+                this.scrollHighlightedIntoView();
+            }
+        }
+
+        scrollHighlightedIntoView() {
+            if (!this.isOpen) {
+                return;
+            }
+
+            const element = this.optionsList.querySelector(".searchable-select__option.is-highlighted");
+            if (element && typeof element.scrollIntoView === "function") {
+                element.scrollIntoView({ block: "nearest" });
+            }
+        }
+
+        chooseOption(option) {
+            this.setValue(option.value);
+            this.close();
+            this.display.focus();
+        }
+
+        setValue(value) {
+            const previousValue = this.select.value;
+            if (previousValue === value) {
+                this.syncFromSelect();
+                return;
+            }
+
+            this.isSyncing = true;
+            this.select.value = value;
+            const changeEvent = new Event("change", { bubbles: true });
+            this.select.dispatchEvent(changeEvent);
+            this.isSyncing = false;
+            this.syncFromSelect();
+        }
+
+        syncFromSelect() {
+            const currentValue = this.select.value;
+            const currentOption = this.options.find(option => option.value === currentValue) || null;
+            if (currentOption) {
+                this.displayText.textContent = currentOption.label;
+                this.container.classList.add("searchable-select_has-value");
+            } else {
+                this.displayText.textContent = this.placeholder;
+                this.container.classList.remove("searchable-select_has-value");
+            }
+
+            if (this.isOpen) {
+                this.filter(this.searchInput.value);
+            } else {
+                this.updateSelectionStyles();
+            }
+        }
+
+        updateSelectionStyles() {
+            const optionElements = this.optionsList.querySelectorAll(".searchable-select__option");
+            const currentValue = this.select.value;
+            optionElements.forEach((element, index) => {
+                const option = this.filteredOptions[index];
+                if (!option) {
+                    return;
+                }
+                const isSelected = option.value === currentValue;
+                element.classList.toggle("is-selected", isSelected);
+                element.setAttribute("aria-selected", isSelected ? "true" : "false");
+            });
+        }
+
+        handleDocumentClick(event) {
+            if (!this.container.contains(event.target)) {
+                this.close();
+            }
+        }
+
+        destroy() {
+            this.close();
+
+            if (this.display) {
+                this.display.removeEventListener("click", this.handleDisplayClick);
+                this.display.removeEventListener("keydown", this.handleDisplayKeydown);
+            }
+
+            if (this.searchInput) {
+                this.searchInput.removeEventListener("input", this.handleSearchInput);
+                this.searchInput.removeEventListener("keydown", this.handleSearchKeydown);
+            }
+
+            if (this.select) {
+                this.select.removeEventListener("change", this.handleNativeChange);
+                this.select.classList.remove("searchable-select__native");
+                this.select.removeAttribute("tabindex");
+                delete this.select.dataset.searchableSelectReady;
+            }
+
+            if (this.container && this.originalParent) {
+                if (this.originalNextSibling && this.originalNextSibling.parentNode === this.originalParent) {
+                    this.originalParent.insertBefore(this.select, this.originalNextSibling);
+                } else {
+                    this.originalParent.appendChild(this.select);
+                }
+                this.container.remove();
+            }
+        }
+    }
+
+    const init = root => {
+        if (!root) {
+            return [];
+        }
+
+        let elements = [];
+        if (root instanceof HTMLSelectElement) {
+            elements = [root];
+        } else if (root instanceof Element || root instanceof Document || root instanceof DocumentFragment) {
+            elements = Array.from(root.querySelectorAll(SELECTOR));
+            if (root instanceof Element && root.matches(SELECTOR)) {
+                elements.unshift(root);
+            }
+        } else if (typeof root.length === "number") {
+            const results = [];
+            Array.from(root).forEach(item => {
+                const createdFromItem = init(item);
+                if (Array.isArray(createdFromItem)) {
+                    results.push(...createdFromItem);
+                }
+            });
+            return results;
+        }
+
+        const created = [];
+
+        elements.forEach(select => {
+            if (!(select instanceof HTMLSelectElement)) {
+                return;
+            }
+
+            if (selectToInstance.has(select)) {
+                return;
+            }
+
+            const instance = new SearchableSelect(select);
+            selectToInstance.set(select, instance);
+            instances.add(instance);
+            created.push(instance);
+        });
+
+        return created;
+    };
+
+    const destroy = target => {
+        let instance = null;
+
+        if (!target) {
+            return false;
+        }
+
+        if (target instanceof SearchableSelect) {
+            instance = target;
+        } else if (target instanceof HTMLSelectElement) {
+            instance = selectToInstance.get(target) || null;
+        }
+
+        if (!instance) {
+            return false;
+        }
+
+        instance.destroy();
+        selectToInstance.delete(instance.select);
+        instances.delete(instance);
+        return true;
+    };
+
+    const getInstance = target => {
+        if (!target) {
+            return null;
+        }
+
+        if (target instanceof SearchableSelect) {
+            return target;
+        }
+
+        if (target instanceof HTMLSelectElement) {
+            return selectToInstance.get(target) || null;
+        }
+
+        return null;
+    };
+
+    const boot = () => {
+        init(document);
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot, { once: true });
+    } else {
+        boot();
+    }
+
+    document.addEventListener("click", event => {
+        instances.forEach(instance => instance.handleDocumentClick(event));
+    });
+
+    window.GTR = window.GTR || {};
+    window.GTR.searchableSelect = {
+        init,
+        destroy,
+        getInstance,
+        getInstances: () => Array.from(instances),
+    };
+})();
