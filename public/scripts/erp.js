@@ -6268,6 +6268,94 @@ $(".customers-close").on("click", e => {
     $(".customers").css("display", "none")
 })
 
+const updateMemberPointInputsState = () => {
+    const mode = $(".member-info-pointorpercent").val();
+    const pointInput = $(".member-info-pointamount");
+    const percentInput = $(".member-info-percent");
+
+    if (mode === "point") {
+        pointInput.prop("disabled", false);
+        percentInput.prop("disabled", true);
+    } else if (mode === "percent") {
+        pointInput.prop("disabled", true);
+        percentInput.prop("disabled", false);
+    } else {
+        pointInput.prop("disabled", true);
+        percentInput.prop("disabled", true);
+    }
+};
+
+const openCustomerInfoPopup = (row, origin) => {
+    const popup = $(".member-info");
+    const id = row.data("id") || null;
+    const idNumber = row.data("idnumber") || "";
+    const name = row.data("name") || "";
+    const surname = row.data("surname") || "";
+    const phone = row.data("phone") || "";
+    const gender = row.data("gender") || "";
+    const type = row.data("customertype") || "";
+    const category = row.data("customercategory") || "";
+    const pointOrPercent = row.data("pointorpercent") || "";
+    const pointAmount = row.data("pointamount");
+    const percent = row.data("percent");
+
+    popup.data("customerId", id);
+    popup.data("origin", origin);
+    popup.data("sourceRow", row.get(0));
+
+    $(".member-info-idNumber").val(idNumber);
+    $(".member-info-name").val(name);
+    $(".member-info-surname").val(surname);
+    $(".member-info-phone").val(phone);
+    $(".member-info-gender").val(gender);
+    $(".member-info-type").val(type);
+    $(".member-info-category").val(category);
+    $(".member-info-pointorpercent").val(pointOrPercent);
+    const pointAmountValue = pointAmount === undefined || pointAmount === null ? "" : pointAmount;
+    const percentValue = percent === undefined || percent === null ? "" : percent;
+    $(".member-info-pointamount").val(pointAmountValue);
+    $(".member-info-percent").val(percentValue);
+    updateMemberPointInputsState();
+
+    const saveBtn = $(".member-info-save");
+    if (!saveBtn.data("defaultText")) {
+        saveBtn.data("defaultText", saveBtn.text());
+    }
+    if (id) {
+        saveBtn.prop("disabled", false).text(saveBtn.data("defaultText"));
+    } else {
+        saveBtn.prop("disabled", true).text(saveBtn.data("defaultText"));
+    }
+
+    $(".members").css("display", "none");
+    $(".customers").css("display", "none");
+    popup.css("display", "block");
+    $(".blackout").css("display", "block");
+
+    $(".member-ticket-list").html("");
+    if (idNumber) {
+        $.ajax({
+            url: "/get-member-tickets",
+            type: "GET",
+            data: { idNumber },
+            success: function (resp) {
+                $(".member-ticket-list").html(resp);
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        });
+    }
+};
+
+$(document).on("change", ".member-info-pointorpercent", updateMemberPointInputsState);
+
+$(document).on("click", ".member-row, .customer-row", function () {
+    const row = $(this);
+    const origin = row.hasClass("member-row") ? "members" : "customers";
+    openCustomerInfoPopup(row, origin);
+});
+
 $(".member-nav").on("click", async e => {
     await $.ajax({
         url: "/get-members-list",
@@ -6277,46 +6365,6 @@ $(".member-nav").on("click", async e => {
             $(".member-list-nodes").html(response)
             $(".blackout").css("display", "block")
             $(".members").css("display", "block")
-
-            $(".member-row").on("click", function () {
-                const idNumber = $(this).data("idnumber");
-                const name = $(this).data("name");
-                const surname = $(this).data("surname");
-                const phone = $(this).data("phone");
-                const gender = $(this).data("gender");
-                const type = $(this).data("customertype");
-                const category = $(this).data("customercategory");
-                const pointOrPercent = $(this).data("pointorpercent");
-                const pointAmount = $(this).data("pointamount");
-                const percent = $(this).data("percent");
-
-                $(".member-info-idNumber").val(idNumber);
-                $(".member-info-name").val(name);
-                $(".member-info-surname").val(surname);
-                $(".member-info-phone").val(phone);
-                $(".member-info-gender").val(gender);
-                $(".member-info-type").val(type);
-                $(".member-info-category").val(category);
-                $(".member-info-pointorpercent").val(pointOrPercent);
-                $(".member-info-pointamount").val(pointAmount);
-                $(".member-info-percent").val(percent);
-
-                $(".members").css("display", "none");
-                $(".member-info").css("display", "block");
-                $(".blackout").css("display", "block");
-
-                $.ajax({
-                    url: "/get-member-tickets",
-                    type: "GET",
-                    data: { idNumber },
-                    success: function (resp) {
-                        $(".member-ticket-list").html(resp);
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                });
-            });
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -6602,8 +6650,122 @@ $(".members-close").on("click", e => {
 })
 
 $(".member-info-close").on("click", e => {
-    $(".member-info").css("display", "none");
-    $(".members").css("display", "block");
+    const popup = $(".member-info");
+    const origin = popup.data("origin");
+    popup.css("display", "none");
+    if (origin === "members") {
+        $(".members").css("display", "block");
+    } else if (origin === "customers") {
+        $(".customers").css("display", "block");
+    } else {
+        $(".blackout").css("display", "none");
+    }
+});
+
+$(".member-info-save").on("click", async e => {
+    const popup = $(".member-info");
+    const customerId = popup.data("customerId");
+    if (!customerId) {
+        return;
+    }
+
+    const payload = {
+        id: customerId,
+        idNumber: $(".member-info-idNumber").val(),
+        name: $(".member-info-name").val(),
+        surname: $(".member-info-surname").val(),
+        phone: $(".member-info-phone").val(),
+        gender: $(".member-info-gender").val(),
+        customerType: $(".member-info-type").val(),
+        customerCategory: $(".member-info-category").val(),
+        pointOrPercent: $(".member-info-pointorpercent").val(),
+        pointAmount: $(".member-info-pointamount").val(),
+        percent: $(".member-info-percent").val()
+    };
+
+    const button = $(e.currentTarget);
+    if (!button.data("defaultText")) {
+        button.data("defaultText", button.text());
+    }
+    const defaultText = button.data("defaultText");
+    button.prop("disabled", true).text("Kaydediliyor...");
+
+    $.ajax({
+        url: "/post-update-customer",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(payload),
+        success: function (resp) {
+            button.text("Kaydedildi");
+            const updated = resp && resp.customer ? resp.customer : null;
+            if (updated) {
+                const valueOrEmpty = (value) => (value === undefined || value === null ? "" : value);
+                $(".member-info-idNumber").val(valueOrEmpty(updated.idNumber));
+                $(".member-info-name").val(valueOrEmpty(updated.name));
+                $(".member-info-surname").val(valueOrEmpty(updated.surname));
+                $(".member-info-phone").val(valueOrEmpty(updated.phoneNumber));
+                $(".member-info-gender").val(valueOrEmpty(updated.gender));
+                $(".member-info-type").val(valueOrEmpty(updated.customerType));
+                $(".member-info-category").val(valueOrEmpty(updated.customerCategory));
+                $(".member-info-pointorpercent").val(valueOrEmpty(updated.pointOrPercent));
+                $(".member-info-pointamount").val(valueOrEmpty(updated.point_amount));
+                $(".member-info-percent").val(valueOrEmpty(updated.percent));
+                updateMemberPointInputsState();
+                popup.data("customerId", updated.id);
+
+                const sourceRowEl = popup.data("sourceRow");
+                if (sourceRowEl) {
+                    const sourceRow = $(sourceRowEl);
+                    sourceRow.data("idnumber", valueOrEmpty(updated.idNumber));
+                    sourceRow.data("name", valueOrEmpty(updated.name));
+                    sourceRow.data("surname", valueOrEmpty(updated.surname));
+                    sourceRow.data("phone", valueOrEmpty(updated.phoneNumber));
+                    sourceRow.data("gender", valueOrEmpty(updated.gender));
+                    sourceRow.data("customertype", valueOrEmpty(updated.customerType));
+                    sourceRow.data("customercategory", valueOrEmpty(updated.customerCategory));
+                    sourceRow.data("pointorpercent", valueOrEmpty(updated.pointOrPercent));
+                    sourceRow.data("pointamount", valueOrEmpty(updated.point_amount));
+                    sourceRow.data("percent", valueOrEmpty(updated.percent));
+
+                    if (sourceRow.hasClass("member-row")) {
+                        const cols = sourceRow.children();
+                        cols.eq(0).find("p").text(valueOrEmpty(updated.idNumber));
+                        cols.eq(1).find("p").text(valueOrEmpty(updated.name));
+                        cols.eq(2).find("p").text(valueOrEmpty(updated.surname));
+                        cols.eq(3).find("p").text(valueOrEmpty(updated.phoneNumber));
+                        const pointLabel = updated.pointOrPercent === "point" ? "Puan" : updated.pointOrPercent === "percent" ? "İndirim (%)" : "";
+                        const pointValue = updated.pointOrPercent === "point"
+                            ? `${valueOrEmpty(updated.point_amount) || 0} puan`
+                            : updated.pointOrPercent === "percent"
+                                ? `${valueOrEmpty(updated.percent) || 0}%`
+                                : "";
+                        cols.eq(4).find("p").text(pointLabel);
+                        cols.eq(5).find("p").text(pointValue);
+                    } else if (sourceRow.hasClass("customer-row")) {
+                        const cols = sourceRow.children();
+                        cols.eq(0).find("p").text(valueOrEmpty(updated.idNumber));
+                        cols.eq(1).find("p").text(valueOrEmpty(updated.name));
+                        cols.eq(2).find("p").text(valueOrEmpty(updated.surname));
+                        cols.eq(3).find("p").text(valueOrEmpty(updated.phoneNumber));
+                        const categoryCol = cols.eq(4).find("p");
+                        if (categoryCol.length) {
+                            categoryCol.text(updated.customerCategory === "member" ? "Abone" : "");
+                        }
+                    }
+                }
+            }
+            setTimeout(() => {
+                button.text(defaultText);
+            }, 2000);
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+            button.text(defaultText);
+        },
+        complete: function () {
+            button.prop("disabled", false);
+        }
+    });
 });
 
 function searchMembers() {

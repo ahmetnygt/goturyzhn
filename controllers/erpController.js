@@ -2012,7 +2012,47 @@ exports.getErp = async (req, res, next) => {
 
     const branchStopId = stops.find(s => s.id == branches.find(b => b.id == req.session.firmUser.branchId)?.stopId)?.id
 
-    res.render('erpscreen', { title: req.session?.firm?.displayName || "GötürYZHN", busModel, staff, user, places, stops, branches, branchStopId });
+    const customerModel = req.models.Customer;
+    const getEnumValues = attributeName => {
+        if (!customerModel?.rawAttributes?.[attributeName]) {
+            return [];
+        }
+
+        const values = customerModel.rawAttributes[attributeName].values;
+        return Array.isArray(values) ? values : [];
+    };
+
+    const labelFromMap = (value, map) => (map && Object.prototype.hasOwnProperty.call(map, value) ? map[value] : value);
+
+    const genderLabelMap = { m: "Erkek", f: "Kadın" };
+    const typeLabelMap = {
+        adult: "Yetişkin",
+        child: "Çocuk",
+        student: "Öğrenci",
+        disabled: "Engelli",
+        retired: "Emekli",
+    };
+    const categoryLabelMap = { normal: "Normal", member: "Abone", guest: "Misafir" };
+    const pointOrPercentLabelMap = { point: "Puan", percent: "İndirim" };
+
+    const customerFieldOptions = {
+        gender: getEnumValues("gender").map(value => ({ value, label: labelFromMap(value, genderLabelMap) })),
+        customerType: getEnumValues("customerType").map(value => ({ value, label: labelFromMap(value, typeLabelMap) })),
+        customerCategory: getEnumValues("customerCategory").map(value => ({ value, label: labelFromMap(value, categoryLabelMap) })),
+        pointOrPercent: getEnumValues("pointOrPercent").map(value => ({ value, label: labelFromMap(value, pointOrPercentLabelMap) })),
+    };
+
+    res.render('erpscreen', {
+        title: req.session?.firm?.displayName || "GötürYZHN",
+        busModel,
+        staff,
+        user,
+        places,
+        stops,
+        branches,
+        branchStopId,
+        customerFieldOptions,
+    });
 }
 
 exports.getErpLogin = async (req, res, next) => {
@@ -4295,6 +4335,128 @@ exports.postAddMember = async (req, res, next) => {
         res.status(500).json({ success: false });
     }
 }
+
+exports.postUpdateCustomer = async (req, res, next) => {
+    try {
+        const {
+            id,
+            idNumber,
+            name,
+            surname,
+            phone,
+            gender,
+            customerType,
+            customerCategory,
+            pointOrPercent,
+            pointAmount,
+            percent
+        } = req.body;
+
+        const customerId = Number(id);
+        if (!customerId) {
+            return res.status(400).json({ success: false, message: "Geçersiz müşteri bilgisi" });
+        }
+
+        const customer = await req.models.Customer.findByPk(customerId);
+        if (!customer) {
+            return res.status(404).json({ success: false, message: "Müşteri bulunamadı" });
+        }
+
+        if (idNumber !== undefined) {
+            const parsedIdNumber = Number(idNumber);
+            if (!Number.isNaN(parsedIdNumber) && parsedIdNumber > 0) {
+                customer.idNumber = parsedIdNumber;
+            }
+        }
+
+        const upper = (value) => {
+            if (typeof value !== "string") {
+                return null;
+            }
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+            try {
+                return trimmed.toLocaleUpperCase("tr-TR");
+            } catch (err) {
+                return trimmed.toUpperCase();
+            }
+        };
+
+        const trimmed = (value) => (typeof value === "string" ? value.trim() : null);
+
+        const upperName = upper(name);
+        if (upperName) {
+            customer.name = upperName;
+        }
+
+        const upperSurname = upper(surname);
+        if (upperSurname) {
+            customer.surname = upperSurname;
+        }
+
+        const trimmedPhone = trimmed(phone);
+        if (trimmedPhone) {
+            customer.phoneNumber = trimmedPhone;
+        }
+
+        if (typeof gender === "string") {
+            const loweredGender = gender.trim().toLowerCase();
+            if (["m", "erkek", "male"].includes(loweredGender)) {
+                customer.gender = "m";
+            } else if (["f", "k", "kadin", "kadın", "female"].includes(loweredGender)) {
+                customer.gender = "f";
+            }
+        }
+
+        if (typeof customerType === "string") {
+            const loweredType = customerType.trim().toLowerCase();
+            const allowedTypes = ["adult", "child", "student", "disabled", "retired"];
+            if (allowedTypes.includes(loweredType)) {
+                customer.customerType = loweredType;
+            }
+        }
+
+        if (typeof customerCategory === "string") {
+            const loweredCategory = customerCategory.trim().toLowerCase();
+            const allowedCategories = ["normal", "member"];
+            if (allowedCategories.includes(loweredCategory)) {
+                customer.customerCategory = loweredCategory;
+            }
+        }
+
+        if (pointOrPercent !== undefined) {
+            if (typeof pointOrPercent === "string") {
+                const lowered = pointOrPercent.trim().toLowerCase();
+                if (!lowered) {
+                    customer.pointOrPercent = null;
+                } else if (["point", "percent"].includes(lowered)) {
+                    customer.pointOrPercent = lowered;
+                }
+            } else if (pointOrPercent === null) {
+                customer.pointOrPercent = null;
+            }
+        }
+
+        if (pointAmount !== undefined) {
+            const parsedPointAmount = Number(pointAmount);
+            customer.point_amount = Number.isNaN(parsedPointAmount) ? 0 : parsedPointAmount;
+        }
+
+        if (percent !== undefined) {
+            const parsedPercent = Number(percent);
+            customer.percent = Number.isNaN(parsedPercent) ? 0 : parsedPercent;
+        }
+
+        await customer.save();
+
+        res.json({ success: true, customer: customer.toJSON() });
+    } catch (err) {
+        console.error("Customer update error:", err);
+        res.status(500).json({ success: false });
+    }
+};
 
 exports.getMemberTickets = async (req, res, next) => {
     try {
