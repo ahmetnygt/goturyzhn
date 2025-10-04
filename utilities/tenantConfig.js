@@ -1,38 +1,27 @@
-const DEFAULT_TENANT_KEY = process.env.TENANT_KEY || "derseturizm";
-
-const LOCALHOST_TOKENS = new Set([
-  "",
-  "localhost",
-  "127",
-  "127.0.0.1",
-  "0",
-  "0.0.0.0",
-  "::1",
-]);
-
-const IPV4_PATTERN = /^\d+(?:\.\d+){3}$/;
-
 function resolveTenantKey(hostname) {
   if (!hostname) {
-    return DEFAULT_TENANT_KEY || null;
+    return null;
   }
 
   const normalizedHost = String(hostname).toLowerCase();
+  const labels = normalizedHost
+    .split(".")
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-  if (LOCALHOST_TOKENS.has(normalizedHost) || IPV4_PATTERN.test(normalizedHost)) {
-    return DEFAULT_TENANT_KEY || null;
+  if (labels.length < 2) {
+    return null;
   }
 
-  const [firstLabel] = normalizedHost.split(".");
+  const [firstLabel, secondLabel] = labels;
 
-  if (!firstLabel || LOCALHOST_TOKENS.has(firstLabel)) {
-    return DEFAULT_TENANT_KEY || null;
+  if (firstLabel === "www") {
+    return secondLabel || null;
   }
 
   return firstLabel;
 }
 
 module.exports = {
-  DEFAULT_TENANT_KEY,
   resolveTenantKey,
 };
