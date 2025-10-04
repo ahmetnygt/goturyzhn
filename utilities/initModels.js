@@ -21,6 +21,8 @@ const RouteStopFactory = require("../models/routeStopModel");
 const RouteStopRestrictionFactory = require("../models/routeStopRestrictionModel");
 const StaffFactory = require("../models/staffModel");
 const StopFactory = require("../models/stopModel");
+const TakeOnFactory = require("../models/takeOnModel");
+const TakeOffFactory = require("../models/takeOffModel");
 const SystemLogFactory = require("../models/systemLogModel");
 const TicketGroupFactory = require("../models/ticketGroupModel");
 const TicketFactory = require("../models/ticketModel");
@@ -50,6 +52,8 @@ function initModels(sequelize) {
   const RouteStopRestriction = RouteStopRestrictionFactory(sequelize);
   const Staff = StaffFactory(sequelize);
   const Stop = StopFactory(sequelize);
+  const TakeOn = TakeOnFactory(sequelize);
+  const TakeOff = TakeOffFactory(sequelize);
   const SystemLog = SystemLogFactory(sequelize);
   const TicketGroup = TicketGroupFactory(sequelize);
   const Ticket = TicketFactory(sequelize);
@@ -79,6 +83,8 @@ function initModels(sequelize) {
     RouteStopRestriction,
     Staff,
     Stop,
+    TakeOn,
+    TakeOff,
     SystemLog,
     TicketGroup,
     Ticket,

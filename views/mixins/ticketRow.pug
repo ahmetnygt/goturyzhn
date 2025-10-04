@@ -172,12 +172,42 @@
                         )
 
         .take-on
+            -
+                const takeOnValue = ticket && ticket.length ? (ticket[0].takeOnText || "") : "";
+                const takeOnOptionsArray = Array.isArray(takeOnOptions) ? takeOnOptions : [];
+                const takeOnExists = takeOnOptionsArray.some(option => option && option.title === takeOnValue);
             label.form-label Biniş Yeri
-            input.form-control.form-control-sm(type="text")
+            select.form-select.form-select-sm(
+                data-searchable-select
+                data-search-placeholder="Biniş ara"
+                data-placeholder="Seçiniz"
+                data-allow-new
+                value=takeOnValue
+            )
+                option(value="" selected=!takeOnValue)
+                if takeOnValue && !takeOnExists
+                    option(value=takeOnValue selected) #{takeOnValue}
+                each option in takeOnOptionsArray
+                    option(value=option.title selected=(option.title === takeOnValue)) #{option.title}
 
         .take-off
+            -
+                const takeOffValue = ticket && ticket.length ? (ticket[0].takeOffText || "") : "";
+                const takeOffOptionsArray = Array.isArray(takeOffOptions) ? takeOffOptions : [];
+                const takeOffExists = takeOffOptionsArray.some(option => option && option.title === takeOffValue);
             label.form-label İniş Yeri
-            input.form-control.form-control-sm(type="text")
+            select.form-select.form-select-sm(
+                data-searchable-select
+                data-search-placeholder="İniş ara"
+                data-placeholder="Seçiniz"
+                data-allow-new
+                value=takeOffValue
+            )
+                option(value="" selected=!takeOffValue)
+                if takeOffValue && !takeOffExists
+                    option(value=takeOffValue selected) #{takeOffValue}
+                each option in takeOffOptionsArray
+                    option(value=option.title selected=(option.title === takeOffValue)) #{option.title}
 
         if action == "sell" || action == "edit" || action == "complete"
             .payment

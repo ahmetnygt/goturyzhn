@@ -91,6 +91,14 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    takeOnText: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    takeOffText: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     pnr: {
       type: DataTypes.STRING,
       allowNull: true,

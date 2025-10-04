@@ -93,6 +93,13 @@ function initializeTicketRowPriceControls() {
 
         originalPrices[index] = Number.isNaN(basePrice) ? null : basePrice;
     });
+
+    if (window.GTR && window.GTR.searchableSelect && typeof window.GTR.searchableSelect.init === "function") {
+        const takeSelects = document.querySelectorAll(".ticket-info select[data-searchable-select]");
+        if (takeSelects && takeSelects.length) {
+            window.GTR.searchableSelect.init(takeSelects);
+        }
+    }
 }
 
 let tripStaffInitial = {};
@@ -2735,22 +2742,24 @@ $(".ticket-button-action").on("click", async e => {
         if ($(".ticket-rows").find(".payment").find("select").val() == "point" && pointAmount < price) {
             alert("Müşterinin puanı fiyatı karşılamıyor. Başka bir ödeme yöntemi deneyin.");
         }
-        else {
-            let usePointPayment = false;
-            if (firstTicket.length) {
-                if (pointOrPercent === "point" && pointAmount >= price) {
-                    usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
-                    if (usePointPayment) {
-                        $(".ticket-rows").find(".payment").find("select").val("point");
+            else {
+                let usePointPayment = false;
+                if (firstTicket.length) {
+                    if (pointOrPercent === "point" && pointAmount >= price) {
+                        usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
+                        if (usePointPayment) {
+                            $(".ticket-rows").find(".payment").find("select").val("point");
+                        }
                     }
                 }
-            }
 
-            let tickets = []
+                let tickets = []
+                const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+                const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
-            for (let i = 0; i < selectedSeats.length; i++) {
+                for (let i = 0; i < selectedSeats.length; i++) {
 
-                const ticket = $(".ticket-row")[i]
+                    const ticket = $(".ticket-row")[i]
 
                 const ticketObj = {
                     seatNumber: $(ticket).find(".seat-number").find("input").val(),
@@ -2766,6 +2775,8 @@ $(".ticket-button-action").on("click", async e => {
                     optionDate: $(".ticket-rows").find(".reservation-expire").find("input.date").val(),
                     price: $(ticket).find(".price").find("input").val(),
                     payment: usePointPayment ? "point" : $(".ticket-rows").find(".payment").find("select").val(),
+                    takeOn: takeOnValue,
+                    takeOff: takeOffValue,
                 }
 
                 tickets.push(ticketObj)
@@ -2790,6 +2801,8 @@ $(".ticket-button-action").on("click", async e => {
     }
     else if (e.currentTarget.dataset.action == "complete") {
         let tickets = []
+        const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+        const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
         for (let i = 0; i < selectedTakenSeats.length; i++) {
 
@@ -2809,6 +2822,8 @@ $(".ticket-button-action").on("click", async e => {
                 price: $(ticket).find(".price").find("input").val(),
                 payment: $(".ticket-rows").find(".payment").find("select").val(),
                 pnr: $(".ticket-rows").find(".pnr").find("input").val(),
+                takeOn: takeOnValue,
+                takeOff: takeOffValue,
             }
 
             tickets.push(ticketObj)
@@ -2835,6 +2850,8 @@ $(".ticket-button-action").on("click", async e => {
         let tickets = []
         const fromId = $(".open-ticket-from").val()
         const toId = $(".open-ticket-to").val()
+        const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+        const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
         for (let i = 0; i < $(".ticket-row").length; i++) {
 
@@ -2853,6 +2870,8 @@ $(".ticket-button-action").on("click", async e => {
                 optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(ticket).find(".price").find("input").val(),
                 payment: $(".ticket-rows").find(".payment").find("select").val(),
+                takeOn: takeOnValue,
+                takeOff: takeOffValue,
             }
 
             tickets.push(ticketObj)
@@ -2878,6 +2897,8 @@ $(".ticket-button-action").on("click", async e => {
         const ticket = $(".ticket-row")
 
         let ticketArray = []
+        const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+        const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
         ticket.each((i, e) => {
             ticketArray.push({
@@ -2893,6 +2914,8 @@ $(".ticket-button-action").on("click", async e => {
                 optionTime: $(".ticket-rows").find(".reservation-expire").find("input").val(),
                 price: $(e).find(".price").find("input").val(),
                 pnr: $(".pnr").find("input").val(),
+                takeOn: takeOnValue,
+                takeOff: takeOffValue,
             })
         })
 
@@ -2914,6 +2937,8 @@ $(".ticket-button-action").on("click", async e => {
     }
     else if (e.currentTarget.dataset.action == "reservation") {
         let tickets = []
+        const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
+        const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
 
         for (let i = 0; i < selectedSeats.length; i++) {
 
@@ -2932,6 +2957,8 @@ $(".ticket-button-action").on("click", async e => {
                 optionTime: $(".ticket-rows").find(".reservation-expire").find("input.time").val(),
                 optionDate: $(".ticket-rows").find(".reservation-expire").find("input.date").val(),
                 price: $(ticket).find(".price").find("input").val(),
+                takeOn: takeOnValue,
+                takeOff: takeOffValue,
             }
 
             tickets.push(ticketObj)
@@ -6939,17 +6966,33 @@ $(loadAnnouncements);
     const selectToInstance = new WeakMap();
     let idCounter = 0;
 
-    const toLocaleLower = value => {
+    const stripDiacritics = value => {
         if (typeof value !== "string") {
             return "";
         }
 
-        try {
-            return value.toLocaleLowerCase("tr-TR");
-        } catch (error) {
-            return value.toLowerCase();
-        }
+        return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     };
+
+    const toLocaleLower = value => {
+        if (typeof value !== "string") {
+            if (value === undefined || value === null) {
+                return "";
+            }
+            value = String(value);
+        }
+
+        let lowered;
+        try {
+            lowered = value.toLocaleLowerCase("tr-TR");
+        } catch (error) {
+            lowered = value.toLowerCase();
+        }
+
+        return stripDiacritics(lowered);
+    };
+
+    const normalizeForComparison = value => toLocaleLower(value).replace(/\s+/g, " ").trim();
 
     class SearchableSelect {
         constructor(select) {
@@ -6967,6 +7010,7 @@ $(loadAnnouncements);
             this.filteredOptions = [];
             this.options = [];
             this.isSyncing = false;
+            this.allowCustomValues = this.select.hasAttribute("data-allow-new");
 
             this.build();
             this.refreshOptions();
@@ -7114,6 +7158,8 @@ $(loadAnnouncements);
                         if (option) {
                             this.chooseOption(option);
                         }
+                    } else if (this.allowCustomValues) {
+                        this.addCustomOptionFromInput();
                     }
                 }
             };
@@ -7262,6 +7308,50 @@ $(loadAnnouncements);
             } else {
                 this.scrollHighlightedIntoView();
             }
+        }
+
+        addCustomOptionFromInput() {
+            if (!this.allowCustomValues) {
+                return;
+            }
+
+            const rawValue = this.searchInput ? this.searchInput.value : "";
+            const trimmed = typeof rawValue === "string" ? rawValue.trim() : "";
+            if (!trimmed) {
+                return;
+            }
+
+            const normalized = normalizeForComparison(trimmed);
+            if (!normalized) {
+                return;
+            }
+
+            const existingOptionElement = Array.from(this.select.options || []).find(option => {
+                const source = option && option.textContent != null && option.textContent !== ""
+                    ? option.textContent
+                    : (option?.label || option?.value || "");
+                return normalizeForComparison(source) === normalized;
+            });
+
+            if (existingOptionElement) {
+                const existingValue = existingOptionElement.value;
+                if ((existingOptionElement.textContent || "").trim() !== trimmed) {
+                    existingOptionElement.textContent = trimmed;
+                }
+                this.refreshOptions();
+                this.setValue(existingValue);
+                this.close();
+                this.display.focus();
+                return;
+            }
+
+            const newOption = new Option(trimmed, trimmed, true, true);
+            newOption.dataset.customOption = "true";
+            this.select.appendChild(newOption);
+            this.refreshOptions();
+            this.setValue(newOption.value);
+            this.close();
+            this.display.focus();
         }
 
         setHighlight(index) {
