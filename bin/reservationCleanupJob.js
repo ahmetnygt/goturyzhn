@@ -67,6 +67,10 @@ async function cancelExpiredReservations() {
   ];
 
   let tenant;
+  if (!DEFAULT_TENANT_KEY) {
+    console.error('Reservation cleanup job skipped: DEFAULT_TENANT_KEY tanımlı değil.');
+    return;
+  }
   try {
     tenant = await getTenantConnection(DEFAULT_TENANT_KEY);
   } catch (err) {

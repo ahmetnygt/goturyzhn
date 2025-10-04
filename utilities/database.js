@@ -1,28 +1,51 @@
 const { Sequelize } = require("sequelize");
 const initModels = require("./initModels");
 const bcrypt = require("bcrypt");
+const { normalizeTenantKey } = require("./tenantConfig");
 
 const connections = {};
 
-async function getTenantConnection(subdomain) {
-  if (connections[subdomain]) {
-    return connections[subdomain];
+const DB_USERNAME = process.env.DB_USERNAME || "root";
+const DB_PASSWORD = process.env.DB_PASSWORD || "anadolutat1071";
+
+function buildConnectionOptions() {
+  const options = {
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT || "mysql",
+    logging: false,
+  };
+
+  if (process.env.DB_PORT) {
+    options.port = Number(process.env.DB_PORT);
   }
 
-  // subdomain = database adı
+  if (process.env.DB_TIMEZONE) {
+    options.timezone = process.env.DB_TIMEZONE;
+  }
+
+  const definedEntries = Object.entries(options).filter(([, value]) => value !== undefined && value !== "");
+  return Object.fromEntries(definedEntries);
+}
+
+async function getTenantConnection(subdomain) {
+  const tenantKey = normalizeTenantKey(subdomain);
+
+  if (!tenantKey) {
+    throw new Error("Tenant veritabanı adı belirtilmedi.");
+  }
+
+  if (connections[tenantKey]) {
+    return connections[tenantKey];
+  }
+
   const sequelize = new Sequelize(
-    subdomain,
-    "root",
-    "anadolutat1071",
-    {
-      host: "localhost",
-      port: 3306,
-      dialect: "mysql",
-      logging: false,
-    }
+    tenantKey,
+    DB_USERNAME,
+    DB_PASSWORD,
+    buildConnectionOptions()
   );
   // const sequelize = new Sequelize(
-  //   subdomain,
+  //   tenantKey,
   //   "doadmin",
   //   "AVNS_rfP7FS1Hdg-KSHpn02u",
   //   {
@@ -50,7 +73,7 @@ async function getTenantConnection(subdomain) {
         name: "Götür Sistem Kullanıcısı",
         phoneNumber: "0850 840 1915",
       });
-      console.log(`[${subdomain}] için default kullanıcı eklendi.`);
+      console.log(`[${tenantKey}] için default kullanıcı eklendi.`);
     }
   }
 
@@ -140,8 +163,8 @@ async function getTenantConnection(subdomain) {
     }
   }
 
-  connections[subdomain] = { sequelize, models };
-  return connections[subdomain];
+  connections[tenantKey] = { sequelize, models };
+  return connections[tenantKey];
 }
 
 module.exports = { getTenantConnection };
