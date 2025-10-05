@@ -774,7 +774,7 @@ select.price-button-select {
     width: 100% !important;
 }
 
-.member-info-right{
+.member-info-right {
     width: 50vw;
 }
 
@@ -1481,8 +1481,8 @@ div.ticket-cancel-refund-open-close {
     flex-direction: column;
     gap: .5rem;
     padding: .5rem 0;
-    max-height: none;
-    overflow: visible;
+    max-height: 95vh;
+    overflow-y: auto;
 }
 
 .ticket-rows input,
