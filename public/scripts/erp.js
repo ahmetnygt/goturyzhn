@@ -4373,6 +4373,37 @@ $(".bus-plans-nav").on("click", async e => {
                     </div>
                 `)
             })
+            $(".bus-plan-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                if (activeBusPlanCount <= 1) {
+                    window.alert("Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin.")
+                    return
+                }
+
+                const $button = $(this)
+                const title = $button.data("title")
+                window.alert("Bu otobüs planını silerseniz bu planı kullanan otobüs ve seferler de etkilenecektir.")
+                const message = `${title || "Bu planı"} silmek istediğinize emin misiniz?`
+                if (message && !window.confirm(message)) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-bus-plan", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingBusPlanId) === id) {
+                        editingBusPlanId = null
+                        $(".bus-plan-panel").html("")
+                    }
+                    $button.closest(".btn-group").remove()
+                    activeBusPlanCount = Math.max(0, activeBusPlanCount - 1)
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
             $(".bus-plan-button").off("click").on("click", async e => {
                 const id = e.currentTarget.dataset.id
                 editingBusPlanId = id
@@ -4403,9 +4434,6 @@ $(".bus-plans-nav").on("click", async e => {
                                     planBinary = `${planBinary}${0}`
                                 }
                             })
-
-                            console.log(plan)
-                            console.log(planBinary)
 
                             const planJSON = JSON.stringify(plan)
 
@@ -4538,40 +4566,6 @@ const attachBusPlanInputEvents = () => {
 
 let editingBusPlanId = null
 
-$(document)
-    .off("click.busPlanDelete")
-    .on("click.busPlanDelete", ".bus-plan-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        if (activeBusPlanCount <= 1) {
-            window.alert("Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin.")
-            return
-        }
-
-        const $button = $(this)
-        const title = $button.data("title")
-        window.alert("Bu otobüs planını silerseniz bu planı kullanan otobüs ve seferler de etkilenecektir.")
-        const message = `${title || "Bu planı"} silmek istediğinize emin misiniz?`
-        if (message && !window.confirm(message)) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-bus-plan", type: "POST", data })
-            const id = String($button.data("id"))
-            if (String(editingBusPlanId) === id) {
-                editingBusPlanId = null
-                $(".bus-plan-panel").html("")
-            }
-            $button.closest(".btn-group").remove()
-            activeBusPlanCount = Math.max(0, activeBusPlanCount - 1)
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
-
 $(".add-bus-plan").on("click", async e => {
     editingBusPlanId = null
     await $.ajax({
@@ -4587,27 +4581,26 @@ $(".add-bus-plan").on("click", async e => {
                 const title = $(".bus-plan-title").val()
                 const description = $(".bus-plan-description").val()
 
+                let maxPassenger = 0;
                 let plan = []
                 let planBinary = ""
                 $(".bus-plan-create-input").each((i, e) => {
                     plan.push(e.value ? e.value : 0)
                     if (e.value && e.value !== "Ş" && e.value !== ">") {
                         planBinary = `${planBinary}${1}`
+                        maxPassenger += 1;
                     }
                     else {
                         planBinary = `${planBinary}${0}`
                     }
                 })
 
-                console.log(plan)
-                console.log(planBinary)
-
                 const planJSON = JSON.stringify(plan)
 
                 await $.ajax({
                     url: "/post-save-bus-plan",
                     type: "POST",
-                    data: { title, description, plan: planJSON, planBinary },
+                    data: { title, description, plan: planJSON, planBinary, maxPassenger },
                     success: function (response) {
                         $(".bus-plans").css("display", "none")
                         $(".blackout").css("display", "none")
