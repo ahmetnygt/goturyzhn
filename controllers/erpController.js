@@ -3812,7 +3812,7 @@ exports.postTripActive = async (req, res, next) => {
 };
 
 exports.getStaffsList = async (req, res, next) => {
-    const staff = await req.models.Staff.findAll({});
+    const staff = await req.models.Staff.findAll({ where: { isDeleted: false } });
     const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
     staff.forEach(s => { s.dutyStr = dutyMap[s.duty] || s.duty; });
 
@@ -3859,11 +3859,29 @@ exports.postDeleteStaff = async (req, res, next) => {
         }
 
         const staff = await req.models.Staff.findByPk(id);
-        if (!staff) {
+        if (!staff || staff.isDeleted) {
             return res.status(404).json({ message: "Personel bulunamadı" });
         }
 
-        await staff.destroy();
+        await req.db.transaction(async transaction => {
+            await req.models.Staff.update(
+                { isDeleted: true },
+                { where: { id }, transaction }
+            );
+
+            if (staff.duty === 'driver') {
+                await Promise.all([
+                    req.models.Trip.update({ captainId: null }, { where: { captainId: id }, transaction }),
+                    req.models.Trip.update({ driver2Id: null }, { where: { driver2Id: id }, transaction }),
+                    req.models.Trip.update({ driver3Id: null }, { where: { driver3Id: id }, transaction }),
+                    req.models.Bus.update({ captainId: null }, { where: { captainId: id }, transaction })
+                ]);
+            } else if (staff.duty === 'assistant') {
+                await req.models.Trip.update({ assistantId: null }, { where: { assistantId: id }, transaction });
+            } else if (staff.duty === 'hostess') {
+                await req.models.Trip.update({ hostessId: null }, { where: { hostessId: id }, transaction });
+            }
+        });
         res.json({ message: "Silindi" });
     } catch (err) {
         console.error("Staff delete error:", err);
