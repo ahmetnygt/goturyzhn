@@ -1485,18 +1485,6 @@ div.ticket-cancel-refund-open-close {
     overflow-y: auto;
 }
 
-.ticket-rows-dropdown-container {
-    position: absolute;
-    inset: 0;
-    overflow: visible;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.ticket-rows-dropdown-container .searchable-select__dropdown {
-    pointer-events: auto;
-}
-
 .ticket-rows input,
 .ticket-rows select {
     border-color: #202020;
@@ -2136,13 +2124,11 @@ div.ticket-cancel-refund-open-close {
     padding: .5rem;
     position: absolute;
     right: 0;
-    top: 100%;
-    margin-top: .25rem;
+    top: calc(100% + .25rem);
     z-index: 300;
 }
 
-.searchable-select_open .searchable-select__dropdown,
-.searchable-select__dropdown.searchable-select__dropdown--open {
+.searchable-select_open .searchable-select__dropdown {
     display: block;
 }
 
