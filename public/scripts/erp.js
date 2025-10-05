@@ -5783,10 +5783,7 @@ let editingBranchId = null
 setupDeleteHandler(".branch-delete", {
     url: "/post-delete-branch",
     getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const title = $btn.data("title");
-        return `${title || "Bu şubeyi"} silmek istediğinize emin misiniz?`;
-    },
+    getConfirmMessage: () => "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir.",
     onSuccess: $btn => {
         const id = String($btn.data("id"));
         if (String(editingBranchId) === id) {
