@@ -5489,6 +5489,100 @@ $(".trip-nav").on("click", async e => {
 
 let priceStops = [];
 
+const toNullIfNotPositive = val => {
+    const num = Number(val);
+    return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+const collectPriceRowData = (row, { includeId = true, appendTimeSuffix = false } = {}) => {
+    const result = {};
+
+    if (includeId) {
+        const id = row.data("id");
+        if (id !== undefined) {
+            result.id = id;
+        }
+    }
+
+    row.find("select.price-button-select").each(function () {
+        const select = $(this);
+        const field = select.data("field");
+        if (!field) return;
+        const value = select.val();
+        if (value === undefined || value === null || value === "") {
+            result[field] = null;
+            return;
+        }
+        const num = Number(value);
+        result[field] = Number.isFinite(num) ? num : value;
+    });
+
+    const bidirectionalInput = row.find(".price-bidirectional");
+    if (bidirectionalInput.length) {
+        const field = bidirectionalInput.data("field") || "isBidirectional";
+        result[field] = bidirectionalInput.is(":checked");
+    }
+
+    const priceFields = new Set([
+        "price1",
+        "price2",
+        "price3",
+        "webPrice",
+        "singleSeatPrice1",
+        "singleSeatPrice2",
+        "singleSeatPrice3",
+        "singleSeatWebPrice"
+    ]);
+
+    row.find("input.price-button-input").each(function () {
+        const input = $(this);
+        const field = input.data("field");
+        if (!field) return;
+        let value = input.val();
+        if (typeof value === "string") {
+            value = value.trim();
+        }
+
+        if (priceFields.has(field)) {
+            result[field] = toNullIfNotPositive(value);
+            return;
+        }
+
+        if (field === "seatLimit") {
+            if (value === "" || value === null || value === undefined) {
+                result[field] = null;
+            } else {
+                const num = Number(value);
+                result[field] = Number.isFinite(num) ? num : null;
+            }
+            return;
+        }
+
+        if (field === "hourLimit") {
+            if (value === "" || value === null || value === undefined) {
+                result[field] = null;
+            } else {
+                const num = Number(value);
+                result[field] = Number.isFinite(num) ? num : null;
+            }
+            return;
+        }
+
+        if (field === "validFrom" || field === "validUntil") {
+            if (!value) {
+                result[field] = null;
+            } else {
+                result[field] = appendTimeSuffix ? `${value}T00:00` : value;
+            }
+            return;
+        }
+
+        result[field] = value ?? null;
+    });
+
+    return result;
+};
+
 setupDeleteHandler(".price-delete", {
     url: "/post-delete-price",
     getData: $btn => ({ id: $btn.data("id") }),
@@ -5507,15 +5601,21 @@ setupDeleteHandler(".price-delete", {
 
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
-    const selects = row.find("select");
+    const selects = row.find("select.price-button-select");
     selects.each(function () {
+        const select = $(this);
+        const field = select.data("field");
         let options = '<option value="">Seçiniz</option>';
         priceStops.forEach(pl => {
             options += `<option value="${pl.id}">${pl.title}</option>`;
         });
-        $(this).html(options);
+        select.html(options);
+        select.val("");
     });
-    row.find("input.price-button-input").val("");
+    row.find("input.price-button-input").each(function () {
+        const input = $(this);
+        input.val("");
+    });
     row.find(".price-bidirectional").prop("checked", false);
     row.find(".date-picker").each(function () {
         if (this._flatpickr) {
@@ -5542,34 +5642,61 @@ $(".price-nav").on("click", async e => {
                 const row = $(this);
                 if (row.hasClass("price-button-inputs")) return;
                 row.removeClass("btn-outline-primary").addClass("btn-primary price-button-inputs");
-                row.children(".col").each(function (index) {
-                    const p = $(this).find("p");
-                    if (!p.length) return;
-                    const value = p.data("value") ?? p.text().trim();
-                    if (index === 0 || index === 1) {
-                        let select = '<select class="price-button-select">';
-                        priceStops.forEach(pl => {
-                            select += `<option value="${pl.id}" ${pl.id == value ? 'selected' : ''}>${pl.title}</option>`;
+                row.children(".col").each(function () {
+                    const column = $(this);
+                    const paragraph = column.find("p");
+                    if (!paragraph.length) return;
+
+                    const field = paragraph.data("field");
+                    const valueAttr = paragraph.data("value");
+                    const displayValue = valueAttr !== undefined ? valueAttr : paragraph.text().trim();
+
+                    if (field === "fromStopId" || field === "toStopId") {
+                        const select = $("<select>", {
+                            class: "price-button-select",
+                            "data-field": field
                         });
-                        select += '</select>';
-                        p.replaceWith(select);
-                    } else if (index === 2) {
-                        const isChecked = value === true || value === "true" || value === 1 || value === "1";
+                        select.append('<option value="">Seçiniz</option>');
+                        priceStops.forEach(pl => {
+                            const option = $("<option>", {
+                                value: pl.id,
+                                text: pl.title
+                            });
+                            select.append(option);
+                        });
+                        if (displayValue !== undefined && displayValue !== null && displayValue !== "") {
+                            select.val(String(displayValue));
+                        }
+                        paragraph.replaceWith(select);
+                    } else if (field === "isBidirectional") {
                         const checkbox = $("<input>", {
                             type: "checkbox",
-                            class: "form-check-input price-bidirectional"
+                            class: "form-check-input price-bidirectional",
+                            "data-field": field
                         });
+                        const isChecked = displayValue === true || displayValue === "true" || displayValue === 1 || displayValue === "1";
                         checkbox.prop("checked", isChecked);
-                        p.replaceWith(checkbox);
-                        $(this).addClass("d-flex justify-content-center align-items-center");
+                        paragraph.replaceWith(checkbox);
+                        column.addClass("d-flex justify-content-center align-items-center");
                     } else {
                         const classes = ["price-button-input"];
                         let type = "text";
-                        if (index === 12) { classes.push("hour-limit"); type = "number"; }
-                        if (index === 13 || index === 14) classes.push("date-picker");
-                        const input = $("<input>", { type, value: value ?? "" });
+                        if (field === "seatLimit" || field === "hourLimit") {
+                            type = "number";
+                        }
+                        if (field === "hourLimit") {
+                            classes.push("hour-limit");
+                        }
+                        if (field === "validFrom" || field === "validUntil") {
+                            classes.push("date-picker");
+                        }
+                        const input = $("<input>", {
+                            type,
+                            value: displayValue ?? "",
+                            "data-field": field
+                        });
                         input.addClass(classes.join(" "));
-                        p.replaceWith(input);
+                        paragraph.replaceWith(input);
                     }
                 });
                 flatpickr(row.find(".date-picker").toArray(), {
@@ -5601,33 +5728,10 @@ $(".price-close").on("click", e => {
 $(".price-save").on("click", async function () {
     const data = [];
     $(".price-list-nodes .price-button-inputs").each(function () {
-        const row = $(this);
-        const selects = row.find("select");
-        const priceInputs = row.find("input.price-button-input");
-        const bidirectionalInput = row.find(".price-bidirectional");
-        const toNullIfNotPositive = val => {
-            const num = Number(val);
-            return Number.isFinite(num) && num > 0 ? num : null;
-        };
-        const obj = {
-            id: row.data("id"),
-            fromStopId: selects.eq(0).val(),
-            toStopId: selects.eq(1).val(),
-            isBidirectional: bidirectionalInput.is(":checked"),
-            price1: toNullIfNotPositive(priceInputs.eq(0).val()),
-            price2: toNullIfNotPositive(priceInputs.eq(1).val()),
-            price3: toNullIfNotPositive(priceInputs.eq(2).val()),
-            webPrice: toNullIfNotPositive(priceInputs.eq(3).val()),
-            singleSeatPrice1: toNullIfNotPositive(priceInputs.eq(4).val()),
-            singleSeatPrice2: toNullIfNotPositive(priceInputs.eq(5).val()),
-            singleSeatPrice3: toNullIfNotPositive(priceInputs.eq(6).val()),
-            singleSeatWebPrice: toNullIfNotPositive(priceInputs.eq(7).val()),
-            seatLimit: priceInputs.eq(8).val(),
-            hourLimit: priceInputs.eq(9).val() ? Number(priceInputs.eq(9).val()) : null,
-            validFrom: priceInputs.eq(10).val() ? `${priceInputs.eq(10).val()}T00:00` : null,
-            validUntil: priceInputs.eq(11).val() ? `${priceInputs.eq(11).val()}T00:00` : null
-        };
-        data.push(obj);
+        const entry = collectPriceRowData($(this), { appendTimeSuffix: true });
+        if (entry && Object.prototype.hasOwnProperty.call(entry, "id")) {
+            data.push(entry);
+        }
     });
 
     if (!data.length) return;
@@ -5660,30 +5764,8 @@ const savePriceAdd = async closeAfterSave => {
     const popup = $(".price-add-popup");
     const row = popup.find(".price-add-row");
     if (!row.hasClass("price-button-inputs")) row.click();
-    const selects = row.find("select");
-    const priceInputs = row.find("input.price-button-input");
-    const bidirectionalInput = row.find(".price-bidirectional");
-    const toNullIfNotPositive = val => {
-        const num = Number(val);
-        return Number.isFinite(num) && num > 0 ? num : null;
-    };
-    const data = {
-        fromStopId: selects.eq(0).val(),
-        toStopId: selects.eq(1).val(),
-        isBidirectional: bidirectionalInput.is(":checked"),
-        price1: toNullIfNotPositive(priceInputs.eq(0).val()),
-        price2: toNullIfNotPositive(priceInputs.eq(1).val()),
-        price3: toNullIfNotPositive(priceInputs.eq(2).val()),
-        webPrice: toNullIfNotPositive(priceInputs.eq(3).val()),
-        singleSeatPrice1: toNullIfNotPositive(priceInputs.eq(4).val()),
-        singleSeatPrice2: toNullIfNotPositive(priceInputs.eq(5).val()),
-        singleSeatPrice3: toNullIfNotPositive(priceInputs.eq(6).val()),
-        singleSeatWebPrice: toNullIfNotPositive(priceInputs.eq(7).val()),
-        seatLimit: priceInputs.eq(8).val(),
-        hourLimit: priceInputs.eq(9).val(),
-        validFrom: priceInputs.eq(10).val(),
-        validUntil: priceInputs.eq(11).val()
-    };
+
+    const data = collectPriceRowData(row, { includeId: false, appendTimeSuffix: false });
 
     await $.ajax({
         url: "/post-add-price",

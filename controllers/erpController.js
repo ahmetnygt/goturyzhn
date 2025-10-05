@@ -2848,21 +2848,43 @@ exports.postEditTicket = async (req, res, next) => {
             order: [["seatNo", "ASC"]] // sıralamayı garanti altına al
         });
 
+        if (foundTickets.length !== tickets.length) {
+            return res.status(400).json({ message: "Gönderilen bilet bilgisi geçersiz." });
+        }
+
+        const normalizePriceValue = (value) => {
+            if (value === undefined || value === null) return null;
+            if (typeof value === "string" && value.trim() === "") return null;
+            const num = Number(value);
+            return Number.isNaN(num) ? null : num;
+        };
+
+        for (let i = 0; i < foundTickets.length; i++) {
+            const foundTicket = foundTickets[i];
+            const incomingTicket = tickets[i] || {};
+            const existingPrice = normalizePriceValue(foundTicket.price);
+            const incomingPrice = normalizePriceValue(incomingTicket.price);
+
+            if (existingPrice !== incomingPrice) {
+                return res.status(400).json({ message: "Bilet fiyatı düzenleme sırasında değiştirilemez." });
+            }
+        }
+
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
 
         await Promise.all(foundTickets.map(async (foundTicket, i) => {
-            foundTicket.idNumber = tickets[i].idNumber;
-            foundTicket.name = tickets[i].name;
-            foundTicket.surname = tickets[i].surname;
-            foundTicket.phoneNumber = tickets[i].phoneNumber;
-            foundTicket.gender = tickets[i].gender;
-            foundTicket.nationality = tickets[i].nationality;
-            foundTicket.customerType = tickets[i].type;
-            foundTicket.customerCategory = tickets[i].category;
-            foundTicket.price = tickets[i].price;
-            const takeOnTitle = await ensureTakeValue(takeOnCache, tickets[i].takeOn);
-            const takeOffTitle = await ensureTakeValue(takeOffCache, tickets[i].takeOff);
+            const incomingTicket = tickets[i] || {};
+            foundTicket.idNumber = incomingTicket.idNumber;
+            foundTicket.name = incomingTicket.name;
+            foundTicket.surname = incomingTicket.surname;
+            foundTicket.phoneNumber = incomingTicket.phoneNumber;
+            foundTicket.gender = incomingTicket.gender;
+            foundTicket.nationality = incomingTicket.nationality;
+            foundTicket.customerType = incomingTicket.type;
+            foundTicket.customerCategory = incomingTicket.category;
+            const takeOnTitle = await ensureTakeValue(takeOnCache, incomingTicket.takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, incomingTicket.takeOff);
             foundTicket.takeOnText = takeOnTitle;
             foundTicket.takeOffText = takeOffTitle;
             return foundTicket.save();
@@ -3373,15 +3395,35 @@ exports.getPricesList = async (req, res, next) => {
         stopMap[s.id] = s.title;
     }
 
+    const toDateInputValue = (value) => {
+        if (!value) return "";
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toISOString().split("T")[0];
+    };
+
+    const toDisplayDate = (value) => {
+        if (!value) return "";
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleDateString("tr-TR");
+    };
+
     const formatted = prices.map(p => {
         const obj = p.toJSON();
+        const validFromInput = toDateInputValue(obj.validFrom);
+        const validUntilInput = toDateInputValue(obj.validUntil);
+
         return {
             ...obj,
             fromTitle: stopMap[p.fromStopId] || p.fromStopId,
             toTitle: stopMap[p.toStopId] || p.toStopId,
-            validFrom: obj.validFrom ? new Date(obj.validFrom).toLocaleDateString() : "",
-            validUntil: obj.validUntil ? new Date(obj.validUntil).toLocaleDateString() : "",
-            hourLimit: obj.hourLimit ? obj.hourLimit : "",
+            seatLimit: obj.seatLimit ?? "",
+            hourLimit: obj.hourLimit ?? "",
+            validFrom: toDisplayDate(obj.validFrom),
+            validUntil: toDisplayDate(obj.validUntil),
+            validFromRaw: validFromInput,
+            validUntilRaw: validUntilInput,
             isBidirectional: Boolean(obj.isBidirectional)
         };
     });
