@@ -6903,6 +6903,8 @@ const initializeReportPopup = async (reportKey, popup) => {
             dateFormat: "Y-m-d H:i",
             time_24hr: true,
             altInput: true,
+            altFormat: "d F Y H:i",
+            locale: "tr",
         };
 
         if (defaultDate) {
