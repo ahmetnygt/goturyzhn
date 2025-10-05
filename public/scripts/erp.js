@@ -1187,46 +1187,6 @@ async function loadTrip(date, time, tripId) {
         $(".trip-notes").html(tripNotesResponse);
         $(".stops-times").html(routeStopsResponse);
 
-        $(".note-edit").on("click", e => {
-            const noteEl = $(e.currentTarget).closest(".note");
-            editingNoteId = noteEl.data("id");
-            const text = noteEl.find(".note-text").text();
-            $(".add-trip-note .gtr-header span").html("NOTU DÜZENLE")
-            $("button.save-trip-note").html("DÜZENLE")
-            $(".trip-note-text").val(text);
-            $(".blackout").css("display", "block");
-            $(".add-trip-note").css("display", "flex");
-        })
-
-        $(".note-delete").on("click", async e => {
-            const noteEl = $(e.currentTarget).closest(".note");
-            const noteId = noteEl.data("id");
-            if (confirm("Notu silmek istediğinize emin misiniz?")) {
-                await $.ajax({
-                    url: "/post-delete-trip-note",
-                    type: "POST",
-                    data: { id: noteId },
-                    success: async function () {
-                        await $.ajax({
-                            url: "/get-trip-notes",
-                            type: "GET",
-                            data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
-                            success: function (response) {
-                                $(".trip-notes").html(response);
-                            },
-                            error: function (xhr, status, error) {
-                                console.log(error);
-                            }
-                        })
-                    },
-                    error: function (xhr, status, error) {
-                        console.log(error);
-                    }
-                })
-            }
-        })
-
-
         // Yolcu tablosu ve satır tıklama
         $(".passenger-table").html(passengersResponse);
         $(".passenger-table tbody tr").off().on("click", function (e) {
@@ -3823,44 +3783,6 @@ $(".save-trip-note").on("click", async e => {
                             $(".add-trip-note").css("display", "none")
                             editingNoteId = null;
                             $(".trip-note-text").val("");
-                            $(".note-edit").off().on("click", e => {
-                                const noteEl = $(e.currentTarget).closest(".note");
-                                editingNoteId = noteEl.data("id");
-                                const text = noteEl.find(".note-text").text();
-                                $(".add-trip-note .gtr-header span").html("NOTU DÜZENLE")
-                                $("button.save-trip-note").html("DÜZENLE")
-                                $(".trip-note-text").val(text);
-                                $(".blackout").css("display", "block");
-                                $(".add-trip-note").css("display", "flex");
-                            })
-
-                            $(".note-delete").off().on("click", async e => {
-                                const noteEl = $(e.currentTarget).closest(".note");
-                                const noteId = noteEl.data("id");
-                                if (confirm("Notu silmek istediğinize emin misiniz?")) {
-                                    await $.ajax({
-                                        url: "/post-delete-trip-note",
-                                        type: "POST",
-                                        data: { id: noteId },
-                                        success: async function () {
-                                            await $.ajax({
-                                                url: "/get-trip-notes",
-                                                type: "GET",
-                                                data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
-                                                success: function (response) {
-                                                    $(".trip-notes").html(response);
-                                                },
-                                                error: function (xhr, status, error) {
-                                                    console.log(error);
-                                                }
-                                            })
-                                        },
-                                        error: function (xhr, status, error) {
-                                            console.log(error);
-                                        }
-                                    })
-                                }
-                            })
                         },
                         error: function (xhr, status, error) {
                             console.log(error);
@@ -3902,6 +3824,45 @@ $(".save-trip-note").on("click", async e => {
         alert("Herhangi bir sefer seçmediniz.")
         $(".blackout").css("display", "none")
         $(".add-trip-note").css("display", "none")
+    }
+})
+
+$(document).on("click", ".note-edit", e => {
+    const noteEl = $(e.currentTarget).closest(".note");
+    editingNoteId = noteEl.data("id");
+    const text = noteEl.find(".note-text").text();
+    $(".add-trip-note .gtr-header span").html("NOTU DÜZENLE")
+    $("button.save-trip-note").html("DÜZENLE")
+    $(".trip-note-text").val(text);
+    $(".blackout").css("display", "block");
+    $(".add-trip-note").css("display", "flex");
+})
+
+$(document).on("click", ".note-delete", async e => {
+    const noteEl = $(e.currentTarget).closest(".note");
+    const noteId = noteEl.data("id");
+    if (confirm("Notu silmek istediğinize emin misiniz?")) {
+        await $.ajax({
+            url: "/post-delete-trip-note",
+            type: "POST",
+            data: { id: noteId },
+            success: async function () {
+                await $.ajax({
+                    url: "/get-trip-notes",
+                    type: "GET",
+                    data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+                    success: function (response) {
+                        $(".trip-notes").html(response);
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            },
+            error: function (xhr, status, error) {
+                console.log(error);
+            }
+        })
     }
 })
 
