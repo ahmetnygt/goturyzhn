@@ -5904,29 +5904,6 @@ $(".ticket-cancel-refund-open-close").on("click", e => {
 
 let editingBranchId = null
 
-setupDeleteHandler(".branch-delete", {
-    url: "/post-delete-branch",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: () => "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir.",
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingBranchId) === id) {
-            editingBranchId = null;
-            $("#isBranchActive").prop("checked", true);
-            $("#isMainBranch").prop("checked", false);
-            $(".branch-title").val("");
-            $(".branch-place").val("");
-            $(".branch-main-branch").val("");
-            $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("");
-            $(".branch-info").css("display", "none");
-            $(".branch-settings").css("display", "none");
-            $(".branch").css("width", "");
-            $(".branch-list").addClass("col-12").removeClass("col-4");
-        }
-        $btn.closest(".btn-group").remove();
-    }
-});
-
 async function loadBranchOptions() {
     const stops = await $.ajax({
         url: "/get-stops-list",
@@ -6001,6 +5978,29 @@ $(".branch-settings-nav").on("click", async e => {
                         setBranchField(".branch-deduction3", response.defaultDeduction3)
                         setBranchField(".branch-deduction4", response.defaultDeduction4)
                         setBranchField(".branch-deduction5", response.defaultDeduction5)
+
+                        setupDeleteHandler(".branch-delete", {
+                            url: "/post-delete-branch",
+                            getData: $btn => ({ id: $btn.data("id") }),
+                            getConfirmMessage: () => "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir.",
+                            onSuccess: $btn => {
+                                const id = String($btn.data("id"));
+                                if (String(editingBranchId) === id) {
+                                    editingBranchId = null;
+                                    $("#isBranchActive").prop("checked", true);
+                                    $("#isMainBranch").prop("checked", false);
+                                    $(".branch-title").val("");
+                                    $(".branch-place").val("");
+                                    $(".branch-main-branch").val("");
+                                    $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("");
+                                    $(".branch-info").css("display", "none");
+                                    $(".branch-settings").css("display", "none");
+                                    $(".branch").css("width", "");
+                                    $(".branch-list").addClass("col-12").removeClass("col-4");
+                                }
+                                $btn.closest(".btn-group").remove();
+                            }
+                        });
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
