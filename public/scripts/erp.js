@@ -6810,6 +6810,28 @@ $(".reports-close").on("click", e => {
 var report = null;
 
 const initializeReportPopup = async (reportKey, popup) => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0);
+
+    const setupReportDatePicker = (input, defaultDate) => {
+        if (!input) {
+            return;
+        }
+
+        const options = {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            altInput: true,
+        };
+
+        if (defaultDate) {
+            options.defaultDate = defaultDate;
+        }
+
+        flatpickr(input, options);
+    };
     if ((reportKey === "salesAndRefunds" || reportKey === "webTickets") && !popup.data("initialized")) {
         const [branches, stops] = await Promise.all([
             fetch("/get-branches-list?onlyData=true").then(r => r.json()),
@@ -6835,8 +6857,8 @@ const initializeReportPopup = async (reportKey, popup) => {
             }
         });
 
-        flatpickr(popup.find(".report-start")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-        flatpickr(popup.find(".report-end")[0], { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
+        setupReportDatePicker(popup.find(".report-start")[0], startOfDay);
+        setupReportDatePicker(popup.find(".report-end")[0], endOfDay);
 
         popup.data("initialized", true);
     }
@@ -6860,14 +6882,10 @@ const initializeReportPopup = async (reportKey, popup) => {
             });
 
             const startInput = popup.find(".report-start")[0];
-            if (startInput) {
-                flatpickr(startInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-            }
+            setupReportDatePicker(startInput, startOfDay);
 
             const endInput = popup.find(".report-end")[0];
-            if (endInput) {
-                flatpickr(endInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-            }
+            setupReportDatePicker(endInput, endOfDay);
 
             popup.data("initialized", true);
         } catch (err) {
@@ -6895,14 +6913,10 @@ const initializeReportPopup = async (reportKey, popup) => {
             });
 
             const startInput = popup.find(".report-start")[0];
-            if (startInput) {
-                flatpickr(startInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-            }
+            setupReportDatePicker(startInput, startOfDay);
 
             const endInput = popup.find(".report-end")[0];
-            if (endInput) {
-                flatpickr(endInput, { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true });
-            }
+            setupReportDatePicker(endInput, endOfDay);
 
             popup.data("initialized", true);
         } catch (err) {
@@ -6921,28 +6935,11 @@ const initializeReportPopup = async (reportKey, popup) => {
             console.error("dailyUserAccount users load error", err);
         }
 
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-
         const startInput = popup.find(".report-start")[0];
-        if (startInput) {
-            flatpickr(startInput, {
-                enableTime: true,
-                time_24hr: true,
-                dateFormat: "Y-m-d H:i",
-                defaultDate: startOfDay,
-            });
-        }
+        setupReportDatePicker(startInput, startOfDay);
 
         const endInput = popup.find(".report-end")[0];
-        if (endInput) {
-            flatpickr(endInput, {
-                enableTime: true,
-                time_24hr: true,
-                dateFormat: "Y-m-d H:i",
-                defaultDate: now,
-            });
-        }
+        setupReportDatePicker(endInput, endOfDay);
 
         popup.data("initialized", true);
     }
@@ -6959,28 +6956,11 @@ const initializeReportPopup = async (reportKey, popup) => {
             console.error("busTransactions buses load error", err);
         }
 
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-
         const startInput = popup.find(".report-start")[0];
-        if (startInput) {
-            flatpickr(startInput, {
-                enableTime: true,
-                time_24hr: true,
-                dateFormat: "Y-m-d H:i",
-                defaultDate: startOfDay,
-            });
-        }
+        setupReportDatePicker(startInput, startOfDay);
 
         const endInput = popup.find(".report-end")[0];
-        if (endInput) {
-            flatpickr(endInput, {
-                enableTime: true,
-                time_24hr: true,
-                dateFormat: "Y-m-d H:i",
-                defaultDate: now,
-            });
-        }
+        setupReportDatePicker(endInput, endOfDay);
 
         popup.data("initialized", true);
     }
