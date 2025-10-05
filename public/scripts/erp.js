@@ -250,37 +250,13 @@ const showMemberTicketFeedback = ($element, message) => {
 
 $(".error-close").off().on("click", () => $(".error-popup").hide());
 
-const setupDeleteHandler = (selector, { url, getData, getConfirmMessage, onSuccess }) => {
-    $(selector).off().on("click", async e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const $button = $(e.currentTarget);
-        const message = typeof getConfirmMessage === "function" ? getConfirmMessage($button) : getConfirmMessage;
-        if (message && !window.confirm(message)) {
-            return;
-        }
-
-        try {
-            const data = typeof getData === "function" ? getData($button) : getData;
-            await $.ajax({ url, type: "POST", data });
-            if (typeof onSuccess === "function") {
-                onSuccess($button);
-            } else {
-                $button.closest(".btn-group").remove();
-            }
-        } catch (err) {
-            const errorMessage =
-                err?.responseJSON?.message ||
-                err?.responseJSON?.error ||
-                err?.responseText ||
-                err?.statusText ||
-                err?.message ||
-                "Bilinmeyen hata";
-            showError(errorMessage);
-        }
-    });
-};
+const getAjaxErrorMessage = err =>
+    err?.responseJSON?.message ||
+    err?.responseJSON?.error ||
+    err?.responseText ||
+    err?.statusText ||
+    err?.message ||
+    "Bilinmeyen hata";
 
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
@@ -4559,22 +4535,32 @@ const attachBusPlanInputEvents = () => {
 
 let editingBusPlanId = null
 
-setupDeleteHandler(".bus-plan-delete", {
-    url: "/post-delete-bus-plan",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const title = $btn.data("title");
-        return `${title || "Bu planı"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingBusPlanId) === id) {
-            editingBusPlanId = null;
-            $(".bus-plan-panel").html("");
+$(document)
+    .off("click.busPlanDelete")
+    .on("click.busPlanDelete", ".bus-plan-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const title = $button.data("title")
+        const message = `${title || "Bu planı"} silmek istediğinize emin misiniz?`
+        if (message && !window.confirm(message)) {
+            return
         }
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-bus-plan", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingBusPlanId) === id) {
+                editingBusPlanId = null
+                $(".bus-plan-panel").html("")
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 
 $(".add-bus-plan").on("click", async e => {
     editingBusPlanId = null
@@ -4698,31 +4684,41 @@ function getBusCommissionRateInputValue() {
 
 let editingBusId = null
 
-setupDeleteHandler(".bus-delete", {
-    url: "/post-delete-bus",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const plate = $btn.data("plate");
-        return `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingBusId) === id) {
-            editingBusId = null;
-            $(".bus-license-plate").val("");
-            $(".bus-bus-model").val("");
-            $(".bus-captain").val("");
-            $(".bus-phone").val("");
-            $(".bus-owner").val("");
-            $(".bus").css("width", "");
-            $(".bus-list").addClass("col-12").removeClass("col-4");
-            $(".bus-info").css("display", "none");
-            $(".bus-settings").css("display", "none");
-            $(".save-bus").html("KAYDET");
+$(document)
+    .off("click.busDelete")
+    .on("click.busDelete", ".bus-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const plate = $button.data("plate")
+        const message = `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`
+        if (message && !window.confirm(message)) {
+            return
         }
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-bus", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingBusId) === id) {
+                editingBusId = null
+                $(".bus-license-plate").val("")
+                $(".bus-bus-model").val("")
+                $(".bus-captain").val("")
+                $(".bus-phone").val("")
+                $(".bus-owner").val("")
+                $(".bus").css("width", "")
+                $(".bus-list").addClass("col-12").removeClass("col-4")
+                $(".bus-info").css("display", "none")
+                $(".bus-settings").css("display", "none")
+                $(".save-bus").html("KAYDET")
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 $(".bus-nav").on("click", async e => {
     const modelSelect = $(".bus-bus-model")
     const captainSelect = $(".bus-captain")
@@ -4858,31 +4854,41 @@ $(".save-bus").on("click", async e => {
 
 let editingStaffId = null
 
-setupDeleteHandler(".staff-delete", {
-    url: "/post-delete-staff",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const name = $btn.data("name");
-        return `${name || "Bu personeli"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingStaffId) === id) {
-            editingStaffId = null;
-            $(".staff-id-number").val("");
-            $(".staff-duty").val("");
-            $(".staff-name").val("");
-            $(".staff-surname").val("");
-            $(".staff-address").val("");
-            $(".staff-phone").val("");
-            $("input[name='staff-gender']").prop("checked", false);
-            $(".staff-nationality").val("");
-            $(".staff-panel").css("display", "none");
-            $(".save-staff").html("KAYDET");
+$(document)
+    .off("click.staffDelete")
+    .on("click.staffDelete", ".staff-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const name = $button.data("name")
+        const message = `${name || "Bu personeli"} silmek istediğinize emin misiniz?`
+        if (message && !window.confirm(message)) {
+            return
         }
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-staff", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingStaffId) === id) {
+                editingStaffId = null
+                $(".staff-id-number").val("")
+                $(".staff-duty").val("")
+                $(".staff-name").val("")
+                $(".staff-surname").val("")
+                $(".staff-address").val("")
+                $(".staff-phone").val("")
+                $("input[name='staff-gender']").prop("checked", false)
+                $(".staff-nationality").val("")
+                $(".staff-panel").css("display", "none")
+                $(".save-staff").html("KAYDET")
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 $(".staff-nav").on("click", async e => {
     await $.ajax({
         url: "/get-staffs-list",
@@ -4972,29 +4978,39 @@ $(".save-staff").on("click", async e => {
 
 let editingStopId = null
 
-setupDeleteHandler(".stop-delete", {
-    url: "/post-delete-stop",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const title = $btn.data("title");
-        return `${title || "Bu durağı"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingStopId) === id) {
-            editingStopId = null;
-            $(".stop-title").val("");
-            $(".stop-web-title").val("");
-            $(".stop-place").val("");
-            $(".stop-uetds").val("");
-            $(".stop-service").prop("checked", false);
-            $(".stop-active").prop("checked", true);
-            $(".stop-panel").css("display", "none");
-            $(".save-stop").html("KAYDET");
+$(document)
+    .off("click.stopDelete")
+    .on("click.stopDelete", ".stop-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const title = $button.data("title")
+        const message = `${title || "Bu durağı"} silmek istediğinize emin misiniz?`
+        if (message && !window.confirm(message)) {
+            return
         }
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-stop", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingStopId) === id) {
+                editingStopId = null
+                $(".stop-title").val("")
+                $(".stop-web-title").val("")
+                $(".stop-place").val("")
+                $(".stop-uetds").val("")
+                $(".stop-service").prop("checked", false)
+                $(".stop-active").prop("checked", true)
+                $(".stop-panel").css("display", "none")
+                $(".save-stop").html("KAYDET")
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
     placeSelect.empty()
@@ -5625,21 +5641,30 @@ const collectPriceRowData = (row, { includeId = true, appendTimeSuffix = false }
     return result;
 };
 
-setupDeleteHandler(".price-delete", {
-    url: "/post-delete-price",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const from = $btn.data("from");
-        const to = $btn.data("to");
-        if (from && to) {
-            return `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`;
+$(document)
+    .off("click.priceDelete")
+    .on("click.priceDelete", ".price-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const from = $button.data("from")
+        const to = $button.data("to")
+        const message = from && to
+            ? `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`
+            : "Bu fiyatı silmek istediğinize emin misiniz?"
+        if (message && !window.confirm(message)) {
+            return
         }
-        return "Bu fiyatı silmek istediğinize emin misiniz?";
-    },
-    onSuccess: $btn => {
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-price", type: "POST", data })
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
@@ -5904,6 +5929,43 @@ $(".ticket-cancel-refund-open-close").on("click", e => {
 
 let editingBranchId = null
 
+$(document)
+    .off("click.branchDelete")
+    .on("click.branchDelete", ".branch-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const message = "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir."
+        if (message && !window.confirm(message)) {
+            return
+        }
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-branch", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingBranchId) === id) {
+                editingBranchId = null
+                $("#isBranchActive").prop("checked", true)
+                $("#isMainBranch").prop("checked", false)
+                $(".branch-title").val("")
+                $(".branch-place").val("")
+                $(".branch-main-branch").val("")
+                $(
+                    ".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5"
+                ).val("")
+                $(".branch-info").css("display", "none")
+                $(".branch-settings").css("display", "none")
+                $(".branch").css("width", "")
+                $(".branch-list").addClass("col-12").removeClass("col-4")
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
+
 async function loadBranchOptions() {
     const stops = await $.ajax({
         url: "/get-stops-list",
@@ -5979,28 +6041,6 @@ $(".branch-settings-nav").on("click", async e => {
                         setBranchField(".branch-deduction4", response.defaultDeduction4)
                         setBranchField(".branch-deduction5", response.defaultDeduction5)
 
-                        setupDeleteHandler(".branch-delete", {
-                            url: "/post-delete-branch",
-                            getData: $btn => ({ id: $btn.data("id") }),
-                            getConfirmMessage: () => "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir.",
-                            onSuccess: $btn => {
-                                const id = String($btn.data("id"));
-                                if (String(editingBranchId) === id) {
-                                    editingBranchId = null;
-                                    $("#isBranchActive").prop("checked", true);
-                                    $("#isMainBranch").prop("checked", false);
-                                    $(".branch-title").val("");
-                                    $(".branch-place").val("");
-                                    $(".branch-main-branch").val("");
-                                    $(".branch-owner, .branch-phone, .branch-address, .branch-trade-title, .branch-tax-office, .branch-tax-number, .branch-f1-document, .branch-own-commission, .branch-other-commission, .branch-internet-commission, .branch-deduction1, .branch-deduction2, .branch-deduction3, .branch-deduction4, .branch-deduction5").val("");
-                                    $(".branch-info").css("display", "none");
-                                    $(".branch-settings").css("display", "none");
-                                    $(".branch").css("width", "");
-                                    $(".branch-list").addClass("col-12").removeClass("col-4");
-                                }
-                                $btn.closest(".btn-group").remove();
-                            }
-                        });
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -6122,33 +6162,43 @@ $(".save-branch").on("click", async e => {
 
 let editingUserId = null
 
-setupDeleteHandler(".user-delete", {
-    url: "/post-delete-user",
-    getData: $btn => ({ id: $btn.data("id") }),
-    getConfirmMessage: $btn => {
-        const name = $btn.data("name");
-        return `${name || "Bu kullanıcıyı"} silmek istediğinize emin misiniz?`;
-    },
-    onSuccess: $btn => {
-        const id = String($btn.data("id"));
-        if (String(editingUserId) === id) {
-            editingUserId = null;
-            $("#isUserActive").prop("checked", true);
-            $(".user-name").val("");
-            $(".user-username").val("");
-            $(".user-password").val("");
-            $(".user-phone").val("");
-            $(".user-branches").val("");
-            $(".users").css("width", "");
-            $(".user-list").addClass("col-12").removeClass("col-4");
-            $(".user-info").css("display", "none");
-            $(".user-settings").css("display", "none");
-            $(".save-user").html("KAYDET");
-            renderPermissions({ register: [], trip: [], sales: [], account_cut: [] });
+$(document)
+    .off("click.userDelete")
+    .on("click.userDelete", ".user-delete", async function (e) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const $button = $(this)
+        const name = $button.data("name")
+        const message = `${name || "Bu kullanıcıyı"} silmek istediğinize emin misiniz?`
+        if (message && !window.confirm(message)) {
+            return
         }
-        $btn.closest(".btn-group").remove();
-    }
-});
+
+        try {
+            const data = { id: $button.data("id") }
+            await $.ajax({ url: "/post-delete-user", type: "POST", data })
+            const id = String($button.data("id"))
+            if (String(editingUserId) === id) {
+                editingUserId = null
+                $("#isUserActive").prop("checked", true)
+                $(".user-name").val("")
+                $(".user-username").val("")
+                $(".user-password").val("")
+                $(".user-phone").val("")
+                $(".user-branches").val("")
+                $(".users").css("width", "")
+                $(".user-list").addClass("col-12").removeClass("col-4")
+                $(".user-info").css("display", "none")
+                $(".user-settings").css("display", "none")
+                $(".save-user").html("KAYDET")
+                renderPermissions({ register: [], trip: [], sales: [], account_cut: [] })
+            }
+            $button.closest(".btn-group").remove()
+        } catch (err) {
+            showError(getAjaxErrorMessage(err))
+        }
+    })
 
 const permissionModules = ['register', 'trip', 'sales', 'account_cut'];
 
