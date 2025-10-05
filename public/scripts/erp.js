@@ -7476,6 +7476,30 @@ $(loadAnnouncements);
 
     const normalizeForComparison = value => toLocaleLower(value).replace(/\s+/g, " ").trim();
 
+    const isWithinTicketRows = element => {
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        return Boolean(element.closest(".ticket-rows"));
+    };
+
+    const ensureTicketRowsDropdownContainer = () => {
+        const popup = document.querySelector(".ticket-info-pop-up");
+        if (!popup) {
+            return null;
+        }
+
+        let container = popup.querySelector(".ticket-rows-dropdown-container");
+        if (!container) {
+            container = document.createElement("div");
+            container.className = "ticket-rows-dropdown-container";
+            popup.appendChild(container);
+        }
+
+        return container;
+    };
+
     class SearchableSelect {
         constructor(select) {
             this.select = select;
@@ -7493,8 +7517,16 @@ $(loadAnnouncements);
             this.options = [];
             this.isSyncing = false;
             this.allowCustomValues = this.select.hasAttribute("data-allow-new");
+            this.dropdownHome = null;
+            this.overlayContainer = null;
+            this.isDropdownExternal = false;
+            this.useOverlay = false;
+            this.handleOverlayReposition = () => {
+                this.updateDropdownPosition();
+            };
 
             this.build();
+            this.useOverlay = this.shouldUseOverlay();
             this.refreshOptions();
             this.bindEvents();
             this.syncFromSelect();
@@ -7546,6 +7578,69 @@ $(loadAnnouncements);
 
             this.container.appendChild(this.display);
             this.container.appendChild(this.dropdown);
+            this.dropdownHome = this.container;
+        }
+
+        shouldUseOverlay() {
+            return isWithinTicketRows(this.select);
+        }
+
+        attachDropdownToOverlay() {
+            if (!this.useOverlay || this.isDropdownExternal) {
+                return;
+            }
+
+            const container = ensureTicketRowsDropdownContainer();
+            if (!container) {
+                return;
+            }
+
+            container.appendChild(this.dropdown);
+            this.overlayContainer = container;
+            this.isDropdownExternal = true;
+            this.dropdown.style.right = "auto";
+            window.requestAnimationFrame(() => {
+                this.updateDropdownPosition();
+            });
+            window.addEventListener("resize", this.handleOverlayReposition);
+            window.addEventListener("scroll", this.handleOverlayReposition, true);
+        }
+
+        detachDropdownFromOverlay() {
+            if (!this.isDropdownExternal) {
+                return;
+            }
+
+            window.removeEventListener("resize", this.handleOverlayReposition);
+            window.removeEventListener("scroll", this.handleOverlayReposition, true);
+            if (this.dropdownHome) {
+                this.dropdownHome.appendChild(this.dropdown);
+            }
+            this.dropdown.style.removeProperty("left");
+            this.dropdown.style.removeProperty("top");
+            this.dropdown.style.removeProperty("min-width");
+            this.dropdown.style.removeProperty("width");
+            this.dropdown.style.removeProperty("right");
+            this.overlayContainer = null;
+            this.isDropdownExternal = false;
+        }
+
+        updateDropdownPosition() {
+            if (!this.isDropdownExternal || !this.overlayContainer) {
+                return;
+            }
+
+            const overlayRect = this.overlayContainer.getBoundingClientRect();
+            const displayRect = this.display.getBoundingClientRect();
+
+            const left = displayRect.left - overlayRect.left;
+            const top = displayRect.bottom - overlayRect.top;
+            const width = displayRect.width;
+
+            this.dropdown.style.left = `${Math.round(left)}px`;
+            this.dropdown.style.top = `${Math.round(top)}px`;
+            this.dropdown.style.minWidth = `${Math.round(width)}px`;
+            this.dropdown.style.width = `${Math.round(width)}px`;
         }
 
         refreshOptions() {
@@ -7680,14 +7775,22 @@ $(loadAnnouncements);
                 }
             });
 
+            this.useOverlay = this.shouldUseOverlay();
             this.isOpen = true;
             this.container.classList.add("searchable-select_open");
             this.display.setAttribute("aria-expanded", "true");
+            this.dropdown.classList.add("searchable-select__dropdown--open");
+            if (this.useOverlay) {
+                this.attachDropdownToOverlay();
+            }
             this.refreshOptions();
             this.searchInput.value = "";
             this.filter("");
 
             window.requestAnimationFrame(() => {
+                if (this.isDropdownExternal) {
+                    this.updateDropdownPosition();
+                }
                 this.searchInput.focus();
             });
         }
@@ -7701,6 +7804,8 @@ $(loadAnnouncements);
             this.container.classList.remove("searchable-select_open");
             this.display.setAttribute("aria-expanded", "false");
             this.display.removeAttribute("aria-activedescendant");
+            this.dropdown.classList.remove("searchable-select__dropdown--open");
+            this.detachDropdownFromOverlay();
         }
 
         moveHighlight(delta) {
@@ -7969,7 +8074,11 @@ $(loadAnnouncements);
         }
 
         handleDocumentClick(event) {
-            if (!this.container.contains(event.target)) {
+            const target = event.target;
+            const isInsideContainer = this.container.contains(target);
+            const isInsideDropdown = this.dropdown && this.dropdown.contains(target);
+
+            if (!isInsideContainer && !isInsideDropdown) {
                 this.close();
             }
         }
