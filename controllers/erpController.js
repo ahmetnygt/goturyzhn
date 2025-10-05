@@ -3290,9 +3290,11 @@ exports.getBusPlanPanel = async (req, res, next) => {
     let busModel = null
 
     if (id) {
-        busModel = await req.models.BusModel.findOne({ where: { id: id } })
+        busModel = await req.models.BusModel.findOne({ where: { id: id, isDeleted: false } })
 
-        busModel.plan = JSON.parse(busModel.plan)
+        if (busModel) {
+            busModel.plan = JSON.parse(busModel.plan)
+        }
     }
 
 
@@ -3338,12 +3340,36 @@ exports.postDeleteBusPlan = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz plan bilgisi" });
         }
 
-        const deleted = await req.models.BusModel.destroy({ where: { id } });
-        if (!deleted) {
+        const activePlanCount = await req.models.BusModel.count({ where: { isDeleted: false } });
+        if (activePlanCount <= 1) {
+            return res.status(400).json({ message: "Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin." });
+        }
+
+        const busModel = await req.models.BusModel.findOne({ where: { id, isDeleted: false } });
+        if (!busModel) {
             return res.status(404).json({ message: "Otobüs planı bulunamadı" });
         }
 
-        res.json({ message: "Silindi" });
+        const replacementBusModel = await req.models.BusModel.findOne({
+            where: {
+                id: { [Op.ne]: id },
+                isDeleted: false
+            },
+            order: [["id", "ASC"]]
+        });
+
+        if (!replacementBusModel) {
+            return res.status(400).json({ message: "Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin." });
+        }
+
+        await Promise.all([
+            req.models.Trip.update({ busModelId: replacementBusModel.id }, { where: { busModelId: id } }),
+            req.models.Bus.update({ busModelId: replacementBusModel.id }, { where: { busModelId: id } })
+        ]);
+
+        await busModel.update({ isDeleted: true });
+
+        res.json({ message: "Silindi", replacementBusModelId: replacementBusModel.id });
     } catch (err) {
         console.error("Bus plan delete error:", err);
         res.status(500).json({ message: err.message });
@@ -3684,7 +3710,7 @@ exports.postDeleteBus = async (req, res, next) => {
 
 exports.getBusModelsData = async (req, res, next) => {
     try {
-        const busModels = await req.models.BusModel.findAll();
+        const busModels = await req.models.BusModel.findAll({ where: { isDeleted: false } });
         res.json(busModels);
     } catch (err) {
         console.error("Hata:", err);
