@@ -6169,9 +6169,7 @@ $(document)
         e.stopPropagation()
 
         const $button = $(this)
-        const name = $button.data("name")
-        const message = `${name || "Bu kullanıcıyı"} silmek istediğinize emin misiniz?`
-        if (message && !window.confirm(message)) {
+        if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?.")) {
             return
         }
 
