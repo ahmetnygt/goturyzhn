@@ -3414,7 +3414,7 @@ exports.getBusesList = async (req, res, next) => {
 
 exports.getPricesList = async (req, res, next) => {
     const prices = await req.models.Price.findAll();
-    const stops = await req.models.Stop.findAll();
+    const stops = await req.models.Stop.findAll({ where: { isDeleted: false } });
 
     const stopMap = {};
     for (const s of stops) {
@@ -3890,7 +3890,7 @@ exports.postDeleteStaff = async (req, res, next) => {
 };
 
 exports.getStopsList = async (req, res, next) => {
-    const stops = await req.models.Stop.findAll();
+    const stops = await req.models.Stop.findAll({ where: { isDeleted: false } });
     const places = await req.commonModels.Place.findAll()
 
     for (let i = 0; i < stops.length; i++) {
@@ -3914,7 +3914,7 @@ exports.getStop = async (req, res, next) => {
 
 exports.getStopsData = async (req, res, next) => {
     try {
-        const stops = await req.models.Stop.findAll();
+        const stops = await req.models.Stop.findAll({ where: { isDeleted: false } });
         res.json(stops);
     } catch (err) {
         console.error("Hata:", err);
@@ -3968,15 +3968,71 @@ exports.postDeleteStop = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz durak bilgisi" });
         }
 
-        const stop = await req.models.Stop.findByPk(id);
-        if (!stop) {
-            return res.status(404).json({ message: "Durak bulunamadı" });
-        }
+        const sequelize = req.models.Stop.sequelize;
+        await sequelize.transaction(async (transaction) => {
+            const stop = await req.models.Stop.findByPk(id, { transaction });
+            if (!stop) {
+                throw new Error("Durak bulunamadı");
+            }
 
-        await stop.destroy();
+            if (stop.isDeleted) {
+                return;
+            }
+
+            await stop.update({ isDeleted: true }, { transaction });
+
+            const affectedRoutes = await req.models.Route.findAll({
+                where: {
+                    [Op.or]: [
+                        { fromStopId: id },
+                        { toStopId: id },
+                    ],
+                },
+                attributes: ["id"],
+                transaction,
+            });
+
+            const affectedRouteIds = affectedRoutes.map(route => route.id);
+
+            if (affectedRouteIds.length > 0) {
+                await req.models.Route.update(
+                    { isDeleted: true },
+                    { where: { id: { [Op.in]: affectedRouteIds } }, transaction }
+                );
+
+                await req.models.Trip.update(
+                    { isDeleted: true },
+                    { where: { routeId: { [Op.in]: affectedRouteIds } }, transaction }
+                );
+            }
+
+            const affectedBranches = await req.models.Branch.findAll({
+                where: { stopId: id },
+                attributes: ["id"],
+                transaction,
+            });
+
+            const affectedBranchIds = affectedBranches.map(branch => branch.id);
+
+            if (affectedBranchIds.length > 0) {
+                await req.models.Branch.update(
+                    { isDeleted: true },
+                    { where: { id: { [Op.in]: affectedBranchIds } }, transaction }
+                );
+
+                await req.models.FirmUser.update(
+                    { isDeleted: true },
+                    { where: { branchId: { [Op.in]: affectedBranchIds } }, transaction }
+                );
+            }
+        });
+
         res.json({ message: "Silindi" });
     } catch (err) {
         console.error("Stop delete error:", err);
+        if (err.message === "Durak bulunamadı") {
+            return res.status(404).json({ message: err.message });
+        }
         res.status(500).json({ message: err.message });
     }
 };

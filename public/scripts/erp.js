@@ -4988,9 +4988,8 @@ $(document)
         e.stopPropagation()
 
         const $button = $(this)
-        const title = $button.data("title")
-        const message = `${title || "Bu durağı"} silmek istediğinize emin misiniz?`
-        if (message && !window.confirm(message)) {
+        const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
+        if (!window.confirm(warningMessage)) {
             return
         }
 
