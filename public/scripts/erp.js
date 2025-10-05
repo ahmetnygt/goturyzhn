@@ -4857,42 +4857,6 @@ $(".save-bus").on("click", async e => {
 
 let editingStaffId = null
 
-$(document)
-    .off("click.staffDelete")
-    .on("click.staffDelete", ".staff-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        const $button = $(this)
-        const name = $button.data("name")
-        window.alert("Bu personeli silerseniz bu personeli kullanan otobüs ve seferler de etkilenecektir.")
-        const message = `${name || "Bu personeli"} silmek istediğinize emin misiniz?`
-        if (message && !window.confirm(message)) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-staff", type: "POST", data })
-            const id = String($button.data("id"))
-            if (String(editingStaffId) === id) {
-                editingStaffId = null
-                $(".staff-id-number").val("")
-                $(".staff-duty").val("")
-                $(".staff-name").val("")
-                $(".staff-surname").val("")
-                $(".staff-address").val("")
-                $(".staff-phone").val("")
-                $("input[name='staff-gender']").prop("checked", false)
-                $(".staff-nationality").val("")
-                $(".staff-panel").css("display", "none")
-                $(".save-staff").html("KAYDET")
-            }
-            $button.closest(".btn-group").remove()
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
 $(".staff-nav").on("click", async e => {
     await $.ajax({
         url: "/get-staffs-list",
@@ -4900,6 +4864,41 @@ $(".staff-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".staff-list-nodes").html(response)
+
+            $(".staff-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const $button = $(this)
+                const name = $button.data("name")
+                window.alert("Bu personeli silerseniz bu personeli kullanan otobüs ve seferler de etkilenecektir.")
+                const message = `${name || "Bu personeli"} silmek istediğinize emin misiniz?`
+                if (message && !window.confirm(message)) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-staff", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingStaffId) === id) {
+                        editingStaffId = null
+                        $(".staff-id-number").val("")
+                        $(".staff-duty").val("")
+                        $(".staff-name").val("")
+                        $(".staff-surname").val("")
+                        $(".staff-address").val("")
+                        $(".staff-phone").val("")
+                        $("input[name='staff-gender']").prop("checked", false)
+                        $(".staff-nationality").val("")
+                        $(".staff-panel").css("display", "none")
+                        $(".save-staff").html("KAYDET")
+                    }
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
 
             $(".staff-button").on("click", async e => {
                 const id = e.currentTarget.dataset.id
