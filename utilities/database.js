@@ -155,6 +155,10 @@ async function getTenantConnection(subdomain) {
         { id: 77, code: 'CHANGE_COMMISSION_RATE_DURING_CUT', module: 'account_cut', description: 'Hesap keserken komisyon oranını değiştirebilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
         { id: 78, code: 'CHANGE_DEDUCTIONS_DURING_CUT', module: 'account_cut', description: 'Hesap keserken kesintileri değiştirebilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
         { id: 79, code: 'REVERT_ACCOUNT_CUT_FOR_OTHER_BRANCH', module: 'account_cut', description: 'Başka şube adına hesap kesimini geri alabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
+        { id: 80, code: 'SUBSCRIPTION_MANAGE', module: 'other', description: 'Abonelik işlemleri yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
+        { id: 81, code: 'FLEET_MANAGE', module: 'other', description: 'Filo\'da işlem yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
+        { id: 82, code: 'ADMIN_PANEL_MANAGE', module: 'other', description: 'Yönetim panellerinde işlem yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
+        { id: 83, code: 'USER_PERMISSION_MANAGE', module: 'other', description: 'Kullanıcı izinlerini değiştirebilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
       ];
       await models.Permission.bulkCreate(permissionsSeedData);
       console.log('Default permissions were seeded.');
