@@ -265,6 +265,110 @@ const hideLoading = () => {
     if (loadingCount === 0) $(".loading").css("display", "none");
 };
 
+const ESC_CLOSE_BUTTON_SELECTORS = [
+    ".announcement-pop-up-close",
+    ".user-profile-close",
+    ".user-profile-cancel",
+    ".change-password-close",
+    ".change-password-cancel",
+    ".error-close",
+    ".account-cut-deductions-cancel",
+    ".account-cut-close",
+    ".add-transaction-close",
+    ".announcement-add-close",
+    ".branch-close",
+    ".bus-close",
+    ".bus-plans-close",
+    ".bus-transaction-close",
+    ".customer-blacklist-close",
+    ".customers-close",
+    ".member-info-close",
+    ".members-close",
+    ".moving-close",
+    ".open-ticket-close",
+    ".other-register-close",
+    ".payment-request-close",
+    ".payment-send-close",
+    ".pending-collections-close",
+    ".pending-payments-close",
+    ".price-add-close",
+    ".price-close",
+    ".register-close",
+    ".report-close",
+    ".reports-close",
+    ".route-close",
+    ".staff-close",
+    ".stops-close",
+    ".ticket-close",
+    ".ticket-search-close",
+    ".ticket-cancel-refund-open-close",
+    ".transaction-transfer-close",
+    ".trip-cargo-close",
+    ".trip-cargo-list-close",
+    ".trip-close",
+    ".trip-note-close",
+    ".trip-revenue-close",
+    ".trip-staff-close",
+    ".trip-stop-restriction-close",
+    ".trip-time-adjust-close",
+    ".trip-time-adjust-cancel",
+    ".users-close",
+];
+
+const ESC_FALLBACK_POPUPS = [
+    {
+        selector: ".ticket-info-pop-up",
+        close: () => {
+            if (typeof ticketClose === "function") {
+                ticketClose();
+            } else {
+                $(".ticket-info-pop-up").hide();
+                $(".blackout").hide();
+            }
+        },
+    },
+    {
+        selector: ".ticket-ops-pop-up",
+        close: $popup => $popup.hide(),
+    },
+    {
+        selector: ".taken-ticket-ops-pop-up",
+        close: $popup => $popup.hide(),
+    },
+    {
+        selector: ".search-ticket-ops-pop-up",
+        close: $popup => $popup.hide(),
+    },
+    {
+        selector: ".passenger-info-popup",
+        close: $popup => $popup.hide(),
+    },
+];
+
+document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || event.defaultPrevented) {
+        return;
+    }
+
+    for (const selector of ESC_CLOSE_BUTTON_SELECTORS) {
+        const $buttons = $(selector).filter(":visible");
+        if ($buttons.length) {
+            $buttons.last().trigger("click");
+            event.preventDefault();
+            return;
+        }
+    }
+
+    for (const { selector, close } of ESC_FALLBACK_POPUPS) {
+        const $popup = $(selector).filter(":visible");
+        if ($popup.length) {
+            close($popup);
+            event.preventDefault();
+            return;
+        }
+    }
+});
+
 const normalizeErpUrl = url => {
     if (typeof url !== "string" || !url.startsWith("/")) {
         return url;
