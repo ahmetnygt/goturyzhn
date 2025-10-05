@@ -4810,7 +4810,7 @@ exports.postDeleteUser = async (req, res, next) => {
 
         await req.models.FirmUserPermission.destroy({ where: { firmUserId: id } });
         await req.models.CashRegister.destroy({ where: { userId: id } });
-        await user.destroy();
+        await user.update({ isDeleted: true });
 
         res.json({ message: "Silindi" });
     } catch (err) {
