@@ -4350,6 +4350,8 @@ $(".bus-transaction-button").on("click", async e => {
     }
 });
 
+let activeBusPlanCount = 0
+
 $(".bus-plans-nav").on("click", async e => {
     const list = $(".bus-plan-list")
     list.empty()
@@ -4357,6 +4359,7 @@ $(".bus-plans-nav").on("click", async e => {
         url: "/get-bus-models-data",
         type: "GET",
         success: function (busModels) {
+            activeBusPlanCount = Array.isArray(busModels) ? busModels.length : 0
             busModels.forEach(b => {
                 list.append(`
                     <div class="btn-group w-100">
@@ -4541,8 +4544,14 @@ $(document)
         e.preventDefault()
         e.stopPropagation()
 
+        if (activeBusPlanCount <= 1) {
+            window.alert("Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin.")
+            return
+        }
+
         const $button = $(this)
         const title = $button.data("title")
+        window.alert("Bu otobüs planını silerseniz bu planı kullanan otobüs ve seferler de etkilenecektir.")
         const message = `${title || "Bu planı"} silmek istediğinize emin misiniz?`
         if (message && !window.confirm(message)) {
             return
@@ -4557,6 +4566,7 @@ $(document)
                 $(".bus-plan-panel").html("")
             }
             $button.closest(".btn-group").remove()
+            activeBusPlanCount = Math.max(0, activeBusPlanCount - 1)
         } catch (err) {
             showError(getAjaxErrorMessage(err))
         }
