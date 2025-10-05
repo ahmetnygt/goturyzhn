@@ -1481,8 +1481,8 @@ div.ticket-cancel-refund-open-close {
     flex-direction: column;
     gap: .5rem;
     padding: .5rem 0;
-    max-height: 95vh;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
 }
 
 .ticket-rows input,
