@@ -5644,31 +5644,6 @@ const collectPriceRowData = (row, { includeId = true, appendTimeSuffix = false }
     return result;
 };
 
-$(document)
-    .off("click.priceDelete")
-    .on("click.priceDelete", ".price-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        const $button = $(this)
-        const from = $button.data("from")
-        const to = $button.data("to")
-        const message = from && to
-            ? `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`
-            : "Bu fiyatı silmek istediğinize emin misiniz?"
-        if (message && !window.confirm(message)) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-price", type: "POST", data })
-            $button.closest(".btn-group").remove()
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
-
 const resetPriceAddRow = () => {
     const row = $(".price-add-row");
     const selects = row.find("select.price-button-select");
@@ -5707,6 +5682,29 @@ $(".price-nav").on("click", async e => {
             $(".price-list-nodes").html(response);
             const stopsData = $("#price-stops-data").text();
             priceStops = stopsData ? JSON.parse(stopsData) : [];
+
+            $(".price-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const $button = $(this)
+                const from = $button.data("from")
+                const to = $button.data("to")
+                const message = from && to
+                    ? `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`
+                    : "Bu fiyatı silmek istediğinize emin misiniz?"
+                if (message && !window.confirm(message)) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-price", type: "POST", data })
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
 
             $(".price-row, .price-add-row").off().on("click", function () {
                 const row = $(this);
