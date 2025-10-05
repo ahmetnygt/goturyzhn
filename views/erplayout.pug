@@ -66,50 +66,54 @@ html
                     a.dropdown-item.pending-payments-nav(href="#") Bekleyen Ödemelerim
                   li
                     a.dropdown-item.pending-collections-nav(href="#") Bekleyen Tahsilatlarım
-              li.nav-item.dropdown
-                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Abonelik
-                ul.dropdown-menu
-                  li
-                    a.dropdown-item.member-nav(href="#") Aboneler
-              li.nav-item.dropdown
-                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Filo
-                ul.dropdown-menu
-                  li
-                    a.dropdown-item.bus-nav(href="#") Otobüsler
-                  li
-                    a.dropdown-item.bus-income-nav(href="#") Gelir Ekle
-                  li
-                    a.dropdown-item.bus-expense-nav(href="#") Gider Ekle
-                  li
-                    a.dropdown-item.bus-transactions-report-nav(href="#") Otobüs Gelir Gideri
-              li.nav-item.dropdown
-                a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Yönetim
-                ul.dropdown-menu
-                  li
-                    a.dropdown-item.branch-settings-nav(href="#") Şubeler
-                  li
-                    a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
-                  li
-                    a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
-                  li
-                    a.dropdown-item.staff-nav(href="#") Personeller
-                  li
-                    a.dropdown-item.stops-nav(href="#") Duraklar
-                  li
-                    a.dropdown-item.route-nav(href="#") Hatlar
-                  li
-                    a.dropdown-item.trip-nav(href="#") Seferler
-                  li
-                    a.dropdown-item.price-nav(href="#") Fiyatlar
-                  li
-                    a.dropdown-item.customer-nav(href="#") Müşteriler
-                  li
-                    a.dropdown-item.announcement-add-nav(href="#") Duyuru Ekle
-              li.nav-item
-                a.nav-link.reports-nav(href="#") Raporlar
+              if permissions.includes("SUBSCRIPTION_MANAGE")
+                li.nav-item.dropdown
+                  a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                    | Abonelik
+                  ul.dropdown-menu
+                    li
+                      a.dropdown-item.member-nav(href="#") Aboneler
+              if permissions.includes("FLEET_MANAGE")
+                li.nav-item.dropdown
+                  a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                    | Filo
+                  ul.dropdown-menu
+                    li
+                      a.dropdown-item.bus-nav(href="#") Otobüsler
+                    li
+                      a.dropdown-item.bus-income-nav(href="#") Gelir Ekle
+                    li
+                      a.dropdown-item.bus-expense-nav(href="#") Gider Ekle
+                    li
+                      a.dropdown-item.bus-transactions-report-nav(href="#") Otobüs Gelir Gideri
+              if permissions.includes("ADMIN_PANEL_MANAGE")
+                li.nav-item.dropdown
+                  a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+                    | Yönetim
+                  ul.dropdown-menu
+                    li
+                      a.dropdown-item.branch-settings-nav(href="#") Şubeler
+                    li
+                      a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
+                    li
+                      a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
+                    li
+                      a.dropdown-item.staff-nav(href="#") Personeller
+                    li
+                      a.dropdown-item.stops-nav(href="#") Duraklar
+                    li
+                      a.dropdown-item.route-nav(href="#") Hatlar
+                    li
+                      a.dropdown-item.trip-nav(href="#") Seferler
+                    li
+                      a.dropdown-item.price-nav(href="#") Fiyatlar
+                    li
+                      a.dropdown-item.customer-nav(href="#") Müşteriler
+                    li
+                      a.dropdown-item.announcement-add-nav(href="#") Duyuru Ekle
+              if permissions.includes("REPORTS_MANAGE")
+                li.nav-item
+                  a.nav-link.reports-nav(href="#") Raporlar
           if firmUser
             - const firmUserName = firmUser && firmUser.name ? firmUser.name : ''
             - const firmUserUsername = firmUser && firmUser.username ? firmUser.username : ''

@@ -159,6 +159,7 @@ async function getTenantConnection(subdomain) {
         { id: 81, code: 'FLEET_MANAGE', module: 'other', description: 'Filo\'da işlem yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
         { id: 82, code: 'ADMIN_PANEL_MANAGE', module: 'other', description: 'Yönetim panellerinde işlem yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
         { id: 83, code: 'USER_PERMISSION_MANAGE', module: 'other', description: 'Kullanıcı izinlerini değiştirebilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
+        { id: 84, code: 'REPORTS_MANAGE', module: 'other', description: 'Raporlar\'da işlem yapabilir', isActive: true, createdAt: '2025-09-05 16:17:02', updatedAt: '2025-08-29 17:18:42' },
       ];
       await models.Permission.bulkCreate(permissionsSeedData);
       console.log('Default permissions were seeded.');
