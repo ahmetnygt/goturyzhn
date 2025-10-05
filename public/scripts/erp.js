@@ -83,6 +83,41 @@ function getPriceLists($priceContainer) {
     };
 }
 
+function updateTicketRowsSumPrice() {
+    const $sumInput = $(".ticket-rows .sum-price input");
+    if (!$sumInput.length) {
+        return;
+    }
+
+    let total = 0;
+    let hasAnyValue = false;
+
+    $(".ticket-row .price input").each((_, input) => {
+        const rawValue = ($(input).val() || "").toString().trim();
+        if (!rawValue) {
+            return;
+        }
+
+        const normalizedValue = Number(rawValue.replace(",", "."));
+        if (!Number.isNaN(normalizedValue)) {
+            total += normalizedValue;
+            hasAnyValue = true;
+        }
+    });
+
+    if (!hasAnyValue) {
+        $sumInput.val("");
+        return;
+    }
+
+    const roundedTotal = Math.round(total * 100) / 100;
+    const formattedTotal = Number.isInteger(roundedTotal)
+        ? roundedTotal
+        : roundedTotal.toFixed(2);
+
+    $sumInput.val(formattedTotal);
+}
+
 function initializeTicketRowPriceControls() {
     originalPrices = [];
 
@@ -93,6 +128,13 @@ function initializeTicketRowPriceControls() {
 
         originalPrices[index] = Number.isNaN(basePrice) ? null : basePrice;
     });
+
+    const $priceInputs = $(".ticket-row .price input");
+    $priceInputs.off(".sumPrice").on("input.sumPrice change.sumPrice", () => {
+        updateTicketRowsSumPrice();
+    });
+
+    updateTicketRowsSumPrice();
 
     if (window.GTR && window.GTR.searchableSelect && typeof window.GTR.searchableSelect.init === "function") {
         const takeSelects = document.querySelectorAll(".ticket-info select[data-searchable-select]");
@@ -2050,6 +2092,7 @@ async function loadTrip(date, time, tripId) {
                                     $(row).addClass("f").removeClass("m");
                                 }
                                 $(".ticket-rows").find(".phone").find("input").val(customer.phoneNumber);
+                                updateTicketRowsSumPrice();
                             }
                         });
 
