@@ -4865,6 +4865,7 @@ $(document)
 
         const $button = $(this)
         const name = $button.data("name")
+        window.alert("Bu personeli silerseniz bu personeli kullanan otobüs ve seferler de etkilenecektir.")
         const message = `${name || "Bu personeli"} silmek istediğinize emin misiniz?`
         if (message && !window.confirm(message)) {
             return
