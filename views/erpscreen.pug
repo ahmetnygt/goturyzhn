@@ -1457,6 +1457,8 @@ block content
                         a.nav-link(data-bs-toggle="tab" href="#satis") Satış
                     li.nav-item
                         a.nav-link(data-bs-toggle="tab" href="#hesap") Hesap Kesim
+                    li.nav-item
+                        a.nav-link(data-bs-toggle="tab" href="#diger") Diğer
                 .tab-content.mt-3.px-2(style="overflow-y: auto;height: 40vh;")
                     .tab-pane.fade.show.active#kasa
                         .form-check.mb-2
@@ -1478,6 +1480,11 @@ block content
                             input#select-all-account.form-check-input.permission-select-all(type="checkbox" data-module="account_cut")
                             label.form-check-label(for="select-all-account") Tümünü Seç
                         .permission-list(data-module="account_cut")
+                    .tab-pane.fade#diger
+                        .form-check.mb-2
+                            input#select-all-other.form-check-input.permission-select-all(type="checkbox" data-module="other")
+                            label.form-check-label(for="select-all-other") Tümünü Seç
+                        .permission-list(data-module="other")
 
     .members
         .gtr-header
