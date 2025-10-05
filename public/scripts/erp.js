@@ -2609,6 +2609,72 @@ async function renderTripRows(html, options = {}) {
         }
     });
 
+    const bindTripActivationButtons = ($buttons, isActive) => {
+        $buttons.off("click").on("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const $button = $(this);
+            const tripId = Number($button.data("tripId"))
+                || Number($button.closest(".btn-group").find(".trip-button").data("id"));
+
+            if (!tripId) {
+                showError("Sefer bilgisi bulunamadı.");
+                return;
+            }
+
+            const confirmMessage = isActive
+                ? "Seferi aktif etmek istediğinize emin misiniz?"
+                : "Seferi iptal etmek istediğinize emin misiniz?";
+
+            if (!window.confirm(confirmMessage)) {
+                return;
+            }
+
+            const originalHtml = $button.html();
+            const originalDisabled = $button.prop("disabled");
+            $button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+            try {
+                await $.post("/post-trip-active", { tripId, isActive });
+
+                if (currentTripId === tripId && currentTripDate && currentTripTime) {
+                    try {
+                        await loadTrip(currentTripDate, currentTripTime, currentTripId);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+
+                const calendarValue = typeof calendar !== "undefined"
+                    && calendar
+                    && typeof calendar.val === "function"
+                    ? calendar.val()
+                    : null;
+
+                let dateInput = new Date();
+                if (calendarValue) {
+                    if (typeof calendarValue === "string" && calendarValue.trim()) {
+                        dateInput = calendarValue;
+                    } else if (calendarValue instanceof Date) {
+                        dateInput = calendarValue;
+                    }
+                }
+
+                await loadTripsList(dateInput, { autoSelect: false });
+            } catch (err) {
+                showError(getAjaxErrorMessage(err));
+            } finally {
+                if ($button.closest("body").length) {
+                    $button.prop("disabled", originalDisabled).html(originalHtml);
+                }
+            }
+        });
+    };
+
+    bindTripActivationButtons($(".trip-cancel-button"), false);
+    bindTripActivationButtons($(".trip-active-button"), true);
+
     const $current = findCurrentTripRow($rows);
     if ($current.length) {
         selectTripRow($current);
