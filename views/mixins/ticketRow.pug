@@ -71,29 +71,34 @@
                 if ((permissions && permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions && permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch))
                     option(value="member") Abone
                     option(value="guest") Misafir
-        if price
-            -
-                const seatPriceData = Array.isArray(price) ? price[i] : price
-                const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
-                const regularPriceValues = []
-                const singleSeatPriceValues = []
+        -
+            const seatPriceData = price ? (Array.isArray(price) ? price[i] : price) : null
+            const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
+            const regularPriceValues = []
+            const singleSeatPriceValues = []
+            const ticketPriceRaw = ticket && ticket[i] ? ticket[i].price : null
+            const ticketPriceNumber = Number(ticketPriceRaw)
+            const hasTicketPriceValue = ticketPriceRaw !== null && ticketPriceRaw !== undefined && ticketPriceRaw !== "" && !Number.isNaN(ticketPriceNumber)
 
-                if (seatPriceData && seatPriceData.price1 != null) regularPriceValues.push(seatPriceData.price1)
-                if (seatPriceData && seatPriceData.price2 != null) regularPriceValues.push(seatPriceData.price2)
-                if (seatPriceData && seatPriceData.price3 != null) regularPriceValues.push(seatPriceData.price3)
-                if (seatPriceData && seatPriceData.singleSeatPrice1 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1)
-                if (seatPriceData && seatPriceData.singleSeatPrice2 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2)
-                if (seatPriceData && seatPriceData.singleSeatPrice3 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3)
+            if (seatPriceData && seatPriceData.price1 != null) regularPriceValues.push(seatPriceData.price1)
+            if (seatPriceData && seatPriceData.price2 != null) regularPriceValues.push(seatPriceData.price2)
+            if (seatPriceData && seatPriceData.price3 != null) regularPriceValues.push(seatPriceData.price3)
+            if (seatPriceData && seatPriceData.singleSeatPrice1 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice1)
+            if (seatPriceData && seatPriceData.singleSeatPrice2 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice2)
+            if (seatPriceData && seatPriceData.singleSeatPrice3 != null) singleSeatPriceValues.push(seatPriceData.singleSeatPrice3)
 
-                const activePriceList = (seatType === "single")
-                    ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
-                    : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues)
+            const activePriceList = (seatType === "single")
+                ? (singleSeatPriceValues.length ? singleSeatPriceValues : regularPriceValues)
+                : (regularPriceValues.length ? regularPriceValues : singleSeatPriceValues)
 
-                const defaultPriceValue = (ticket && ticket[i] && ticket[i].price != null)
-                    ? ticket[i].price
-                    : (activePriceList.length ? activePriceList[0] : "")
+            const defaultPriceValue = hasTicketPriceValue
+                ? ticketPriceRaw
+                : (activePriceList.length ? activePriceList[0] : "")
 
-                const showPriceArrows = activePriceList.length > 1
+            const showPriceArrows = activePriceList.length > 1
+            const shouldLockPriceInput = (action === "edit") && hasTicketPriceValue
+            const canEnterFreePrice = permissions && permissions.includes('ENTER_FREE_PRICE')
+            const inputIsReadonly = !canEnterFreePrice || shouldLockPriceInput
         .price(
             data-seat-type=seatType
             data-regular-prices=JSON.stringify(regularPriceValues)
@@ -103,10 +108,7 @@
                 | Fiyat
                 span.customer-point.ms-1
             .price-input-wrapper
-                if !permissions.includes('ENTER_FREE_PRICE')
-                    input.form-control.form-control-sm(readonly type="number" value=defaultPriceValue)
-                else
-                    input.form-control.form-control-sm(type="number" value=defaultPriceValue)
+                input.form-control.form-control-sm(type="number" value=defaultPriceValue readonly=inputIsReadonly ? true : false)
                 if showPriceArrows
                     .price-arrows.btn-group-vertical.ms-1
                         button.price-arrow.price-arrow-up.btn.btn-outline-secondary.btn-sm(type="button")
