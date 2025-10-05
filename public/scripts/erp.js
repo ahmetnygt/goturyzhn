@@ -7678,15 +7678,35 @@ $(loadAnnouncements);
         }
 
         filter(term) {
-            const normalized = toLocaleLower(term).trim();
+            const rawTerm = typeof term === "string" ? term : "";
+            const trimmed = rawTerm.trim();
+            const normalized = toLocaleLower(rawTerm).trim();
+
             if (!normalized) {
                 this.filteredOptions = this.options.slice();
             } else {
                 this.filteredOptions = this.options.filter(option => option.searchText.includes(normalized));
             }
 
+            if (this.allowCustomValues && trimmed) {
+                const normalizedTrimmed = normalizeForComparison(trimmed);
+                const hasExactOption = this.options.some(option => {
+                    return normalizeForComparison(option.label) === normalizedTrimmed
+                        || normalizeForComparison(option.value) === normalizedTrimmed;
+                });
+
+                if (!hasExactOption) {
+                    this.filteredOptions.push({
+                        value: trimmed,
+                        label: trimmed,
+                        searchText: toLocaleLower(trimmed),
+                        isCustom: true,
+                    });
+                }
+            }
+
             const selectedValue = this.select.value;
-            const selectedIndex = this.filteredOptions.findIndex(option => option.value === selectedValue);
+            const selectedIndex = this.filteredOptions.findIndex(option => !option.isCustom && option.value === selectedValue);
             if (selectedIndex !== -1) {
                 this.highlightIndex = selectedIndex;
             } else {
@@ -7715,15 +7735,22 @@ $(loadAnnouncements);
                 optionEl.className = "searchable-select__option";
                 optionEl.setAttribute("role", "option");
                 optionEl.id = `${this.id}-option-${index}`;
-                optionEl.textContent = option.label;
                 optionEl.dataset.value = option.value;
 
-                const isSelected = option.value === currentValue;
-                if (isSelected) {
-                    optionEl.classList.add("is-selected");
-                    optionEl.setAttribute("aria-selected", "true");
-                } else {
+                if (option.isCustom) {
+                    optionEl.classList.add("searchable-select__option--create");
+                    optionEl.textContent = `"${option.label}" değerini ekle`;
                     optionEl.setAttribute("aria-selected", "false");
+                } else {
+                    optionEl.textContent = option.label;
+
+                    const isSelected = option.value === currentValue;
+                    if (isSelected) {
+                        optionEl.classList.add("is-selected");
+                        optionEl.setAttribute("aria-selected", "true");
+                    } else {
+                        optionEl.setAttribute("aria-selected", "false");
+                    }
                 }
 
                 if (index === this.highlightIndex) {
@@ -7750,12 +7777,16 @@ $(loadAnnouncements);
             }
         }
 
-        addCustomOptionFromInput() {
+        addCustomOptionFromInput(value = null) {
             if (!this.allowCustomValues) {
                 return;
             }
 
-            const rawValue = this.searchInput ? this.searchInput.value : "";
+            if (value != null && this.searchInput) {
+                this.searchInput.value = value;
+            }
+
+            const rawValue = value != null ? value : (this.searchInput ? this.searchInput.value : "");
             const trimmed = typeof rawValue === "string" ? rawValue.trim() : "";
             if (!trimmed) {
                 return;
@@ -7832,6 +7863,11 @@ $(loadAnnouncements);
         }
 
         chooseOption(option) {
+            if (option && option.isCustom) {
+                this.addCustomOptionFromInput(option.value);
+                return;
+            }
+
             this.setValue(option.value);
             this.close();
             this.display.focus();
@@ -7878,6 +7914,12 @@ $(loadAnnouncements);
                 if (!option) {
                     return;
                 }
+                if (option.isCustom) {
+                    element.classList.remove("is-selected");
+                    element.setAttribute("aria-selected", "false");
+                    return;
+                }
+
                 const isSelected = option.value === currentValue;
                 element.classList.toggle("is-selected", isSelected);
                 element.setAttribute("aria-selected", isSelected ? "true" : "false");
