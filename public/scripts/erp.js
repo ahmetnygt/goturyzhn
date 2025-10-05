@@ -1187,7 +1187,7 @@ async function loadTrip(date, time, tripId) {
         $(".trip-notes").html(tripNotesResponse);
         $(".stops-times").html(routeStopsResponse);
 
-        $(".note-edit").off().on("click", e => {
+        $(".note-edit").on("click", e => {
             const noteEl = $(e.currentTarget).closest(".note");
             editingNoteId = noteEl.data("id");
             const text = noteEl.find(".note-text").text();
@@ -1198,7 +1198,7 @@ async function loadTrip(date, time, tripId) {
             $(".add-trip-note").css("display", "flex");
         })
 
-        $(".note-delete").off().on("click", async e => {
+        $(".note-delete").on("click", async e => {
             const noteEl = $(e.currentTarget).closest(".note");
             const noteId = noteEl.data("id");
             if (confirm("Notu silmek istediğinize emin misiniz?")) {
