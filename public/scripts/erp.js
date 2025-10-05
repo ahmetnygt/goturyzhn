@@ -3667,21 +3667,20 @@ $(".ticket-close").on("click", async e => {
     let pendingIds = $("#pendingIds").val()
     if (pendingIds) {
         let jsonSeats = JSON.stringify(selectedSeats)
-
         await $.ajax({
             url: "/post-delete-pending-tickets",
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
-                selectedSeats = []
-                $("#pendingIds").remove()
-                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
             }
         });
     }
+    selectedSeats = []
+    $("#pendingIds").remove()
+    loadTrip(currentTripDate, currentTripTime, currentTripId)
     ticketClose();
 })
 $(".ticket-button-cancel").on("click", async e => {
@@ -3694,15 +3693,15 @@ $(".ticket-button-cancel").on("click", async e => {
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
-                selectedSeats = []
-                $("#pendingIds").remove()
-                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
             }
         });
     }
+    selectedSeats = []
+    $("#pendingIds").remove()
+    loadTrip(currentTripDate, currentTripTime, currentTripId)
     ticketClose();
 })
 
