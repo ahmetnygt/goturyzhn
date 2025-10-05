@@ -6162,42 +6162,6 @@ $(".save-branch").on("click", async e => {
 
 let editingUserId = null
 
-$(document)
-    .off("click.userDelete")
-    .on("click.userDelete", ".user-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        const $button = $(this)
-        if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?.")) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-user", type: "POST", data })
-            const id = String($button.data("id"))
-            if (String(editingUserId) === id) {
-                editingUserId = null
-                $("#isUserActive").prop("checked", true)
-                $(".user-name").val("")
-                $(".user-username").val("")
-                $(".user-password").val("")
-                $(".user-phone").val("")
-                $(".user-branches").val("")
-                $(".users").css("width", "")
-                $(".user-list").addClass("col-12").removeClass("col-4")
-                $(".user-info").css("display", "none")
-                $(".user-settings").css("display", "none")
-                $(".save-user").html("KAYDET")
-                renderPermissions({ register: [], trip: [], sales: [], account_cut: [] })
-            }
-            $button.closest(".btn-group").remove()
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
-
 const permissionModules = ['register', 'trip', 'sales', 'account_cut'];
 
 function updateSelectAllCheckbox(module) {
@@ -6273,6 +6237,40 @@ $(".user-settings-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".user-list-nodes").html(response)
+
+            $(".user-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const $button = $(this)
+                if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?.")) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-user", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingUserId) === id) {
+                        editingUserId = null
+                        $("#isUserActive").prop("checked", true)
+                        $(".user-name").val("")
+                        $(".user-username").val("")
+                        $(".user-password").val("")
+                        $(".user-phone").val("")
+                        $(".user-branches").val("")
+                        $(".users").css("width", "")
+                        $(".user-list").addClass("col-12").removeClass("col-4")
+                        $(".user-info").css("display", "none")
+                        $(".user-settings").css("display", "none")
+                        $(".save-user").html("KAYDET")
+                        renderPermissions({ register: [], trip: [], sales: [], account_cut: [] })
+                    }
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
 
             $(".user-button").on("click", async e => {
                 const id = e.currentTarget.dataset.id
