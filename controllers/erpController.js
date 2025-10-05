@@ -3378,8 +3378,8 @@ exports.postDeleteBusPlan = async (req, res, next) => {
 
 exports.getBusesList = async (req, res, next) => {
     const [buses, busModels, transactions] = await Promise.all([
-        req.models.Bus.findAll(),
-        req.models.BusModel.findAll(),
+        req.models.Bus.findAll({ where: { isDeleted: false } }),
+        req.models.BusModel.findAll({ where: { isDeleted: false } }),
         req.models.BusTransaction.findAll({ attributes: ["busId", "type", "amount"], raw: true })
     ]);
 
@@ -3611,7 +3611,7 @@ exports.getBus = async (req, res, next) => {
     const id = req.query.id
     const licensePlate = req.query.licensePlate
 
-    const bus = await req.models.Bus.findOne({ where: { id: id, licensePlate: licensePlate } })
+    const bus = await req.models.Bus.findOne({ where: { id: id, licensePlate: licensePlate, isDeleted: false } })
 
     res.json(bus)
 }
@@ -3696,10 +3696,22 @@ exports.postDeleteBus = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz otobüs bilgisi" });
         }
 
-        const deleted = await req.models.Bus.destroy({ where: { id } });
-        if (!deleted) {
+        const bus = await req.models.Bus.findByPk(id);
+        if (!bus || bus.isDeleted) {
             return res.status(404).json({ message: "Otobüs bulunamadı" });
         }
+
+        await req.db.transaction(async transaction => {
+            await req.models.Bus.update(
+                { isDeleted: true },
+                { where: { id }, transaction }
+            );
+
+            await req.models.Trip.update(
+                { busId: null },
+                { where: { busId: id }, transaction }
+            );
+        });
 
         res.json({ message: "Silindi" });
     } catch (err) {
@@ -3720,7 +3732,7 @@ exports.getBusModelsData = async (req, res, next) => {
 
 exports.getBusesData = async (req, res, next) => {
     try {
-        const buses = await req.models.Bus.findAll();
+        const buses = await req.models.Bus.findAll({ where: { isDeleted: false } });
         const staffs = await req.models.Staff.findAll();
 
         const staffMap = {};
