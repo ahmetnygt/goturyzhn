@@ -4158,9 +4158,9 @@ exports.postSaveTrip = async (req, res, next) => {
 };
 
 exports.getBranchesList = async (req, res, next) => {
-    let where = {}
+    const where = { isDeleted: false };
     if (req.query.isJustActives) {
-        where.isActive = true
+        where.isActive = true;
     }
 
     const branches = await req.models.Branch.findAll({ where: where })
@@ -4269,10 +4269,22 @@ exports.postDeleteBranch = async (req, res, next) => {
             return res.status(400).json({ message: "Geçersiz şube bilgisi" });
         }
 
-        const deleted = await req.models.Branch.destroy({ where: { id } });
-        if (!deleted) {
+        const branch = await req.models.Branch.findOne({ where: { id, isDeleted: false }, attributes: ["id"] });
+        if (!branch) {
             return res.status(404).json({ message: "Şube bulunamadı" });
         }
+
+        await req.db.transaction(async transaction => {
+            await req.models.Branch.update(
+                { isDeleted: true },
+                { where: { id }, transaction }
+            );
+
+            await req.models.FirmUser.update(
+                { isDeleted: true },
+                { where: { branchId: id }, transaction }
+            );
+        });
 
         res.json({ message: "Silindi" });
     } catch (err) {
@@ -4282,8 +4294,8 @@ exports.postDeleteBranch = async (req, res, next) => {
 };
 
 exports.getUsersList = async (req, res, next) => {
-    const users = await req.models.FirmUser.findAll()
-    const branches = await req.models.Branch.findAll()
+    const users = await req.models.FirmUser.findAll({ where: { isDeleted: false } })
+    const branches = await req.models.Branch.findAll({ where: { isDeleted: false } })
 
     for (let i = 0; i < users.length; i++) {
         const u = users[i];
