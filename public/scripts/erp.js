@@ -144,6 +144,85 @@ function initializeTicketRowPriceControls() {
     }
 }
 
+function getFocusableTicketRowInputs($row) {
+    return $row
+        .find("input")
+        .filter(function () {
+            const $input = $(this);
+            const type = ($input.attr("type") || "").toLowerCase();
+
+            if (type === "hidden") {
+                return false;
+            }
+
+            if ($input.is(":disabled")) {
+                return false;
+            }
+
+            if (!$input.is(":visible")) {
+                return false;
+            }
+
+            return true;
+        });
+}
+
+function focusNextTicketRowInput(currentInput) {
+    const $current = $(currentInput);
+    const $row = $current.closest(".ticket-row");
+
+    if (!$row.length) {
+        return;
+    }
+
+    const $inputs = getFocusableTicketRowInputs($row);
+    const currentIndex = $inputs.index($current);
+
+    if (currentIndex === -1) {
+        return;
+    }
+
+    const $nextInput = $inputs.eq(currentIndex + 1);
+
+    if ($nextInput.length) {
+        $nextInput.trigger("focus");
+        if (typeof $nextInput[0].select === "function") {
+            $nextInput[0].select();
+        }
+        return;
+    }
+
+    const $nextRow = $row.next(".ticket-row");
+
+    if (!$nextRow.length) {
+        return;
+    }
+
+    const $firstInput = getFocusableTicketRowInputs($nextRow).first();
+
+    if ($firstInput.length) {
+        $firstInput.trigger("focus");
+        if (typeof $firstInput[0].select === "function") {
+            $firstInput[0].select();
+        }
+    }
+}
+
+$(document).off("keydown.ticketRowEnter").on("keydown.ticketRowEnter", ".ticket-row input", function (event) {
+    if (event.key !== "Enter") {
+        return;
+    }
+
+    const type = ($(event.currentTarget).attr("type") || "").toLowerCase();
+
+    if (type === "radio") {
+        return;
+    }
+
+    event.preventDefault();
+    focusNextTicketRowInput(event.currentTarget);
+});
+
 let tripStaffInitial = {};
 let tripStaffList = [];
 
