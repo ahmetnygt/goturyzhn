@@ -3990,6 +3990,14 @@ $(".open-ticket-next").on("click", async e => {
 })
 
 $("a.ticket-search").on("click", e => {
+    $(".search-name").val("")
+    $(".search-surname").val("")
+    $(".search-idnum").val("")
+    $(".search-phone").val("")
+    $(".search-pnr").val("")
+    $(".search-status").val("")
+    $(".searched-table").html("")
+
     $(".ticket-search-pop-up").css("display", "block")
     $(".blackout").css("display", "block")
 })
@@ -4202,6 +4210,8 @@ $(".other-register-user").on("change", async e => {
 let transactionType = null
 $(".add-income-nav").on("click", async e => {
     transactionType = "income"
+    $(".transaction-amount").val("")
+    $(".transaction-description").val("")
     $(".add-transaction").css("display", "block")
     $(".register").css("z-index", 9)
     $(".blackout").css("display", "block")
@@ -4209,6 +4219,8 @@ $(".add-income-nav").on("click", async e => {
 
 $(".add-expense-nav").on("click", async e => {
     transactionType = "expense"
+    $(".transaction-amount").val("")
+    $(".transaction-description").val("")
     $(".add-transaction").css("display", "block")
     $(".blackout").css("display", "block")
     $(".register").css("z-index", 9)
@@ -4419,6 +4431,8 @@ $(".bus-transaction-button").on("click", async e => {
 let activeBusPlanCount = 0
 
 $(".bus-plans-nav").on("click", async e => {
+    $(".bus-plan-panel").html("")
+
     const list = $(".bus-plan-list")
     list.empty()
     await $.ajax({
@@ -4753,42 +4767,6 @@ function getBusCommissionRateInputValue() {
 
 let editingBusId = null
 
-$(document)
-    .off("click.busDelete")
-    .on("click.busDelete", ".bus-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        const $button = $(this)
-        const plate = $button.data("plate")
-        window.alert("Bu otobüsü silerseniz bunu kullanan seferler de etkilenecektir.")
-        const message = `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`
-        if (message && !window.confirm(message)) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-bus", type: "POST", data })
-            const id = String($button.data("id"))
-            if (String(editingBusId) === id) {
-                editingBusId = null
-                $(".bus-license-plate").val("")
-                $(".bus-bus-model").val("")
-                $(".bus-captain").val("")
-                $(".bus-phone").val("")
-                $(".bus-owner").val("")
-                $(".bus").css("width", "")
-                $(".bus-list").addClass("col-12").removeClass("col-4")
-                $(".bus-info").css("display", "none")
-                $(".bus-settings").css("display", "none")
-                $(".save-bus").html("KAYDET")
-            }
-            $button.closest(".btn-group").remove()
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
 $(".bus-nav").on("click", async e => {
     const modelSelect = $(".bus-bus-model")
     const captainSelect = $(".bus-captain")
@@ -4824,6 +4802,41 @@ $(".bus-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".bus-list-nodes").html(response)
+
+            $(".bus-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const $button = $(this)
+                const plate = $button.data("plate")
+                window.alert("Bu otobüsü silerseniz bunu kullanan seferler de etkilenecektir.")
+                const message = `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`
+                if (message && !window.confirm(message)) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-bus", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingBusId) === id) {
+                        editingBusId = null
+                        $(".bus-license-plate").val("")
+                        $(".bus-bus-model").val("")
+                        $(".bus-captain").val("")
+                        $(".bus-phone").val("")
+                        $(".bus-owner").val("")
+                        $(".bus").css("width", "")
+                        $(".bus-list").addClass("col-12").removeClass("col-4")
+                        $(".bus-info").css("display", "none")
+                        $(".bus-settings").css("display", "none")
+                        $(".save-bus").html("KAYDET")
+                    }
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
 
             $(".bus-button").on("click", async e => {
                 const id = e.currentTarget.dataset.id
@@ -5048,38 +5061,6 @@ $(".save-staff").on("click", async e => {
 
 let editingStopId = null
 
-$(document)
-    .off("click.stopDelete")
-    .on("click.stopDelete", ".stop-delete", async function (e) {
-        e.preventDefault()
-        e.stopPropagation()
-
-        const $button = $(this)
-        const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
-        if (!window.confirm(warningMessage)) {
-            return
-        }
-
-        try {
-            const data = { id: $button.data("id") }
-            await $.ajax({ url: "/post-delete-stop", type: "POST", data })
-            const id = String($button.data("id"))
-            if (String(editingStopId) === id) {
-                editingStopId = null
-                $(".stop-title").val("")
-                $(".stop-web-title").val("")
-                $(".stop-place").val("")
-                $(".stop-uetds").val("")
-                $(".stop-service").prop("checked", false)
-                $(".stop-active").prop("checked", true)
-                $(".stop-panel").css("display", "none")
-                $(".save-stop").html("KAYDET")
-            }
-            $button.closest(".btn-group").remove()
-        } catch (err) {
-            showError(getAjaxErrorMessage(err))
-        }
-    })
 $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
     placeSelect.empty()
@@ -5103,6 +5084,37 @@ $(".stops-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".stop-list-nodes").html(response)
+
+            $(".stop-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const $button = $(this)
+                const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
+                if (!window.confirm(warningMessage)) {
+                    return
+                }
+
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-stop", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingStopId) === id) {
+                        editingStopId = null
+                        $(".stop-title").val("")
+                        $(".stop-web-title").val("")
+                        $(".stop-place").val("")
+                        $(".stop-uetds").val("")
+                        $(".stop-service").prop("checked", false)
+                        $(".stop-active").prop("checked", true)
+                        $(".stop-panel").css("display", "none")
+                        $(".save-stop").html("KAYDET")
+                    }
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
+                }
+            })
 
             $(".stop-button").on("click", async e => {
                 const id = e.currentTarget.dataset.id
@@ -5283,6 +5295,11 @@ $(".route-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".route-list-nodes").html(response)
+
+            $(".route").css("width", "40vw")
+            $(".route-list").removeClass("col-4").addClass("col-12")
+            $(".route-info").css("display", "none")
+            $(".route-settings").css("display", "none")
 
             $.ajax({
                 url: "/get-stops-data",
@@ -6067,6 +6084,10 @@ $(".branch-settings-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".branch-list-nodes").html(response)
+            $(".branch").css("width", "30vw")
+            $(".branch-list").addClass("col-12").removeClass("col-4")
+            $(".branch-info").css("display", "none")
+            $(".branch-settings").css("display", "none")
 
             $(".branch-button").on("click", async e => {
                 await loadBranchOptions();
@@ -6304,6 +6325,11 @@ $(".user-settings-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".user-list-nodes").html(response)
+
+            $(".users").css("width", "40vw")
+            $(".user-list").removeClass("col-4").addClass("col-12")
+            $(".user-info").css("display", "none")
+            $(".user-settings").css("display", "none")
 
             $(".user-delete").on("click", async function (e) {
                 e.preventDefault()
@@ -6696,6 +6722,10 @@ $(".member-nav").on("click", async e => {
         data: {},
         success: function (response) {
             $(".member-list-nodes").html(response)
+            $(".member-search-idNumber").val("")
+            $(".member-search-name").val("")
+            $(".member-search-surname").val("")
+            $(".member-search-phone").val("")
             $(".blackout").css("display", "block")
             $(".members").css("display", "block")
 
@@ -7201,6 +7231,10 @@ $(".member-add-btn").on("click", async e => {
                 phone: phone
             },
             success: async function (response) {
+                $(".member-search-idNumber").val("")
+                $(".member-search-name").val("")
+                $(".member-search-surname").val("")
+                $(".member-search-phone").val("")
                 searchMembers()
             },
             error: function (xhr, status, error) {
@@ -7370,6 +7404,8 @@ $(".payment-request-nav").on("click", async e => {
         arr.push(option);
     }
     $(".payment-request-user").html(arr);
+    $(".payment-request-user").val("");
+    $(".payment-request-amount").val("");
     $(".blackout").css("display", "block");
     $(".payment-request").css("display", "block");
 });
@@ -7410,6 +7446,8 @@ $(".payment-send-nav").on("click", async e => {
         arr.push(option);
     }
     $(".payment-send-user").html(arr);
+    $(".payment-send-user").val("");
+    $(".payment-send-amount").val("");
     $(".blackout").css("display", "block");
     $(".payment-send").css("display", "block");
 });
