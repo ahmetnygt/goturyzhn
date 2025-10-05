@@ -116,9 +116,9 @@ function generateBusTransactionsReport(data, output) {
 
   const columns = [
     { key: 'date', label: 'Tarih', width: 100, align: 'center' },
-    { key: 'description', label: 'Açıklama', width: usableWidth - 220, align: 'left' },
+    { key: 'description', label: 'Açıklama', width: usableWidth - 220, align: 'center' },
     { key: 'type', label: 'Tür', width: 60, align: 'center' },
-    { key: 'amount', label: 'Tutar', width: 60, align: 'right' },
+    { key: 'amount', label: 'Tutar', width: 60, align: 'center' },
   ];
 
   const formatColumnValue = (row, key) => {

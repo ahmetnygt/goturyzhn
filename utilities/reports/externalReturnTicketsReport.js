@@ -111,8 +111,8 @@ function generateExternalReturnTicketsReport(data, output) {
     const totalAmount = formatCurrency(totals.amount || 0);
 
     drawSummaryRow([
-      { label: 'Başlangıç', value: startText },
-      { label: 'Bitiş', value: endText },
+      { label: 'Başlangıç', value: formatDateTime(startText) },
+      { label: 'Bitiş', value: formatDateTime(endText) },
       { label: 'Rapor Tarihi', value: formatDateTime(generatedAt || new Date()) },
     ]);
 
