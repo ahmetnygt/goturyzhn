@@ -4695,6 +4695,7 @@ $(document)
 
         const $button = $(this)
         const plate = $button.data("plate")
+        window.alert("Bu otobüsü silerseniz bunu kullanan seferler de etkilenecektir.")
         const message = `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`
         if (message && !window.confirm(message)) {
             return
