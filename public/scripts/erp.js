@@ -4934,8 +4934,15 @@ function setBusFeatureValues(bus = {}) {
     setBusCommissionRateInputValue(bus.customCommissionRate)
 }
 
-function resetBusFeatureDefaults() {
+function resetBusFeatureDefaults(options = {}) {
+    const { forceUnchecked = false } = options
+
     $(BUS_FEATURE_SELECTOR).each((_, el) => {
+        if (forceUnchecked) {
+            el.checked = false
+            return
+        }
+
         if (typeof el.defaultChecked === "boolean") {
             el.checked = el.defaultChecked
         }
@@ -5104,7 +5111,7 @@ $(".add-bus").on("click", e => {
     $(".bus-captain").val("")
     $(".bus-phone").val("")
     $(".bus-owner").val("")
-    resetBusFeatureDefaults()
+    resetBusFeatureDefaults({ forceUnchecked: true })
     editingBusId = null
     $(".bus").css("width", "75vw")
     $(".bus-list").removeClass("col-12").addClass("col-4")
@@ -5122,10 +5129,19 @@ $(".save-bus").on("click", async e => {
     const featureData = collectBusFeatureValues()
     const customCommissionRate = getBusCommissionRateInputValue()
 
+    const trimmedLicensePlate = typeof licensePlate === "string" ? licensePlate.trim() : ""
+    const trimmedPhoneNumber = typeof phoneNumber === "string" ? phoneNumber.trim() : ""
+    const normalizedBusModelId = typeof busModelId === "string" ? busModelId.trim() : busModelId
+
+    if (!trimmedLicensePlate || !normalizedBusModelId || !trimmedPhoneNumber) {
+        showError("Lütfen plaka, otobüs modeli ve araç telefonu bilgilerini doldurunuz.")
+        return
+    }
+
     await $.ajax({
         url: "/post-save-bus",
         type: "POST",
-        data: { id: editingBusId, licensePlate, busModelId, captainId, phoneNumber, owner, customCommissionRate, ...featureData },
+        data: { id: editingBusId, licensePlate: trimmedLicensePlate, busModelId: normalizedBusModelId, captainId, phoneNumber: trimmedPhoneNumber, owner, customCommissionRate, ...featureData },
         success: function (response) {
             $(".bus-license-plate").val("")
             $(".bus-bus-model").val("")
