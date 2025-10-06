@@ -2173,3 +2173,7 @@ div.ticket-cancel-refund-open-close {
     padding: .5rem 0;
     text-align: center;
 }
+
+.is-main-branch-group{
+    display: none;
+}
