@@ -2415,6 +2415,20 @@ exports.postTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
+        if (status === "completed") {
+            for (const ticket of tickets) {
+                const idNumber = typeof ticket?.idNumber === "string"
+                    ? ticket.idNumber.trim()
+                    : ticket?.idNumber !== undefined && ticket?.idNumber !== null
+                        ? String(ticket.idNumber).trim()
+                        : "";
+
+                if (!idNumber) {
+                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                }
+            }
+        }
+
         // --- req.models.Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
