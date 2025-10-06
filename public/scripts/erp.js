@@ -4619,6 +4619,11 @@ $(".bus-transaction-button").on("click", async e => {
         return;
     }
 
+    if (!description || !description.trim()) {
+        showError("Lütfen bir açıklama giriniz.");
+        return;
+    }
+
     try {
         await $.ajax({
             url: "/post-add-bus-transaction",
