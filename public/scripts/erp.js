@@ -6436,6 +6436,21 @@ $(".save-branch").on("click", async e => {
     const defaultDeduction4 = $(".branch-deduction4").val()
     const defaultDeduction5 = $(".branch-deduction5").val()
 
+    if (!title || !String(title).trim()) {
+        showError("Şube adı zorunludur.")
+        return
+    }
+
+    if (!stop) {
+        showError("Bulunduğu durak seçilmelidir.")
+        return
+    }
+
+    if (!isMainBranch && (!mainBranch || !String(mainBranch).trim())) {
+        showError("Ana şube seçilmelidir.")
+        return
+    }
+
     await $.ajax({
         url: "/post-save-branch",
         type: "POST",
