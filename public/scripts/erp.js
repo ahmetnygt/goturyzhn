@@ -4422,12 +4422,24 @@ $(".add-transaction-close").on("click", e => {
 })
 
 $(".add-transaction-button").on("click", async e => {
-    const amount = $(".transaction-amount").val()
-    const description = $(".transaction-description").val()
+    const rawAmount = ($(".transaction-amount").val() || "").toString().trim()
+    const normalizedAmount = Number(rawAmount.replace(",", "."))
+    const description = ($(".transaction-description").val() || "").toString().trim()
+
+    if (Number.isNaN(normalizedAmount) || normalizedAmount <= 0) {
+        showError("Lütfen 0'dan büyük bir miktar giriniz.")
+        return
+    }
+
+    if (!description) {
+        showError("Lütfen bir açıklama giriniz.")
+        return
+    }
+
     await $.ajax({
         url: "/post-add-transaction",
         type: "POST",
-        data: { transactionType, amount, description },
+        data: { transactionType, amount: normalizedAmount, description },
         success: async function (response) {
             console.log("asdasd")
             transactionType = null
