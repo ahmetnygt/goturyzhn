@@ -3007,6 +3007,78 @@ if (tripTimeAdjustInput) {
 
 let currentSeat = null;
 
+const getTrimmedValue = value => {
+    if (value === undefined || value === null) {
+        return "";
+    }
+
+    if (typeof value === "string") {
+        return value.trim();
+    }
+
+    return String(value).trim();
+};
+
+const validateTicketForm = action => {
+    if (!action) {
+        return true;
+    }
+
+    const $rows = $(".ticket-row");
+    const phoneValue = getTrimmedValue($(".ticket-rows .phone input").val());
+
+    if ((action === "reservation" || action === "sell") && !phoneValue) {
+        showError("Lütfen telefon numarası giriniz.");
+        return false;
+    }
+
+    if (action === "reservation" || action === "sell") {
+        for (let i = 0; i < $rows.length; i++) {
+            const $row = $rows.eq(i);
+
+            const nameValue = getTrimmedValue($row.find(".name input").val());
+            if (!nameValue) {
+                showError("Lütfen isim giriniz.");
+                return false;
+            }
+
+            const surnameValue = getTrimmedValue($row.find(".surname input").val());
+            if (!surnameValue) {
+                showError("Lütfen soyisim giriniz.");
+                return false;
+            }
+
+            if (action === "sell") {
+                const idNumberValue = getTrimmedValue($row.find(".identity input").val());
+                if (!idNumberValue) {
+                    showError("Lütfen kimlik numarası giriniz.");
+                    return false;
+                }
+            }
+        }
+    }
+
+    if (action === "sell") {
+        const $reservationWrapper = $(".ticket-rows .reservation-expire");
+
+        if ($reservationWrapper.length) {
+            const $dateInput = $reservationWrapper.find("input.date");
+            if ($dateInput.length && !getTrimmedValue($dateInput.val())) {
+                showError("Lütfen rezervasyon opsiyon tarihini giriniz.");
+                return false;
+            }
+
+            const $timeInput = $reservationWrapper.find("input.time");
+            if ($timeInput.length && !getTrimmedValue($timeInput.val())) {
+                showError("Lütfen rezervasyon opsiyon saatini giriniz.");
+                return false;
+            }
+        }
+    }
+
+    return true;
+};
+
 // Boş koltuk menüsü alt menüsünü açar
 $(".ticket-op").on("click", e => {
     e.stopPropagation();
@@ -3050,7 +3122,13 @@ $("#currentStop").on("change", async (e) => {
 
 // Bilet kesim ekranındaki onaylama tuşu
 $(".ticket-button-action").on("click", async e => {
-    if (e.currentTarget.dataset.action == "sell") {
+    const action = e.currentTarget.dataset.action;
+
+    if ((action === "reservation" || action === "sell") && !validateTicketForm(action)) {
+        return;
+    }
+
+    if (action == "sell") {
         const firstTicket = $(".ticket-row").first();
         const price = Number(firstTicket.find(".price").find("input").val());
         const span = firstTicket.find(".price").find("span.customer-point");
@@ -3116,7 +3194,7 @@ $(".ticket-button-action").on("click", async e => {
             });
         }
     }
-    else if (e.currentTarget.dataset.action == "complete") {
+    else if (action == "complete") {
         let tickets = []
         const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
         const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
@@ -3163,7 +3241,7 @@ $(".ticket-button-action").on("click", async e => {
         });
 
     }
-    else if (e.currentTarget.dataset.action == "sell_open") {
+    else if (action == "sell_open") {
         let tickets = []
         const fromId = $(".open-ticket-from").val()
         const toId = $(".open-ticket-to").val()
@@ -3209,7 +3287,7 @@ $(".ticket-button-action").on("click", async e => {
         });
 
     }
-    else if (e.currentTarget.dataset.action == "edit") {
+    else if (action == "edit") {
 
         const ticket = $(".ticket-row")
 
@@ -3252,7 +3330,7 @@ $(".ticket-button-action").on("click", async e => {
             }
         });
     }
-    else if (e.currentTarget.dataset.action == "reservation") {
+    else if (action == "reservation") {
         let tickets = []
         const takeOnValue = ($(".ticket-rows").find(".take-on select").val() || "").toString().trim();
         const takeOffValue = ($(".ticket-rows").find(".take-off select").val() || "").toString().trim();
@@ -3300,7 +3378,7 @@ $(".ticket-button-action").on("click", async e => {
         });
 
     }
-    else if (e.currentTarget.dataset.action == "cancel") {
+    else if (action == "cancel") {
 
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
@@ -3323,7 +3401,7 @@ $(".ticket-button-action").on("click", async e => {
         }
 
     }
-    else if (e.currentTarget.dataset.action == "refund") {
+    else if (action == "refund") {
 
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
@@ -3346,7 +3424,7 @@ $(".ticket-button-action").on("click", async e => {
         }
 
     }
-    else if (e.currentTarget.dataset.action == "open") {
+    else if (action == "open") {
 
         if (selectedTakenSeats.length > 0) {
             let json = JSON.stringify(selectedTakenSeats)
