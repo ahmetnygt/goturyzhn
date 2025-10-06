@@ -502,6 +502,12 @@ window.open = (url, ...rest) => {
 
 window.permissions = [];
 const hasPermission = code => window.permissions.includes(code);
+const canManageUserPermissions = () => hasPermission("USER_PERMISSION_MANAGE");
+
+function updatePermissionInputsAccess() {
+    const canManage = canManageUserPermissions();
+    $(".permission-select-all, .permission-checkbox").prop("disabled", !canManage);
+}
 
 function updateTakenTicketOpsVisibility($el) {
     $(".taken-ticket-op").css("display", "block");
@@ -745,6 +751,7 @@ $(function () {
     $.get('/permissions')
         .done(perms => {
             window.permissions = perms;
+            updatePermissionInputsAccess();
         })
         .fail(err => console.error(err));
 });
@@ -6469,6 +6476,7 @@ function renderPermissions(perms) {
         }
         updateSelectAllCheckbox(m);
     });
+    updatePermissionInputsAccess();
 }
 
 $(document).on('change', '.permission-select-all', function () {
