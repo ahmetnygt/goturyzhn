@@ -4804,7 +4804,7 @@ exports.getUser = async (req, res, next) => {
     const permissions = await req.models.Permission.findAll({ attributes: ['id', 'description', 'module'] });
     const userPerms = id ? await req.models.FirmUserPermission.findAll({ where: { firmUserId: id } }) : [];
 
-    const grouped = { register: [], trip: [], sales: [], account_cut: [] };
+    const grouped = { register: [], trip: [], sales: [], account_cut: [], other: [] };
     permissions.forEach(p => {
         const allow = userPerms.some(up => up.permissionId === p.id && up.allow);
         const item = { id: p.id, description: p.description, allow };
@@ -4820,6 +4820,9 @@ exports.getUser = async (req, res, next) => {
                 break;
             case 'account_cut':
                 grouped.account_cut.push(item);
+                break;
+            case 'other':
+                grouped.other.push(item);
                 break;
         }
     });
