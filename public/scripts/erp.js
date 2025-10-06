@@ -6282,6 +6282,31 @@ $(".save-trip").on("click", async e => {
     const busModelId = $(".trip-bus-model").val()
     const busId = $(".trip-bus").val()
 
+    if (!routeId) {
+        showError("Lütfen hat seçiniz.")
+        return
+    }
+
+    if (!firstDate) {
+        showError("Lütfen ilk tarihi seçiniz.")
+        return
+    }
+
+    if (!lastDate) {
+        showError("Lütfen son tarihi seçiniz.")
+        return
+    }
+
+    if (!departureTime) {
+        showError("Lütfen kalkış saatini giriniz.")
+        return
+    }
+
+    if (!busModelId) {
+        showError("Lütfen otobüs planını seçiniz.")
+        return
+    }
+
     await $.ajax({
         url: "/post-save-trip",
         type: "POST",
