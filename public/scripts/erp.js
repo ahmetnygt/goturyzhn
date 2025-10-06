@@ -4718,6 +4718,11 @@ $(".bus-plans-nav").on("click", async e => {
                             const title = $(".bus-plan-title").val()
                             const description = $(".bus-plan-description").val()
 
+                            if (areAllBusPlanInputsEmpty() && (!title || !title.trim() || !description || !description.trim())) {
+                                showError("Otobüs planı boşken isim ve açıklama alanları boş bırakılamaz.")
+                                return
+                            }
+
                             let maxPassenger = 0;
                             let plan = []
                             let planBinary = ""
@@ -4861,6 +4866,18 @@ const attachBusPlanInputEvents = () => {
     })
 }
 
+const areAllBusPlanInputsEmpty = () => {
+    const inputs = $(".bus-plan-create-input")
+
+    if (!inputs.length) {
+        return true
+    }
+
+    return inputs.toArray().every(input => {
+        return !normalizeBusPlanInputValue(input.value)
+    })
+}
+
 let editingBusPlanId = null
 
 $(".add-bus-plan").on("click", async e => {
@@ -4877,6 +4894,11 @@ $(".add-bus-plan").on("click", async e => {
             $(".save-bus-plan").on("click", async e => {
                 const title = $(".bus-plan-title").val()
                 const description = $(".bus-plan-description").val()
+
+                if (areAllBusPlanInputsEmpty() && (!title || !title.trim() || !description || !description.trim())) {
+                    showError("Otobüs planı boşken isim ve açıklama alanları boş bırakılamaz.")
+                    return
+                }
 
                 let maxPassenger = 0;
                 let plan = []
