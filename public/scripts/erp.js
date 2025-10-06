@@ -6224,6 +6224,21 @@ const savePriceAdd = async closeAfterSave => {
 
     const data = collectPriceRowData(row, { includeId: false, appendTimeSuffix: false });
 
+    if (!data.fromStopId) {
+        showError("Lütfen Nereden bilgisini seçiniz.");
+        return;
+    }
+
+    if (!data.toStopId) {
+        showError("Lütfen Nereye bilgisini seçiniz.");
+        return;
+    }
+
+    if (data.price1 == null) {
+        showError("Lütfen Fiyat1 bilgisini giriniz.");
+        return;
+    }
+
     await $.ajax({
         url: "/post-add-price",
         type: "POST",
