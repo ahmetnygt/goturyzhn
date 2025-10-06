@@ -5609,7 +5609,7 @@ $(".route-nav").on("click", async e => {
                     for (const s of stops) {
                         opts.push(`<option value="${s.id}">${s.title}</option>`)
                     }
-                    $(".route-from, .route-to, .route-stop-place").html(opts.join(""))
+                    $(".route-stop-place").html(opts.join(""))
                 },
                 error: function (xhr, status, error) {
                     console.log(error)
@@ -5628,8 +5628,6 @@ $(".route-nav").on("click", async e => {
 
                         $(".route-code").val(response.routeCode)
                         $(".route-title").val(response.title)
-                        $(".route-from").val(response.fromStopId)
-                        $(".route-to").val(response.toStopId)
                         $(".route-description").val(response.description)
                         $(".route-reservation-option-time").val(formatRouteTimeValue(response.reservationOptionTime))
                         $(".route-transfer-option-time").val(formatRouteTimeValue(response.refundTransferOptionTime))
@@ -5689,8 +5687,6 @@ $(".route-close").on("click", e => {
 $(".add-route").on("click", e => {
     $(".route-code").val("")
     $(".route-title").val("")
-    $(".route-from").val("")
-    $(".route-to").val("")
     $(".route-description").val("")
     $(".route-reservation-option-time").val("")
     $(".route-transfer-option-time").val("")
@@ -5835,16 +5831,30 @@ $(".add-route-stop-button").on("click", async e => {
 })
 
 $(".save-route").on("click", async e => {
-    const routeCode = $(".route-code").val()
-    const routeTitle = $(".route-title").val()
-    const routeFrom = $(".route-from").val()
-    const routeTo = $(".route-to").val()
-    const routeDescription = $(".route-description").val()
+    const routeCode = ($(".route-code").val() || "").trim()
+    const routeTitle = ($(".route-title").val() || "").trim()
+    const routeDescription = ($(".route-description").val() || "").trim()
     const reservationOptionTime = $(".route-reservation-option-time").val()?.trim() || ""
     const refundTransferOptionTime = $(".route-transfer-option-time").val()?.trim() || ""
     const maxReservationCount = $(".route-max-reservation-count").val()?.trim() || ""
     const maxSingleSeatCount = $(".route-max-single-seat-count").val()?.trim() || ""
+
+    $(".route-code").val(routeCode)
+    $(".route-title").val(routeTitle)
+    $(".route-description").val(routeDescription)
+
     syncRouteStopsState()
+
+    if (!routeCode || !routeTitle || !routeDescription) {
+        showError("Hat kodu, hat adı ve açıklama alanları boş bırakılamaz.")
+        return
+    }
+
+    if (!routeStops.length) {
+        showError("Lütfen hat için en az bir durak ekleyin.")
+        return
+    }
+
     const routeStopsSTR = JSON.stringify(routeStops)
 
     await $.ajax({
@@ -5855,8 +5865,6 @@ $(".save-route").on("click", async e => {
             routeCode,
             routeDescription,
             routeTitle,
-            routeFrom,
-            routeTo,
             reservationOptionTime,
             refundTransferOptionTime,
             maxReservationCount,
@@ -5867,8 +5875,6 @@ $(".save-route").on("click", async e => {
             editingRouteId = null
             $(".route-code").val("")
             $(".route-title").val("")
-            $(".route-from").val("")
-            $(".route-to").val("")
             $(".route-description").val("")
             $(".route-reservation-option-time").val("")
             $(".route-transfer-option-time").val("")
@@ -5882,8 +5888,8 @@ $(".save-route").on("click", async e => {
             setRouteActiveTab(ROUTE_TAB_DEFAULT_ID)
             initializeRouteTimePickers()
         },
-        error: function (xhr, status, error) {
-            console.log(error);
+        error: function (xhr) {
+            showError(getAjaxErrorMessage(xhr))
         }
     })
 })

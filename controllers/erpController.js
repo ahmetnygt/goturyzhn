@@ -4118,17 +4118,26 @@ exports.getRouteStopsList = async (req, res, next) => {
 
 exports.postSaveRoute = async (req, res, next) => {
     try {
-        console.log("Gelen veri:", req.body);
+        const trimmedRouteCode = typeof req.body.routeCode === "string" ? req.body.routeCode.trim() : "";
+        const trimmedRouteTitle = typeof req.body.routeTitle === "string" ? req.body.routeTitle.trim() : "";
+        const trimmedRouteDescription = typeof req.body.routeDescription === "string" ? req.body.routeDescription.trim() : "";
 
-        const data = convertEmptyFieldsToNull(req.body);
+        const data = convertEmptyFieldsToNull({
+            ...req.body,
+            routeCode: trimmedRouteCode,
+            routeTitle: trimmedRouteTitle,
+            routeDescription: trimmedRouteDescription,
+        });
+
+        if (!trimmedRouteCode || !trimmedRouteTitle || !trimmedRouteDescription) {
+            return res.status(400).json({ message: "Hat kodu, hat adı ve açıklaması zorunludur." });
+        }
 
         const {
             id,
             routeCode,
             routeDescription,
             routeTitle,
-            routeFrom,
-            routeTo,
             routeStopsSTR,
             reservationOptionTime,
             refundTransferOptionTime,
@@ -4136,39 +4145,88 @@ exports.postSaveRoute = async (req, res, next) => {
             maxSingleSeatCount,
         } = data;
 
-        const routeStops = routeStopsSTR ? JSON.parse(routeStopsSTR) : [];
-
-        const [route, created] = await req.models.Route.upsert(
-            {
-                id,
-                routeCode,
-                description: routeDescription,
-                title: routeTitle,
-                fromStopId: routeFrom,
-                toStopId: routeTo,
-                reservationOptionTime: normalizeTimeInput(reservationOptionTime),
-                refundTransferOptionTime: normalizeTimeInput(refundTransferOptionTime),
-                maxReservationCount: toIntegerOrNull(maxReservationCount),
-                maxSingleSeatCount: toIntegerOrNull(maxSingleSeatCount),
-            },
-            { returning: true }
-        );
-
-        for (let i = 0; i < routeStops.length; i++) {
-            const rs = routeStops[i];
-
-            await req.models.RouteStop.create({
-                routeId: route.id,
-                stopId: rs.stopId,
-                order: i,
-                duration: rs.duration
-            })
+        let parsedRouteStops = [];
+        if (routeStopsSTR) {
+            try {
+                parsedRouteStops = JSON.parse(routeStopsSTR);
+            } catch (error) {
+                return res.status(400).json({ message: "Durak bilgileri çözümlenemedi." });
+            }
         }
 
-        if (created) {
-            return res.json({ message: "Eklendi", route });
-        } else {
-            return res.json({ message: "Güncellendi", route });
+        if (!Array.isArray(parsedRouteStops) || parsedRouteStops.length === 0) {
+            return res.status(400).json({ message: "Hat için en az bir durak eklemelisiniz." });
+        }
+
+        let sanitizedRouteStops;
+        try {
+            sanitizedRouteStops = parsedRouteStops.map((rs, index) => {
+                const stopId = Number(rs?.stopId);
+                if (!stopId || Number.isNaN(stopId)) {
+                    throw new Error("Durak bilgisi eksik veya hatalı.");
+                }
+
+                const rawDuration = typeof rs?.duration === "string" ? rs.duration.trim() : "";
+                const normalizedDuration = normalizeTimeInput(rawDuration || "00:00") || "00:00:00";
+
+                return {
+                    stopId,
+                    order: index,
+                    duration: normalizedDuration,
+                };
+            });
+        } catch (error) {
+            return res.status(400).json({ message: error.message || "Durak bilgisi eksik veya hatalı." });
+        }
+
+        const firstStopId = sanitizedRouteStops[0]?.stopId;
+        const lastStopId = sanitizedRouteStops[sanitizedRouteStops.length - 1]?.stopId;
+
+        if (!firstStopId || !lastStopId) {
+            return res.status(400).json({ message: "Durak bilgileri eksik." });
+        }
+
+        const numericId = id !== undefined && id !== null && id !== "" ? Number(id) : undefined;
+        if (numericId !== undefined && Number.isNaN(numericId)) {
+            return res.status(400).json({ message: "Geçersiz hat bilgisi." });
+        }
+
+        const transaction = await req.models.Route.sequelize.transaction();
+
+        try {
+            const [route, created] = await req.models.Route.upsert(
+                {
+                    id: numericId,
+                    routeCode,
+                    description: routeDescription,
+                    title: routeTitle,
+                    fromStopId: firstStopId,
+                    toStopId: lastStopId,
+                    reservationOptionTime: normalizeTimeInput(reservationOptionTime),
+                    refundTransferOptionTime: normalizeTimeInput(refundTransferOptionTime),
+                    maxReservationCount: toIntegerOrNull(maxReservationCount),
+                    maxSingleSeatCount: toIntegerOrNull(maxSingleSeatCount),
+                },
+                { returning: true, transaction }
+            );
+
+            await req.models.RouteStop.destroy({ where: { routeId: route.id }, transaction });
+
+            const routeStopRecords = sanitizedRouteStops.map(rs => ({
+                routeId: route.id,
+                stopId: rs.stopId,
+                order: rs.order,
+                duration: rs.duration,
+            }));
+
+            await req.models.RouteStop.bulkCreate(routeStopRecords, { transaction });
+
+            await transaction.commit();
+
+            return res.json({ message: created ? "Eklendi" : "Güncellendi", route });
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
         }
     } catch (err) {
         console.error("Hata:", err);
