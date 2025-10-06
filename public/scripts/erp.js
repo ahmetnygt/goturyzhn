@@ -4132,6 +4132,16 @@ $(".open-ticket-next").on("click", async e => {
     const toId = $(".open-ticket-to").val()
     const count = $(".open-ticket-count").val()
 
+    if (!fromId || !toId) {
+        showError("Lütfen nereden ve nereye bilgilerini seçiniz.")
+        return
+    }
+
+    if (!count || Number(count) <= 0) {
+        showError("Lütfen bilet adedi için 0'dan büyük bir değer giriniz.")
+        return
+    }
+
     await $.ajax({
         url: "/get-ticket-row",
         type: "GET",
