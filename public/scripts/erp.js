@@ -6440,7 +6440,7 @@ $(".save-branch").on("click", async e => {
 
 let editingUserId = null
 
-const permissionModules = ['register', 'trip', 'sales', 'account_cut'];
+const permissionModules = ['register', 'trip', 'sales', 'account_cut', 'other'];
 
 function updateSelectAllCheckbox(module) {
     const container = $(`.permission-list[data-module="${module}"]`);

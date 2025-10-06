@@ -78,7 +78,7 @@ async function getTenantConnection(subdomain) {
   if (models.Permission) {
     const count = await models.Permission.count();
 
-    if (count === 0) {
+    if (count === 0) { 
       const permissionsSeedData = [
         { id: 1, code: 'REGISTER_RECORD_MANAGE', module: 'register', description: 'Gelir gider kaydı girer, siler ve düzenler', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
         { id: 2, code: 'REGISTER_TRANSFER', module: 'register', description: 'Kasasını başkasına devredebilir', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
