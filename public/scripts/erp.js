@@ -6888,10 +6888,25 @@ $(".announcement-add-close").on("click", e => {
 })
 
 $(".announcement-add-button").on("click", async e => {
-    const message = $(".announcement-message").val()
+    const message = $(".announcement-message").val()?.trim()
     const branchId = $(".announcement-branch").val()
     const showTicker = $(".announcement-show-ticker").is(":checked")
     const showPopup = $(".announcement-show-popup").is(":checked")
+
+    if (!message) {
+        showError("Lütfen bir mesaj girin.")
+        return
+    }
+
+    if (!branchId) {
+        showError("Lütfen bir şube seçin.")
+        return
+    }
+
+    if (!showTicker && !showPopup) {
+        showError("En az bir gösterim seçilmelidir.")
+        return
+    }
     await $.ajax({
         url: "/post-save-announcement",
         type: "POST",
