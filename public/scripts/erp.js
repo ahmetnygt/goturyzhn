@@ -5357,12 +5357,22 @@ $(".add-stop").on("click", e => {
 })
 
 $(".save-stop").on("click", async e => {
-    const title = $(".stop-title").val()
-    const webTitle = $(".stop-web-title").val()
-    const placeId = $(".stop-place").val()
-    const UETDS_code = $(".stop-uetds").val()
+    const title = ($(".stop-title").val() || "").trim()
+    let webTitle = ($(".stop-web-title").val() || "").trim()
+    const placeId = ($(".stop-place").val() || "").trim()
+    const UETDS_code = ($(".stop-uetds").val() || "").trim()
     const isServiceArea = $(".stop-service").is(":checked")
     const isActive = $(".stop-active").is(":checked")
+
+    if (!title || !placeId || !UETDS_code) {
+        showError("Durak adı, yer ve UETDS kodu boş bırakılamaz.")
+        return
+    }
+
+    if (!webTitle) {
+        webTitle = title
+        $(".stop-web-title").val(webTitle)
+    }
 
     await $.ajax({
         url: "/post-save-stop",
