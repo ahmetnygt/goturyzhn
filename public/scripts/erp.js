@@ -7445,11 +7445,22 @@ $(".add-user").on("click", async e => {
 
 $(".save-user").on("click", async e => {
     const isActive = $("#isUserActive").prop("checked")
-    const name = $(".user-name").val()
-    const username = $(".user-username").val()
-    const password = $(".user-password").val()
-    const phone = $(".user-phone").val()
+    const name = ($(".user-name").val() || "").trim()
+    const username = ($(".user-username").val() || "").trim()
+    const password = ($(".user-password").val() || "").trim()
+    const phone = ($(".user-phone").val() || "").trim()
     const branchId = $(".user-branches").val()
+
+    $(".user-name").val(name)
+    $(".user-username").val(username)
+    $(".user-password").val(password)
+    $(".user-phone").val(phone)
+
+    if (!name || !username || !password || !branchId) {
+        showError("Lütfen Ad Soyad, Kullanıcı Adı, Şifre ve Şube alanlarını doldurunuz.")
+        return
+    }
+
     const permissions = $(".permission-checkbox:checked").map((_, el) => $(el).val()).get()
 
     await $.ajax({
