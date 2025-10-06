@@ -5290,14 +5290,49 @@ $(".add-staff").on("click", e => {
 })
 
 $(".save-staff").on("click", async e => {
-    const idNumber = $(".staff-id-number").val()
+    const idNumber = ($(".staff-id-number").val() || "").trim()
     const duty = $(".staff-duty").val()
-    const name = $(".staff-name").val()
-    const surname = $(".staff-surname").val()
+    const name = ($(".staff-name").val() || "").trim()
+    const surname = ($(".staff-surname").val() || "").trim()
     const address = $(".staff-address").val()
-    const phoneNumber = $(".staff-phone").val()
+    const phoneNumber = ($(".staff-phone").val() || "").trim()
     const gender = $("input[name='staff-gender']:checked").val()
     const nationality = $(".staff-nationality").val()
+
+    if (!idNumber) {
+        showError("Lütfen kimlik numarası giriniz.")
+        return
+    }
+
+    if (!duty) {
+        showError("Lütfen görev seçiniz.")
+        return
+    }
+
+    if (!name) {
+        showError("Lütfen isim giriniz.")
+        return
+    }
+
+    if (!surname) {
+        showError("Lütfen soyisim giriniz.")
+        return
+    }
+
+    if (!phoneNumber) {
+        showError("Lütfen telefon numarası giriniz.")
+        return
+    }
+
+    if (!gender) {
+        showError("Lütfen cinsiyet seçiniz.")
+        return
+    }
+
+    if (!nationality) {
+        showError("Lütfen uyruk seçiniz.")
+        return
+    }
 
     await $.ajax({
         url: "/post-save-staff",
