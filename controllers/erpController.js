@@ -16,6 +16,61 @@ const { generateDailyUserAccountReport, formatCurrency: formatDailyCurrency } = 
 const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTicketsReport");
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
 const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
+const countries = require("world-countries");
+
+const TURKISH_COLLATOR = (() => {
+    try {
+        return new Intl.Collator("tr", { sensitivity: "base" });
+    } catch (error) {
+        return {
+            compare: (a = "", b = "") => String(a).localeCompare(String(b), "tr", { sensitivity: "base" }),
+        };
+    }
+})();
+
+const NATIONALITY_OPTIONS = Object.freeze(
+    countries
+    .map(country => {
+        const rawCode = (country?.cca2 || "").toUpperCase();
+
+        if (!rawCode) {
+            return null;
+        }
+
+        const turkishName = country?.translations?.tur?.common;
+        const englishName = country?.name?.common;
+        const displayName = turkishName || englishName || rawCode;
+        const label = `${rawCode} - ${displayName}`;
+
+        const searchParts = new Set();
+        if (turkishName) searchParts.add(turkishName);
+        if (englishName) searchParts.add(englishName);
+        if (country?.name?.official) searchParts.add(country.name.official);
+        if (Array.isArray(country?.altSpellings)) {
+            country.altSpellings.forEach(spelling => {
+                if (spelling) {
+                    searchParts.add(spelling);
+                }
+            });
+        }
+        if (country?.cca3) searchParts.add(country.cca3);
+        if (country?.cioc) searchParts.add(country.cioc);
+        searchParts.add(rawCode);
+        searchParts.add(rawCode.toLowerCase());
+
+        return {
+            value: rawCode.toLowerCase(),
+            label,
+            searchText: Array.from(searchParts).join(" "),
+        };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+        if (a.value === "tr") return -1;
+        if (b.value === "tr") return 1;
+        return TURKISH_COLLATOR.compare(a.label, b.label);
+    })
+);
 async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -2203,7 +2258,18 @@ exports.getTicketRow = async (req, res, next) => {
             seats.push(0)
             gender.push("m")
         }
-        return res.render("mixins/ticketRow", { gender, seats, price, trip, isOwnBranch, seatTypes, action, takeOnOptions, takeOffOptions });
+        return res.render("mixins/ticketRow", {
+            gender,
+            seats,
+            price,
+            trip,
+            isOwnBranch,
+            seatTypes,
+            action,
+            takeOnOptions,
+            takeOffOptions,
+            nationalityOptions: NATIONALITY_OPTIONS,
+        });
     }
 
     // --- TAKEN CASE ---
@@ -2262,7 +2328,19 @@ exports.getTicketRow = async (req, res, next) => {
             }
         }
 
-        return res.render("mixins/ticketRow", { gender, seats: seatNumbers, ticket, trip, isOwnBranch, seatTypes, action, price: pricesForTickets, takeOnOptions, takeOffOptions });
+        return res.render("mixins/ticketRow", {
+            gender,
+            seats: seatNumbers,
+            ticket,
+            trip,
+            isOwnBranch,
+            seatTypes,
+            action,
+            price: pricesForTickets,
+            takeOnOptions,
+            takeOffOptions,
+            nationalityOptions: NATIONALITY_OPTIONS,
+        });
     }
 
     // --- ELSE CASE ---
@@ -2399,7 +2477,19 @@ exports.getTicketRow = async (req, res, next) => {
         pendingIds.push(ticket.id)
     }
 
-    return res.render("mixins/ticketRow", { gender, seats: seatArray, price, trip, isOwnBranch, seatTypes, action, pendingIds, takeOnOptions, takeOffOptions });
+    return res.render("mixins/ticketRow", {
+        gender,
+        seats: seatArray,
+        price,
+        trip,
+        isOwnBranch,
+        seatTypes,
+        action,
+        pendingIds,
+        takeOnOptions,
+        takeOffOptions,
+        nationalityOptions: NATIONALITY_OPTIONS,
+    });
 };
 
 exports.postTickets = async (req, res, next) => {

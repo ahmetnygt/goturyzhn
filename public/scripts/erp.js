@@ -19,6 +19,49 @@ let accountCutId;
 let originalPrices = []
 let seatTypes = []
 
+const TCKN_MAX_LENGTH = 11;
+
+const toOnlyDigits = value => (value || "").replace(/\D/g, "");
+
+const sanitizeTcknValue = value => {
+    let digits = toOnlyDigits(value);
+
+    if (digits.startsWith("0")) {
+        digits = digits.replace(/^0+/, "");
+    }
+
+    if (digits.length > TCKN_MAX_LENGTH) {
+        digits = digits.slice(0, TCKN_MAX_LENGTH);
+    }
+
+    return digits;
+};
+
+const isValidSanitizedTckn = value => {
+    if (!/^[1-9]\d{10}$/.test(value)) {
+        return false;
+    }
+
+    const digits = value.split("").map(Number);
+
+    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+    let d10calc = ((oddSum * 7) - evenSum) % 10;
+    if (d10calc < 0) {
+        d10calc += 10;
+    }
+
+    if (d10calc !== digits[9]) {
+        return false;
+    }
+
+    const sum10 = digits.slice(0, 10).reduce((acc, digit) => acc + digit, 0);
+    const d11calc = sum10 % 10;
+
+    return d11calc === digits[10];
+};
+
+
 function parsePriceAttribute(value) {
     if (value === undefined || value === null || value === "") {
         return [];
@@ -137,11 +180,13 @@ function initializeTicketRowPriceControls() {
     updateTicketRowsSumPrice();
 
     if (window.GTR && window.GTR.searchableSelect && typeof window.GTR.searchableSelect.init === "function") {
-        const takeSelects = document.querySelectorAll(".ticket-info select[data-searchable-select]");
-        if (takeSelects && takeSelects.length) {
-            window.GTR.searchableSelect.init(takeSelects);
+        const searchableSelects = document.querySelectorAll("select[data-searchable-select]");
+        if (searchableSelects && searchableSelects.length) {
+            window.GTR.searchableSelect.init(searchableSelects);
         }
     }
+
+    setupTicketRowIdentityValidation();
 }
 
 function getFocusableTicketRowInputs($row) {
@@ -1215,36 +1260,24 @@ function initTcknInputs(selector, opts = {}) {
         els = Array.from(selector).filter(el => typeof Element !== "undefined" && el instanceof Element);
     }
 
-    if (!els.length) return;
-
-    const { clearOnInvalid = false, liveMark = false } = opts;
-
-    const onlyDigits = s => (s || "").replace(/\D/g, "");
-
-    function isValidTCKN(d) {
-        if (!/^[1-9]\d{10}$/.test(d)) return false;
-        const ds = d.split("").map(Number);
-
-        const oddSum = ds[0] + ds[2] + ds[4] + ds[6] + ds[8];
-        const evenSum = ds[1] + ds[3] + ds[5] + ds[7];
-        const d10calc = ((oddSum * 7) - evenSum) % 10;
-        if (d10calc !== ds[9]) return false;
-
-        const sum10 = ds.slice(0, 10).reduce((a, b) => a + b, 0);
-        const d11calc = sum10 % 10;
-        if (d11calc !== ds[10]) return false;
-
-        return true;
+    if (!els.length) {
+        return;
     }
 
-    function sanitizeValue(raw) {
-        let d = onlyDigits(raw);
-        if (d.startsWith("0")) d = d.replace(/^0+/, "");
-        return d.slice(0, 11);
-    }
+    const {
+        clearOnInvalid = false,
+        liveMark = false,
+        shouldValidate = null,
+    } = opts;
+
+    const shouldValidateFn = typeof shouldValidate === "function"
+        ? shouldValidate
+        : () => true;
 
     const isHtmlInput = el => {
-        if (!el || typeof el !== "object") return false;
+        if (!el || typeof el !== "object") {
+            return false;
+        }
         if (typeof HTMLInputElement !== "undefined") {
             return el instanceof HTMLInputElement;
         }
@@ -1260,12 +1293,22 @@ function initTcknInputs(selector, opts = {}) {
 
             el.dataset.tcknInputInitialized = "true";
 
-            const onInput = () => {
-                const d = sanitizeValue(el.value);
-                el.value = d;
+            const sanitize = () => {
+                if (!shouldValidateFn(el)) {
+                    if (liveMark) {
+                        el.style.borderColor = "";
+                    }
+                    return;
+                }
+
+                const sanitized = sanitizeTcknValue(el.value);
+
+                if (el.value !== sanitized) {
+                    el.value = sanitized;
+                }
 
                 if (liveMark) {
-                    if (d.length === 11 && isValidTCKN(d)) {
+                    if (sanitized.length === TCKN_MAX_LENGTH && isValidSanitizedTckn(sanitized)) {
                         el.style.borderColor = "green";
                     } else {
                         el.style.borderColor = "";
@@ -1273,17 +1316,31 @@ function initTcknInputs(selector, opts = {}) {
                 }
             };
 
-            const onBlur = () => {
-                const d = sanitizeValue(el.value);
-                if (!d) {
-                    el.value = "";
-                    el.style.borderColor = "";
+            const handleBlur = () => {
+                if (!shouldValidateFn(el)) {
+                    if (liveMark) {
+                        el.style.borderColor = "";
+                    }
                     return;
                 }
 
-                if (isValidTCKN(d)) {
-                    el.value = d;
-                    if (liveMark) el.style.borderColor = "green";
+                const sanitized = sanitizeTcknValue(el.value);
+
+                if (!sanitized) {
+                    el.value = "";
+                    if (liveMark) {
+                        el.style.borderColor = "";
+                    }
+                    return;
+                }
+
+                if (isValidSanitizedTckn(sanitized)) {
+                    if (el.value !== sanitized) {
+                        el.value = sanitized;
+                    }
+                    if (liveMark) {
+                        el.style.borderColor = "green";
+                    }
                     return;
                 }
 
@@ -1296,16 +1353,78 @@ function initTcknInputs(selector, opts = {}) {
                 }
             };
 
-            el.addEventListener("input", onInput);
-            el.addEventListener("blur", onBlur);
+            const handleInput = () => {
+                sanitize();
+            };
+
+            el.addEventListener("input", handleInput);
+            el.addEventListener("blur", handleBlur);
+
+            el._tcknSanitize = sanitize;
+            el._tcknValidateOnBlur = handleBlur;
 
             if (el.value) {
-                onInput();
+                sanitize();
             }
         });
 }
 
-initTcknInputs(".identity input");
+function shouldValidateTicketIdentity(input) {
+    if (!input || typeof input.closest !== "function") {
+        return true;
+    }
+
+    const row = input.closest(".ticket-row");
+    if (!row) {
+        return true;
+    }
+
+    const select = row.querySelector(".nationality select");
+    if (!select) {
+        return true;
+    }
+
+    const rawValue = select.value != null ? String(select.value) : "";
+    const normalizedValue = rawValue.trim().toLowerCase() || "tr";
+
+    return normalizedValue === "tr";
+}
+
+function setupTicketRowIdentityValidation() {
+    const identityInputs = document.querySelectorAll(".ticket-row .identity input");
+    if (identityInputs.length) {
+        initTcknInputs(identityInputs, {
+            shouldValidate: shouldValidateTicketIdentity,
+        });
+    }
+
+    const nationalitySelects = document.querySelectorAll(".ticket-row .nationality select");
+    nationalitySelects.forEach(select => {
+        if (select.dataset.ticketNationalityBound === "true") {
+            return;
+        }
+
+        select.dataset.ticketNationalityBound = "true";
+
+        select.addEventListener("change", () => {
+            const row = select.closest(".ticket-row");
+            if (!row) {
+                return;
+            }
+
+            const input = row.querySelector(".identity input");
+            if (!input) {
+                return;
+            }
+
+            if (typeof input._tcknSanitize === "function") {
+                input._tcknSanitize();
+            }
+        });
+    });
+}
+
+setupTicketRowIdentityValidation();
 initTcknInputs(".search-idnum");
 initTcknInputs(".staff-id-number");
 initTcknInputs(".member-search-idNumber");
@@ -2216,7 +2335,7 @@ async function loadTrip(date, time, tripId) {
 
                         seatTypes = [];
 
-                        initTcknInputs(".identity input");
+                        setupTicketRowIdentityValidation();
                         initPhoneInput(".phone input");
                         initializeTicketRowPriceControls();
 
@@ -3050,11 +3169,23 @@ const validateTicketForm = action => {
                 return false;
             }
 
-            if (requiresIdentityNumber) {
-                const idNumberValue = getTrimmedValue($row.find(".identity input").val());
+            if (action === "sell") {
+                const $identityInput = $row.find(".identity input");
+                const idNumberValue = getTrimmedValue($identityInput.val());
                 if (!idNumberValue) {
                     showError("Lütfen kimlik numarası giriniz.");
                     return false;
+                }
+
+                const nationalityValue = getTrimmedValue($row.find(".nationality select").val()).toLowerCase() || "tr";
+                if (nationalityValue === "tr") {
+                    const sanitizedIdNumber = sanitizeTcknValue(idNumberValue);
+                    if (!isValidSanitizedTckn(sanitizedIdNumber)) {
+                        showError("Lütfen geçerli bir T.C. kimlik numarası giriniz.");
+                        return false;
+                    }
+
+                    $identityInput.val(sanitizedIdNumber);
                 }
             }
         }
@@ -3485,7 +3616,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".taken-ticket-ops-pop-up").hide()
 
-                initTcknInputs(".identity input")
+                setupTicketRowIdentityValidation()
                 initPhoneInput(".phone input")
                 initializeTicketRowPriceControls()
 
@@ -3567,7 +3698,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".taken-ticket-ops-pop-up").hide()
 
-                initTcknInputs(".identity input")
+                setupTicketRowIdentityValidation()
                 initPhoneInput(".phone input")
                 initializeTicketRowPriceControls()
 
@@ -4230,7 +4361,7 @@ $(".open-ticket-next").on("click", async e => {
             $(".ticket-row").remove()
             $(".ticket-info").remove()
             $(".ticket-rows").prepend(response)
-            initTcknInputs(".identity input")
+            setupTicketRowIdentityValidation()
             initPhoneInput(".phone input")
             initializeTicketRowPriceControls()
             $(".identity input").on("blur", async e => {

@@ -24,14 +24,40 @@
 
         .nationality
             label.form-label Uyruk
-            select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].nationality : ""))
-                option(value="tr") Türkiye
-                if permissions && permissions.includes('FOREIGN_PASSENGER_TICKET_SALE')
-                    option(value="us") Amerika
-                    option(value="sr") Suriye
-                else
-                    option(value="" disabled) Amerika
-                    option(value="" disabled) Suriye
+            -
+                const fallbackNationalityList = [
+                    { value: "tr", label: "TR - Türkiye", searchText: "TR Türkiye Turkey" },
+                ];
+                const nationalityList = Array.isArray(nationalityOptions) && nationalityOptions.length
+                    ? nationalityOptions
+                    : fallbackNationalityList;
+                const rawNationalityValue = ticket && ticket[i] && ticket[i].nationality !== undefined && ticket[i].nationality !== null
+                    ? String(ticket[i].nationality)
+                    : null;
+                const normalizedNationalityValue = rawNationalityValue
+                    ? rawNationalityValue.trim().toLowerCase()
+                    : "tr";
+                const nationalityValues = new Set(nationalityList.map(option => option.value));
+                const selectedNationalityValue = nationalityValues.has(normalizedNationalityValue)
+                    ? normalizedNationalityValue
+                    : "tr";
+                const canSelectForeignNationality = permissions && permissions.includes('FOREIGN_PASSENGER_TICKET_SALE');
+            select.form-select.form-select-sm(
+                data-searchable-select
+                data-search-placeholder="Uyruk ara"
+                data-placeholder="Uyruk seçiniz"
+                data-no-results-text="Sonuç bulunamadı"
+            )
+                each option in nationalityList
+                    -
+                        const isSelectedNationality = option.value === selectedNationalityValue;
+                        const disableOption = !canSelectForeignNationality && option.value !== 'tr' && !isSelectedNationality;
+                    option(
+                        value=option.value
+                        selected=isSelectedNationality
+                        disabled=disableOption ? true : false
+                        data-search-text=option.searchText || option.label
+                    ) #{option.label}
 
         .identity
             label.form-label Kimlik/Pasaport No
