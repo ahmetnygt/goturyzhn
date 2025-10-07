@@ -8,9 +8,11 @@ var logger = require("morgan");
 var usersRouter = require("./routes/users");
 var erpRouter = require("./routes/erp");
 
-const { goturDB, initGoturModels } = require("./utilities/goturDB"); // ortak kullanıcı & session DB
+const { goturDB, initGoturModels } = require("./utilities/goturDb"); // ortak kullanıcı & session DB
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 const tenantMiddleware = require("./middlewares/tenantMiddleware");
+
+const commonModels = initGoturModels();
 
 // session store (gotur DB üzerinde)
 var store = new SequelizeStore({
@@ -51,7 +53,7 @@ app.use(tenantMiddleware);
 
 // ortak modelleri (gotur DB) request içine ekle
 app.use((req, res, next) => {
-  req.commonModels = initGoturModels(); // Place vs.
+  req.commonModels = commonModels; // Place vs.
   res.locals.firmUser = req.session.firmUser;
   res.locals.permissions = req.session.permissions || [];
   next();
