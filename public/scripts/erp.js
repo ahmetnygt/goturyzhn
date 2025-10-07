@@ -3026,13 +3026,15 @@ const validateTicketForm = action => {
 
     const $rows = $(".ticket-row");
     const phoneValue = getTrimmedValue($(".ticket-rows .phone input").val());
+    const requiresPassengerInfo = action === "reservation" || action === "sell" || action === "complete";
+    const requiresIdentityNumber = action === "sell" || action === "complete";
 
-    if ((action === "reservation" || action === "sell") && !phoneValue) {
+    if (requiresPassengerInfo && !phoneValue) {
         showError("Lütfen telefon numarası giriniz.");
         return false;
     }
 
-    if (action === "reservation" || action === "sell") {
+    if (requiresPassengerInfo) {
         for (let i = 0; i < $rows.length; i++) {
             const $row = $rows.eq(i);
 
@@ -3048,7 +3050,7 @@ const validateTicketForm = action => {
                 return false;
             }
 
-            if (action === "sell") {
+            if (requiresIdentityNumber) {
                 const idNumberValue = getTrimmedValue($row.find(".identity input").val());
                 if (!idNumberValue) {
                     showError("Lütfen kimlik numarası giriniz.");
