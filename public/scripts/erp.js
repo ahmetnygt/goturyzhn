@@ -3965,13 +3965,15 @@ $(".taken-ticket-op").on("click", async e => {
             type: "POST",
             data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
+                selectedTakenSeats = []
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
                 console.log(error);
+                selectedTakenSeats = []
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
             }
         });
-        selectedTakenSeats = []
-        loadTrip(currentTripDate, currentTripTime, currentTripId)
     }
 })
 
@@ -4158,16 +4160,20 @@ $(".ticket-close").on("click", async e => {
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                ticketClose();
             },
             error: function (xhr, status, error) {
                 console.log(error);
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                ticketClose();
             }
         });
     }
-    selectedSeats = []
-    $("#pendingIds").remove()
-    loadTrip(currentTripDate, currentTripTime, currentTripId)
-    ticketClose();
 })
 $(".ticket-button-cancel").on("click", async e => {
     let pendingIds = $("#pendingIds").val()
@@ -4179,16 +4185,20 @@ $(".ticket-button-cancel").on("click", async e => {
             type: "POST",
             data: { seats: jsonSeats, pendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
             success: async function (response) {
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                ticketClose();
             },
             error: function (xhr, status, error) {
                 console.log(error);
+                selectedSeats = []
+                $("#pendingIds").remove()
+                loadTrip(currentTripDate, currentTripTime, currentTripId)
+                ticketClose();
             }
         });
     }
-    selectedSeats = []
-    $("#pendingIds").remove()
-    loadTrip(currentTripDate, currentTripTime, currentTripId)
-    ticketClose();
 })
 
 $(".add-trip-note-button").on("click", e => {
