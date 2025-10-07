@@ -2582,6 +2582,8 @@ exports.postTickets = async (req, res, next) => {
 
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
+        const isReservationStatus = status === "reservation";
+
         // --- Tüm biletleri sırayla kaydet ---
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i]
@@ -2635,16 +2637,18 @@ exports.postTickets = async (req, res, next) => {
             }
 
             if (!existingCustomer) {
-                await req.models.Customer.create({
-                    idNumber: t.idNumber || null,
-                    name: nameUp || null,
-                    surname: surnameUp || null,
-                    phoneNumber: t.phoneNumber || null,
-                    gender: t.gender || null,
-                    nationality: t.nationality || null,
-                    customerType: t.type || null,
-                    customerCategory: t.category || null
-                });
+                if (!isReservationStatus) {
+                    await req.models.Customer.create({
+                        idNumber: t.idNumber || null,
+                        name: nameUp || null,
+                        surname: surnameUp || null,
+                        phoneNumber: t.phoneNumber || null,
+                        gender: t.gender || null,
+                        nationality: t.nationality || null,
+                        customerType: t.type || null,
+                        customerCategory: t.category || null
+                    });
+                }
             }
             else {
                 ticket.customerId = existingCustomer.id
@@ -2871,6 +2875,8 @@ exports.postSellOpenTickets = async (req, res, next) => {
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
 
+        const isReservationStatus = status === "reservation";
+
         for (const t of tickets) {
             const takeOnTitle = await ensureTakeValue(takeOnCache, t.takeOn);
             const takeOffTitle = await ensureTakeValue(takeOffCache, t.takeOff);
@@ -2913,16 +2919,18 @@ exports.postSellOpenTickets = async (req, res, next) => {
             }
 
             if (!existingCustomer) {
-                await req.models.Customer.create({
-                    idNumber: t.idNumber || null,
-                    name: nameUp || null,
-                    surname: surnameUp || null,
-                    phoneNumber: t.phoneNumber || null,
-                    gender: t.gender || null,
-                    nationality: t.nationality || null,
-                    customerType: t.type || null,
-                    customerCategory: t.category || null
-                });
+                if (!isReservationStatus) {
+                    await req.models.Customer.create({
+                        idNumber: t.idNumber || null,
+                        name: nameUp || null,
+                        surname: surnameUp || null,
+                        phoneNumber: t.phoneNumber || null,
+                        gender: t.gender || null,
+                        nationality: t.nationality || null,
+                        customerType: t.type || null,
+                        customerCategory: t.category || null
+                    });
+                }
             }
 
 
