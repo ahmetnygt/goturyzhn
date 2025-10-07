@@ -1432,7 +1432,7 @@ div.ticket-cancel-refund-open-close {
     top: 50%;
     transform: translate(-50%, -50%);
     z-index: 100;
-    width: 80vw;
+    width: 85vw;
     background-color: white;
     border-radius: .6rem;
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);

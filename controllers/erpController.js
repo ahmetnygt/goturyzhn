@@ -2577,8 +2577,6 @@ exports.postTickets = async (req, res, next) => {
         const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
 
         const pendingIds = Array.isArray(req.body.pendingIds) ? req.body.pendingIds : JSON.parse(req.body.pendingIds);
-        console.log(pendingIds)
-        console.log(req.body.pendingIds)
 
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);

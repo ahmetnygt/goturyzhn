@@ -3358,7 +3358,6 @@ $(".ticket-button-action").on("click", async e => {
         }
 
         const ticketsStr = JSON.stringify(tickets)
-        console.log(ticketsStr)
 
         await $.ajax({
             url: "/post-complete-tickets",
@@ -3369,7 +3368,8 @@ $(".ticket-button-action").on("click", async e => {
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
             }
         });
 
@@ -3415,7 +3415,8 @@ $(".ticket-button-action").on("click", async e => {
                 ticketClose()
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
             }
         });
 
@@ -3459,7 +3460,8 @@ $(".ticket-button-action").on("click", async e => {
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
             }
         });
     }
@@ -3529,6 +3531,8 @@ $(".ticket-button-action").on("click", async e => {
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
+                    const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                    showError(message);
                 }
             });
         }
@@ -3552,6 +3556,8 @@ $(".ticket-button-action").on("click", async e => {
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
+                    const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                    showError(message);
                 }
             });
         }
@@ -3575,6 +3581,8 @@ $(".ticket-button-action").on("click", async e => {
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
+                    const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                    showError(message);
                 }
             });
         }
