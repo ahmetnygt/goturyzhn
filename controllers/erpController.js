@@ -2415,6 +2415,20 @@ exports.postTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
+        if (status === "completed") {
+            for (const ticket of tickets) {
+                const idNumber = typeof ticket?.idNumber === "string"
+                    ? ticket.idNumber.trim()
+                    : ticket?.idNumber !== undefined && ticket?.idNumber !== null
+                        ? String(ticket.idNumber).trim()
+                        : "";
+
+                if (!idNumber) {
+                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                }
+            }
+        }
+
         // --- req.models.Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
@@ -2603,6 +2617,22 @@ exports.postCompleteTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
+        if (status === "completed") {
+            for (const ticket of tickets) {
+                const idNumber = typeof ticket?.idNumber === "string"
+                    ? ticket.idNumber.trim()
+                    : ticket?.idNumber !== undefined && ticket?.idNumber !== null
+                        ? String(ticket.idNumber).trim()
+                        : "";
+
+                if (!idNumber) {
+                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                }
+
+                ticket.idNumber = idNumber;
+            }
+        }
+
         const pnr = tickets[0].pnr
         const seatNumbers = tickets.map(t => t.seatNumber)
 
@@ -2641,17 +2671,24 @@ exports.postCompleteTickets = async (req, res, next) => {
         for (let i = 0; i < foundTickets.length; i++) {
             const ticket = foundTickets[i];
             ticket.userId = req.session.firmUser.id
-            ticket.idNumber = tickets[i].idNumber
-            ticket.name = tickets[i].name
-            ticket.surname = tickets[i].surname
-            ticket.phoneNumber = tickets[i].phoneNumber
-            ticket.gender = tickets[i].gender
-            ticket.nationality = tickets[i].nationality
-            ticket.type = tickets[i].type
-            ticket.category = tickets[i].category
-            ticket.optionTime = tickets[i].optionTime
-            ticket.price = tickets[i].price
-            ticket.payment = tickets[i].payment
+            const incomingTicket = tickets[i] || {};
+            const normalizedIdNumber = typeof incomingTicket.idNumber === "string"
+                ? incomingTicket.idNumber.trim()
+                : incomingTicket.idNumber !== undefined && incomingTicket.idNumber !== null
+                    ? String(incomingTicket.idNumber).trim()
+                    : "";
+
+            ticket.idNumber = normalizedIdNumber
+            ticket.name = incomingTicket.name
+            ticket.surname = incomingTicket.surname
+            ticket.phoneNumber = incomingTicket.phoneNumber
+            ticket.gender = incomingTicket.gender
+            ticket.nationality = incomingTicket.nationality
+            ticket.type = incomingTicket.type
+            ticket.category = incomingTicket.category
+            ticket.optionTime = incomingTicket.optionTime
+            ticket.price = incomingTicket.price
+            ticket.payment = incomingTicket.payment
             ticket.status = "completed"
             ticket.createdAt = new Date()
 
