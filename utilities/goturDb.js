@@ -30,11 +30,28 @@ const goturDB = new Sequelize(
     sanitizedOptions
 );
 
+const goturModels = Object.freeze({
+    Firm: FirmFactory(goturDB),
+    Place: PlaceFactory(goturDB),
+});
+
+let goturSyncPromise;
+
 function initGoturModels() {
-    const Firm = FirmFactory(goturDB); // 👈 mevcut modelini kullan
-    const Place = PlaceFactory(goturDB); // 👈 mevcut modelini kullan
-    goturDB.sync({ alter: true });
-    return { Place, Firm };
+    return goturModels;
 }
 
-module.exports = { goturDB, initGoturModels };
+function getGoturSyncPromise() {
+    if (!goturSyncPromise) {
+        goturSyncPromise = goturDB.sync({ alter: true }).catch((error) => {
+            goturSyncPromise = null;
+            throw error;
+        });
+    }
+
+    return goturSyncPromise;
+}
+
+getGoturSyncPromise();
+
+module.exports = { goturDB, initGoturModels, getGoturSyncPromise };

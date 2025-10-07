@@ -1,6 +1,16 @@
 const { getTenantConnection } = require("../utilities/database");
-const { initGoturModels } = require("../utilities/goturDB");
+const { initGoturModels } = require("../utilities/goturDb");
 const { DEFAULT_TENANT_KEY, resolveTenantKey } = require("../utilities/tenantConfig");
+
+let cachedCommonModels;
+
+function getCommonModels() {
+    if (!cachedCommonModels) {
+        cachedCommonModels = initGoturModels();
+    }
+
+    return cachedCommonModels;
+}
 
 module.exports = async (req, res, next) => {
     try {
@@ -21,7 +31,7 @@ module.exports = async (req, res, next) => {
         const { sequelize, models } = await getTenantConnection(subdomain);
 
         // ortak DB (gotur)
-        const commonModels = initGoturModels();
+        const commonModels = getCommonModels();
 
         req.db = sequelize;
         req.models = models;             // tenant modelleri
