@@ -130,7 +130,7 @@ async function getTenantConnection(subdomain) {
   if (models.Permission) {
     const count = await models.Permission.count();
 
-    if (count === 0) { 
+    if (count === 0) {
       const permissionsSeedData = [
         { id: 1, code: 'REGISTER_RECORD_MANAGE', module: 'register', description: 'Gelir gider kaydı girer, siler ve düzenler', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
         { id: 2, code: 'REGISTER_TRANSFER', module: 'register', description: 'Kasasını başkasına devredebilir', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
@@ -215,6 +215,43 @@ async function getTenantConnection(subdomain) {
       ];
       await models.Permission.bulkCreate(permissionsSeedData);
       console.log('Default permissions were seeded.');
+    }
+  }
+
+  if (models.FirmUser && models.Permission && models.FirmUserPermission) {
+    const goturSystemUser = await models.FirmUser.findOne({
+      where: { username: "GOTUR" },
+    });
+
+    if (goturSystemUser) {
+      const existingPermissions = await models.FirmUserPermission.findAll({
+        where: { firmUserId: goturSystemUser.id },
+        attributes: ["permissionId"],
+        raw: true,
+      });
+      const existingPermissionIds = new Set(
+        existingPermissions.map((permission) => permission.permissionId)
+      );
+
+      const allPermissions = await models.Permission.findAll({
+        attributes: ["id"],
+        raw: true,
+      });
+
+      const permissionsToAssign = allPermissions
+        .filter((permission) => !existingPermissionIds.has(permission.id))
+        .map((permission) => ({
+          firmUserId: goturSystemUser.id,
+          permissionId: permission.id,
+          allow: true,
+        }));
+
+      if (permissionsToAssign.length > 0) {
+        await models.FirmUserPermission.bulkCreate(permissionsToAssign);
+        console.log(
+          `Götür sistem kullanıcısına ${permissionsToAssign.length} yeni yetki atandı.`
+        );
+      }
     }
   }
 
