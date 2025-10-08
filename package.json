@@ -25,5 +25,9 @@
     "pug": "2.0.0-beta11",
     "sequelize": "^6.37.7",
     "world-countries": "file:vendor/world-countries"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1",
+    "terser": "^5.44.0"
   }
 }
