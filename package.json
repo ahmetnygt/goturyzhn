@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./bin/www"
+    "start": "nodemon ./bin/www",
+    "build-client": "node build-scripts/build-client.js"
   },
   "dependencies": {
     "@chenfengyuan/datepicker": "^1.0.10",
