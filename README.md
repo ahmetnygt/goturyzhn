@@ -17,3 +17,7 @@ job.start(); // restarts it
 ```
 
 Add notification hooks inside the job if a user/branch alert system is available.
+
+## Client Build Testing
+
+To verify the production client bundle locally, install dependencies with `npm install` (or `npm ci` if you prefer a clean install), run `npm run build-client`, then confirm that a hashed `app.<hash>.js` file appears in `public/js/` and that `views/layout.pug` (or `layout.html`) references the new filename with the reported integrity value.
