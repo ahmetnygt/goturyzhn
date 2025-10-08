@@ -30,46 +30,46 @@ const TURKISH_COLLATOR = (() => {
 
 const NATIONALITY_OPTIONS = Object.freeze(
     countries
-    .map(country => {
-        const rawCode = (country?.cca2 || "").toUpperCase();
+        .map(country => {
+            const rawCode = (country?.cca2 || "").toUpperCase();
 
-        if (!rawCode) {
-            return null;
-        }
+            if (!rawCode) {
+                return null;
+            }
 
-        const turkishName = country?.translations?.tur?.common;
-        const englishName = country?.name?.common;
-        const displayName = turkishName || englishName || rawCode;
-        const label = `${rawCode} - ${displayName}`;
+            const turkishName = country?.translations?.tur?.common;
+            const englishName = country?.name?.common;
+            const displayName = turkishName || englishName || rawCode;
+            const label = `${rawCode} - ${displayName}`;
 
-        const searchParts = new Set();
-        if (turkishName) searchParts.add(turkishName);
-        if (englishName) searchParts.add(englishName);
-        if (country?.name?.official) searchParts.add(country.name.official);
-        if (Array.isArray(country?.altSpellings)) {
-            country.altSpellings.forEach(spelling => {
-                if (spelling) {
-                    searchParts.add(spelling);
-                }
-            });
-        }
-        if (country?.cca3) searchParts.add(country.cca3);
-        if (country?.cioc) searchParts.add(country.cioc);
-        searchParts.add(rawCode);
-        searchParts.add(rawCode.toLowerCase());
+            const searchParts = new Set();
+            if (turkishName) searchParts.add(turkishName);
+            if (englishName) searchParts.add(englishName);
+            if (country?.name?.official) searchParts.add(country.name.official);
+            if (Array.isArray(country?.altSpellings)) {
+                country.altSpellings.forEach(spelling => {
+                    if (spelling) {
+                        searchParts.add(spelling);
+                    }
+                });
+            }
+            if (country?.cca3) searchParts.add(country.cca3);
+            if (country?.cioc) searchParts.add(country.cioc);
+            searchParts.add(rawCode);
+            searchParts.add(rawCode.toLowerCase());
 
-        return {
-            value: rawCode.toLowerCase(),
-            label,
-            searchText: Array.from(searchParts).join(" "),
-        };
-    })
-    .filter(Boolean)
-    .sort((a, b) => {
-        if (a.value === "tr") return -1;
-        if (b.value === "tr") return 1;
-        return TURKISH_COLLATOR.compare(a.label, b.label);
-    })
+            return {
+                value: rawCode.toLowerCase(),
+                label,
+                searchText: Array.from(searchParts).join(" "),
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+            if (a.value === "tr") return -1;
+            if (b.value === "tr") return 1;
+            return TURKISH_COLLATOR.compare(a.label, b.label);
+        })
 );
 async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
@@ -2706,16 +2706,16 @@ exports.postCompleteTickets = async (req, res, next) => {
         const tripTime = req.body.tripTime;
         const tripId = req.body.tripId;
         const status = req.body.status;
-        const fromId = req.body.fromId;
-        const toId = req.body.toId;
 
+        // postTickets ile aynı kimlik kontrolü
         if (status === "completed") {
             for (const ticket of tickets) {
-                const idNumber = typeof ticket?.idNumber === "string"
-                    ? ticket.idNumber.trim()
-                    : ticket?.idNumber !== undefined && ticket?.idNumber !== null
-                        ? String(ticket.idNumber).trim()
-                        : "";
+                const idNumber =
+                    typeof ticket?.idNumber === "string"
+                        ? ticket.idNumber.trim()
+                        : ticket?.idNumber !== undefined && ticket?.idNumber !== null
+                            ? String(ticket.idNumber).trim()
+                            : "";
 
                 if (!idNumber) {
                     return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
@@ -2725,10 +2725,10 @@ exports.postCompleteTickets = async (req, res, next) => {
             }
         }
 
-        const pnr = tickets[0].pnr
-        const seatNumbers = tickets.map(t => t.seatNumber)
+        const pnr = tickets[0]?.pnr;
+        const seatNumbers = tickets.map((t) => t.seatNumber);
 
-        // --- req.models.Trip.where'i dinamik kur ---
+        // --- Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
@@ -2743,54 +2743,58 @@ exports.postCompleteTickets = async (req, res, next) => {
             return res.status(404).json({ message: "Sefer bulunamadı." });
         }
 
-        // --- RouteStops ve Stops (boş dizi korumalı) ---
+        // Durak başlıkları için
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
         });
+        const stopIds = [...new Set(routeStops.map((rs) => rs?.stopId).filter(Boolean))];
+        const stops = stopIds.length
+            ? await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } })
+            : [];
 
-        const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
-        let stops = [];
-        if (stopIds.length) {
-            stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
-        }
-
-        const foundTickets = await req.models.Ticket.findAll({ where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } } })
+        const foundTickets = await req.models.Ticket.findAll({
+            where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } },
+        });
 
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
 
         for (let i = 0; i < foundTickets.length; i++) {
             const ticket = foundTickets[i];
-            ticket.userId = req.session.firmUser.id
             const incomingTicket = tickets[i] || {};
-            const normalizedIdNumber = typeof incomingTicket.idNumber === "string"
-                ? incomingTicket.idNumber.trim()
-                : incomingTicket.idNumber !== undefined && incomingTicket.idNumber !== null
-                    ? String(incomingTicket.idNumber).trim()
-                    : "";
 
-            ticket.idNumber = normalizedIdNumber
-            ticket.name = incomingTicket.name
-            ticket.surname = incomingTicket.surname
-            ticket.phoneNumber = incomingTicket.phoneNumber
-            ticket.gender = incomingTicket.gender
-            ticket.nationality = incomingTicket.nationality
-            ticket.type = incomingTicket.type
-            ticket.category = incomingTicket.category
-            ticket.optionTime = incomingTicket.optionTime
-            ticket.price = incomingTicket.price
-            ticket.payment = incomingTicket.payment
-            ticket.status = "completed"
-            ticket.createdAt = new Date()
+            const normalizedIdNumber =
+                typeof incomingTicket.idNumber === "string"
+                    ? incomingTicket.idNumber.trim()
+                    : incomingTicket.idNumber !== undefined && incomingTicket.idNumber !== null
+                        ? String(incomingTicket.idNumber).trim()
+                        : "";
 
-            const takeOnTitle = await ensureTakeValue(takeOnCache, tickets[i].takeOn);
-            const takeOffTitle = await ensureTakeValue(takeOffCache, tickets[i].takeOff);
+            ticket.userId = req.session.firmUser.id;
+            ticket.idNumber = normalizedIdNumber;
+            ticket.name = incomingTicket.name;
+            ticket.surname = incomingTicket.surname;
+            ticket.phoneNumber = incomingTicket.phoneNumber;
+            ticket.gender = incomingTicket.gender;
+            ticket.nationality = incomingTicket.nationality;
+
+            // 🔧 DÜZELTME: type/category yerine customerType/customerCategory
+            ticket.customerType = incomingTicket.type;
+            ticket.customerCategory = incomingTicket.category;
+
+            ticket.optionTime = incomingTicket.optionTime;
+            ticket.price = incomingTicket.price;
+            ticket.payment = incomingTicket.payment;
+            ticket.status = "completed";
+            ticket.createdAt = new Date();
+
+            const takeOnTitle = await ensureTakeValue(takeOnCache, incomingTicket.takeOn);
+            const takeOffTitle = await ensureTakeValue(takeOffCache, incomingTicket.takeOff);
             ticket.takeOnText = takeOnTitle;
             ticket.takeOffText = takeOffTitle;
 
-
-            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
+            // CUSTOMER KONTROLÜ
             const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
             const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
 
@@ -2811,27 +2815,34 @@ exports.postCompleteTickets = async (req, res, next) => {
                     phoneNumber: ticket.phoneNumber || null,
                     gender: ticket.gender || null,
                     nationality: ticket.nationality || null,
-                    customerType: ticket.type || null,
-                    customerCategory: ticket.category || null
+                    customerType: ticket.customerType || null,
+                    customerCategory: ticket.customerCategory || null,
                 });
-                ticket.customerId = customer.id
+                ticket.customerId = customer.id;
             }
 
-            await ticket.save()
+            await ticket.save();
 
-            const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
-            const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+            const fromTitle = stops.find((s) => s.id == ticket.fromRouteStopId)?.title || "";
+            const toTitle = stops.find((s) => s.id == ticket.toRouteStopId)?.title || "";
 
             await req.models.Transaction.create({
                 userId: req.session.firmUser.id,
                 type: "income",
-                category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
+                category:
+                    ticket.payment === "cash"
+                        ? "cash_sale"
+                        : ticket.payment === "card"
+                            ? "card_sale"
+                            : "point_sale",
                 amount: ticket.price,
                 description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
-                ticketId: ticket.id
+                ticketId: ticket.id,
             });
 
-            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
+            const register = await req.models.CashRegister.findOne({
+                where: { userId: req.session.firmUser.id },
+            });
             if (register) {
                 if (ticket.payment === "cash") {
                     register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
@@ -2840,16 +2851,15 @@ exports.postCompleteTickets = async (req, res, next) => {
                 }
                 await register.save();
             }
-
-            res.locals.newRecordId = ticket.id;
-            console.log(`${ticket.name} Kaydedildi - ${pnr || "-"}`);
         }
+
         return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
     } catch (err) {
         console.error("Kayıt hatası:", err);
         return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
 };
+
 
 exports.postSellOpenTickets = async (req, res, next) => {
     try {
@@ -4417,7 +4427,9 @@ exports.postSaveTrip = async (req, res, next) => {
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
-        const captainId = await req.models.Bus.findOne({ where: { id: busId } })?.captainId
+        const bus = await req.models.Bus.findOne({ where: { id: busId } });
+        const captainId = bus?.captainId ?? null;
+
 
         const start = new Date(firstDate);
         const end = new Date(lastDate);
