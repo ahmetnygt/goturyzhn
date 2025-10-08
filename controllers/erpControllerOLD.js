@@ -735,20 +735,7 @@ exports.getDayTripsList = async (req, res, next) => {
 
         const isPastPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
         const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
-        const trips = await req.models.Trip.findAll({
-            where: { date: date, routeId: { [Op.in]: routeIds } },
-            include: [
-                {
-                    model: req.models.Route, as: "route", attributes: ["id", "routeCode", "title"], include: [
-                        { model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] },
-                        { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }
-                    ]
-                },
-                { model: req.models.BusModel, as: "busModel", attributes: ["id", "title", "maxPassenger", "planBinary"] },
-                { model: req.models.Bus, as: "bus", attributes: ["id", "licensePlate"] },
-                { model: req.models.Staff, as: "captain", attributes: ["id", "name", "surname"] }
-            ], order: [["time", "ASC"]]
-        });
+        const trips = await req.models.Trip.findAll({ where: { date: date, routeId: { [Op.in]: routeIds } }, order: [["time", "ASC"]] });
 
         const fromStop = await req.models.Stop.findOne({ where: { id: stopId } })
 
@@ -824,7 +811,7 @@ exports.getTrip = async (req, res, next) => {
     const tripId = req.query.tripId
     const stopId = req.query.stopId
 
-    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId }, include: [{ model: req.models.Route, as: "route", include: [{ model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] }, { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }] }, { model: req.models.BusModel, as: "busModel", attributes: ["id", "title", "planBinary", "maxPassenger"] }, { model: req.models.Bus, as: "bus", attributes: ["id", "licensePlate"] }, { model: req.models.Staff, as: "captain", attributes: ["id", "name", "surname", "duty"] }] })
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
 
     if (trip) {
         const captain = await req.models.Staff.findOne({ where: { id: trip.captainId, duty: "driver" } })
@@ -832,7 +819,7 @@ exports.getTrip = async (req, res, next) => {
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
         const busModel = await req.models.BusModel.findOne({ where: { id: trip.busModelId } })
-        const seatTypes = getSeatTypes(trip?.busModel?.planBinary || [])
+        const seatTypes = getSeatTypes(busModel.planBinary)
         const accountCut = await req.models.BusAccountCut.findOne({ where: { tripId: trip.id, stopId: stopId } })
 
         const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
@@ -1054,8 +1041,8 @@ exports.getTripTable = async (req, res, next) => {
 
     for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i].get({ plain: true })
-        ticket.from = ticket.fromStop?.title || ""
-        ticket.to = ticket.toStop?.title || ""
+        ticket.from = stops.find(s => s.id == ticket.fromRouteStopId).title
+        ticket.to = stops.find(s => s.id == ticket.toRouteStopId).title
         ticket.gender = ticket.gender === "m" ? "BAY" : "BAYAN"
         ticket.isOtherStop = currentStopId && ticket.fromRouteStopId != currentStopId
 
@@ -1551,7 +1538,8 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
     const tripId = req.query.tripId
 
     const trip = await req.models.Trip.findOne({ where: { id: tripId, date: date, time: time } })
-    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]], include: [{ model: req.models.Stop, as: "stop", attributes: ["id", "title"] }] });
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
     const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
     const offsetMap = buildOffsetMap(offsets)
@@ -1562,7 +1550,7 @@ exports.getRouteStopsTimeList = async (req, res, next) => {
         const rs = routeStops[i];
         const timeStr = timeMap.get(rs.id) || trip.time
         rs.timeStamp = formatTimeWithoutSeconds(timeStr)
-        rs.stopStr = rs.stop?.title || ""
+        rs.stopStr = stops.find(s => s.id == rs.stopId).title
     }
 
     res.render('mixins/routeStopsTimeList', { routeStops });
@@ -1943,7 +1931,11 @@ exports.getTripCargoList = async (req, res, next) => {
             return res.status(400).json({ message: "Sefer bilgisi eksik." });
         }
 
-        const cargos = await req.models.Cargo.findAll({ where: { tripId }, order: [["createdAt", "DESC"]], include: [{ model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] }, { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }, { model: req.models.FirmUser, as: "firmUser", attributes: ["id", "username", "branchId"] }] });
+        const cargos = await req.models.Cargo.findAll({
+            where: { tripId },
+            order: [["createdAt", "DESC"]],
+            raw: true
+        });
 
         if (!cargos.length) {
             return res.render("mixins/tripCargoList", { cargos: [] });
@@ -1998,8 +1990,8 @@ exports.getTripCargoList = async (req, res, next) => {
                 description: cargo.description || "",
                 senderName: cargo.senderName || "",
                 senderPhone: cargo.senderPhone || "",
-                fromTitle: cargo.fromStop?.title || "",
-                toTitle: cargo.toStop?.title || "",
+                fromTitle: fromKey ? (stopMap[fromKey] || "") : "",
+                toTitle: toKey ? (stopMap[toKey] || "") : "",
                 price: priceValue,
                 priceFormatted: formatAmount(cargo.price),
                 paymentLabel: cargo.payment === "card" ? "Kart" : "Nakit"
@@ -3564,7 +3556,7 @@ exports.getBusesList = async (req, res, next) => {
 }
 
 exports.getPricesList = async (req, res, next) => {
-    const prices = await req.models.Price.findAll({ include: [{ model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] }, { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }] });
+    const prices = await req.models.Price.findAll();
     const stops = await req.models.Stop.findAll({ where: { isDeleted: false } });
 
     const stopMap = {};
@@ -3593,8 +3585,8 @@ exports.getPricesList = async (req, res, next) => {
 
         return {
             ...obj,
-            fromTitle: p.fromStop?.title || stopMap[p.fromStopId] || p.fromStopId,
-            toTitle: p.toStop?.title || stopMap[p.toStopId] || p.toStopId,
+            fromTitle: stopMap[p.fromStopId] || p.fromStopId,
+            toTitle: stopMap[p.toStopId] || p.toStopId,
             seatLimit: obj.seatLimit ?? "",
             hourLimit: obj.hourLimit ?? "",
             validFrom: toDisplayDate(obj.validFrom),
@@ -4255,11 +4247,13 @@ exports.getRouteStop = async (req, res, next) => {
 exports.getRouteStopsList = async (req, res, next) => {
     const { id } = req.query
 
-    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]], include: [{ model: req.models.Stop, as: "stop", attributes: ["id", "title"] }] });
+    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: id }, order: [["order", "ASC"]] });
+    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+
     for (let i = 0; i < routeStops.length; i++) {
         const routeStop = routeStops[i];
         routeStop.isFirst = routeStop.order == 0
-        routeStop.stop = routeStop.stop?.title || ""
+        routeStop.stop = stops.find(s => s.id == routeStop.stopId).title
     }
 
     res.render("mixins/routeStopsList", { routeStops })
@@ -4406,32 +4400,20 @@ exports.postDeleteRoute = async (req, res, next) => {
 };
 
 exports.getTripsList = async (req, res, next) => {
-    try {
-        const date = req.query.date;
-        const trips = await req.models.Trip.findAll({
-            where: { date },
-            include: [
-                { model: req.models.Route, as: "route", attributes: ["id", "routeCode", "title"] },
-                { model: req.models.Bus, as: "bus", attributes: ["id", "licensePlate"] }
-            ],
-            order: [["time", "ASC"]]
-        });
+    const date = req.query.date
+    const trips = await req.models.Trip.findAll({ where: { date: date } })
+    const routes = await req.models.Route.findAll()
+    const bus = await req.models.Bus.findAll()
 
-        // enrich (avoid undefined if include missing)
-        const enriched = trips.map(t => ({
-            ...t.get({ plain: true }),
-            routeCode: t.route?.routeCode || "",
-            routeTitle: t.route?.title || "",
-            licensePlate: t.bus?.licensePlate || ""
-        }));
-
-        return res.render("mixins/tripsList", { trips: enriched });
-    } catch (err) {
-        console.error("getTripsList include error:", err);
-        return res.status(500).json({ message: "Sefer listesi alınırken hata oluştu." });
+    for (let i = 0; i < trips.length; i++) {
+        const t = trips[i];
+        t.routeCode = await routes.find(r => r.id == t.routeId)?.routeCode;
+        t.routeTitle = await routes.find(r => r.id == t.routeId)?.title;
+        t.licensePlate = await bus.find(b => b.id == t.busId)?.licensePlate;
     }
-}
 
+    res.render("mixins/tripsList", { trips })
+}
 
 exports.postSaveTrip = async (req, res, next) => {
     try {
