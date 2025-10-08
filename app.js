@@ -13,6 +13,7 @@ var erpRouter = require("./routes/erp");
 const { goturDB, initGoturModels } = require("./utilities/goturDb"); // ortak kullanıcı & session DB
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 const tenantMiddleware = require("./middlewares/tenantMiddleware");
+const tenantSessionMiddleware = require("./middlewares/tenantSessionMiddleware");
 
 const commonModels = initGoturModels();
 
@@ -55,11 +56,12 @@ app.use(
 // tenant middleware (subdomain -> tenant DB)
 app.use(tenantMiddleware);
 
+// tenant bazlı session bilgisi
+app.use(tenantSessionMiddleware);
+
 // ortak modelleri (gotur DB) request içine ekle
 app.use((req, res, next) => {
   req.commonModels = commonModels; // Place vs.
-  res.locals.firmUser = req.session.firmUser;
-  res.locals.permissions = req.session.permissions || [];
   next();
 });
 
