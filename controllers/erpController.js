@@ -200,22 +200,25 @@ function sanitizeForLogoLookup(value) {
         .trim();
 }
 
-async function resolveFirmLoginLogo(req) {
+async function resolveFirmLoginLogo(req, firm = null) {
     const candidates = [];
 
     if (req.tenantKey) {
         candidates.push(req.tenantKey);
     }
 
-    if (req.commonModels?.Firm && req.tenantKey) {
+    let resolvedFirm = firm;
+
+    if (!resolvedFirm && req.commonModels?.Firm && req.tenantKey) {
         try {
-            const firm = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } });
-            if (firm?.displayName) {
-                candidates.push(firm.displayName);
-            }
+            resolvedFirm = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } });
         } catch (error) {
             console.error("Firm lookup error:", error);
         }
+    }
+
+    if (resolvedFirm?.displayName) {
+        candidates.push(resolvedFirm.displayName);
     }
 
     const seen = new Set();
@@ -2119,12 +2122,25 @@ exports.getErp = async (req, res, next) => {
 }
 
 exports.getErpLogin = async (req, res, next) => {
+    const DEFAULT_TITLE = "GötürYZHN";
+    let firmRecord = req.session?.firm || null;
+
+    if (!firmRecord && req.commonModels?.Firm && req.tenantKey) {
+        try {
+            firmRecord = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } });
+        } catch (error) {
+            console.error("Firm lookup error:", error);
+        }
+    }
+
+    const title = firmRecord?.displayName || DEFAULT_TITLE;
+
     try {
-        const firmLogo = await resolveFirmLoginLogo(req);
-        res.render("erplogin", { isNoNavbar: true, firmLogo });
+        const firmLogo = await resolveFirmLoginLogo(req, firmRecord);
+        res.render("erplogin", { isNoNavbar: true, firmLogo, title });
     } catch (error) {
         console.error("Login logo resolution failed:", error);
-        res.render("erplogin", { isNoNavbar: true, firmLogo: DEFAULT_LOGIN_LOGO });
+        res.render("erplogin", { isNoNavbar: true, firmLogo: DEFAULT_LOGIN_LOGO, title });
     }
 }
 
