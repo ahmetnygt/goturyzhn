@@ -61,26 +61,76 @@ async function getTenantConnection(subdomain) {
   // tabloları oluştur
   await sequelize.sync({ alter: true });
 
-  // default kullanıcı ekle
+  // default kullanıcı ve şubeleri ekle
   if (models.FirmUser) {
     const count = await models.FirmUser.count();
     if (count === 0) {
+      let webBranchId = null;
+      let goturComBranchId = null;
+
+      if (models.Branch) {
+        const branchSeeds = [
+          { title: "WEB", assign: (branch) => (webBranchId = branch.id) },
+          { title: "götür.com", assign: (branch) => (goturComBranchId = branch.id) },
+        ];
+
+        for (const seed of branchSeeds) {
+          const [branch] = await models.Branch.findOrCreate({
+            where: { title: seed.title },
+            defaults: {
+              stopId: null,
+              isActive: true,
+              isMainBranch: false,
+            },
+          });
+
+          seed.assign(branch);
+        }
+      }
+
       const hashedPassword = await bcrypt.hash(DEFAULT_USER_PASSWORD, 10);
-      await models.FirmUser.create({
-        branchId: 0,
-        username: "GOTUR",
-        password: hashedPassword,
-        name: "Götür Sistem Kullanıcısı",
-        phoneNumber: "0850 840 1915",
-      });
-      console.log(`[${tenantKey}] için default kullanıcı eklendi.`);
+
+      const defaultUsers = [
+        {
+          branchId: goturComBranchId,
+          username: "GOTUR",
+          name: "Götür Sistem Kullanıcısı",
+          phoneNumber: "0850 840 1915",
+        },
+        {
+          branchId: webBranchId,
+          username: "WEB",
+          name: "Web",
+        },
+        {
+          branchId: goturComBranchId,
+          username: "gotur.com",
+          name: "götür.com",
+        },
+      ];
+
+      for (const user of defaultUsers) {
+        if (user.branchId == null) {
+          continue;
+        }
+
+        await models.FirmUser.create({
+          branchId: user.branchId,
+          username: user.username,
+          password: hashedPassword,
+          name: user.name,
+          phoneNumber: user.phoneNumber ?? null,
+        });
+      }
+
+      console.log(`[${tenantKey}] için default kullanıcılar eklendi.`);
     }
   }
 
   if (models.Permission) {
     const count = await models.Permission.count();
 
-    if (count === 0) { 
+    if (count === 0) {
       const permissionsSeedData = [
         { id: 1, code: 'REGISTER_RECORD_MANAGE', module: 'register', description: 'Gelir gider kaydı girer, siler ve düzenler', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
         { id: 2, code: 'REGISTER_TRANSFER', module: 'register', description: 'Kasasını başkasına devredebilir', isActive: true, createdAt: '2025-08-29 14:56:53', updatedAt: '2025-08-29 17:18:42' },
@@ -165,6 +215,43 @@ async function getTenantConnection(subdomain) {
       ];
       await models.Permission.bulkCreate(permissionsSeedData);
       console.log('Default permissions were seeded.');
+    }
+  }
+
+  if (models.FirmUser && models.Permission && models.FirmUserPermission) {
+    const goturSystemUser = await models.FirmUser.findOne({
+      where: { username: "GOTUR" },
+    });
+
+    if (goturSystemUser) {
+      const existingPermissions = await models.FirmUserPermission.findAll({
+        where: { firmUserId: goturSystemUser.id },
+        attributes: ["permissionId"],
+        raw: true,
+      });
+      const existingPermissionIds = new Set(
+        existingPermissions.map((permission) => permission.permissionId)
+      );
+
+      const allPermissions = await models.Permission.findAll({
+        attributes: ["id"],
+        raw: true,
+      });
+
+      const permissionsToAssign = allPermissions
+        .filter((permission) => !existingPermissionIds.has(permission.id))
+        .map((permission) => ({
+          firmUserId: goturSystemUser.id,
+          permissionId: permission.id,
+          allow: true,
+        }));
+
+      if (permissionsToAssign.length > 0) {
+        await models.FirmUserPermission.bulkCreate(permissionsToAssign);
+        console.log(
+          `Götür sistem kullanıcısına ${permissionsToAssign.length} yeni yetki atandı.`
+        );
+      }
     }
   }
 
