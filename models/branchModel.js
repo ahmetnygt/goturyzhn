@@ -13,7 +13,7 @@ module.exports = (sequelize) => {
     },
     stopId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     isActive: {
       type: DataTypes.BOOLEAN,
