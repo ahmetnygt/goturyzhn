@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
@@ -24,6 +26,8 @@ store.sync();
 
 var app = express();
 
+const sessionSecret = process.env.SESSION_SECRET || "anadolutat";
+
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
@@ -38,7 +42,7 @@ app.use(express.static(path.join(__dirname, "node_modules")));
 // session middleware
 app.use(
   session({
-    secret: "anadolutat",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     store: store,

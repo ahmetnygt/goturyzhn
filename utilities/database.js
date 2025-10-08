@@ -5,6 +5,8 @@ const connections = {};
 
 const DB_USERNAME = process.env.DB_USERNAME || "root";
 const DB_PASSWORD = process.env.DB_PASSWORD || "anadolutat1071";
+const DEFAULT_USER_PASSWORD =
+  process.env.DEFAULT_USER_PASSWORD || "anadolutat1071";
 
 function buildConnectionOptions() {
   const options = {
@@ -63,7 +65,7 @@ async function getTenantConnection(subdomain) {
   if (models.FirmUser) {
     const count = await models.FirmUser.count();
     if (count === 0) {
-      const hashedPassword = await bcrypt.hash("anadolutat1071", 10);
+      const hashedPassword = await bcrypt.hash(DEFAULT_USER_PASSWORD, 10);
       await models.FirmUser.create({
         branchId: 0,
         username: "GOTUR",
