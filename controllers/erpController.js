@@ -2181,13 +2181,31 @@ exports.postErpLogout = (req, res, next) => {
         return res.redirect("/login");
     }
 
-    req.session.destroy((err) => {
+    const tenantKey = req.tenantKey;
+    if (tenantKey && req.session.tenants && req.session.tenants[tenantKey]) {
+        delete req.session.tenants[tenantKey];
+    }
+
+    const remainingTenants = req.session.tenants && Object.keys(req.session.tenants).length > 0;
+
+    if (!remainingTenants) {
+        return req.session.destroy((err) => {
+            if (err) {
+                console.error("Oturum kapatma sırasında hata oluştu:", err);
+                return next(err);
+            }
+
+            res.clearCookie("connect.sid");
+            res.redirect("/login");
+        });
+    }
+
+    req.session.save((err) => {
         if (err) {
             console.error("Oturum kapatma sırasında hata oluştu:", err);
             return next(err);
         }
 
-        res.clearCookie("connect.sid");
         res.redirect("/login");
     });
 };

@@ -1,7 +1,12 @@
 const session = require("express-session")
 
 module.exports = (req, res, next) => {
-    if (req.session.isAuthenticated) {
+    const tenantKey = req.tenantKey;
+    const tenantSession = tenantKey && req.session && req.session.tenants
+        ? req.session.tenants[tenantKey]
+        : null;
+
+    if (tenantSession?.isAuthenticated) {
         return next();
     }
     req.session.redirectTo = req.originalUrl;
