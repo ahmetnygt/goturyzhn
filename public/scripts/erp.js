@@ -103,6 +103,36 @@ const isValidSanitizedTckn = value => {
     return d11calc === digits[10];
 };
 
+function refreshSearchableSelect($select) {
+    if (!$select || typeof $select.length !== "number" || !$select.length) {
+        return;
+    }
+
+    const selectElement = $select[0];
+    if (!selectElement || !window.GTR || !window.GTR.searchableSelect) {
+        return;
+    }
+
+    const { searchableSelect } = window.GTR;
+    let instance = searchableSelect.getInstance(selectElement);
+
+    if (!instance) {
+        const created = searchableSelect.init(selectElement);
+        if (Array.isArray(created) && created.length) {
+            instance = created[0];
+        } else if (created && typeof created === "object" && created.select) {
+            instance = created;
+        }
+    }
+
+    if (instance && typeof instance.refreshOptions === "function") {
+        instance.refreshOptions();
+        if (typeof instance.syncFromSelect === "function") {
+            instance.syncFromSelect();
+        }
+    }
+}
+
 
 function parsePriceAttribute(value) {
     if (value === undefined || value === null || value === "") {
@@ -5641,6 +5671,7 @@ $(".stops-nav").on("click", async e => {
             places.forEach(p => {
                 placeSelect.append(`<option value="${p.id}">${p.title}</option>`)
             })
+            refreshSearchableSelect(placeSelect)
         },
         error: function (xhr, status, error) {
             console.log(error)
@@ -5672,7 +5703,9 @@ $(".stops-nav").on("click", async e => {
                         editingStopId = null
                         $(".stop-title").val("")
                         $(".stop-web-title").val("")
-                        $(".stop-place").val("")
+                        const stopPlaceSelect = $(".stop-place")
+                        stopPlaceSelect.val("")
+                        stopPlaceSelect.trigger("change")
                         $(".stop-uetds").val("")
                         $(".stop-service").prop("checked", false)
                         $(".stop-active").prop("checked", true)
@@ -5695,7 +5728,9 @@ $(".stops-nav").on("click", async e => {
                     success: function (response) {
                         $(".stop-title").val(response.title)
                         $(".stop-web-title").val(response.webTitle)
-                        $(".stop-place").val(response.placeId)
+                        const stopPlaceSelect = $(".stop-place")
+                        stopPlaceSelect.val(response.placeId)
+                        stopPlaceSelect.trigger("change")
                         $(".stop-uetds").val(response.UETDS_code)
                         $(".stop-service").prop("checked", response.isServiceArea)
                         $(".stop-active").prop("checked", response.isActive)
@@ -5726,7 +5761,9 @@ $(".stops-close").on("click", e => {
 $(".add-stop").on("click", e => {
     $(".stop-title").val("")
     $(".stop-web-title").val("")
-    $(".stop-place").val("")
+    const stopPlaceSelect = $(".stop-place")
+    stopPlaceSelect.val("")
+    stopPlaceSelect.trigger("change")
     $(".stop-uetds").val("")
     $(".stop-service").prop("checked", false)
     $(".stop-active").prop("checked", true)
@@ -5738,7 +5775,8 @@ $(".add-stop").on("click", e => {
 $(".save-stop").on("click", async e => {
     const title = ($(".stop-title").val() || "").trim()
     let webTitle = ($(".stop-web-title").val() || "").trim()
-    const placeId = ($(".stop-place").val() || "").trim()
+    const stopPlaceSelect = $(".stop-place")
+    const placeId = (stopPlaceSelect.val() || "").trim()
     const UETDS_code = ($(".stop-uetds").val() || "").trim()
     const isServiceArea = $(".stop-service").is(":checked")
     const isActive = $(".stop-active").is(":checked")
@@ -5888,7 +5926,9 @@ $(".route-nav").on("click", async e => {
                     for (const s of stops) {
                         opts.push(`<option value="${s.id}">${s.title}</option>`)
                     }
-                    $(".route-stop-place").html(opts.join(""))
+                    const routeStopPlaceSelect = $(".route-stop-place")
+                    routeStopPlaceSelect.html(opts.join(""))
+                    refreshSearchableSelect(routeStopPlaceSelect)
                 },
                 error: function (xhr, status, error) {
                     console.log(error)
@@ -6037,7 +6077,9 @@ $(".add-route-stop-button").on("click", async e => {
             data: { stopId, duration, isFirst },
             success: function (response) {
                 $(".route-stop-duration").css("display", "block")
-                $(".route-stop-place").val("")
+                const routeStopPlaceSelect = $(".route-stop-place")
+                routeStopPlaceSelect.val("")
+                routeStopPlaceSelect.trigger("change")
                 $(".route-stop-duration").val("")
                 $(".route-stops").append(response)
                 syncRouteStopsState();
