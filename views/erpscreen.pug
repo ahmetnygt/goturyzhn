@@ -769,7 +769,7 @@ block content
                     input.stop-web-title.form-control(type="text" )
                 .input-group
                     span.input-group-text Yer
-                    select.stop-place.form-select()
+                    select.stop-place.form-select(data-searchable-select data-search-placeholder="Yer ara")
                         option(value="" selected)
                 .input-group
                     span.input-group-text UETDS Kodu
@@ -826,7 +826,7 @@ block content
                 .route-tab-panels
                     .route-tab-panel#route-stops-tab.active
                         .input-group.mb-3
-                            select.route-stop-place.form-select()
+                            select.route-stop-place.form-select(data-searchable-select data-search-placeholder="Durak ara")
                                 option(value="" selected)
                             input.route-stop-duration.form-control(placeholder="00:00" type="text" style="display:none;" pattern="^([01]\d|2[0-3]):([0-5]\d)$")
                             button.add-route-stop-button.btn.btn-outline-primary(type="button") EKLE
