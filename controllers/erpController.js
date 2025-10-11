@@ -2665,8 +2665,8 @@ exports.postTickets = async (req, res, next) => {
             console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id })
             const pendingTicket = await req.models.Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id } })
             const pendingTicketGroup = await req.models.TicketGroup.findOne({ where: { id: pendingTicket.ticketGroupId } })
-            await pendingTicket?.destroy().then(r => console.log("pending silindi"))
             await pendingTicketGroup?.destroy().then(r => console.log("pending grup silindi"))
+            await pendingTicket?.destroy().then(r => console.log("pending silindi"))
 
             const takeOnTitle = await ensureTakeValue(takeOnCache, t.takeOn);
             const takeOffTitle = await ensureTakeValue(takeOffCache, t.takeOff);
