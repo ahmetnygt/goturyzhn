@@ -186,6 +186,8 @@ const LOGO_EXTENSIONS = [".png", ".jpg", ".jpeg", ".svg", ".webp"];
 const DEFAULT_LOGIN_LOGO = "gotur_yzhn_logo.png";
 const LOGIN_LOGO_DIRECTORY = path.join(__dirname, "..", "public", "images");
 
+const NON_ACTIVE_TICKET_STATUSES = Object.freeze(["canceled", "cancelled", "refund"]);
+
 function sanitizeForLogoLookup(value) {
     if (!value) {
         return "";
@@ -198,6 +200,15 @@ function sanitizeForLogoLookup(value) {
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]+/g, "")
         .trim();
+}
+
+function normalizeIdentityNumber(value) {
+    if (value === undefined || value === null) {
+        return "";
+    }
+
+    const str = typeof value === "string" ? value : String(value);
+    return str.trim();
 }
 
 async function resolveFirmLoginLogo(req, firm = null) {
@@ -2547,17 +2558,23 @@ exports.postTickets = async (req, res, next) => {
         const fromId = req.body.fromId;
         const toId = req.body.toId;
 
+        let normalizedIdNumbers = [];
         if (status === "completed") {
+            const seenIdNumbers = new Set();
             for (const ticket of tickets) {
-                const idNumber = typeof ticket?.idNumber === "string"
-                    ? ticket.idNumber.trim()
-                    : ticket?.idNumber !== undefined && ticket?.idNumber !== null
-                        ? String(ticket.idNumber).trim()
-                        : "";
+                const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
 
-                if (!idNumber) {
+                if (!normalizedIdNumber) {
                     return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
                 }
+
+                if (seenIdNumbers.has(normalizedIdNumber)) {
+                    return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
+                }
+
+                seenIdNumbers.add(normalizedIdNumber);
+                normalizedIdNumbers.push(normalizedIdNumber);
+                ticket.idNumber = normalizedIdNumber;
             }
         }
 
@@ -2574,6 +2591,22 @@ exports.postTickets = async (req, res, next) => {
         const trip = await req.models.Trip.findOne({ where: tripWhere });
         if (!trip) {
             return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        if (normalizedIdNumbers.length) {
+            const existingTicketWithSameId = await req.models.Ticket.findOne({
+                where: {
+                    tripId: trip.id,
+                    idNumber: { [Op.in]: normalizedIdNumbers },
+                    status: { [Op.notIn]: NON_ACTIVE_TICKET_STATUSES },
+                },
+            });
+
+            if (existingTicketWithSameId) {
+                return res.status(409).json({
+                    message: `${existingTicketWithSameId.idNumber} TC kimlik numarası için bu seferde zaten bir bilet bulunuyor.`,
+                });
+            }
         }
 
         const route = trip.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
@@ -2750,20 +2783,23 @@ exports.postCompleteTickets = async (req, res, next) => {
         const status = req.body.status;
 
         // postTickets ile aynı kimlik kontrolü
+        let normalizedIdNumbers = [];
         if (status === "completed") {
+            const seenIdNumbers = new Set();
             for (const ticket of tickets) {
-                const idNumber =
-                    typeof ticket?.idNumber === "string"
-                        ? ticket.idNumber.trim()
-                        : ticket?.idNumber !== undefined && ticket?.idNumber !== null
-                            ? String(ticket.idNumber).trim()
-                            : "";
+                const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
 
-                if (!idNumber) {
+                if (!normalizedIdNumber) {
                     return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
                 }
 
-                ticket.idNumber = idNumber;
+                if (seenIdNumbers.has(normalizedIdNumber)) {
+                    return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
+                }
+
+                seenIdNumbers.add(normalizedIdNumber);
+                normalizedIdNumbers.push(normalizedIdNumber);
+                ticket.idNumber = normalizedIdNumber;
             }
         }
 
@@ -2798,6 +2834,29 @@ exports.postCompleteTickets = async (req, res, next) => {
         const foundTickets = await req.models.Ticket.findAll({
             where: { tripId: trip.id, pnr: pnr, seatNo: { [Op.in]: seatNumbers } },
         });
+
+        if (normalizedIdNumbers.length) {
+            const excludeIds = foundTickets.map((ticket) => ticket.id);
+            const whereClause = {
+                tripId: trip.id,
+                idNumber: { [Op.in]: normalizedIdNumbers },
+                status: { [Op.notIn]: NON_ACTIVE_TICKET_STATUSES },
+            };
+
+            if (excludeIds.length) {
+                whereClause.id = { [Op.notIn]: excludeIds };
+            }
+
+            const existingTicketWithSameId = await req.models.Ticket.findOne({
+                where: whereClause,
+            });
+
+            if (existingTicketWithSameId) {
+                return res.status(409).json({
+                    message: `${existingTicketWithSameId.idNumber} TC kimlik numarası için bu seferde zaten bir bilet bulunuyor.`,
+                });
+            }
+        }
 
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
