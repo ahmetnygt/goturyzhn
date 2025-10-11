@@ -501,6 +501,33 @@ function computeRouteStopTimes(trip, routeStops = [], offsetMap = new Map()) {
     return results;
 }
 
+function computeRouteStopDateTimes(trip, routeStops = [], offsetMap = new Map()) {
+    if (!trip) {
+        return new Map();
+    }
+
+    const baseDateTime = parseDateTimeInput(`${trip.date} ${trip.time}`) || new Date(`${trip.date}T${trip.time || "00:00:00"}`);
+    if (!(baseDateTime instanceof Date) || Number.isNaN(baseDateTime.getTime())) {
+        return new Map();
+    }
+
+    const map = new Map();
+    let cumulativeDurationSeconds = 0;
+    let cumulativeOffsetSeconds = 0;
+
+    for (const rs of routeStops) {
+        const routeStopId = Number(rs.id);
+        cumulativeDurationSeconds += timeToSeconds(rs.duration);
+        const offsetMinutes = offsetMap.get(routeStopId) || 0;
+        cumulativeOffsetSeconds += Number(offsetMinutes) * 60;
+        const totalSecondsFromStart = cumulativeDurationSeconds + cumulativeOffsetSeconds;
+        const computedDate = new Date(baseDateTime.getTime() + totalSecondsFromStart * 1000);
+        map.set(routeStopId, computedDate);
+    }
+
+    return map;
+}
+
 function formatTripDateForDisplay(dateString) {
     if (!dateString || typeof dateString !== "string") {
         return "";
@@ -3152,26 +3179,122 @@ exports.postEditTicket = async (req, res, next) => {
 };
 
 exports.getCancelOpenTicket = async (req, res, next) => {
-    const tripDate = req.query.date
-    const tripTime = req.query.time
-    const pnr = req.query.pnr
-    const seats = req.query.seats
-    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
-    const foundTickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
-    const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-    const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+    const tripDate = req.query.date;
+    const tripTime = req.query.time;
+    const pnr = req.query.pnr;
+    const seatsParam = req.query.seats;
 
-    let tickets = []
+    const normalizeSeatList = (value) => {
+        if (Array.isArray(value)) {
+            return value;
+        }
 
-    for (const e of foundTickets) {
-        if (e.tripId == trip.id) {
-            e.from = (stops.find(s => s.id == e.fromRouteStopId)).title;
-            e.to = (stops.find(s => s.id == e.toRouteStopId)).title;
-            tickets.push(e);
+        if (typeof value === "string") {
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (error) {
+                // ignore JSON parse errors and fall back to comma separation
+            }
+
+            return value
+                .split(",")
+                .map(item => item.trim())
+                .filter(item => item);
+        }
+
+        return [];
+    };
+
+    const seats = normalizeSeatList(seatsParam);
+
+    const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } });
+    if (!trip) {
+        return res.status(404).json({ message: "Sefer bulunamadı." });
+    }
+
+    const ticketWhere = seats.length
+        ? { pnr, seatNo: { [Op.in]: seats }, tripId: trip.id }
+        : { pnr, tripId: trip.id };
+    const foundTickets = await req.models.Ticket.findAll({ where: ticketWhere });
+
+    const routeStopsRaw = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] });
+    const routeStops = routeStopsRaw.map(rs => rs.get({ plain: true }));
+
+    const stopsRaw = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } });
+    const stops = stopsRaw.map(stop => stop.get({ plain: true }));
+
+    const stopTitleMap = new Map(stops.map(stop => [Number(stop.id), stop.title]));
+    const routeStopByStopId = new Map(routeStops.map(rs => [Number(rs.stopId), rs]));
+
+    const offsets = routeStops.length
+        ? await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
+        : [];
+    const offsetMap = buildOffsetMap(offsets);
+
+    const orderedRouteStops = [...routeStops].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const tripPlain = trip.get({ plain: true });
+    const routeStopDateMap = computeRouteStopDateTimes(tripPlain, orderedRouteStops, offsetMap);
+
+    const baseTripDateTime = parseDateTimeInput(`${tripPlain.date} ${tripPlain.time}`);
+
+    let targetRouteStopId = null;
+    let targetRouteStopOrder = Number.POSITIVE_INFINITY;
+
+    const tickets = [];
+
+    for (const ticketInstance of foundTickets) {
+        if (ticketInstance.tripId !== trip.id) {
+            continue;
+        }
+
+        const ticket = ticketInstance.get({ plain: true });
+        const fromStopTitle = stopTitleMap.get(Number(ticket.fromRouteStopId));
+        const toStopTitle = stopTitleMap.get(Number(ticket.toRouteStopId));
+        ticket.from = fromStopTitle;
+        ticket.to = toStopTitle;
+
+        tickets.push(ticket);
+
+        const matchedRouteStop = routeStopByStopId.get(Number(ticket.fromRouteStopId));
+        if (matchedRouteStop) {
+            const order = Number(matchedRouteStop.order);
+            if (!Number.isNaN(order) && order < targetRouteStopOrder) {
+                targetRouteStopOrder = order;
+                targetRouteStopId = Number(matchedRouteStop.id);
+            }
         }
     }
 
-    res.render('mixins/ticketCancelRefund', { tickets: tickets, trip: trip });
+    const dateFormatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeFormatter = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    const tripData = { ...tripPlain };
+    let displayDate = baseTripDateTime && !Number.isNaN(baseTripDateTime.getTime()) ? baseTripDateTime : null;
+
+    if (targetRouteStopId !== null) {
+        const computedDate = routeStopDateMap.get(targetRouteStopId);
+        if (computedDate instanceof Date && !Number.isNaN(computedDate.getTime())) {
+            displayDate = computedDate;
+        }
+    }
+
+    if (displayDate instanceof Date && !Number.isNaN(displayDate.getTime())) {
+        tripData.date = dateFormatter.format(displayDate);
+        tripData.time = timeFormatter.format(displayDate);
+    } else {
+        if (tripData.date) {
+            const fallbackDate = parseDateTimeInput(`${tripData.date} ${tripData.time}`) || new Date(`${tripData.date}T${tripData.time || "00:00:00"}`);
+            if (fallbackDate instanceof Date && !Number.isNaN(fallbackDate.getTime())) {
+                tripData.date = dateFormatter.format(fallbackDate);
+            }
+        }
+        tripData.time = formatTimeWithoutSeconds(tripData.time);
+    }
+
+    res.render("mixins/ticketCancelRefund", { tickets, trip: tripData });
 }
 
 exports.postCancelTicket = async (req, res, next) => {
