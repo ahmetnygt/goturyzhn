@@ -2156,6 +2156,7 @@ exports.getErp = async (req, res, next) => {
         branches,
         branchStopId,
         customerFieldOptions,
+        nationalityOptions: NATIONALITY_OPTIONS,
     });
 }
 

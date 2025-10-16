@@ -5536,7 +5536,9 @@ $(".staff-nav").on("click", async e => {
                         $(".staff-address").val("")
                         $(".staff-phone").val("")
                         $("input[name='staff-gender']").prop("checked", false)
-                        $(".staff-nationality").val("")
+                        const staffNationalitySelect = $(".staff-nationality")
+                        staffNationalitySelect.val("")
+                        refreshSearchableSelect(staffNationalitySelect)
                         $(".staff-panel").css("display", "none")
                         $(".save-staff").html("KAYDET")
                     }
@@ -5561,7 +5563,9 @@ $(".staff-nav").on("click", async e => {
                         $(".staff-address").val(res.address)
                         $(".staff-phone").val(res.phoneNumber)
                         $(`input[name='staff-gender'][value='${res.gender}']`).prop("checked", true)
-                        $(".staff-nationality").val(res.nationality)
+                        const staffNationalitySelect = $(".staff-nationality")
+                        staffNationalitySelect.val(res.nationality || "")
+                        refreshSearchableSelect(staffNationalitySelect)
                         $(".staff-panel").css("display", "flex")
                         $(".save-staff").html("KAYDET")
                     },
@@ -5594,7 +5598,9 @@ $(".add-staff").on("click", e => {
     $(".staff-address").val("")
     $(".staff-phone").val("")
     $("input[name='staff-gender']").prop("checked", false)
-    $(".staff-nationality").val("")
+    const staffNationalitySelect = $(".staff-nationality")
+    staffNationalitySelect.val("")
+    refreshSearchableSelect(staffNationalitySelect)
     editingStaffId = null
     $(".staff-panel").css("display", "flex")
     $(".save-staff").html("EKLE")

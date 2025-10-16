@@ -736,11 +736,25 @@ block content
                         label.form-check-label Kadın
                 .input-group
                     span.input-group-text Uyruk
-                    select.staff-nationality.form-select()
+                    -
+                        const fallbackNationalityOptions = [
+                            { value: "tr", label: "TR - Türkiye", searchText: "TR Türkiye Turkey" },
+                        ];
+                        const staffNationalityOptions = Array.isArray(nationalityOptions) && nationalityOptions.length
+                            ? nationalityOptions
+                            : fallbackNationalityOptions;
+                    select.staff-nationality.form-select(
+                        data-searchable-select
+                        data-search-placeholder="Uyruk ara"
+                        data-placeholder="Uyruk seçiniz"
+                        data-no-results-text="Sonuç bulunamadı"
+                    )
                         option(value="" selected)
-                        option(value="tr") Türkiye
-                        option(value="usa") Amerika
-                        option(value="sr") Suriye
+                        each option in staffNationalityOptions
+                            option(
+                                value=option.value
+                                data-search-text=option.searchText || option.label
+                            ) #{option.label}
                 button.save-staff.btn.btn-outline-primary KAYDET
 
     .stops
