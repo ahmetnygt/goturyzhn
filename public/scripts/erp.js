@@ -4088,9 +4088,11 @@ $(".moving-confirm").on("click", async e => {
 
 $(".moving-close").on("click", e => {
     selectedSeats = []
+    selectedTakenSeats = []
     isMovingActive = false
     moveToTripId = null
     movingSeatPNR = null
+    $(".seat").removeClass("selected");
     $(".moving").css("display", "none");
 })
 

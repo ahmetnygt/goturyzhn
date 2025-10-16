@@ -3251,6 +3251,7 @@ exports.getCancelOpenTicket = async (req, res, next) => {
         }
 
         const ticket = ticketInstance.get({ plain: true });
+        ticket.createdAt = new Date(ticket.createdAt).toLocaleString()
         const fromStopTitle = stopTitleMap.get(Number(ticket.fromRouteStopId));
         const toStopTitle = stopTitleMap.get(Number(ticket.toRouteStopId));
         ticket.from = fromStopTitle;
@@ -3268,7 +3269,7 @@ exports.getCancelOpenTicket = async (req, res, next) => {
         }
     }
 
-    const dateFormatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const dateFormatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
     const timeFormatter = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false });
 
     const tripData = { ...tripPlain };

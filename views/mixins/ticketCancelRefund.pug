@@ -1,4 +1,5 @@
-p.mb-3.text-center.fs-5.fw-bold #{trip.date} - #{trip.time}
+p.m-0.text-center.fs-5.fw-bold #{trip.date} - #{trip.time}
+p.mb-3.text-center İşlem yapmak istediğiniz biletleri seçin.
 .tickets_
     each t in tickets
         .ticket-cancel-box(class=t.gender data-pnr=t.pnr data-seat-number=t.seatNo)
@@ -11,7 +12,7 @@ p.mb-3.text-center.fs-5.fw-bold #{trip.date} - #{trip.time}
                     span.from #{t.from}
                     i.fa-solid.fa-route.mx-2
                     span.to #{t.to}
-            p   
+            p.text-center
                 span.name #{t.name} #{t.surname} 
                 |   / 
                 span.phone #{t.phoneNumber}

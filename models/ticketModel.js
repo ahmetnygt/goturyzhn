@@ -11,6 +11,10 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
+    goturUserId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
     userId: {
       type: DataTypes.BIGINT,
       allowNull: true,
@@ -58,6 +62,10 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
       type: DataTypes.STRING,
       allowNull: true,
     },
