@@ -256,8 +256,8 @@ function drawFooter(doc, footer) {
   // }
 
   // doc.y = Math.max(doc.y, bottomY);
-
   doc.font('Bold').fontSize(10).text(summaryText, doc.x, doc.y);
+  doc.moveDown(1.2);
 }
 
 function generateTripSeatPlanReport(data, output) {

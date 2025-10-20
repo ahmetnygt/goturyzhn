@@ -758,8 +758,14 @@ exports.test = async (req, res, next) => {
 exports.getDayTripsList = async (req, res, next) => {
     try {
         const date = req.query.date;
-        const stopId = req.query.stopId;
-        const tripId = req.query.tripId
+        var stopId = req.query.stopId;
+        const tripId = req.query.tripId;
+
+        if (!stopId) {
+            const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
+            if (branch)
+                stopId = branch.stopId
+        }
 
         if (!date) {
             return res.status(400).json({ error: "Tarih bilgisi eksik." });
@@ -863,7 +869,13 @@ exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
     const tripId = req.query.tripId
-    const stopId = req.query.stopId
+    var stopId = req.query.stopId
+
+    if (!stopId) {
+        const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
+        if (branch)
+            stopId = branch.stopId
+    }
 
     const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId }, include: [{ model: req.models.Route, as: "route", include: [{ model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] }, { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }] }, { model: req.models.BusModel, as: "busModel", attributes: ["id", "title", "planBinary", "maxPassenger"] }, { model: req.models.Bus, as: "bus", attributes: ["id", "licensePlate"] }, { model: req.models.Staff, as: "captain", attributes: ["id", "name", "surname", "duty"] }] })
 
@@ -1095,8 +1107,9 @@ exports.getTripTable = async (req, res, next) => {
 
     for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i].get({ plain: true })
-        ticket.from = ticket.fromStop?.title || ""
-        ticket.to = ticket.toStop?.title || ""
+
+        ticket.from = stops.find(s => s.id == ticket.fromRouteStopId)?.title || ""
+        ticket.to = stops.find(s => s.id == ticket.toRouteStopId)?.title || ""
         ticket.gender = ticket.gender === "m" ? "BAY" : "BAYAN"
         ticket.isOtherStop = currentStopId && ticket.fromRouteStopId != currentStopId
 
@@ -2058,30 +2071,35 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
     const tripId = req.query.tripId
-    const stopId = req.query.stopId
+    var stopId = req.query.stopId
 
     const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime, id: tripId } })
     const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
+
+    if (!stopId) {
+        stopId = branch.stopId
+    }
 
     const isOwnBranchStop = (stopId == branch?.stopId).toString()
 
     const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
     const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
     const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
-    const placeOrder = currentRouteStop.order
+    const placeOrder = currentRouteStop?.order
 
     const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
     const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
-
     let newRouteStopsArray = []
-    for (let i = 0; i < routeStops.length; i++) {
-        const rs = routeStops[i];
-        if (placeOrder < rs.order) {
-            rs.title = stops.find(s => s.id == rs.stopId).title
-            const allowed = restrictionMap.has(rs.id) ? restrictionMap.get(rs.id) : true
-            rs.isRestricted = !allowed
+    if ((placeOrder !== undefined && placeOrder !== null)) {
+        for (let i = 0; i < routeStops.length; i++) {
+            const rs = routeStops[i];
+            if (placeOrder < rs.order) {
+                rs.title = stops.find(s => s.id == rs.stopId).title
+                const allowed = restrictionMap.has(rs.id) ? restrictionMap.get(rs.id) : true
+                rs.isRestricted = !allowed
 
-            newRouteStopsArray[rs.order] = rs
+                newRouteStopsArray[rs.order] = rs
+            }
         }
     }
 
@@ -2587,23 +2605,21 @@ exports.postTickets = async (req, res, next) => {
         const toId = req.body.toId;
 
         let normalizedIdNumbers = [];
-        if (status === "completed") {
-            const seenIdNumbers = new Set();
-            for (const ticket of tickets) {
-                const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
+        const seenIdNumbers = new Set();
+        for (const ticket of tickets) {
+            const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
 
-                if (!normalizedIdNumber) {
-                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
-                }
-
-                if (seenIdNumbers.has(normalizedIdNumber)) {
-                    return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
-                }
-
-                seenIdNumbers.add(normalizedIdNumber);
-                normalizedIdNumbers.push(normalizedIdNumber);
-                ticket.idNumber = normalizedIdNumber;
+            if (!normalizedIdNumber) {
+                return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
             }
+
+            if (seenIdNumbers.has(normalizedIdNumber)) {
+                return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
+            }
+
+            seenIdNumbers.add(normalizedIdNumber);
+            normalizedIdNumbers.push(normalizedIdNumber);
+            ticket.idNumber = normalizedIdNumber;
         }
 
         // --- req.models.Trip.where'i dinamik kur ---
@@ -3481,7 +3497,13 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         const date = req.query.date
         const time = req.query.time
         const tripId = req.query.tripId
-        const stopId = req.query.stopId
+        var stopId = req.query.stopId
+
+        if (!stopId) {
+            const branch = await req.models.Branch.findOne({ where: { id: req.session.firmUser.branchId } })
+            if (branch)
+                stopId = branch.stopId
+        }
 
         const trip = await req.models.Trip.findOne({ where: { date, time, id: tripId } })
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
@@ -3648,8 +3670,16 @@ exports.getSearchTable = async (req, res, next) => {
                 from: fromTitle,
                 to: toTitle,
                 gender: t.gender === "m" ? "BAY" : "BAYAN",
-                date: tripDate,
-                time: tripTime,
+                date: new Intl.DateTimeFormat('tr-TR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }).format(new Date(tripDate)),
+                time: new Intl.DateTimeFormat('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(new Date(`1970-01-01T${tripTime}`))
             };
         });
 
@@ -5347,6 +5377,14 @@ exports.postSaveUser = async (req, res, next) => {
             })
 
             await cashRegister.save()
+
+            await req.models.Transaction.create({
+                userId: cashRegister.userId,
+                type: "expense",
+                category: "register_reset",
+                amount: 0,
+                description: `Kullanıcı oluşturuldu.`
+            });
         }
 
         res.json({

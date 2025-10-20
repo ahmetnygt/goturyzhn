@@ -7,8 +7,8 @@ let currentTripId;
 let currentGroupId;
 let currentPassengerRow;
 let editingNoteId;
-let currentStop = "1";
-let currentStopStr = "Çanakkale İskele";
+let currentStop;
+let currentStopStr;
 let selectedTicketStopId = currentStop;
 let fromId;
 let toId;
@@ -16,42 +16,42 @@ let fromStr;
 // --- Abortable group for loadTrip ---
 let __GTR_tr_loadToken = 0;
 let __GTR_tr_jqXHRs = [];
-function __GTR_abortTripGroup(){
-  try{ __GTR_tr_jqXHRs.forEach(x=>{ if (x && typeof x.abort==='function') x.abort(); }); }catch(e){}
-  __GTR_tr_jqXHRs = [];
+function __GTR_abortTripGroup() {
+    try { __GTR_tr_jqXHRs.forEach(x => { if (x && typeof x.abort === 'function') x.abort(); }); } catch (e) { }
+    __GTR_tr_jqXHRs = [];
 }
 // --- end abort helpers ---
 
 // --- Toast / Notification Utility (accessibility-friendly) ---
-(function(){
-  if (!document.getElementById('gtr-toast-container')) {
-    const style = document.createElement('style');
-    style.type = 'text/css';
-    style.textContent = `
+(function () {
+    if (!document.getElementById('gtr-toast-container')) {
+        const style = document.createElement('style');
+        style.type = 'text/css';
+        style.textContent = `
     #gtr-toast-container{position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;flex-direction:column;gap:8px}
     .gtr-toast{min-width:200px;max-width:360px;background:#111;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial}
     .gtr-toast.success{background:#0a7d28}
     .gtr-toast.error{background:#b00020}
     .gtr-toast.info{background:#1f5fbf}
     `;
-    document.head && document.head.appendChild(style);
-    const c = document.createElement('div');
-    c.id = 'gtr-toast-container';
-    document.body && document.body.appendChild(c);
-  }
-  window.GTR = window.GTR || {};
-  window.GTR.toast = function(message, type='info', timeout=3000){
-    try{
-      const container = document.getElementById('gtr-toast-container');
-      const el = document.createElement('div');
-      el.className = 'gtr-toast ' + (type||'info');
-      el.setAttribute('role','status');
-      el.setAttribute('aria-live','polite');
-      el.textContent = String(message||'');
-      container.appendChild(el);
-      setTimeout(()=>{ if (el && el.parentNode) el.parentNode.removeChild(el); }, Math.max(1000, timeout|0));
-    }catch(e){ console && console.warn && console.warn('Toast error', e); }
-  };
+        document.head && document.head.appendChild(style);
+        const c = document.createElement('div');
+        c.id = 'gtr-toast-container';
+        document.body && document.body.appendChild(c);
+    }
+    window.GTR = window.GTR || {};
+    window.GTR.toast = function (message, type = 'info', timeout = 3000) {
+        try {
+            const container = document.getElementById('gtr-toast-container');
+            const el = document.createElement('div');
+            el.className = 'gtr-toast ' + (type || 'info');
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-live', 'polite');
+            el.textContent = String(message || '');
+            container.appendChild(el);
+            setTimeout(() => { if (el && el.parentNode) el.parentNode.removeChild(el); }, Math.max(1000, timeout | 0));
+        } catch (e) { console && console.warn && console.warn('Toast error', e); }
+    };
 })();
 // --- end toast utility ---
 
@@ -950,10 +950,10 @@ function initPhoneInput(selector, mobileOnly = false) {
 
     function normalizeTR(digits) {
         let d = onlyDigits(digits);
-if (d.startsWith("0090")) d = d.slice(4);
-else if (d.startsWith("90")) d = d.slice(2);
-if (d.startsWith("0")) d = d.slice(1);
-return d.slice(0, 10);
+        if (d.startsWith("0090")) d = d.slice(4);
+        else if (d.startsWith("90")) d = d.slice(2);
+        if (d.startsWith("0")) d = d.slice(1);
+        return d.slice(0, 10);
     }
 
     function formatTR(d10) {
@@ -1511,7 +1511,7 @@ async function loadTrip(date, time, tripId) {
     const __thisLoadToken = ++__GTR_tr_loadToken;
     __GTR_abortTripGroup();
     const __guard = () => (__thisLoadToken === __GTR_tr_loadToken);
-    
+
     try {
         console.log(date);
         console.log(time);
@@ -1527,16 +1527,16 @@ async function loadTrip(date, time, tripId) {
             tripNotesResponse,
             routeStopsResponse,
         ] = await Promise.all([
-            (function(){ let jq=$.ajax({ url: "/get-trip", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
-            (function(){ let jq=$.ajax({ url: "/get-passengers-table", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
-            (function(){ let jq=$.ajax({ url: "/get-ticketops-popup", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
-            (function(){ let jq=$.ajax({ url: "/get-trip-notes", type: "GET", data: { date, time, tripId } }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
-            (function(){ let jq=$.ajax({ url: "/get-route-stops-time-list", type: "GET", data: { date, time, tripId } }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
+            (function () { let jq = $.ajax({ url: "/get-trip", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
+            (function () { let jq = $.ajax({ url: "/get-passengers-table", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
+            (function () { let jq = $.ajax({ url: "/get-ticketops-popup", type: "GET", data: commonData }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
+            (function () { let jq = $.ajax({ url: "/get-trip-notes", type: "GET", data: { date, time, tripId } }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
+            (function () { let jq = $.ajax({ url: "/get-route-stops-time-list", type: "GET", data: { date, time, tripId } }); __GTR_tr_jqXHRs.push(jq); return jq; })(),
         ]);
 
-        
+
         if (!__guard()) { return; }
-// Trip HTML
+        // Trip HTML
         $(".busPlan").html(tripResponse);
 
         // Boş satırları temizle
@@ -2025,10 +2025,10 @@ async function loadTrip(date, time, tripId) {
 
         // Dışarı tıklama → popup kapat
         $(document).off("click.ticketPopups").on("click.ticketPopups", (e) => {
-    if ($(e.target).closest(".ticket-ops-pop-up, .taken-ticket-ops-pop-up, .seat").length) return;
-    $(".ticket-ops-pop-up, .taken-ticket-ops-pop-up").hide();
-    currentSeat = null;
-});
+            if ($(e.target).closest(".ticket-ops-pop-up, .taken-ticket-ops-pop-up, .seat").length) return;
+            $(".ticket-ops-pop-up, .taken-ticket-ops-pop-up").hide();
+            currentSeat = null;
+        });
 
         // Revenues
         $(".trip-option-revenues").off().on("click", async function (e) {
@@ -4242,6 +4242,7 @@ $(".trip-cargo-save").on("click", async e => {
 });
 
 $(".ticket-close").on("click", async e => {
+    console.log("kapat")
     let pendingIds = $("#pendingIds").val()
     if (pendingIds) {
         let jsonSeats = JSON.stringify(selectedSeats)
@@ -4264,12 +4265,15 @@ $(".ticket-close").on("click", async e => {
             }
         });
     }
+    else {
+        loadTrip(currentTripDate, currentTripTime, currentTripId)
+        ticketClose();
+    }
 })
 $(".ticket-button-cancel").on("click", async e => {
     let pendingIds = $("#pendingIds").val()
     if (pendingIds) {
         let jsonSeats = JSON.stringify(selectedSeats)
-
         await $.ajax({
             url: "/post-delete-pending-tickets",
             type: "POST",
@@ -4288,6 +4292,10 @@ $(".ticket-button-cancel").on("click", async e => {
                 ticketClose();
             }
         });
+    }
+    else {
+        loadTrip(currentTripDate, currentTripTime, currentTripId)
+        ticketClose();
     }
 })
 
@@ -7311,6 +7319,67 @@ $(".customer-search-btn").on("click", async e => {
             $(".blacklist-reason-header").hide()
             $(".customer-list-name-header").removeClass("col-2").addClass("col-3")
             $(".customer-list-category-header").removeClass("col-2").addClass("col-3")
+
+            $(".customer-row").on("click", function () {
+                const row = $(this);
+                const origin = row.hasClass("member-row") ? "members" : "customers";
+                openCustomerInfoPopup(row, origin);
+            });
+            $(".member-info-pointorpercent").on("change", updateMemberPointInputsState);
+            $(".member-info-category").on("change", updateMemberPointOrPercentAvailability);
+            $(".member-ticket-go-trip").on("click", async function (e) {
+                e.preventDefault();
+
+                const $btn = $(this);
+                clearMemberTicketFeedback($btn);
+                const tripId = $btn.data("tripId");
+                const tripDate = $btn.data("tripDate");
+                const tripTime = $btn.data("tripTime");
+
+                if (!tripId || !tripDate || !tripTime) {
+                    showMemberTicketFeedback($btn, "Bu bilet için aktif bir sefer bulunamadı.");
+                    return;
+                }
+
+                const previousTripState = {
+                    id: currentTripId,
+                    date: currentTripDate,
+                    time: currentTripTime
+                };
+
+                $btn.prop("disabled", true);
+
+                try {
+                    await loadTrip(tripDate, tripTime, tripId);
+
+                    currentTripId = tripId;
+                    currentTripDate = tripDate;
+                    currentTripTime = tripTime;
+
+                    $(".member-info").css("display", "none");
+                    $(".blackout").css("display", "none");
+                } catch (error) {
+                    currentTripId = previousTripState.id;
+                    currentTripDate = previousTripState.date;
+                    currentTripTime = previousTripState.time;
+
+                    const status = error?.status || error?.statusCode || error?.responseJSON?.status;
+                    const errorCode = error?.responseJSON?.code || error?.responseJSON?.errorCode;
+                    const notFound = status === 404 || errorCode === "TRIP_NOT_FOUND";
+
+                    if (notFound) {
+                        const fallbackMessage = "Bu bilet için aktif bir sefer bulunamadı.";
+                        const message = error?.responseJSON?.message || fallbackMessage;
+                        console.warn("Trip not found for ticket", { tripId, tripDate, tripTime, error });
+                        showMemberTicketFeedback($btn, message);
+                    } else {
+                        console.error(error);
+                        showError("Sefer bilgisi yüklenemedi.");
+                    }
+                } finally {
+                    $btn.prop("disabled", false);
+                }
+            });
         },
         error: function (xhr, status, error) {
             console.log(error);
@@ -7754,7 +7823,7 @@ $(".report-create-button").on("click", e => {
     if (groupBy) params.set("groupBy", groupBy);
     if (busId) params.set("busId", busId);
 
-    window.open(`/${report}?${params.toString()}`, "_blank");
+    window.open(`/${report}?${params.toString()}`, "_blank", "width=900,height=700");
 });
 
 $(".members-close").on("click", e => {

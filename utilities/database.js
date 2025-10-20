@@ -71,7 +71,7 @@ async function getTenantConnection(subdomain) {
       if (models.Branch) {
         const branchSeeds = [
           { title: "WEB", assign: (branch) => (webBranchId = branch.id) },
-          { title: "götür.com", assign: (branch) => (goturComBranchId = branch.id) },
+          { title: "goturbilet.com", assign: (branch) => (goturComBranchId = branch.id) },
         ];
 
         for (const seed of branchSeeds) {
@@ -104,8 +104,8 @@ async function getTenantConnection(subdomain) {
         },
         {
           branchId: goturComBranchId,
-          username: "gotur.com",
-          name: "götür.com",
+          username: "goturbilet",
+          name: "goturbilet.com",
         },
       ];
 

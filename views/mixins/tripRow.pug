@@ -1,10 +1,13 @@
-each t in trips
-    .tripRow(class=`${t.isExpired?"expired":""} ${t.isActive?"":"disabled"}`  data-time=t.time data-date=t.date data-tripid=t.id)
-        div 
-            p #{t.dateString}
-        div 
-            p #{t.timeString}
-        div(style="width: -webkit-fill-available;")
-            p #{t.fromPlaceString} -> #{t.toPlaceString}
-        div 
-            p #{t.fullness}
+if trips.length
+    each t in trips
+        .tripRow(class=`${t.isExpired?"expired":""} ${t.isActive?"":"disabled"}`  data-time=t.time data-date=t.date data-tripid=t.id)
+            div 
+                p #{t.dateString}
+            div 
+                p #{t.timeString}
+            div(style="width: -webkit-fill-available;")
+                p #{t.fromPlaceString} -> #{t.toPlaceString}
+            div 
+                p #{t.fullness}
+else
+    p.text-center.text-muted Sefer bulunamadı.
