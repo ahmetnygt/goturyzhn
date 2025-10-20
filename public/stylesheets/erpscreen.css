@@ -572,10 +572,6 @@ select.price-button-select {
     display: none;
 }
 
-.route-settings input[type="text"] {
-    width: 5vw;
-}
-
 .route-settings .time-flatpickr {
     width: 6rem;
 }
@@ -2174,6 +2170,29 @@ div.ticket-cancel-refund-open-close {
     text-align: center;
 }
 
-.is-main-branch-group{
+.input-group .searchable-select {
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.input-group .searchable-select:first-child .searchable-select__display {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 100%;
+}
+
+.input-group .searchable-select:not(:first-child):not(:last-child) .searchable-select__display {
+    border-radius: 0;
+    height: 100%;
+}
+
+.input-group .searchable-select:last-child .searchable-select__display {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    height: 100%;
+}
+
+.is-main-branch-group {
     display: none;
 }
