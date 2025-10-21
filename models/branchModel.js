@@ -65,6 +65,11 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
     },
+    isPaysInternet: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
     internetTicketCommission: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

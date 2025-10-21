@@ -323,6 +323,7 @@ block content
         .gtr-header
             span ARAÇ KALDIRMA KESİNTİLERİ
         .p-3.d-flex.flex-column.gap-3
+            p.text-muted.isInternet.m-0
             .input-group
                 span.input-group-text.col-7 Toplam Kesilen
                 input.form-control.form-control-sm.account-cut-total-count(type="text" readonly)
@@ -370,6 +371,7 @@ block content
                     .input-group
                         span.input-group-text Toplam
                         input.form-control.form-control-sm.all-total(type="text" readonly)
+                    p.text-muted.isInternet.m-0
                 .col.d-flex.flex-column.gap-3
                     .input-group
                         span.input-group-text Komisyon
@@ -1277,7 +1279,7 @@ block content
         .ticket-close 
             i.fa-solid.fa-x
         .ticket-header
-            p.ticket-header--date 12.05.2025 - 12.30
+            //- p.ticket-header--date 12.05.2025 - 12.30
             p.mb-0
                 b
                     span.ticket-info-pop-up_from 
@@ -1288,6 +1290,17 @@ block content
             .ticket-buttons.d-flex.justify-content-center.gap-3
                 button.btn.btn-outline-primary.ticket-button-action(data-action="") 
                 button.btn.btn-outline-primary.ticket-button-cancel İPTAL
+
+
+    .firm
+        .gtr-header
+            span FİRMA AYARLARI
+        .firm-close
+            i.fa-solid.fa-x
+        .d-flex.flex-column.gap-2
+            .input-group
+                span.input-group-text Yazıhanelerin Bilet Başı Komisyonu (%)
+                input.form-control(type="text")
 
     .branch
         .gtr-header
@@ -1380,6 +1393,10 @@ block content
                             label.col-form-label(for="inputPassword6") Başka duraktan satış komisyonu (%)
                         .col-auto
                             input.form-control.branch-other-commission(type="text")
+                    .d-flex.gap-2
+                        .form-check
+                            input#isPaysInternet.form-check-input(type="checkbox" value="active" checked)
+                            label.form-check-label(for="isPaysInternet" checked) İnternet biletlerini araca öder
                     .d-flex.gap-2
                         .col-auto
                             label.col-form-label(for="inputPassword6") İnternet bileti komisyonu (%)
@@ -1572,6 +1589,12 @@ block content
                         option(value="") Seçiniz
                         each option in customerCategoryOptions
                             option(value=option.value)= option.label
+                .input-group
+                    span.input-group-text Email
+                    input.member-info-email.form-control(type="text")
+                .input-group
+                    span.input-group-text Şifre
+                    input.member-info-password.form-control(type="password")
                 .input-group
                     span.input-group-text Puan/İndirim
                     select.member-info-pointorpercent.form-select

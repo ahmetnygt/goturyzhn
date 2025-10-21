@@ -387,6 +387,7 @@ div.reports-close,
 div.report-close,
 div.bus-transaction-close,
 div.user-profile-close,
+div.firm-close,
 div.change-password-close {
     position: absolute;
     top: .5rem;
@@ -678,7 +679,7 @@ select.price-button-select {
 }
 
 
-.branch {
+.firm {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -693,12 +694,30 @@ select.price-button-select {
     display: none;
 }
 
+.branch {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background-color: white;
+    border-radius: .6rem;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
+    min-width: 25vw;
+    min-height: 40vh;
+    max-height: 95vh;
+    overflow: hidden;
+    display: none;
+}
+
 .branch-settings {
     flex: 0 0 auto;
     width: 33.33333333%;
     padding: 1rem;
     border-right: 1px solid #dee2e6;
     display: none;
+    overflow-y: auto;
+    max-height: 90vh;
 }
 
 .branch-settings input[type="text"] {
@@ -729,8 +748,14 @@ select.price-button-select {
     box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 20%);
     min-width: 40vw;
     min-height: 40vh;
+    max-height: 95vh;
     overflow: hidden;
     display: none;
+}
+
+.member-list-nodes {
+    overflow-y: auto;
+    max-height: 70vh;
 }
 
 .members,

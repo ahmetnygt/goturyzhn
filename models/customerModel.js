@@ -39,6 +39,14 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM("normal", "member"),
       allowNull: false,
     },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     pointOrPercent: {
       type: DataTypes.ENUM("point", "percent"),
     },

@@ -312,40 +312,69 @@ function normalizePlanBinary(planBinary) {
 }
 
 async function calculateBusAccountData(models, tripId, stopId, user) {
+    // Normal tamamlanmış biletler
     const tickets = await models.Ticket.findAll({
         where: {
             tripId,
             fromRouteStopId: stopId,
-            status: { [Op.in]: ["completed", "web", "gotur"] }
+            status: { [Op.in]: ["completed"] }
         },
         raw: true
     });
 
+    // Şube verisi alınır
+    const branch = await models.Branch.findOne({
+        where: { id: user.branchId },
+        raw: true
+    });
+    const isPaysInternet = branch?.isPaysInternet
+
+    // Eğer şube internet biletlerini kendi ödüyorsa, web/gotur biletleri de dahil edilir
+    let webTickets = [];
+    if (isPaysInternet) {
+        webTickets = await models.Ticket.findAll({
+            where: {
+                tripId,
+                fromRouteStopId: stopId,
+                status: { [Op.in]: ["web", "gotur"] }
+            },
+            raw: true
+        });
+    }
+
+    // Kargolar
     const cargos = await models.Cargo.findAll({
-        where: {
-            tripId,
-            fromStopId: stopId
-        },
+        where: { tripId, fromStopId: stopId },
         raw: true
     });
 
-    const ticketUserIds = tickets.map(t => t.userId).filter(Boolean);
+    // Bütün biletleri birleştir (normal + web)
+    const allTickets = [...tickets, ...webTickets];
+
+    // Kullanıcı bilgileri (bilet ve kargoyu kesen kişiler)
+    const ticketUserIds = allTickets.map(t => t.userId).filter(Boolean);
     const cargoUserIds = cargos.map(c => c.userId).filter(Boolean);
     const userIds = [...new Set([...ticketUserIds, ...cargoUserIds])];
+
     const users = await models.FirmUser.findAll({
         where: { id: { [Op.in]: userIds } },
         raw: true
     });
-    const userBranch = {};
-    users.forEach(u => userBranch[u.id] = u.branchId);
 
-    const totalCount = tickets.length + cargos.length;
+    // userId -> branchId eşlemesi
+    const userBranch = {};
+    users.forEach(u => (userBranch[u.id] = u.branchId));
+
+    // Sayısal değişkenler
+    const totalCount = allTickets.length + cargos.length;
     let totalAmount = 0;
-    let myCash = 0, myCard = 0, otherBranches = 0;
+    let myCash = 0,
+        myCard = 0,
+        otherBranches = 0;
     let cargoCount = 0;
     let cargoAmount = 0;
 
-    const parseAmount = (value) => {
+    const parseAmount = value => {
         const num = Number(value);
         return Number.isFinite(num) ? num : 0;
     };
@@ -360,12 +389,14 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         }
     };
 
-    tickets.forEach(t => {
+    // Biletleri hesapla
+    allTickets.forEach(t => {
         const amount = parseAmount(t.price);
         totalAmount += amount;
         accumulateByOwner(amount, t.payment, t.userId);
     });
 
+    // Kargoları hesapla
     cargos.forEach(c => {
         const amount = parseAmount(c.price);
         cargoCount += 1;
@@ -375,7 +406,18 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
     });
 
     const allTotal = myCash + myCard + otherBranches;
-    return { totalCount, totalAmount, myCash, myCard, otherBranches, allTotal, cargoCount, cargoAmount };
+
+    return {
+        totalCount,
+        totalAmount,
+        myCash,
+        myCard,
+        otherBranches,
+        allTotal,
+        cargoCount,
+        cargoAmount,
+        isPaysInternet
+    };
 }
 
 function addTime(baseTime, addTime) {
@@ -1178,15 +1220,15 @@ exports.postTripNote = async (req, res, next) => {
 
 exports.getBusAccountCutData = async (req, res, next) => {
     try {
-        const BUS_COMISSION_PERCENT = 20
-
+        const BUS_COMISSION_PERCENT = 20;
         const { tripId, stopId } = req.query;
-        const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
+        const firmUser = req.session.firmUser;
+
+        // Artık webTicket'lar da dahil hesaplama
+        const data = await calculateBusAccountData(req.models, tripId, stopId, firmUser);
 
         const parseOptionalNumber = value => {
-            if (value === null || value === undefined) {
-                return null;
-            }
+            if (value === null || value === undefined) return null;
             const parsed = Number(value);
             return Number.isFinite(parsed) ? parsed : null;
         };
@@ -1199,27 +1241,25 @@ exports.getBusAccountCutData = async (req, res, next) => {
         if (trip?.busId) {
             const bus = await req.models.Bus.findByPk(trip.busId, { raw: true });
             const busCommission = parseOptionalNumber(bus?.customCommissionRate);
-            if (busCommission !== null) {
-                comissionPercent = busCommission;
-            }
+            if (busCommission !== null) comissionPercent = busCommission;
         }
 
-        const sessionBranchId = req.session?.firmUser?.branchId;
+        const sessionBranchId = firmUser?.branchId;
         if (sessionBranchId) {
             const branch = await req.models.Branch.findByPk(sessionBranchId, { raw: true });
             if (branch && Number(branch.stopId) === Number(stopId)) {
                 autoFilledFromBranchStop = true;
+
                 const branchPercent = parseOptionalNumber(branch.ownStopSalesCommission);
-                if (branchPercent !== null && comissionPercent === null) {
+                if (branchPercent !== null && comissionPercent === null)
                     comissionPercent = branchPercent;
-                }
 
                 const deductions = [
                     branch.defaultDeduction1,
                     branch.defaultDeduction2,
                     branch.defaultDeduction3,
                     branch.defaultDeduction4,
-                    branch.defaultDeduction5,
+                    branch.defaultDeduction5
                 ].map(parseOptionalNumber);
 
                 defaultDeductions = deductions;
@@ -1228,17 +1268,15 @@ exports.getBusAccountCutData = async (req, res, next) => {
 
         if (comissionPercent === null) {
             const firmCommission = parseOptionalNumber(req.session?.firm?.comissionRate);
-            if (firmCommission !== null) {
-                comissionPercent = firmCommission;
-            }
+            if (firmCommission !== null) comissionPercent = firmCommission;
         }
 
-        if (comissionPercent === null) {
-            comissionPercent = BUS_COMISSION_PERCENT;
-        }
+        if (comissionPercent === null) comissionPercent = BUS_COMISSION_PERCENT;
 
         const comissionAmount = data.allTotal * comissionPercent / 100;
         const needToPay = data.allTotal - comissionAmount;
+        const isPaysInternet = data.isPaysInternet
+
         res.json({
             ...data,
             comissionPercent,
@@ -1246,6 +1284,7 @@ exports.getBusAccountCutData = async (req, res, next) => {
             needToPay,
             defaultDeductions,
             autoFilledFromBranchStop,
+            isPaysInternet
         });
     } catch (err) {
         console.error("getBusAccountCutData error:", err);
@@ -2086,6 +2125,10 @@ exports.getTicketOpsPopUp = async (req, res, next) => {
     const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
     const currentRouteStop = routeStops.find(rs => rs.stopId == stopId)
     const placeOrder = currentRouteStop?.order
+
+    if (placeOrder == undefined || placeOrder == null) {
+        return;
+    }
 
     const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId, fromRouteStopId: currentRouteStop.id } })
     const restrictionMap = new Map(restrictions.map(r => [r.toRouteStopId, r.isAllowed]))
@@ -4787,6 +4830,7 @@ exports.postSaveBranch = async (req, res, next) => {
             id,
             isActive,
             isMainBranch,
+            isPaysInternet,
             title,
             stop,
             mainBranch,
@@ -4822,6 +4866,7 @@ exports.postSaveBranch = async (req, res, next) => {
                 stopId: parseNullableNumber(stop),
                 isMainBranch,
                 mainBranchId: isMainBranch ? null : parseNullableNumber(mainBranch),
+                isPaysInternet,
                 isActive,
                 ownerName,
                 phoneNumber,
@@ -4992,6 +5037,8 @@ exports.postUpdateCustomer = async (req, res, next) => {
             gender,
             customerType,
             customerCategory,
+            email,
+            password,
             pointOrPercent,
             pointAmount,
             percent
@@ -5069,6 +5116,14 @@ exports.postUpdateCustomer = async (req, res, next) => {
             if (allowedCategories.includes(loweredCategory)) {
                 customer.customerCategory = loweredCategory;
             }
+        }
+
+        if (password !== undefined) {
+            customer.password = await bcrypt.hash(password, 12)
+        }
+
+        if (email !== undefined) {
+            customer.email = email
         }
 
         if (pointOrPercent !== undefined) {

@@ -7,8 +7,8 @@ let currentTripId;
 let currentGroupId;
 let currentPassengerRow;
 let editingNoteId;
-let currentStop;
-let currentStopStr;
+let currentStop = $("#currentStop").val();
+let currentStopStr = $("#currentStop").find("option:selected").text().trim();
 let selectedTicketStopId = currentStop;
 let fromId;
 let toId;
@@ -399,6 +399,7 @@ const ESC_CLOSE_BUTTON_SELECTORS = [
     ".bus-transaction-close",
     ".customer-blacklist-close",
     ".customers-close",
+    ".firm-close",
     ".member-info-close",
     ".members-close",
     ".moving-close",
@@ -2639,6 +2640,7 @@ async function loadTrip(date, time, tripId) {
                     type: "GET",
                     data: { tripId: currentTripId, stopId: currentStop }
                 });
+                console.log(accountCutData)
                 $(".account-cut-total-count").val(accountCutData.totalCount);
                 $(".account-cut-total-amount").val(accountCutData.totalAmount.toFixed(2));
                 $(".account-comission-percent").val(accountCutData.comissionPercent.toFixed(2));
@@ -2649,6 +2651,8 @@ async function loadTrip(date, time, tripId) {
                 $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
                 $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
                 $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
+                $(".account-cut-deductions-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "İnternet biletleri dahil edilmiştir." : "İnternet biletleri dahil edilmemiştir.");
+                $(".account-cut-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "İnternet biletleri dahil edilmiştir." : "İnternet biletleri dahil edilmemiştir.");
                 for (let i = 1; i <= 5; i++) {
                     $(".account-cut-deductions-popup .account-deduction" + i).val("");
                     $(".account-cut-popup .account-deduction" + i).val("");
@@ -3324,7 +3328,14 @@ $("#currentStop").on("change", async (e) => {
         });
 
         const autoLoaded = await renderTripRows(response, { autoSelect: true });
-        if (currentTripId && !autoLoaded) {
+        if (!autoLoaded) {
+            $(".busPlan").html("")
+            $(".ticket-ops-pop-up").html("");
+            $(".trip-notes").html("");
+            $(".stops-times").html("");
+            $(".passenger-table").html("");
+        }
+        else if (currentTripId && !autoLoaded) {
             await loadTrip(currentTripDate, currentTripTime, currentTripId);
         }
     } catch (err) {
@@ -4055,11 +4066,13 @@ $(".taken-ticket-op").on("click", async e => {
             success: async function (response) {
                 selectedTakenSeats = []
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
+                $(".taken-ticket-ops-pop-up").hide()
             },
             error: function (xhr, status, error) {
                 console.log(error);
                 selectedTakenSeats = []
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
+                $(".taken-ticket-ops-pop-up").hide()
             }
         });
     }
@@ -4121,11 +4134,13 @@ function closeTripTimeAdjustPopup() {
     $(".blackout").css("display", "none");
 }
 
-$(document)
-    .off("click", ".trip-time-adjust-close, .trip-time-adjust-cancel")
-    .on("click", ".trip-time-adjust-close, .trip-time-adjust-cancel", () => {
-        closeTripTimeAdjustPopup();
-    });
+$(".trip-time-adjust-close").off("click").on("click", () => {
+    closeTripTimeAdjustPopup();
+});
+
+$(".trip-time-adjust-cancel").off("click").on("click", () => {
+    closeTripTimeAdjustPopup();
+});
 
 $(".trip-staff-save").on("click", async e => {
     const data = {
@@ -4378,7 +4393,7 @@ $(".save-trip-note").on("click", async e => {
     }
 })
 
-$(document).on("click", ".note-edit", e => {
+$(".note-edit").off("click").on("click", e => {
     const noteEl = $(e.currentTarget).closest(".note");
     editingNoteId = noteEl.data("id");
     const text = noteEl.find(".note-text").text();
@@ -4389,7 +4404,7 @@ $(document).on("click", ".note-edit", e => {
     $(".add-trip-note").css("display", "flex");
 })
 
-$(document).on("click", ".note-delete", async e => {
+$(".note-delete").off("click").on("click", async e => {
     const noteEl = $(e.currentTarget).closest(".note");
     const noteId = noteEl.data("id");
     if (confirm("Notu silmek istediğinize emin misiniz?")) {
@@ -4588,6 +4603,16 @@ $(".searched-ticket-op[data-action='go_trip']").off().on("click", async e => {
     $(".search-ticket-ops-pop-up").hide();
     await loadTrip(currentTripDate, currentTripTime, currentTripId);
 });
+
+$(".firm-settings-nav").on("click", e => {
+    $(".blackout").css("display", "block")
+    $(".firm").css("display", "block")
+})
+
+$(".firm-close").on("click", e => {
+    $(".blackout").css("display", "none")
+    $(".firm").css("display", "none")
+})
 
 let isRegisterShown = false
 $(".register-nav").on("click", async e => {
@@ -6867,6 +6892,7 @@ $(".add-branch").on("click", async e => {
 $(".save-branch").on("click", async e => {
     const isActive = $("#isBranchActive").prop('checked')
     const isMainBranch = $("#isMainBranch").prop('checked')
+    const isPaysInternet = $("#isPaysInternet").prop('checked')
     const title = $(".branch-title").val()
     const stop = $(".branch-place").val()
     const mainBranch = $(".branch-main-branch").val()
@@ -6908,6 +6934,7 @@ $(".save-branch").on("click", async e => {
             id: editingBranchId,
             isActive,
             isMainBranch,
+            isPaysInternet,
             title,
             stop,
             mainBranch,
@@ -7860,6 +7887,8 @@ $(".member-info-save").on("click", async e => {
         gender: $(".member-info-gender").val(),
         customerType: $(".member-info-type").val(),
         customerCategory: $(".member-info-category").val(),
+        email: $(".member-info-email").val(),
+        password: $(".member-info-password").val(),
         pointOrPercent: $(".member-info-pointorpercent").val(),
         pointAmount: $(".member-info-pointamount").val(),
         percent: $(".member-info-percent").val()
@@ -7962,6 +7991,12 @@ function searchMembers() {
         data: { idNumber, name, surname, phone },
         success: function (resp) {
             $(".member-list-nodes").html(resp)
+
+            $(".member-row").on("click", function () {
+                const row = $(this);
+                const origin = row.hasClass("member-row") ? "members" : "customers";
+                openCustomerInfoPopup(row, origin);
+            });
         },
         error: function (xhr, status, error) {
             console.log(error);
