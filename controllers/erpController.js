@@ -3781,19 +3781,21 @@ exports.getSearchTable = async (req, res, next) => {
                 from: fromTitle,
                 to: toTitle,
                 gender: t.gender === "m" ? "BAY" : "BAYAN",
+                rawTripDate: tripDate,
+                rawTripTime: tripTime,
                 date: tripDate
                     ? new Intl.DateTimeFormat("tr-TR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                      }).format(new Date(tripDate))
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                    }).format(new Date(tripDate))
                     : "",
                 time: tripTime
                     ? new Intl.DateTimeFormat("tr-TR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false,
-                      }).format(new Date(`1970-01-01T${tripTime}`))
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                    }).format(new Date(`1970-01-01T${tripTime}`))
                     : "",
             };
         });

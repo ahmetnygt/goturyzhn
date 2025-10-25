@@ -26,8 +26,8 @@ table.table.table-bordered.table-hover.table-sm.m-0.bg-white
                 data-refund-option=t.tripRefundOptionDate
                 data-stop-id=t.fromRouteStopId
                 data-trip-id=t.tripId
-                data-trip-date=t.date
-                data-trip-time=t.time
+                data-trip-date=t.rawTripDate
+                data-trip-time=t.rawTripTime
                 data-seat-type=t.seatType || ''
                 data-pending-ticket-id=(t.status === 'pending' ? t.id : ''))
                 td.text-center #{t.seatNo}
