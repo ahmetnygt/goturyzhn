@@ -768,6 +768,9 @@ function updateTakenTicketOpsVisibility($el) {
     } else {
         $(".taken-ticket-op[data-action='open']").css("display", "none");
         $(".taken-ticket-op[data-action='move']").css("display", "none");
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+        $(".taken-ticket-op[data-action='go_trip']").css("display", "none");
     }
 
     if (status === "reservation") {
@@ -786,6 +789,15 @@ function updateTakenTicketOpsVisibility($el) {
         $(".taken-ticket-op[data-action='delete_pending']").css("display", "none");
     }
     else if (status == "pending") {
+        $(".taken-ticket-op[data-action='complete']").css("display", "none");
+        $(".taken-ticket-op[data-action='refund']").css("display", "none");
+        $(".taken-ticket-op[data-action='open']").css("display", "none");
+        $(".taken-ticket-op[data-action='move']").css("display", "none");
+        $(".taken-ticket-op[data-action='edit']").css("display", "none");
+        $(".taken-ticket-op[data-action='cancel']").css("display", "none");
+    }
+    else if (status == "canceled" || status == "refund") {
+        $(".taken-ticket-op[data-action='delete_pending']").css("display", "none");
         $(".taken-ticket-op[data-action='complete']").css("display", "none");
         $(".taken-ticket-op[data-action='refund']").css("display", "none");
         $(".taken-ticket-op[data-action='open']").css("display", "none");
@@ -2144,12 +2156,13 @@ async function loadTrip(date, time, tripId) {
             type: "GET",
             data: { date, time, tripId, stopId: currentStop },
             success: function (response) {
-                console.log(response);
+                const array = response.arr;
+                const selectedId = response.selected
                 let arr = [];
                 const opt = $("<option>").html("").val("");
                 arr.push(opt);
-                for (let i = 0; i < response.length; i++) {
-                    const rs = response[i];
+                for (let i = 0; i < array.length; i++) {
+                    const rs = array[i];
                     const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
                     if (rs.isRestricted) {
                         opt2.addClass("restricted");
@@ -2158,9 +2171,11 @@ async function loadTrip(date, time, tripId) {
                     arr.push(opt2);
                 }
                 $(".move-to-trip-place-select").html(arr);
+                $(".move-to-trip-place-select").val(selectedId);
                 if (isMovingActive) {
                     $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
                     $(".move-to-trip-place").html(`${currentStopStr}`);
+                    $(".move-to-trip-place-select").val(selectedId);
                     $(".move-to").css("display", "flex");
                 }
             },
@@ -4270,6 +4285,39 @@ $(".taken-ticket-op").on("click", async e => {
                 $(".taken-ticket-ops-pop-up").hide();
                 $(".moving").css("display", "block");
 
+                await $.ajax({
+                    url: "/get-route-stops-list-moving",
+                    type: "GET",
+                    data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+                    success: function (response) {
+                        const array = response.arr;
+                        const selectedId = response.selected
+                        let arr = [];
+                        const opt = $("<option>").html("").val("");
+                        arr.push(opt);
+                        for (let i = 0; i < array.length; i++) {
+                            const rs = array[i];
+                            const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
+                            if (rs.isRestricted) {
+                                opt2.addClass("restricted");
+                                opt2.prop("disabled", true);
+                            }
+                            arr.push(opt2);
+                        }
+                        $(".move-to-trip-place-select").html(arr);
+                        $(".move-to-trip-place-select").val(selectedId);
+                        if (isMovingActive) {
+                            $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                            $(".move-to-trip-place").html(`${currentStopStr}`);
+                            $(".move-to-trip-place-select").val(selectedId);
+                            $(".move-to").css("display", "flex");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+
                 bindMovingTicketButtons(btn => btn?.dataset?.seatNumber);
             },
             error: function (xhr, status, error) {
@@ -4372,8 +4420,7 @@ $(".moving-confirm").on("click", async e => {
             type: "POST",
             data: {
                 pnr: movingSeatPNR,
-                ticketIds: JSON.stringify(movingSelectedSeats),
-                newSeats: JSON.stringify(selectedSeats),
+                newSeat: selectedSeats[0],
                 tripId: currentTripId,
                 stopId: selectedTicketStopId,
                 toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId,

@@ -3858,7 +3858,7 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
                 newRouteStopsArray.push(rs)
             }
         }
-        res.json(newRouteStopsArray)
+        res.json({ arr: newRouteStopsArray, selected: stopId })
     } catch (err) {
         console.error("Kayıt hatası:", err);
         res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
@@ -4001,112 +4001,52 @@ exports.postMoveTickets = async (req, res, next) => {
 
 exports.postAttachOpenTicket = async (req, res, next) => {
     try {
-        const { pnr: rawPnr, ticketIds: rawTicketIds, newSeats: rawNewSeats, tripId, stopId: rawStopId, toId: rawToId } = req.body;
+        const { pnr: rawPnr, newSeat: rawNewSeat, tripId, stopId: rawStopId, toId: rawToId } = req.body;
 
         if (!tripId) {
             return res.status(400).json({ message: "Hedef sefer bilgisi eksik." });
         }
 
-        let ticketIdValues;
-        try {
-            ticketIdValues = JSON.parse(rawTicketIds || "[]");
-        } catch (error) {
-            return res.status(400).json({ message: "Seçilen bilet bilgileri okunamadı." });
+        const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
+        if (!normalizedPnr) {
+            return res.status(400).json({ message: "PNR bilgisi eksik veya geçersiz." });
         }
 
-        const parsedTicketIds = parseTicketIdTokens(ticketIdValues);
-        if (parsedTicketIds.invalid || !parsedTicketIds.ids.length) {
-            return res.status(400).json({ message: "Geçerli açık bilet seçimi bulunamadı." });
+        // Tek koltuk için
+        const seatValue = rawNewSeat !== undefined && rawNewSeat !== null ? String(rawNewSeat).trim() : "";
+        if (!seatValue) {
+            return res.status(400).json({ message: "Koltuk bilgisi eksik." });
         }
 
-        let newSeatValues;
-        try {
-            newSeatValues = JSON.parse(rawNewSeats || "[]");
-        } catch (error) {
-            return res.status(400).json({ message: "Koltuk bilgileri okunamadı." });
-        }
-
-        if (!Array.isArray(newSeatValues) || newSeatValues.length !== parsedTicketIds.ids.length) {
-            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." });
-        }
-
-        const normalizedStopIdRaw = rawStopId !== undefined && rawStopId !== null ? String(rawStopId).trim() : "";
-        if (!normalizedStopIdRaw) {
-            return res.status(400).json({ message: "Başlangıç durağı bilgisi eksik." });
-        }
-
-        const fromStopId = Number(normalizedStopIdRaw);
+        const fromStopId = Number(String(rawStopId || "").trim());
         if (!Number.isFinite(fromStopId)) {
             return res.status(400).json({ message: "Başlangıç durağı bilgisi geçersiz." });
         }
 
-        const normalizedToIdRaw = rawToId !== undefined && rawToId !== null ? String(rawToId).trim() : "";
         let toStopId = null;
-        if (normalizedToIdRaw) {
-            const parsedTo = Number(normalizedToIdRaw);
+        if (rawToId) {
+            const parsedTo = Number(String(rawToId).trim());
             if (!Number.isFinite(parsedTo)) {
                 return res.status(400).json({ message: "Varış durağı bilgisi geçersiz." });
             }
             toStopId = parsedTo;
         }
 
-        const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
-
         const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
             return res.status(404).json({ message: "Hedef sefer bulunamadı." });
         }
 
-        const where = {
-            id: { [Op.in]: parsedTicketIds.ids },
-            status: "open",
-            tripId: null,
-        };
-
-        if (normalizedPnr) {
-            where.pnr = normalizedPnr;
-        }
-
-        const tickets = await req.models.Ticket.findAll({ where });
-        if (!tickets.length) {
+        const ticket = await req.models.Ticket.findOne({
+            where: { pnr: normalizedPnr, status: "open", tripId: null },
+        });
+        if (!ticket) {
             return res.status(404).json({ message: "Bağlanacak açık bilet bulunamadı." });
-        }
-
-        const ticketMap = new Map(tickets.map(ticket => [String(ticket.id), ticket]));
-        const orderedTickets = parsedTicketIds.ids
-            .map(id => ticketMap.get(String(id)))
-            .filter(Boolean);
-
-        if (orderedTickets.length !== parsedTicketIds.ids.length) {
-            return res.status(404).json({ message: "Seçilen açık biletlerden bazıları bulunamadı." });
-        }
-
-        const normalizeSeatValue = value => {
-            if (value === null || value === undefined) {
-                return null;
-            }
-            if (typeof value === "number") {
-                return value;
-            }
-            if (typeof value === "string") {
-                const trimmed = value.trim();
-                if (!trimmed) {
-                    return null;
-                }
-                const parsed = Number(trimmed);
-                return Number.isNaN(parsed) ? trimmed : parsed;
-            }
-            return null;
-        };
-
-        const normalizedSeats = newSeatValues.map(normalizeSeatValue);
-        if (normalizedSeats.some(value => value === null)) {
-            return res.status(400).json({ message: "Geçersiz koltuk bilgisi tespit edildi." });
         }
 
         const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
         if (route) {
-            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, normalizedSeats);
+            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, [seatValue]);
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
                     message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
@@ -4114,16 +4054,15 @@ exports.postAttachOpenTicket = async (req, res, next) => {
             }
         }
 
+        // Sefer saati ayarı
         let effectiveTime = trip.time;
-        let currentRouteStop = null;
         if (trip.routeId) {
             const routeStops = await req.models.RouteStop.findAll({
                 where: { routeId: trip.routeId },
                 order: [["order", "ASC"]],
             });
 
-            currentRouteStop = routeStops.find(rs => String(rs.stopId) === String(fromStopId)) || null;
-
+            const currentRouteStop = routeStops.find(rs => String(rs.stopId) === String(fromStopId)) || null;
             if (toStopId !== null) {
                 const targetRouteStop = routeStops.find(rs => String(rs.stopId) === String(toStopId));
                 if (!targetRouteStop) {
@@ -4145,29 +4084,21 @@ exports.postAttachOpenTicket = async (req, res, next) => {
             }
         }
 
-        const optionTimeValue = `${trip.date} ${effectiveTime}`;
+        // Bileti sefere bağla
+        ticket.seatNo = seatValue;
+        ticket.tripId = trip.id;
+        ticket.fromRouteStopId = fromStopId;
+        if (toStopId !== null) ticket.toRouteStopId = toStopId;
+        ticket.optionDate = trip.date;
+        ticket.optionTime = `${trip.date} ${effectiveTime}`;
+        ticket.status = "completed";
 
-        for (let i = 0; i < orderedTickets.length; i++) {
-            const ticket = orderedTickets[i];
-            const seatValue = normalizedSeats[i];
+        await ticket.save();
 
-            ticket.seatNo = seatValue;
-            ticket.tripId = trip.id;
-            ticket.fromRouteStopId = fromStopId;
-            if (toStopId !== null) {
-                ticket.toRouteStopId = toStopId;
-            }
-            ticket.optionDate = trip.date;
-            ticket.optionTime = optionTimeValue;
-            ticket.status = "completed";
-
-            await ticket.save();
-        }
-
-        res.status(200).json({ message: "Açık biletler başarıyla sefere bağlandı." });
+        return res.status(200).json({ message: "Açık bilet başarıyla sefere bağlandı." });
     } catch (error) {
         console.error("Açık bileti sefere bağlama hatası:", error);
-        res.status(500).json({ message: "Biletler bağlanırken bir hata oluştu." });
+        res.status(500).json({ message: "Bilet bağlanırken bir hata oluştu." });
     }
 };
 
