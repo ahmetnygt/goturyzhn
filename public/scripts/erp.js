@@ -60,6 +60,106 @@ let accountCutData;
 let accountCutId;
 let originalPrices = []
 let seatTypes = []
+let selectedTakenTicketContext = null;
+
+function clearSelectedTakenTicketContext() {
+    selectedTakenTicketContext = null;
+}
+
+function normalizeSeatNumberList(seatNumbers) {
+    if (!Array.isArray(seatNumbers)) {
+        return [];
+    }
+
+    return seatNumbers
+        .map(seat => {
+            if (seat === undefined || seat === null) {
+                return null;
+            }
+            const asNumber = Number(seat);
+            if (!Number.isNaN(asNumber)) {
+                return String(asNumber);
+            }
+            const trimmed = String(seat).trim();
+            return trimmed ? trimmed : null;
+        })
+        .filter(Boolean);
+}
+
+function updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers, overrides = {}) {
+    const normalizedSeats = normalizeSeatNumberList(seatNumbers);
+
+    if (!normalizedSeats.length) {
+        clearSelectedTakenTicketContext();
+        return;
+    }
+
+    const seatTypesFromDom = [];
+    const pnrsFromDom = [];
+    const pendingIdsFromDom = [];
+
+    normalizedSeats.forEach(seatNumber => {
+        const $seat = $(`.seat[data-seat-number='${seatNumber}']`);
+        if ($seat && $seat.length) {
+            seatTypesFromDom.push($seat.data("seat-type") ?? "");
+            pnrsFromDom.push($seat.data("pnr") ?? "");
+            pendingIdsFromDom.push($seat.data("pending-ticket-id") ?? "");
+        } else {
+            seatTypesFromDom.push("");
+            pnrsFromDom.push("");
+            pendingIdsFromDom.push("");
+        }
+    });
+
+    selectedTakenTicketContext = {
+        seatNumbers: normalizedSeats,
+        tripId: overrides.tripId ?? currentTripId ?? null,
+        tripDate: overrides.tripDate ?? currentTripDate ?? null,
+        tripTime: overrides.tripTime ?? currentTripTime ?? null,
+        stopId: overrides.stopId ?? selectedTicketStopId ?? currentStop ?? null,
+        seatTypes: overrides.seatTypes ?? seatTypesFromDom,
+        pnrs: overrides.pnrs ?? pnrsFromDom,
+        pendingTicketIds: overrides.pendingTicketIds ?? pendingIdsFromDom,
+    };
+}
+
+function setSelectedTakenTicketContextFromRow($row) {
+    if (!$row || !$row.length) {
+        clearSelectedTakenTicketContext();
+        return;
+    }
+
+    const seatNumber = $row.data("seat-number");
+    const normalizedSeats = normalizeSeatNumberList([seatNumber]);
+
+    if (!normalizedSeats.length) {
+        clearSelectedTakenTicketContext();
+        return;
+    }
+
+    selectedTakenTicketContext = {
+        seatNumbers: normalizedSeats,
+        tripId: $row.data("trip-id") ?? currentTripId ?? null,
+        tripDate: $row.data("trip-date") ?? currentTripDate ?? null,
+        tripTime: $row.data("trip-time") ?? currentTripTime ?? null,
+        stopId: $row.data("stop-id") ?? selectedTicketStopId ?? currentStop ?? null,
+        seatTypes: [($row.data("seat-type") ?? "")],
+        pnrs: [($row.data("pnr") ?? "")],
+        pendingTicketIds: [($row.data("pending-ticket-id") ?? "")],
+    };
+}
+
+function ensureSelectedTakenTicketContext() {
+    if (selectedTakenTicketContext && Array.isArray(selectedTakenTicketContext.seatNumbers) && selectedTakenTicketContext.seatNumbers.length) {
+        return selectedTakenTicketContext;
+    }
+
+    if (selectedTakenSeats && selectedTakenSeats.length) {
+        updateSelectedTakenTicketContextFromSeatNumbers(selectedTakenSeats);
+    }
+
+    return selectedTakenTicketContext;
+}
 
 const TCKN_MAX_LENGTH = 11;
 
@@ -1567,6 +1667,7 @@ async function loadTrip(date, time, tripId) {
                 $popup.hide();
                 currentPassengerRow = null;
                 selectedTakenSeats = [];
+                clearSelectedTakenTicketContext();
                 $(".passenger-table tbody tr").removeClass("selected");
                 return;
             }
@@ -1584,6 +1685,7 @@ async function loadTrip(date, time, tripId) {
                 $(this).addClass("selected");
             });
             selectedTakenSeats = seatNumbers;
+            updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers);
 
             updateTakenTicketOpsVisibility($row);
 
@@ -1685,6 +1787,7 @@ async function loadTrip(date, time, tripId) {
                         // varsa temizle
                         selectedTakenSeats = [];
                         $(".seat").removeClass("selected");
+                        clearSelectedTakenTicketContext();
                     } else {
                         // grupça seç
                         const seatNumbers = [];
@@ -1695,6 +1798,7 @@ async function loadTrip(date, time, tripId) {
                             }
                         });
                         selectedTakenSeats = seatNumbers;
+                        updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers);
                     }
                     return;
                 }
@@ -1837,6 +1941,7 @@ async function loadTrip(date, time, tripId) {
                     $(`.seat[data-group-id='${groupId}']`).each((i, el) => {
                         el.classList.remove("selected");
                     });
+                    clearSelectedTakenTicketContext();
                 } else {
                     const seatNumbers = [];
                     $(`.seat[data-group-id='${groupId}']`).each((i, el) => {
@@ -1844,6 +1949,7 @@ async function loadTrip(date, time, tripId) {
                         el.classList.add("selected");
                     });
                     selectedTakenSeats = seatNumbers;
+                    updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers);
                 }
             }
         });
@@ -1879,6 +1985,7 @@ async function loadTrip(date, time, tripId) {
         currentTripId = $("#tripId").val();
         selectedSeats = [];
         selectedTakenSeats = [];
+        clearSelectedTakenTicketContext();
 
         highlightTripRowByData(currentTripDate, currentTripTime, currentTripId);
 
@@ -3692,18 +3799,46 @@ $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
     $(".search-ticket-ops-pop-up").hide();
 
-    if (action == "complete") {
-        for (let i = 0; i < selectedTakenSeats.length; i++) {
-            const seat = selectedTakenSeats[i];
-            seatTypes.push($(`.seat-${seat}`).data("seat-type"))
-        }
+    const context = ensureSelectedTakenTicketContext();
+    if (!context || !Array.isArray(context.seatNumbers) || !context.seatNumbers.length) {
+        return;
+    }
 
+    const seatNumbers = [...context.seatNumbers];
+    const contextSeatTypes = Array.isArray(context.seatTypes)
+        ? context.seatTypes.map(type => (type ?? ""))
+        : [];
+    const contextPnrs = Array.isArray(context.pnrs)
+        ? context.pnrs.map(pnr => (pnr ?? ""))
+        : [];
+    const contextPendingIds = Array.isArray(context.pendingTicketIds)
+        ? context.pendingTicketIds.map(id => (id ?? ""))
+        : [];
+
+    const tripDate = context.tripDate ?? currentTripDate;
+    const tripTime = context.tripTime ?? currentTripTime;
+    const tripId = context.tripId ?? currentTripId;
+    const stopId = context.stopId ?? selectedTicketStopId ?? currentStop;
+
+    selectedTakenSeats = seatNumbers;
+    seatTypes = [...contextSeatTypes];
+
+    if (tripDate) currentTripDate = tripDate;
+    if (tripTime) currentTripTime = tripTime;
+    if (tripId) currentTripId = tripId;
+    if (stopId !== undefined && stopId !== null && stopId !== "") {
+        selectedTicketStopId = stopId;
+    }
+
+    const firstPnr = contextPnrs[0] ?? null;
+
+    if (action == "complete") {
         $(".ticket-button-action").attr("data-action", "complete")
         $(".ticket-button-action").html("SAT")
         await $.ajax({
             url: "/get-ticket-row",
             type: "GET",
-            data: { action: "complete", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
+            data: { action: "complete", isTaken: true, seatNumbers, seatTypes, date: tripDate, time: tripTime, tripId, stopId },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -3767,6 +3902,8 @@ $(".taken-ticket-op").on("click", async e => {
                 });
 
                 $(".seat").removeClass("selected")
+                selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
             },
             error: function (xhr, status, error) {
                 alert(error);
@@ -3775,17 +3912,12 @@ $(".taken-ticket-op").on("click", async e => {
     }
 
     else if (action == "edit") {
-        for (let i = 0; i < selectedTakenSeats.length; i++) {
-            const seat = selectedTakenSeats[i];
-            seatTypes.push($(`.seat-${seat}`).data("seat-type"))
-        }
-
         $(".ticket-button-action").attr("data-action", "edit")
         $(".ticket-button-action").html("KAYDET")
         await $.ajax({
             url: "/get-ticket-row",
             type: "GET",
-            data: { action: "edit", isTaken: true, seatNumbers: selectedTakenSeats, seatTypes, date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: selectedTicketStopId },
+            data: { action: "edit", isTaken: true, seatNumbers, seatTypes, date: tripDate, time: tripTime, tripId, stopId },
             success: function (response) {
 
                 $(".ticket-row").remove()
@@ -3849,6 +3981,8 @@ $(".taken-ticket-op").on("click", async e => {
                 });
 
                 $(".seat").removeClass("selected")
+                selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
             },
             error: function (xhr, status, error) {
                 alert(error);
@@ -3859,15 +3993,14 @@ $(".taken-ticket-op").on("click", async e => {
     else if (action == "cancel") {
         $(".ticket-button-action").attr("data-action", "cancel")
 
-        let pnr = null
-        const seat = selectedTakenSeats[0];
-        pnr = $(`.seat.seat-${seat}`).data("pnr")
+        const seat = seatNumbers[0];
+        const pnr = firstPnr || $(`.seat.seat-${seat}`).data("pnr");
         cancelingSeatPNR = pnr
 
         await $.ajax({
             url: "/get-cancel-open-ticket",
             type: "GET",
-            data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
+            data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
                 $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İPTAL")
                 $(".ticket-cancel-refund-open .tickets").prepend(response)
@@ -3903,6 +4036,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".seat").removeClass("selected")
                 selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -3913,15 +4047,14 @@ $(".taken-ticket-op").on("click", async e => {
     else if (action == "refund") {
         $(".ticket-button-action").attr("data-action", "refund")
 
-        let pnr = null
-        const seat = selectedTakenSeats[0];
-        pnr = $(`.seat.seat-${seat}`).data("pnr")
+        const seat = seatNumbers[0];
+        const pnr = firstPnr || $(`.seat.seat-${seat}`).data("pnr");
         cancelingSeatPNR = pnr
 
         await $.ajax({
             url: "/get-cancel-open-ticket",
             type: "GET",
-            data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
+            data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
                 $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İADE")
                 $(".ticket-cancel-refund-open .tickets").html(response)
@@ -3957,6 +4090,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".seat").removeClass("selected")
                 selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -3967,15 +4101,14 @@ $(".taken-ticket-op").on("click", async e => {
     else if (action == "open") {
         $(".ticket-button-action").attr("data-action", "open")
 
-        let pnr = null
-        const seat = selectedTakenSeats[0];
-        pnr = $(`.seat.seat-${seat}`).data("pnr")
+        const seat = seatNumbers[0];
+        const pnr = firstPnr || $(`.seat.seat-${seat}`).data("pnr");
         cancelingSeatPNR = pnr
 
         await $.ajax({
             url: "/get-cancel-open-ticket",
             type: "GET",
-            data: { pnr: pnr, seats: selectedTakenSeats, date: currentTripDate, time: currentTripTime },
+            data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
                 $(".ticket-cancel-refund-open .gtr-header span").html("BİLET AÇIĞA AL")
                 $(".ticket-cancel-refund-open .tickets").html(response)
@@ -4011,6 +4144,7 @@ $(".taken-ticket-op").on("click", async e => {
 
                 $(".seat").removeClass("selected")
                 selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
             },
             error: function (xhr, status, error) {
                 console.log(error);
@@ -4018,7 +4152,8 @@ $(".taken-ticket-op").on("click", async e => {
         });
     }
     else if (action == "move") {
-        movingSeatPNR = $(`.seat.seat-${selectedTakenSeats[0]}`).data("pnr")
+        const seat = seatNumbers[0];
+        movingSeatPNR = firstPnr || $(`.seat.seat-${seat}`).data("pnr")
         await $.ajax({
             url: "/get-move-ticket",
             type: "GET",
@@ -4052,26 +4187,26 @@ $(".taken-ticket-op").on("click", async e => {
         });
     }
     else if (action == "delete_pending") {
-        let pendingIds = []
-        for (let i = 0; i < selectedTakenSeats.length; i++) {
-            const seatNumber = selectedTakenSeats[i];
-            pendingIds.push($(`.seat-${seatNumber}`).data("pending-ticket-id"))
-        }
-        let jsonSeats = JSON.stringify(selectedTakenSeats)
-        let jsonPendingIds = JSON.stringify(pendingIds)
+        const pendingIds = contextPendingIds.length
+            ? [...contextPendingIds]
+            : seatNumbers.map(seatNumber => $(`.seat-${seatNumber}`).data("pending-ticket-id"));
+        const jsonSeats = JSON.stringify(seatNumbers)
+        const jsonPendingIds = JSON.stringify(pendingIds)
 
         await $.ajax({
             url: "/post-delete-pending-tickets",
             type: "POST",
-            data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: currentTripDate, time: currentTripTime, tripId: currentTripId },
+            data: { seats: jsonSeats, pendingIds: jsonPendingIds, date: tripDate, time: tripTime, tripId },
             success: async function (response) {
                 selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
                 $(".taken-ticket-ops-pop-up").hide()
             },
             error: function (xhr, status, error) {
                 console.log(error);
                 selectedTakenSeats = []
+                clearSelectedTakenTicketContext();
                 loadTrip(currentTripDate, currentTripTime, currentTripId)
                 $(".taken-ticket-ops-pop-up").hide()
             }
@@ -4565,6 +4700,10 @@ $(".ticket-search-button").on("click", async e => {
                 currentTripId = $row.data("trip-id");
                 currentTripDate = $row.data("trip-date");
                 currentTripTime = $row.data("trip-time");
+                setSelectedTakenTicketContextFromRow($row);
+                if (selectedTakenTicketContext && Array.isArray(selectedTakenTicketContext.seatNumbers)) {
+                    selectedTakenSeats = [...selectedTakenTicketContext.seatNumbers];
+                }
 
                 updateTakenTicketOpsVisibility($row);
 
