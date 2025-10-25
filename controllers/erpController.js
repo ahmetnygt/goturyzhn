@@ -3601,6 +3601,82 @@ exports.getMoveTicket = async (req, res, next) => {
     res.render("mixins/moveTicket", { trip, tickets })
 };
 
+exports.getOpenMoveTicket = async (req, res, next) => {
+    try {
+        const { pnr } = req.query;
+
+        if (!pnr) {
+            return res.status(400).json({ message: "PNR bilgisi eksik." });
+        }
+
+        const tickets = await req.models.Ticket.findAll({
+            where: { pnr, tripId: null, status: "open" },
+            order: [["id", "ASC"]],
+        });
+
+        if (!tickets.length) {
+            return res.status(404).json({ message: "Açık bilet bulunamadı." });
+        }
+
+        const stopIds = new Set();
+        tickets.forEach((ticket) => {
+            if (ticket.fromRouteStopId) stopIds.add(ticket.fromRouteStopId);
+            if (ticket.toRouteStopId) stopIds.add(ticket.toRouteStopId);
+        });
+
+        const stops = stopIds.size
+            ? await req.models.Stop.findAll({ where: { id: { [Op.in]: [...stopIds] } } })
+            : [];
+        const stopMap = new Map(stops.map((stop) => [String(stop.id), stop.title]));
+
+        const firstTicket = tickets[0];
+
+        const pad = (value) => String(value).padStart(2, "0");
+
+        let dateString = "--/--";
+        if (firstTicket.optionDate) {
+            const date = new Date(firstTicket.optionDate);
+            if (!isNaN(date)) {
+                dateString = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+            }
+        }
+
+        let rawTime = firstTicket.optionTime || "";
+        if (rawTime.includes(" ")) {
+            rawTime = rawTime.split(" ").pop();
+        }
+        const timeParts = rawTime ? rawTime.split(":") : [];
+        const hourPart = timeParts[0] ? pad(timeParts[0]) : null;
+        const minutePart = timeParts[1] ? pad(timeParts[1]) : null;
+        const timeString = hourPart && minutePart ? `${hourPart}.${minutePart}` : "--.--";
+
+        const trip = {
+            dateString,
+            timeString,
+        };
+
+        tickets.forEach((ticket, index) => {
+            const fromTitle = stopMap.get(String(ticket.fromRouteStopId)) || "-";
+            const toTitle = stopMap.get(String(ticket.toRouteStopId)) || "-";
+
+            ticket.fromPlaceString = fromTitle;
+            ticket.toPlaceString = toTitle;
+            ticket.displaySeatNo = String(index + 1).padStart(2, "0");
+            ticket.moveToken = `ticket-${ticket.id}`;
+        });
+
+        if (tickets[0]) {
+            tickets[0].fromPlaceString = tickets[0].fromPlaceString || "-";
+            tickets[0].toPlaceString = tickets[0].toPlaceString || "-";
+        }
+
+        res.render("mixins/moveTicket", { trip, tickets });
+    } catch (error) {
+        console.error("Açık bilet sorgusunda hata:", error);
+        res.status(500).json({ message: "Açık bilet bilgileri alınamadı." });
+    }
+};
+
 exports.getRouteStopsListMoving = async (req, res, next) => {
     try {
         const date = req.query.date
@@ -3643,13 +3719,21 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
 exports.postMoveTickets = async (req, res, next) => {
     try {
         const pnr = req.body.pnr
-        const oldSeats = JSON.parse(req.body.oldSeats)
+        const rawOldSeats = JSON.parse(req.body.oldSeats)
         const newSeats = JSON.parse(req.body.newSeats)
         const newTrip = req.body.newTrip
         const fromId = req.body.fromId
         const toId = req.body.toId
 
+        if (!Array.isArray(rawOldSeats) || !Array.isArray(newSeats) || rawOldSeats.length !== newSeats.length) {
+            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." });
+        }
+
         const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
+
+        if (!trip) {
+            return res.status(404).json({ message: "Hedef sefer bulunamadı." })
+        }
 
         trip.modifiedTime = trip.time
 
@@ -3669,7 +3753,66 @@ exports.postMoveTickets = async (req, res, next) => {
 
         console.log(`${trip.date} ${trip.modifiedTime}`)
 
-        const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: oldSeats } } })
+        const tokenIds = []
+        const seatNumbers = []
+
+        const normalizeSeatValue = (value) => {
+            if (value === null || value === undefined) {
+                return null
+            }
+            if (typeof value === "number") {
+                return value
+            }
+            const parsed = Number(value)
+            return Number.isNaN(parsed) ? value : parsed
+        }
+
+        rawOldSeats.forEach((value) => {
+            if (typeof value === "string") {
+                const trimmed = value.trim()
+                const tokenMatch = trimmed.match(/^ticket-(\d+)$/)
+                if (tokenMatch) {
+                    tokenIds.push(Number(tokenMatch[1]))
+                    return
+                }
+                if (trimmed) {
+                    seatNumbers.push(normalizeSeatValue(trimmed))
+                    return
+                }
+            } else if (value !== null && value !== undefined) {
+                seatNumbers.push(normalizeSeatValue(value))
+            }
+        })
+
+        const tokenTickets = tokenIds.length
+            ? await req.models.Ticket.findAll({ where: { pnr, id: { [Op.in]: tokenIds } } })
+            : []
+        const seatTickets = seatNumbers.length
+            ? await req.models.Ticket.findAll({ where: { pnr, seatNo: { [Op.in]: seatNumbers } } })
+            : []
+
+        const tokenMap = new Map(tokenTickets.map((ticket) => [String(ticket.id), ticket]))
+        const seatMap = new Map(seatTickets.map((ticket) => [String(ticket.seatNo), ticket]))
+
+        const tickets = rawOldSeats.map((value) => {
+            if (typeof value === "string") {
+                const trimmed = value.trim()
+                const tokenMatch = trimmed.match(/^ticket-(\d+)$/)
+                if (tokenMatch) {
+                    return tokenMap.get(tokenMatch[1]) || null
+                }
+                return seatMap.get(String(normalizeSeatValue(trimmed))) || null
+            }
+            return seatMap.get(String(normalizeSeatValue(value))) || null
+        }).filter(Boolean)
+
+        if (tickets.length !== rawOldSeats.length) {
+            return res.status(404).json({ message: "Seçilen biletlerden bazıları bulunamadı." })
+        }
+
+        if (tickets.length !== newSeats.length) {
+            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." })
+        }
 
         const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
         const newSeatNumbers = Array.isArray(newSeats) ? newSeats : [];
@@ -3690,7 +3833,12 @@ exports.postMoveTickets = async (req, res, next) => {
             t.tripId = newTrip
             t.fromRouteStopId = fromId
             t.toRouteStopId = toId
+            t.optionDate = trip.date
             t.optionTime = `${trip.date} ${trip.modifiedTime}`
+
+            if (t.status === "open") {
+                t.status = "completed"
+            }
 
             await t.save()
         }
