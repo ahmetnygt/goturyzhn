@@ -631,6 +631,7 @@ function updateTakenTicketOpsVisibility($el) {
     $(".taken-ticket-op").css("display", "block");
 
     const status = $el.data("status");
+    console.log($el)
 
     if (status === "reservation") {
         $(".taken-ticket-op[data-action='refund']").css("display", "none");
@@ -4555,49 +4556,49 @@ $(".ticket-search-button").on("click", async e => {
         data: { name, surname, idnum, phone, pnr, status },
         success: function (response) {
             $(".searched-table").html(response)
+
+            $(".searched-table tbody tr").off().on("click", function (e) {
+                const $row = $(this);
+                selectedTakenSeats = [$row.data("seat-number")];
+                currentGroupId = $row.data("group-id");
+                selectedTicketStopId = $row.data("stop-id");
+                currentTripId = $row.data("trip-id");
+                currentTripDate = $row.data("trip-date");
+                currentTripTime = $row.data("trip-time");
+
+                updateTakenTicketOpsVisibility($row);
+
+                const rect = this.getBoundingClientRect();
+                const $popup = $(".search-ticket-ops-pop-up");
+
+                // Popup'ı mouse konumuna yerleştir
+                let left = e.pageX + 10;
+                let top = e.pageY + 10;
+
+                const popupWidth = $popup.outerWidth();
+                const popupHeight = $popup.outerHeight();
+                const viewportWidth = $(window).width();
+                const viewportHeight = $(window).height();
+
+                // Sağ kenarı taşmasın
+                if (left + popupWidth > viewportWidth) {
+                    left = e.pageX - popupWidth - 10;
+                    if (left < 0) left = 0;
+                }
+
+                // Alt kenarı taşmasın
+                if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
+                    top = e.pageY - popupHeight - 10;
+                    if (top < 0) top = 0;
+                }
+                $popup.css({ left: left + "px", top: top + "px", display: "block" });
+            });
         },
         error: function (xhr, status, error) {
             console.log(error);
         }
     })
 })
-
-$(".searched-table tbody tr").off().on("click", function (e) {
-    const $row = $(this);
-    selectedTakenSeats = [$row.data("seat-number")];
-    currentGroupId = $row.data("group-id");
-    selectedTicketStopId = $row.data("stop-id");
-    currentTripId = $row.data("trip-id");
-    currentTripDate = $row.data("trip-date");
-    currentTripTime = $row.data("trip-time");
-
-    updateTakenTicketOpsVisibility($row);
-
-    const rect = this.getBoundingClientRect();
-    const $popup = $(".search-ticket-ops-pop-up");
-
-    // Popup'ı mouse konumuna yerleştir
-    let left = e.pageX + 10;
-    let top = e.pageY + 10;
-
-    const popupWidth = $popup.outerWidth();
-    const popupHeight = $popup.outerHeight();
-    const viewportWidth = $(window).width();
-    const viewportHeight = $(window).height();
-
-    // Sağ kenarı taşmasın
-    if (left + popupWidth > viewportWidth) {
-        left = e.pageX - popupWidth - 10;
-        if (left < 0) left = 0;
-    }
-
-    // Alt kenarı taşmasın
-    if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
-        top = e.pageY - popupHeight - 10;
-        if (top < 0) top = 0;
-    }
-    $popup.css({ left: left + "px", top: top + "px", display: "block" });
-});
 
 $(".searched-ticket-op[data-action='go_trip']").off().on("click", async e => {
     $(".search-ticket-ops-pop-up").hide();

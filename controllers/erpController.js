@@ -3058,117 +3058,183 @@ exports.postCompleteTickets = async (req, res, next) => {
     }
 };
 
-
 exports.postSellOpenTickets = async (req, res, next) => {
     try {
-        const tickets = JSON.parse(req.body.tickets)
+        const { tickets: rawTickets, status, fromId, toId } = req.body;
+        const tickets = JSON.parse(rawTickets);
+        const userId = req.session.firmUser.id;
+        const isReservation = status === "reservation";
 
-        const status = req.body.status;
-        const fromId = req.body.fromId;
-        const toId = req.body.toId;
+        // Kısa helper'lar
+        const toUpperTR = (val) => (val || "").toLocaleUpperCase("tr-TR");
 
-        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [fromId, toId] } } });
+        // --- Stop verilerini çek ---
+        const stops = await req.models.Stop.findAll({
+            where: { id: [fromId, toId] }
+        });
+        const fromStop = stops.find(s => s.id == fromId);
+        const toStop = stops.find(s => s.id == toId);
 
-        // --- TicketGroup ---
+        // --- TicketGroup oluştur ---
         const group = await req.models.TicketGroup.create({ tripId: null });
         const ticketGroupId = group.id;
 
-        console.log(req.body.tickets)
-        console.log(tickets)
-        // --- PNR ---
-        const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
+        // --- PNR oluştur ---
+        const pnr = (fromId && toId)
+            ? await generatePNR(req.models, fromId, toId, stops)
+            : null;
 
+        // --- TakeOn / TakeOff cache ---
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
 
-        const isReservationStatus = status === "reservation";
+        // --- Müşteri verilerini toplamak için set'ler ---
+        const idNumbers = new Set();
+        const namePairs = new Set();
 
         for (const t of tickets) {
-            const takeOnTitle = await ensureTakeValue(takeOnCache, t.takeOn);
-            const takeOffTitle = await ensureTakeValue(takeOffCache, t.takeOff);
+            if (t.idNumber) idNumbers.add(t.idNumber);
+            if (t.name && t.surname)
+                namePairs.add(`${toUpperTR(t.name)}|${toUpperTR(t.surname)}`);
+        }
 
-            const ticket = await req.models.Ticket.create({
+        // --- Mevcut müşterileri sorgula ---
+        const existingCustomers = await req.models.Customer.findAll({
+            where: {
+                [Op.or]: [
+                    { idNumber: { [Op.in]: Array.from(idNumbers) } },
+                    ...Array.from(namePairs).map(pair => {
+                        const [name, surname] = pair.split("|");
+                        return { name, surname };
+                    })
+                ]
+            }
+        });
+
+        const existingKeys = new Set(
+            existingCustomers.map(c => c.idNumber || `${c.name}|${c.surname}`)
+        );
+
+        // --- Bilet, işlem ve müşteri kayıtlarını hazırla ---
+        const ticketData = [];
+        const transactionData = [];
+        const newCustomers = [];
+
+        for (const t of tickets) {
+            const nameUp = toUpperTR(t.name);
+            const surnameUp = toUpperTR(t.surname);
+            const key = t.idNumber || `${nameUp}|${surnameUp}`;
+
+            // cache içinden hızlı değer al
+            const takeOnTitle = takeOnCache[t.takeOn] || t.takeOn || "";
+            const takeOffTitle = takeOffCache[t.takeOff] || t.takeOff || "";
+
+            ticketData.push({
                 seatNo: 0,
                 gender: t.gender,
                 nationality: t.nationality,
                 idNumber: t.idNumber,
-                name: (t.name || "").toLocaleUpperCase("tr-TR"),
-                surname: (t.surname || "").toLocaleUpperCase("tr-TR"),
+                name: nameUp,
+                surname: surnameUp,
                 price: t.price ?? 0,
                 tripId: null,
-                ticketGroupId: ticketGroupId,
-                status: status,
+                ticketGroupId,
+                status,
                 phoneNumber: t.phoneNumber,
                 customerType: t.type,
                 customerCategory: t.category,
                 optionTime: t.optionTime,
                 fromRouteStopId: fromId,
                 toRouteStopId: toId,
-                userId: req.session.firmUser.id,
-                pnr: pnr,
+                userId,
+                pnr,
                 payment: t.payment,
                 takeOnText: takeOnTitle,
-                takeOffText: takeOffTitle,
+                takeOffText: takeOffTitle
             });
 
-            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
-            const nameUp = (t.name || "").toLocaleUpperCase("tr-TR");
-            const surnameUp = (t.surname || "").toLocaleUpperCase("tr-TR");
-
-            const orConds = [];
-            if (t.idNumber) orConds.push({ idNumber: t.idNumber });
-            if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
-
-            let existingCustomer = null;
-            if (orConds.length) {
-                existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
+            if (!isReservation && !existingKeys.has(key)) {
+                existingKeys.add(key);
+                newCustomers.push({
+                    idNumber: t.idNumber || null,
+                    name: nameUp || null,
+                    surname: surnameUp || null,
+                    phoneNumber: t.phoneNumber || null,
+                    gender: t.gender || null,
+                    nationality: t.nationality || null,
+                    customerType: t.type || null,
+                    customerCategory: t.category || null
+                });
             }
 
-            if (!existingCustomer) {
-                if (!isReservationStatus) {
-                    await req.models.Customer.create({
-                        idNumber: t.idNumber || null,
-                        name: nameUp || null,
-                        surname: surnameUp || null,
-                        phoneNumber: t.phoneNumber || null,
-                        gender: t.gender || null,
-                        nationality: t.nationality || null,
-                        customerType: t.type || null,
-                        customerCategory: t.category || null
-                    });
-                }
-            }
-
-
-            const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
-            const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
-
-            await req.models.Transaction.create({
-                userId: req.session.firmUser.id,
+            transactionData.push({
+                userId,
                 type: "income",
-                category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
-                amount: ticket.price,
-                description: `Açık bilet satıldı | ${fromTitle} - ${toTitle}`,
-                ticketId: ticket.id
+                category:
+                    t.payment === "cash"
+                        ? "cash_sale"
+                        : t.payment === "card"
+                            ? "card_sale"
+                            : "point_sale",
+                amount: t.price ?? 0,
+                description: `Açık bilet satıldı | ${fromStop?.title || ""} - ${toStop?.title || ""}`
             });
-
-            const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
-            if (register) {
-                if (ticket.payment === "cash") {
-                    register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
-                } else if (ticket.payment === "card") {
-                    register.card_balance = Number(register.card_balance) + (Number(ticket.price) || 0);
-                }
-                await register.save();
-            }
-            res.locals.newRecordId = ticket.id;
-            console.log(`${t.name} Kaydedildi - ${pnr || "-"}`);
         }
+
+        // --- Yeni müşterileri toplu ekle ---
+        if (newCustomers.length) {
+            await req.models.Customer.bulkCreate(newCustomers, {
+                ignoreDuplicates: true
+            });
+        }
+
+        // --- Biletleri toplu ekle ---
+        const createdTickets = await req.models.Ticket.bulkCreate(ticketData, {
+            returning: true
+        });
+
+        // --- Transaction kayıtlarını bilet ID’leriyle eşleştir ---
+        transactionData.forEach((tr, i) => {
+            tr.ticketId = createdTickets[i].id;
+        });
+
+        // --- Gelir hareketlerini ekle ---
+        await req.models.Transaction.bulkCreate(transactionData);
+
+        // --- Kasa güncelle ---
+        const register = await req.models.CashRegister.findOne({
+            where: { userId }
+        });
+
+        if (register) {
+            const cashTotal = tickets
+                .filter(t => t.payment === "cash")
+                .reduce((a, b) => a + (Number(b.price) || 0), 0);
+            const cardTotal = tickets
+                .filter(t => t.payment === "card")
+                .reduce((a, b) => a + (Number(b.price) || 0), 0);
+
+            register.cash_balance += cashTotal;
+            register.card_balance += cardTotal;
+            await register.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            groupId: ticketGroupId,
+            totalTickets: tickets.length,
+            totalAmount: tickets.reduce((a, b) => a + (Number(b.price) || 0), 0)
+        });
+
     } catch (err) {
         console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        res.status(500).json({
+            message: "Kayıt sırasında bir hata oluştu.",
+            error: err.message
+        });
     }
-}
+};
+
 
 exports.postEditTicket = async (req, res, next) => {
     try {
@@ -3638,7 +3704,6 @@ exports.postMoveTickets = async (req, res, next) => {
 
 exports.getSearchTable = async (req, res, next) => {
     try {
-        // Query'leri trimleyip boş olanları ele
         const filters = {
             ...(req.query.name?.trim() && { name: req.query.name.trim() }),
             ...(req.query.surname?.trim() && { surname: req.query.surname.trim() }),
@@ -3648,7 +3713,6 @@ exports.getSearchTable = async (req, res, next) => {
             ...(req.query.status?.trim() && { status: req.query.status.trim() }),
         };
 
-        // Filtre yoksa where göndermeyelim
         const where = Object.keys(filters).length ? filters : undefined;
 
         const tickets = await req.models.Ticket.findAll({
@@ -3656,27 +3720,28 @@ exports.getSearchTable = async (req, res, next) => {
             order: [["seatNo", "ASC"]],
         });
 
-        // Hiç bilet yoksa direkt boş tablo render et
         if (!tickets.length) {
-            return res.render("mixins/searchPassengersTable", { activeTickets: [], canceledTickets: [] });
+            return res.render("mixins/searchPassengersTable", {
+                activeTickets: [],
+                canceledTickets: []
+            });
         }
 
-        // İlişkili verileri sadece ihtiyaç varsa topla
         const tripIds = [...new Set(tickets.map((t) => t.tripId).filter(Boolean))];
+        const stopMap = new Map();
+        const tripMap = new Map();
 
-        let stopMap = new Map(); // stopId -> stopTitle
-        let tripMap = new Map(); // tripId -> { date, time }
+        let stopIds = new Set();
 
+        // --- Trip’li biletler varsa onların rotalarına göre stopId'leri topla
         if (tripIds.length) {
             const trips = await req.models.Trip.findAll({
                 where: { id: { [Op.in]: tripIds } },
             });
 
-            tripMap = new Map(trips.map((tr) => [String(tr.id), { date: tr.date, time: tr.time }]));
+            trips.forEach(tr => tripMap.set(String(tr.id), { date: tr.date, time: tr.time }));
 
-            const routeIds = [
-                ...new Set(trips.map((tr) => tr.routeId).filter(Boolean)),
-            ];
+            const routeIds = [...new Set(trips.map((tr) => tr.routeId).filter(Boolean))];
 
             if (routeIds.length) {
                 const routeStops = await req.models.RouteStop.findAll({
@@ -3684,24 +3749,27 @@ exports.getSearchTable = async (req, res, next) => {
                     order: [["order", "ASC"]],
                 });
 
-                const stopIds = [
-                    ...new Set(routeStops.map((rs) => rs.stopId).filter(Boolean)),
-                ];
-
-                if (stopIds.length) {
-                    const stops = await req.models.Stop.findAll({
-                        where: { id: { [Op.in]: stopIds } },
-                    });
-
-                    // Hızlı erişim için map'e çevir
-                    stopMap = new Map(stops.map((s) => [String(s.id), s.title]));
-                }
+                routeStops.forEach(rs => stopIds.add(rs.stopId));
             }
         }
 
-        // Ticket'ları from/to başlıklarıyla zenginleştir
+        // --- Trip’i olmayan (açık) biletlerdeki from/to stopId’leri de ekle
+        for (const t of tickets) {
+            if (t.fromRouteStopId) stopIds.add(t.fromRouteStopId);
+            if (t.toRouteStopId) stopIds.add(t.toRouteStopId);
+        }
+
+        // --- Stop başlıklarını al
+        if (stopIds.size > 0) {
+            const stops = await req.models.Stop.findAll({
+                where: { id: { [Op.in]: [...stopIds] } },
+            });
+            stops.forEach(s => stopMap.set(String(s.id), s.title));
+        }
+
+        // --- Ticket’ları zenginleştir
         const newTicketArray = tickets.map((ticket) => {
-            const t = ticket.toJSON ? ticket.toJSON() : ticket; // Sequelize instance -> plain obj
+            const t = ticket.toJSON ? ticket.toJSON() : ticket;
             const fromTitle = stopMap.get(String(t.fromRouteStopId)) || "-";
             const toTitle = stopMap.get(String(t.toRouteStopId)) || "-";
             const tripInfo = tripMap.get(String(t.tripId)) || {};
@@ -3713,29 +3781,39 @@ exports.getSearchTable = async (req, res, next) => {
                 from: fromTitle,
                 to: toTitle,
                 gender: t.gender === "m" ? "BAY" : "BAYAN",
-                date: new Intl.DateTimeFormat('tr-TR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                }).format(new Date(tripDate)),
-                time: new Intl.DateTimeFormat('tr-TR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                }).format(new Date(`1970-01-01T${tripTime}`))
+                date: tripDate
+                    ? new Intl.DateTimeFormat("tr-TR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                      }).format(new Date(tripDate))
+                    : "",
+                time: tripTime
+                    ? new Intl.DateTimeFormat("tr-TR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                      }).format(new Date(`1970-01-01T${tripTime}`))
+                    : "",
             };
         });
 
         const canceledStatuses = ["canceled", "refund"];
-        const activeTickets = newTicketArray.filter(t => !canceledStatuses.includes(t.status));
-        const canceledTickets = newTicketArray.filter(t => canceledStatuses.includes(t.status));
+        const activeTickets = newTicketArray.filter(
+            (t) => !canceledStatuses.includes(t.status)
+        );
+        const canceledTickets = newTicketArray.filter((t) =>
+            canceledStatuses.includes(t.status)
+        );
 
-        return res.render("mixins/searchPassengersTable", { activeTickets, canceledTickets });
+        return res.render("mixins/searchPassengersTable", {
+            activeTickets,
+            canceledTickets,
+        });
     } catch (err) {
         return next(err);
     }
 };
-
 
 exports.getBusPlanPanel = async (req, res, next) => {
     let id = req.query.id
