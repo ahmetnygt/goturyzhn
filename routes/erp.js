@@ -57,6 +57,7 @@ router.post('/post-cancel-ticket', erpController.postCancelTicket)
 router.post('/post-delete-pending-tickets', erpController.postDeletePendingTickets)
 router.post('/post-open-ticket', erpController.postOpenTicket)
 router.get('/get-move-ticket', erpController.getMoveTicket)
+router.get('/get-open-move-ticket', erpController.getOpenMoveTicket)
 router.get('/get-route-stops-list-moving', erpController.getRouteStopsListMoving)
 router.post('/post-move-tickets', erpController.postMoveTickets)
 
