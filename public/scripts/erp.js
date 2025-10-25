@@ -2161,15 +2161,16 @@ async function loadTrip(date, time, tripId) {
                 let arr = [];
                 const opt = $("<option>").html("").val("");
                 arr.push(opt);
-                for (let i = 0; i < array.length; i++) {
-                    const rs = array[i];
-                    const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
-                    if (rs.isRestricted) {
-                        opt2.addClass("restricted");
-                        opt2.prop("disabled", true);
+                if (array.length)
+                    for (let i = 0; i < array.length; i++) {
+                        const rs = array[i];
+                        const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
+                        if (rs.isRestricted) {
+                            opt2.addClass("restricted");
+                            opt2.prop("disabled", true);
+                        }
+                        arr.push(opt2);
                     }
-                    arr.push(opt2);
-                }
                 const $moveToSelect = $(".move-to-trip-place-select");
                 $moveToSelect.html(arr);
 
@@ -2189,8 +2190,10 @@ async function loadTrip(date, time, tripId) {
 
                 $moveToSelect.val(targetValue);
                 if (isMovingActive) {
-                    $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
-                    $(".move-to-trip-place").html(`${currentStopStr}`);
+                    if (currentTripPlaceTime)
+                        $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                    if (currentStopStr)
+                        $(".move-to-trip-place").html(`${currentStopStr}`);
                     $(".move-to-trip-place-select").val(targetValue);
                     $(".move-to").css("display", "flex");
                 }
@@ -4281,6 +4284,7 @@ $(".taken-ticket-op").on("click", async e => {
             }
         });
     }
+
     else if (action == "move") {
         movingMode = "move";
         movingSelectedSeats = [];
@@ -4311,15 +4315,16 @@ $(".taken-ticket-op").on("click", async e => {
                         let arr = [];
                         const opt = $("<option>").html("").val("");
                         arr.push(opt);
-                        for (let i = 0; i < array.length; i++) {
-                            const rs = array[i];
-                            const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
-                            if (rs.isRestricted) {
-                                opt2.addClass("restricted");
-                                opt2.prop("disabled", true);
+                        if (array.length)
+                            for (let i = 0; i < array.length; i++) {
+                                const rs = array[i];
+                                const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
+                                if (rs.isRestricted) {
+                                    opt2.addClass("restricted");
+                                    opt2.prop("disabled", true);
+                                }
+                                arr.push(opt2);
                             }
-                            arr.push(opt2);
-                        }
                         const $moveToSelect = $(".move-to-trip-place-select");
                         $moveToSelect.html(arr);
 
@@ -4339,8 +4344,10 @@ $(".taken-ticket-op").on("click", async e => {
 
                         $moveToSelect.val(targetValue);
                         if (isMovingActive) {
-                            $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
-                            $(".move-to-trip-place").html(`${currentStopStr}`);
+                            if (currentTripPlaceTime)
+                                $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                            if (currentStopStr)
+                                $(".move-to-trip-place").html(`${currentStopStr}`);
                             $(".move-to-trip-place-select").val(targetValue);
                             $(".move-to").css("display", "flex");
                         }
@@ -4359,6 +4366,7 @@ $(".taken-ticket-op").on("click", async e => {
             }
         });
     }
+
     else if (action === "attach_open") {
         movingMode = "attach_open";
         movingSelectedSeats = [];
@@ -4391,14 +4399,68 @@ $(".taken-ticket-op").on("click", async e => {
             url: "/get-attach-open-ticket",
             type: "GET",
             data: requestData,
-            success: function (response) {
+            success: async function (response) {
                 $(".moving .gtr-header span").html("AÇIK BİLET BAĞLA");
                 $(".moving .info").html(response);
                 isMovingActive = true;
                 $(".taken-ticket-ops-pop-up").hide();
                 $(".moving").css("display", "block");
 
-                bindMovingTicketButtons(btn => btn?.dataset?.ticketId || btn?.dataset?.ticketToken || btn?.dataset?.seatNumber);
+                await $.ajax({
+                    url: "/get-route-stops-list-moving",
+                    type: "GET",
+                    data: { date: currentTripDate, time: currentTripTime, tripId: currentTripId, stopId: currentStop },
+                    success: function (response) {
+                        const array = response.arr;
+                        const selectedId = response.selected
+                        console.log(selectedId)
+                        console.log(array)
+                        let arr = [];
+                        const opt = $("<option>").html("").val("");
+                        arr.push(opt);
+                        if (array.length)
+                            for (let i = 0; i < array.length; i++) {
+                                const rs = array[i];
+                                const opt2 = $("<option>").html(rs.stopStr).val(rs.isRestricted ? "" : rs.stopId);
+                                if (rs.isRestricted) {
+                                    opt2.addClass("restricted");
+                                    opt2.prop("disabled", true);
+                                }
+                                arr.push(opt2);
+                            }
+                        const $moveToSelect = $(".move-to-trip-place-select");
+                        $moveToSelect.html(arr);
+
+                        let targetValue = selectedId;
+                        if ($moveToSelect.length) {
+                            const options = $moveToSelect.find("option").toArray();
+                            if (toId && options.some(opt => String(opt.value) === String(toId))) {
+                                targetValue = toId;
+                            } else if (toStr) {
+                                const normalizedToStr = toStr.trim().toLocaleLowerCase("tr-TR");
+                                const matchByLabel = options.find(opt => $(opt).text().trim().toLocaleLowerCase("tr-TR") === normalizedToStr);
+                                if (matchByLabel) {
+                                    targetValue = matchByLabel.value;
+                                }
+                            }
+                        }
+
+                        $moveToSelect.val(targetValue);
+                        if (isMovingActive) {
+                            if (currentTripPlaceTime)
+                                $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
+                            if (currentStopStr)
+                                $(".move-to-trip-place").html(`${currentStopStr}`);
+                            $(".move-to-trip-place-select").val(targetValue);
+                            $(".move-to").css("display", "flex");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+
+                bindMovingTicketButtons(btn => btn?.dataset?.isOpen);
             },
             error: function (xhr, status, error) {
                 movingMode = null;
@@ -4407,6 +4469,7 @@ $(".taken-ticket-op").on("click", async e => {
             }
         });
     }
+
     else if (action == "delete_pending") {
         const pendingIds = contextPendingIds.length
             ? [...contextPendingIds]
@@ -4433,6 +4496,9 @@ $(".taken-ticket-op").on("click", async e => {
             }
         });
     }
+
+    $(".ticket-search-pop-up").css("display", "none")
+    $(".blackout").css("display", "none")
 })
 
 $(".moving-confirm").on("click", async e => {

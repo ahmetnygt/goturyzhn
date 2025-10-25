@@ -3839,6 +3839,11 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
                 stopId = branch.stopId
         }
 
+        if (!tripId) {
+            res.json({ arr: [] })
+            return
+        }
+
         const trip = await req.models.Trip.findOne({ where: { date, time, id: tripId } })
         const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
