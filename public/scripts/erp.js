@@ -97,6 +97,7 @@ function updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers, overrides 
     const seatTypesFromDom = [];
     const pnrsFromDom = [];
     const pendingIdsFromDom = [];
+    const ticketIdsFromDom = [];
 
     normalizedSeats.forEach(seatNumber => {
         const $seat = $(`.seat[data-seat-number='${seatNumber}']`);
@@ -104,10 +105,12 @@ function updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers, overrides 
             seatTypesFromDom.push($seat.data("seat-type") ?? "");
             pnrsFromDom.push($seat.data("pnr") ?? "");
             pendingIdsFromDom.push($seat.data("pending-ticket-id") ?? "");
+            ticketIdsFromDom.push($seat.data("ticket-id") ?? "");
         } else {
             seatTypesFromDom.push("");
             pnrsFromDom.push("");
             pendingIdsFromDom.push("");
+            ticketIdsFromDom.push("");
         }
     });
 
@@ -120,6 +123,7 @@ function updateSelectedTakenTicketContextFromSeatNumbers(seatNumbers, overrides 
         seatTypes: overrides.seatTypes ?? seatTypesFromDom,
         pnrs: overrides.pnrs ?? pnrsFromDom,
         pendingTicketIds: overrides.pendingTicketIds ?? pendingIdsFromDom,
+        ticketIds: overrides.ticketIds ?? ticketIdsFromDom,
     };
 }
 
@@ -130,11 +134,25 @@ function setSelectedTakenTicketContextFromRow($row) {
     }
 
     const seatNumber = $row.data("seat-number");
-    const normalizedSeats = normalizeSeatNumberList([seatNumber]);
+    const normalizedSeats = normalizeSeatNumberList([seatNumber]).filter(Boolean);
+    const pendingTicketId = $row.data("pending-ticket-id");
+    const pnr = $row.data("pnr");
+    const ticketId = $row.data("ticket-id");
 
-    if (!normalizedSeats.length) {
-        clearSelectedTakenTicketContext();
-        return;
+    const seatTypes = normalizedSeats.length ? [($row.data("seat-type") ?? "")] : [];
+    const pnrs = [];
+    if (pnr !== undefined && pnr !== null && String(pnr).trim() !== "") {
+        pnrs.push(String(pnr).trim());
+    }
+
+    const pendingTicketIds = [];
+    if (pendingTicketId !== undefined && pendingTicketId !== null && String(pendingTicketId).trim() !== "") {
+        pendingTicketIds.push(String(pendingTicketId).trim());
+    }
+
+    const ticketIds = [];
+    if (ticketId !== undefined && ticketId !== null && String(ticketId).trim() !== "") {
+        ticketIds.push(String(ticketId).trim());
     }
 
     selectedTakenTicketContext = {
@@ -143,15 +161,28 @@ function setSelectedTakenTicketContextFromRow($row) {
         tripDate: $row.data("trip-date") ?? currentTripDate ?? null,
         tripTime: $row.data("trip-time") ?? currentTripTime ?? null,
         stopId: $row.data("stop-id") ?? selectedTicketStopId ?? currentStop ?? null,
-        seatTypes: [($row.data("seat-type") ?? "")],
-        pnrs: [($row.data("pnr") ?? "")],
-        pendingTicketIds: [($row.data("pending-ticket-id") ?? "")],
+        seatTypes,
+        pnrs,
+        pendingTicketIds,
+        ticketIds,
     };
 }
 
 function ensureSelectedTakenTicketContext() {
-    if (selectedTakenTicketContext && Array.isArray(selectedTakenTicketContext.seatNumbers) && selectedTakenTicketContext.seatNumbers.length) {
-        return selectedTakenTicketContext;
+    if (selectedTakenTicketContext) {
+        const seatNumbers = Array.isArray(selectedTakenTicketContext.seatNumbers)
+            ? selectedTakenTicketContext.seatNumbers.filter(seat => seat !== undefined && seat !== null && seat !== "")
+            : [];
+        const ticketIds = Array.isArray(selectedTakenTicketContext.ticketIds)
+            ? selectedTakenTicketContext.ticketIds.filter(id => String(id ?? "").trim() !== "")
+            : [];
+        const pnrs = Array.isArray(selectedTakenTicketContext.pnrs)
+            ? selectedTakenTicketContext.pnrs.filter(pnr => String(pnr ?? "").trim() !== "")
+            : [];
+
+        if (seatNumbers.length || ticketIds.length || pnrs.length) {
+            return selectedTakenTicketContext;
+        }
     }
 
     if (selectedTakenSeats && selectedTakenSeats.length) {
@@ -731,7 +762,13 @@ function updateTakenTicketOpsVisibility($el) {
     $(".taken-ticket-op").css("display", "block");
 
     const status = $el.data("status");
-    console.log($el)
+
+    if (status !== "open") {
+        $(".taken-ticket-op[data-action='attach_open']").css("display", "none");
+    } else {
+        $(".taken-ticket-op[data-action='open']").css("display", "none");
+        $(".taken-ticket-op[data-action='move']").css("display", "none");
+    }
 
     if (status === "reservation") {
         $(".taken-ticket-op[data-action='refund']").css("display", "none");
@@ -3794,26 +3831,88 @@ let cancelingSeatPNR = null
 let isMovingActive = false
 let movingSeatPNR = null
 let movingSelectedSeats = []
+let movingMode = null
+
+function bindMovingTicketButtons(tokenResolver) {
+    $(".moving-ticket-button").off("click").on("click", e => {
+        const resolver = typeof tokenResolver === "function" ? tokenResolver : null;
+        const rawToken = resolver ? resolver(e.currentTarget) : e.currentTarget?.dataset?.seatNumber;
+        const token = rawToken !== undefined && rawToken !== null ? String(rawToken).trim() : "";
+
+        if (!token) {
+            return;
+        }
+
+        const $btn = $(e.currentTarget);
+        const alreadySelected = movingSelectedSeats.includes(token);
+
+        if (alreadySelected) {
+            $btn.removeClass("selected").removeClass("btn-primary").addClass("btn-outline-primary");
+            movingSelectedSeats = movingSelectedSeats.filter(value => value !== token);
+        } else {
+            $btn.addClass("selected").addClass("btn-primary").removeClass("btn-outline-primary");
+            movingSelectedSeats.push(token);
+        }
+    });
+}
+
+function resetMovingWorkflowState() {
+    selectedSeats = [];
+    selectedTakenSeats = [];
+    isMovingActive = false;
+    movingSeatPNR = null;
+    movingSelectedSeats = [];
+    movingMode = null;
+    $(".moving-ticket-button").removeClass("selected btn-primary").addClass("btn-outline-primary");
+    $(".moving .info").empty();
+    $(".moving").css("display", "none");
+    $(".seat").removeClass("selected");
+}
 
 $(".taken-ticket-op").on("click", async e => {
     const action = e.currentTarget.dataset.action
     $(".search-ticket-ops-pop-up").hide();
 
     const context = ensureSelectedTakenTicketContext();
-    if (!context || !Array.isArray(context.seatNumbers) || !context.seatNumbers.length) {
+    if (!context) {
         return;
     }
 
-    const seatNumbers = [...context.seatNumbers];
-    const contextSeatTypes = Array.isArray(context.seatTypes)
-        ? context.seatTypes.map(type => (type ?? ""))
-        : [];
+    const seatNumbers = [];
+    const filteredSeatTypes = [];
+
+    if (Array.isArray(context.seatNumbers)) {
+        context.seatNumbers.forEach((seat, index) => {
+            const normalizedSeat = normalizeSeatNumberList([seat]);
+            if (!normalizedSeat.length) {
+                return;
+            }
+
+            seatNumbers.push(normalizedSeat[0]);
+            const seatType = Array.isArray(context.seatTypes) ? context.seatTypes[index] : "";
+            filteredSeatTypes.push(seatType ?? "");
+        });
+    }
+
+    const contextSeatTypes = filteredSeatTypes;
     const contextPnrs = Array.isArray(context.pnrs)
         ? context.pnrs.map(pnr => (pnr ?? ""))
         : [];
     const contextPendingIds = Array.isArray(context.pendingTicketIds)
         ? context.pendingTicketIds.map(id => (id ?? ""))
         : [];
+    const contextTicketIds = Array.isArray(context.ticketIds)
+        ? context.ticketIds.map(id => (id ?? ""))
+        : [];
+
+    const ticketIds = contextTicketIds
+        .map(id => String(id).trim())
+        .filter(id => id !== "");
+    const firstPnr = contextPnrs.find(pnr => String(pnr).trim() !== "") ?? null;
+
+    if (!seatNumbers.length && !ticketIds.length && !firstPnr) {
+        return;
+    }
 
     const tripDate = context.tripDate ?? currentTripDate;
     const tripTime = context.tripTime ?? currentTripTime;
@@ -3830,7 +3929,7 @@ $(".taken-ticket-op").on("click", async e => {
         selectedTicketStopId = stopId;
     }
 
-    const firstPnr = contextPnrs[0] ?? null;
+    const firstTicketId = ticketIds[0] ?? null;
 
     if (action == "complete") {
         $(".ticket-button-action").attr("data-action", "complete")
@@ -4152,37 +4251,79 @@ $(".taken-ticket-op").on("click", async e => {
         });
     }
     else if (action == "move") {
+        movingMode = "move";
+        movingSelectedSeats = [];
+        selectedSeats = [];
+        $(".seat").removeClass("selected");
+
         const seat = seatNumbers[0];
-        movingSeatPNR = firstPnr || $(`.seat.seat-${seat}`).data("pnr")
+        movingSeatPNR = firstPnr || (seat ? $(`.seat.seat-${seat}`).data("pnr") : null);
+
         await $.ajax({
             url: "/get-move-ticket",
             type: "GET",
             data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: selectedTicketStopId },
             success: async function (response) {
-                $(".moving .info").html(response)
-                isMovingActive = true
-                $(".taken-ticket-ops-pop-up").hide()
-                $(".moving").css("display", "block")
+                $(".moving .gtr-header span").html("BİLET TRANSFER");
+                $(".moving .info").html(response);
+                isMovingActive = true;
+                $(".taken-ticket-ops-pop-up").hide();
+                $(".moving").css("display", "block");
 
-                $(".moving-ticket-button").on("click", e => {
-                    const seatNo = e.currentTarget.dataset.seatNumber
-
-                    if (movingSelectedSeats.includes(seatNo)) {
-                        e.currentTarget.classList.remove("selected")
-                        e.currentTarget.classList.remove("btn-primary")
-                        e.currentTarget.classList.add("btn-outline-primary")
-                        movingSelectedSeats = movingSelectedSeats.filter(s => s !== seatNo)
-                    }
-                    else {
-                        e.currentTarget.classList.add("selected")
-                        e.currentTarget.classList.remove("btn-outline-primary")
-                        e.currentTarget.classList.add("btn-primary")
-                        movingSelectedSeats.push(seatNo)
-                    }
-                })
+                bindMovingTicketButtons(btn => btn?.dataset?.seatNumber);
             },
             error: function (xhr, status, error) {
-                console.log(error);
+                movingMode = null;
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
+            }
+        });
+    }
+    else if (action === "attach_open") {
+        movingMode = "attach_open";
+        movingSelectedSeats = [];
+        selectedSeats = [];
+        $(".seat").removeClass("selected");
+
+        if (!firstPnr && !ticketIds.length) {
+            movingMode = null;
+            showError("Açık bileti bağlamak için gerekli bilgiler bulunamadı.");
+            return;
+        }
+
+        movingSeatPNR = firstPnr || null;
+
+        const requestData = {
+            stopId,
+            tripId,
+        };
+
+        if (firstPnr) {
+            requestData.pnr = firstPnr;
+        }
+
+        const attachTicketIds = ticketIds.length ? ticketIds : (firstTicketId ? [firstTicketId] : []);
+        if (attachTicketIds.length) {
+            requestData.ticketIds = JSON.stringify(attachTicketIds);
+        }
+
+        await $.ajax({
+            url: "/get-attach-open-ticket",
+            type: "GET",
+            data: requestData,
+            success: function (response) {
+                $(".moving .gtr-header span").html("AÇIK BİLET BAĞLA");
+                $(".moving .info").html(response);
+                isMovingActive = true;
+                $(".taken-ticket-ops-pop-up").hide();
+                $(".moving").css("display", "block");
+
+                bindMovingTicketButtons(btn => btn?.dataset?.ticketId || btn?.dataset?.ticketToken || btn?.dataset?.seatNumber);
+            },
+            error: function (xhr, status, error) {
+                movingMode = null;
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
             }
         });
     }
@@ -4215,17 +4356,47 @@ $(".taken-ticket-op").on("click", async e => {
 })
 
 $(".moving-confirm").on("click", async e => {
+    if (movingMode === "attach_open") {
+        if (!movingSelectedSeats.length) {
+            showError("Lütfen bağlanacak açık bileti seçiniz.");
+            return;
+        }
+
+        if (selectedSeats.length !== movingSelectedSeats.length) {
+            showError("Seçilen koltuk sayısı ile bağlanacak bilet sayısı eşleşmelidir.");
+            return;
+        }
+
+        await $.ajax({
+            url: "/post-attach-open-ticket",
+            type: "POST",
+            data: {
+                pnr: movingSeatPNR,
+                ticketIds: JSON.stringify(movingSelectedSeats),
+                newSeats: JSON.stringify(selectedSeats),
+                tripId: currentTripId,
+                stopId: selectedTicketStopId,
+                toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId,
+            },
+            success: async function () {
+                resetMovingWorkflowState();
+                loadTrip(currentTripDate, currentTripTime, currentTripId);
+            },
+            error: function (xhr, status, error) {
+                const message = xhr?.responseJSON?.message || xhr?.responseText || error;
+                showError(message);
+            }
+        });
+
+        return;
+    }
+
     await $.ajax({
         url: "/post-move-tickets",
         type: "POST",
         data: { pnr: movingSeatPNR, oldSeats: JSON.stringify(movingSelectedSeats), newSeats: JSON.stringify(selectedSeats), newTrip: currentTripId, fromId: selectedTicketStopId, toId: $(".move-to-trip-place-select").val() ? $(".move-to-trip-place-select").val() : toId },
-        success: async function (response) {
-            selectedSeats = []
-            selectedTakenSeats = []
-            isMovingActive = false
-            movingSeatPNR = null
-            movingSelectedSeats = []
-            $(".moving").css("display", "none");
+        success: async function () {
+            resetMovingWorkflowState();
             loadTrip(currentTripDate, currentTripTime, currentTripId)
         },
         error: function (xhr, status, error) {
@@ -4236,13 +4407,10 @@ $(".moving-confirm").on("click", async e => {
 })
 
 $(".moving-close").on("click", e => {
-    selectedSeats = []
-    selectedTakenSeats = []
-    isMovingActive = false
-    moveToTripId = null
-    movingSeatPNR = null
-    $(".seat").removeClass("selected");
-    $(".moving").css("display", "none");
+    resetMovingWorkflowState();
+    if (typeof moveToTripId !== "undefined") {
+        moveToTripId = null
+    }
 })
 
 $(".trip-revenue-close").on("click", e => {
