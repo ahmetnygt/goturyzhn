@@ -543,6 +543,138 @@ function computeRouteStopTimes(trip, routeStops = [], offsetMap = new Map()) {
     return results;
 }
 
+function normalizeTicketIdToken(value) {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const tokenMatch = trimmed.match(/^ticket-(\d+)$/i);
+        if (tokenMatch) {
+            const parsed = Number(tokenMatch[1]);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        const parsed = Number(trimmed);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    return null;
+}
+
+function parseTicketIdTokens(rawValues) {
+    if (!Array.isArray(rawValues)) {
+        return { ids: [], invalid: true };
+    }
+
+    const seen = new Set();
+    const ids = [];
+
+    for (const value of rawValues) {
+        const normalized = normalizeTicketIdToken(value);
+        if (normalized === null) {
+            return { ids: [], invalid: true };
+        }
+
+        if (seen.has(normalized)) {
+            return { ids: [], invalid: true };
+        }
+
+        seen.add(normalized);
+        ids.push(normalized);
+    }
+
+    return { ids, invalid: false };
+}
+
+async function buildOpenTicketMoveContext(models, tickets) {
+    if (!Array.isArray(tickets) || !tickets.length) {
+        return {
+            trip: { dateString: "--/--", timeString: "--.--" },
+            tickets: [],
+        };
+    }
+
+    const stopIds = new Set();
+    tickets.forEach(ticket => {
+        if (ticket?.fromRouteStopId) {
+            stopIds.add(Number(ticket.fromRouteStopId));
+        }
+        if (ticket?.toRouteStopId) {
+            stopIds.add(Number(ticket.toRouteStopId));
+        }
+    });
+
+    const stops = stopIds.size
+        ? await models.Stop.findAll({ where: { id: { [Op.in]: [...stopIds] } } })
+        : [];
+    const stopMap = new Map(stops.map(stop => [String(stop.id), stop.title]));
+
+    const firstTicket = tickets[0];
+
+    const pad = value => String(value).padStart(2, "0");
+
+    let dateString = "--/--";
+    if (firstTicket?.optionDate) {
+        const date = new Date(firstTicket.optionDate);
+        if (!Number.isNaN(date)) {
+            dateString = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+        }
+    }
+
+    let rawTime = firstTicket?.optionTime || "";
+    if (rawTime.includes(" ")) {
+        rawTime = rawTime.split(" ").pop();
+    }
+    const timeParts = rawTime ? rawTime.split(":") : [];
+    const hourPart = timeParts[0] ? pad(timeParts[0]) : null;
+    const minutePart = timeParts[1] ? pad(timeParts[1]) : null;
+    const timeString = hourPart && minutePart ? `${hourPart}.${minutePart}` : "--.--";
+
+    const trip = {
+        dateString,
+        timeString,
+    };
+
+    const assignValue = (ticket, key, value) => {
+        if (!ticket) {
+            return;
+        }
+        if (typeof ticket.setDataValue === "function") {
+            ticket.setDataValue(key, value);
+        } else {
+            ticket[key] = value;
+        }
+    };
+
+    tickets.forEach((ticket, index) => {
+        const fromTitle = stopMap.get(String(ticket.fromRouteStopId)) || "-";
+        const toTitle = stopMap.get(String(ticket.toRouteStopId)) || "-";
+
+        assignValue(ticket, "fromPlaceString", fromTitle);
+        assignValue(ticket, "toPlaceString", toTitle);
+        assignValue(ticket, "displaySeatNo", String(index + 1).padStart(2, "0"));
+        assignValue(ticket, "moveToken", `ticket-${ticket.id}`);
+    });
+
+    if (tickets[0]) {
+        const first = tickets[0];
+        assignValue(first, "fromPlaceString", first.fromPlaceString || "-");
+        assignValue(first, "toPlaceString", first.toPlaceString || "-");
+    }
+
+    return { trip, tickets };
+}
+
 function computeRouteStopDateTimes(trip, routeStops = [], offsetMap = new Map()) {
     if (!trip) {
         return new Map();
@@ -3618,61 +3750,78 @@ exports.getOpenMoveTicket = async (req, res, next) => {
             return res.status(404).json({ message: "Açık bilet bulunamadı." });
         }
 
-        const stopIds = new Set();
-        tickets.forEach((ticket) => {
-            if (ticket.fromRouteStopId) stopIds.add(ticket.fromRouteStopId);
-            if (ticket.toRouteStopId) stopIds.add(ticket.toRouteStopId);
-        });
+        const context = await buildOpenTicketMoveContext(req.models, tickets);
 
-        const stops = stopIds.size
-            ? await req.models.Stop.findAll({ where: { id: { [Op.in]: [...stopIds] } } })
-            : [];
-        const stopMap = new Map(stops.map((stop) => [String(stop.id), stop.title]));
+        res.render("mixins/moveTicket", { trip: context.trip, tickets: context.tickets });
+    } catch (error) {
+        console.error("Açık bilet sorgusunda hata:", error);
+        res.status(500).json({ message: "Açık bilet bilgileri alınamadı." });
+    }
+};
 
-        const firstTicket = tickets[0];
+exports.getAttachOpenTicket = async (req, res, next) => {
+    try {
+        const { pnr: rawPnr, ticketIds: rawTicketIds } = req.query;
 
-        const pad = (value) => String(value).padStart(2, "0");
-
-        let dateString = "--/--";
-        if (firstTicket.optionDate) {
-            const date = new Date(firstTicket.optionDate);
-            if (!isNaN(date)) {
-                dateString = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+        let parsedTicketIds = [];
+        if (rawTicketIds !== undefined) {
+            try {
+                const ticketIdValues = JSON.parse(rawTicketIds);
+                const parsed = parseTicketIdTokens(ticketIdValues);
+                if (parsed.invalid) {
+                    return res.status(400).json({ message: "Bilet bilgileri geçersiz." });
+                }
+                parsedTicketIds = parsed.ids;
+            } catch (err) {
+                return res.status(400).json({ message: "Bilet bilgileri geçersiz." });
             }
         }
 
-        let rawTime = firstTicket.optionTime || "";
-        if (rawTime.includes(" ")) {
-            rawTime = rawTime.split(" ").pop();
-        }
-        const timeParts = rawTime ? rawTime.split(":") : [];
-        const hourPart = timeParts[0] ? pad(timeParts[0]) : null;
-        const minutePart = timeParts[1] ? pad(timeParts[1]) : null;
-        const timeString = hourPart && minutePart ? `${hourPart}.${minutePart}` : "--.--";
+        const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
 
-        const trip = {
-            dateString,
-            timeString,
+        if (!normalizedPnr && !parsedTicketIds.length) {
+            return res.status(400).json({ message: "Açık bilet bilgileri eksik." });
+        }
+
+        const where = {
+            status: "open",
+            tripId: null,
         };
 
-        tickets.forEach((ticket, index) => {
-            const fromTitle = stopMap.get(String(ticket.fromRouteStopId)) || "-";
-            const toTitle = stopMap.get(String(ticket.toRouteStopId)) || "-";
-
-            ticket.fromPlaceString = fromTitle;
-            ticket.toPlaceString = toTitle;
-            ticket.displaySeatNo = String(index + 1).padStart(2, "0");
-            ticket.moveToken = `ticket-${ticket.id}`;
-        });
-
-        if (tickets[0]) {
-            tickets[0].fromPlaceString = tickets[0].fromPlaceString || "-";
-            tickets[0].toPlaceString = tickets[0].toPlaceString || "-";
+        if (normalizedPnr) {
+            where.pnr = normalizedPnr;
         }
 
-        res.render("mixins/moveTicket", { trip, tickets });
+        if (parsedTicketIds.length) {
+            where.id = { [Op.in]: parsedTicketIds };
+        }
+
+        const tickets = await req.models.Ticket.findAll({
+            where,
+            order: [["id", "ASC"]],
+        });
+
+        if (!tickets.length) {
+            return res.status(404).json({ message: "Açık bilet bulunamadı." });
+        }
+
+        let orderedTickets = tickets;
+        if (parsedTicketIds.length) {
+            const ticketMap = new Map(tickets.map(ticket => [String(ticket.id), ticket]));
+            orderedTickets = parsedTicketIds
+                .map(id => ticketMap.get(String(id)))
+                .filter(Boolean);
+
+            if (orderedTickets.length !== parsedTicketIds.length) {
+                return res.status(404).json({ message: "Seçilen açık biletlerden bazıları bulunamadı." });
+            }
+        }
+
+        const context = await buildOpenTicketMoveContext(req.models, orderedTickets);
+
+        res.render("mixins/moveTicket", { trip: context.trip, tickets: context.tickets });
     } catch (error) {
-        console.error("Açık bilet sorgusunda hata:", error);
+        console.error("Açık bileti bağlama sorgusunda hata:", error);
         res.status(500).json({ message: "Açık bilet bilgileri alınamadı." });
     }
 };
@@ -3849,6 +3998,178 @@ exports.postMoveTickets = async (req, res, next) => {
         res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
 }
+
+exports.postAttachOpenTicket = async (req, res, next) => {
+    try {
+        const { pnr: rawPnr, ticketIds: rawTicketIds, newSeats: rawNewSeats, tripId, stopId: rawStopId, toId: rawToId } = req.body;
+
+        if (!tripId) {
+            return res.status(400).json({ message: "Hedef sefer bilgisi eksik." });
+        }
+
+        let ticketIdValues;
+        try {
+            ticketIdValues = JSON.parse(rawTicketIds || "[]");
+        } catch (error) {
+            return res.status(400).json({ message: "Seçilen bilet bilgileri okunamadı." });
+        }
+
+        const parsedTicketIds = parseTicketIdTokens(ticketIdValues);
+        if (parsedTicketIds.invalid || !parsedTicketIds.ids.length) {
+            return res.status(400).json({ message: "Geçerli açık bilet seçimi bulunamadı." });
+        }
+
+        let newSeatValues;
+        try {
+            newSeatValues = JSON.parse(rawNewSeats || "[]");
+        } catch (error) {
+            return res.status(400).json({ message: "Koltuk bilgileri okunamadı." });
+        }
+
+        if (!Array.isArray(newSeatValues) || newSeatValues.length !== parsedTicketIds.ids.length) {
+            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." });
+        }
+
+        const normalizedStopIdRaw = rawStopId !== undefined && rawStopId !== null ? String(rawStopId).trim() : "";
+        if (!normalizedStopIdRaw) {
+            return res.status(400).json({ message: "Başlangıç durağı bilgisi eksik." });
+        }
+
+        const fromStopId = Number(normalizedStopIdRaw);
+        if (!Number.isFinite(fromStopId)) {
+            return res.status(400).json({ message: "Başlangıç durağı bilgisi geçersiz." });
+        }
+
+        const normalizedToIdRaw = rawToId !== undefined && rawToId !== null ? String(rawToId).trim() : "";
+        let toStopId = null;
+        if (normalizedToIdRaw) {
+            const parsedTo = Number(normalizedToIdRaw);
+            if (!Number.isFinite(parsedTo)) {
+                return res.status(400).json({ message: "Varış durağı bilgisi geçersiz." });
+            }
+            toStopId = parsedTo;
+        }
+
+        const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
+
+        const trip = await req.models.Trip.findOne({ where: { id: tripId } });
+        if (!trip) {
+            return res.status(404).json({ message: "Hedef sefer bulunamadı." });
+        }
+
+        const where = {
+            id: { [Op.in]: parsedTicketIds.ids },
+            status: "open",
+            tripId: null,
+        };
+
+        if (normalizedPnr) {
+            where.pnr = normalizedPnr;
+        }
+
+        const tickets = await req.models.Ticket.findAll({ where });
+        if (!tickets.length) {
+            return res.status(404).json({ message: "Bağlanacak açık bilet bulunamadı." });
+        }
+
+        const ticketMap = new Map(tickets.map(ticket => [String(ticket.id), ticket]));
+        const orderedTickets = parsedTicketIds.ids
+            .map(id => ticketMap.get(String(id)))
+            .filter(Boolean);
+
+        if (orderedTickets.length !== parsedTicketIds.ids.length) {
+            return res.status(404).json({ message: "Seçilen açık biletlerden bazıları bulunamadı." });
+        }
+
+        const normalizeSeatValue = value => {
+            if (value === null || value === undefined) {
+                return null;
+            }
+            if (typeof value === "number") {
+                return value;
+            }
+            if (typeof value === "string") {
+                const trimmed = value.trim();
+                if (!trimmed) {
+                    return null;
+                }
+                const parsed = Number(trimmed);
+                return Number.isNaN(parsed) ? trimmed : parsed;
+            }
+            return null;
+        };
+
+        const normalizedSeats = newSeatValues.map(normalizeSeatValue);
+        if (normalizedSeats.some(value => value === null)) {
+            return res.status(400).json({ message: "Geçersiz koltuk bilgisi tespit edildi." });
+        }
+
+        const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
+        if (route) {
+            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, normalizedSeats);
+            if (singleSeatCheck.exceeded) {
+                return res.status(400).json({
+                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                });
+            }
+        }
+
+        let effectiveTime = trip.time;
+        let currentRouteStop = null;
+        if (trip.routeId) {
+            const routeStops = await req.models.RouteStop.findAll({
+                where: { routeId: trip.routeId },
+                order: [["order", "ASC"]],
+            });
+
+            currentRouteStop = routeStops.find(rs => String(rs.stopId) === String(fromStopId)) || null;
+
+            if (toStopId !== null) {
+                const targetRouteStop = routeStops.find(rs => String(rs.stopId) === String(toStopId));
+                if (!targetRouteStop) {
+                    return res.status(400).json({ message: "Geçerli bir varış durağı seçiniz." });
+                }
+                if (currentRouteStop && targetRouteStop.order <= currentRouteStop.order) {
+                    return res.status(400).json({ message: "Varış durağı başlangıç durağından sonra olmalıdır." });
+                }
+            }
+
+            if (currentRouteStop) {
+                const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true });
+                const offsetMap = buildOffsetMap(offsets);
+                const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap);
+                const matchedStopTime = stopTimes.find(st => st.order === currentRouteStop.order);
+                if (matchedStopTime) {
+                    effectiveTime = matchedStopTime.time;
+                }
+            }
+        }
+
+        const optionTimeValue = `${trip.date} ${effectiveTime}`;
+
+        for (let i = 0; i < orderedTickets.length; i++) {
+            const ticket = orderedTickets[i];
+            const seatValue = normalizedSeats[i];
+
+            ticket.seatNo = seatValue;
+            ticket.tripId = trip.id;
+            ticket.fromRouteStopId = fromStopId;
+            if (toStopId !== null) {
+                ticket.toRouteStopId = toStopId;
+            }
+            ticket.optionDate = trip.date;
+            ticket.optionTime = optionTimeValue;
+            ticket.status = "completed";
+
+            await ticket.save();
+        }
+
+        res.status(200).json({ message: "Açık biletler başarıyla sefere bağlandı." });
+    } catch (error) {
+        console.error("Açık bileti sefere bağlama hatası:", error);
+        res.status(500).json({ message: "Biletler bağlanırken bir hata oluştu." });
+    }
+};
 
 exports.getSearchTable = async (req, res, next) => {
     try {

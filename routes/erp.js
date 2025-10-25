@@ -58,8 +58,10 @@ router.post('/post-delete-pending-tickets', erpController.postDeletePendingTicke
 router.post('/post-open-ticket', erpController.postOpenTicket)
 router.get('/get-move-ticket', erpController.getMoveTicket)
 router.get('/get-open-move-ticket', erpController.getOpenMoveTicket)
+router.get('/get-attach-open-ticket', erpController.getAttachOpenTicket)
 router.get('/get-route-stops-list-moving', erpController.getRouteStopsListMoving)
 router.post('/post-move-tickets', erpController.postMoveTickets)
+router.post('/post-attach-open-ticket', erpController.postAttachOpenTicket)
 
 router.get('/get-search-table', erpController.getSearchTable);
 
