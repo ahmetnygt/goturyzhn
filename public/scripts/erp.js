@@ -2170,12 +2170,28 @@ async function loadTrip(date, time, tripId) {
                     }
                     arr.push(opt2);
                 }
-                $(".move-to-trip-place-select").html(arr);
-                $(".move-to-trip-place-select").val(selectedId);
+                const $moveToSelect = $(".move-to-trip-place-select");
+                $moveToSelect.html(arr);
+
+                let targetValue = selectedId;
+                if ($moveToSelect.length) {
+                    const options = $moveToSelect.find("option").toArray();
+                    if (toId && options.some(opt => String(opt.value) === String(toId))) {
+                        targetValue = toId;
+                    } else if (toStr) {
+                        const normalizedToStr = toStr.trim().toLocaleLowerCase("tr-TR");
+                        const matchByLabel = options.find(opt => $(opt).text().trim().toLocaleLowerCase("tr-TR") === normalizedToStr);
+                        if (matchByLabel) {
+                            targetValue = matchByLabel.value;
+                        }
+                    }
+                }
+
+                $moveToSelect.val(targetValue);
                 if (isMovingActive) {
                     $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
                     $(".move-to-trip-place").html(`${currentStopStr}`);
-                    $(".move-to-trip-place-select").val(selectedId);
+                    $(".move-to-trip-place-select").val(targetValue);
                     $(".move-to").css("display", "flex");
                 }
             },
@@ -4304,12 +4320,28 @@ $(".taken-ticket-op").on("click", async e => {
                             }
                             arr.push(opt2);
                         }
-                        $(".move-to-trip-place-select").html(arr);
-                        $(".move-to-trip-place-select").val(selectedId);
+                        const $moveToSelect = $(".move-to-trip-place-select");
+                        $moveToSelect.html(arr);
+
+                        let targetValue = selectedId;
+                        if ($moveToSelect.length) {
+                            const options = $moveToSelect.find("option").toArray();
+                            if (toId && options.some(opt => String(opt.value) === String(toId))) {
+                                targetValue = toId;
+                            } else if (toStr) {
+                                const normalizedToStr = toStr.trim().toLocaleLowerCase("tr-TR");
+                                const matchByLabel = options.find(opt => $(opt).text().trim().toLocaleLowerCase("tr-TR") === normalizedToStr);
+                                if (matchByLabel) {
+                                    targetValue = matchByLabel.value;
+                                }
+                            }
+                        }
+
+                        $moveToSelect.val(targetValue);
                         if (isMovingActive) {
                             $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
                             $(".move-to-trip-place").html(`${currentStopStr}`);
-                            $(".move-to-trip-place-select").val(selectedId);
+                            $(".move-to-trip-place-select").val(targetValue);
                             $(".move-to").css("display", "flex");
                         }
                     },
