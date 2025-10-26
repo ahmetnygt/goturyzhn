@@ -2339,10 +2339,13 @@ exports.getErp = async (req, res, next) => {
         pointOrPercent: getEnumValues("pointOrPercent").map(value => ({ value, label: labelFromMap(value, pointOrPercentLabelMap) })),
     };
 
+    const logo = await resolveFirmLoginLogo(req)
+
     res.render('erpscreen', {
         title: req.session?.firm?.displayName || "GötürYZHN",
         busModel,
         staff,
+        tenantKey: req.tenantKey,
         user,
         places,
         stops,
