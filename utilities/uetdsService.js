@@ -33,6 +33,71 @@ async function getFirmCredentials(req) {
     };
 }
 
+function timeStringToSeconds(timeString) {
+    if (!timeString) {
+        return 0;
+    }
+
+    if (typeof timeString === "number" && Number.isFinite(timeString)) {
+        return Math.max(0, Math.floor(timeString));
+    }
+
+    if (timeString instanceof Date) {
+        return (
+            (timeString.getUTCHours?.() || 0) * 3600 +
+            (timeString.getUTCMinutes?.() || 0) * 60 +
+            (timeString.getUTCSeconds?.() || 0)
+        );
+    }
+
+    if (typeof timeString !== "string") {
+        return 0;
+    }
+
+    const trimmed = timeString.trim();
+    if (!trimmed) {
+        return 0;
+    }
+
+    const parts = trimmed.split(":").map((part) => Number(part) || 0);
+    const [hours = 0, minutes = 0, seconds = 0] = parts.length === 2
+        ? [parts[0], parts[1], 0]
+        : [parts[0], parts[1], parts[2] || 0];
+
+    return (hours * 3600) + (minutes * 60) + seconds;
+}
+
+function computeTripEndDateTime(hareketTarihi, hareketSaati, routeStops = [], stopTimes = []) {
+    const orderedRouteStops = [...routeStops].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    if (!orderedRouteStops.length) {
+        return null;
+    }
+
+    if (!moment(hareketTarihi, "YYYY-MM-DD", true).isValid()) {
+        return null;
+    }
+
+    const hareketDateTime = moment(`${hareketTarihi} ${hareketSaati}`, ["YYYY-MM-DD HH:mm", "YYYY-MM-DD HH:mm:ss"], true);
+    const baseDateTime = hareketDateTime.isValid()
+        ? hareketDateTime
+        : moment(`${hareketTarihi} ${hareketSaati || "00:00"}`, ["YYYY-MM-DD HH:mm", "YYYY-MM-DD HH:mm:ss"], true);
+
+    if (!baseDateTime.isValid()) {
+        return null;
+    }
+
+    const offsetMap = new Map(stopTimes.map((row) => {
+        const routeStopId = Number(row.routeStopId);
+        const offsetMinutes = Number(row.offsetMinutes) || 0;
+        return [routeStopId, offsetMinutes];
+    }));
+
+    const totalDurationSeconds = orderedRouteStops.reduce((acc, routeStop) => acc + timeStringToSeconds(routeStop.duration), 0);
+    const totalOffsetSeconds = orderedRouteStops.reduce((acc, routeStop) => acc + ((offsetMap.get(Number(routeStop.id)) || 0) * 60), 0);
+
+    return baseDateTime.clone().add(totalDurationSeconds + totalOffsetSeconds, "seconds");
+}
+
 /**
  * 🚍 UETDS seferEkle
  * tripId’ye göre DB’den sefer bilgilerini alır ve SOAP isteği gönderir
@@ -60,8 +125,21 @@ async function seferEkle(req, tripId) {
 
         const hareketTarihi = moment(trip.date).format("YYYY-MM-DD");
         const hareketSaati = trip.time || "00:00";
-        const seferBitisTarihi = moment(trip.date).format("YYYY-MM-DD");
-        const seferBitisSaati = trip.estimatedArrivalTime || "00:00";
+        let seferBitisTarihi = moment(trip.date).format("YYYY-MM-DD");
+        let seferBitisSaati = trip.estimatedArrivalTime || "00:00";
+
+        const [routeStops, stopTimes] = trip.routeId
+            ? await Promise.all([
+                req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] }),
+                req.models.TripStopTime.findAll({ where: { tripId: trip.id } })
+            ])
+            : [[], []];
+
+        const computedEndDate = computeTripEndDateTime(hareketTarihi, hareketSaati, routeStops, stopTimes);
+        if (computedEndDate) {
+            seferBitisTarihi = computedEndDate.format("YYYY-MM-DD");
+            seferBitisSaati = computedEndDate.format("HH:mm");
+        }
 
         const args = {
             wsuser: {
