@@ -6,7 +6,9 @@ const UETDS_ENDPOINTS = {
     prod: "https://servis.turkiye.gov.tr/services/g2g/kdgm/uetdsarizi?wsdl"
 };
 
-// Firma bilgilerini getir
+/**
+ * Firma bilgilerini getirir
+ */
 async function getFirmCredentials(req) {
     const firm = await req.commonModels.Firm.findOne({ where: { key: req.tenantKey } });
     if (!firm) throw new Error("Firma bulunamadı.");
@@ -31,67 +33,36 @@ async function getFirmCredentials(req) {
     };
 }
 
-// Yardımcı: TripStopTime verilerinden offset map oluştur
-function buildOffsetMap(offsets) {
-    const map = {};
-    for (const o of offsets) {
-        map[o.routeStopId] = o.offsetMinutes || 0;
-    }
-    return map;
-}
-
-// Yardımcı: Duraklara göre saat hesapla
-function computeRouteStopTimes(trip, routeStops, offsetMap) {
-    const start = moment(`${trip.date} ${trip.time}`, "YYYY-MM-DD HH:mm");
-    let current = start.clone();
-    const result = [];
-
-    for (const stop of routeStops) {
-        const offset = offsetMap[stop.id] || 0;
-        current = start.clone().add(offset, "minutes");
-        result.push({
-            stopId: stop.id,
-            title: stop.title,
-            time: current.format("HH:mm"),
-            datetime: current.clone()
-        });
-    }
-    return result;
-}
-
-// Ana fonksiyon: Sefer Ekle
+/**
+ * 🚍 UETDS seferEkle
+ * tripId’ye göre DB’den sefer bilgilerini alır ve SOAP isteği gönderir
+ */
 async function seferEkle(req, tripId) {
     try {
+        // Firma bilgileri
         const { wsdl, username, password, plaka } = await getFirmCredentials(req);
 
+        // Trip bilgileri
         const trip = await req.models.Trip.findOne({
             where: { id: tripId },
             include: [
                 {
-                    model: req.models.Route,
-                    as: "route",
-                    include: [{ model: req.models.RouteStop, as: "stops" }]
+                    model: req.models.Route, as: "route", include: [
+                        { model: req.models.Stop, as: "fromStop", attributes: ["title"] },
+                        { model: req.models.Stop, as: "toStop", attributes: ["title"] }
+                    ]
                 },
                 { model: req.models.Bus, as: "bus", attributes: ["licensePlate", "phoneNumber"] }
             ]
         });
 
         if (!trip) throw new Error(`Trip bulunamadı: ${tripId}`);
-        if (!trip.route?.stops?.length) throw new Error("Rota durak bilgisi eksik.");
 
-        // Durakları sırala
-        const routeStops = [...trip.route.stops].sort((a, b) => a.order - b.order);
+        const hareketTarihi = moment(trip.date).format("YYYY-MM-DD");
+        const hareketSaati = trip.time || "00:00";
+        const seferBitisTarihi = moment(trip.date).format("YYYY-MM-DD");
+        const seferBitisSaati = trip.estimatedArrivalTime || "00:00";
 
-        // TripStopTime tablosundan offsetleri al
-        const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true });
-        const offsetMap = buildOffsetMap(offsets);
-
-        // Durak saatlerini hesapla
-        const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap);
-        const lastStopTime = stopTimes[stopTimes.length - 1];
-        const seferBitis = lastStopTime.datetime || moment(trip.date).add(3, "hours"); // fallback 3 saat
-
-        // SOAP argümanları
         const args = {
             wsuser: {
                 kullaniciAdi: username,
@@ -99,26 +70,27 @@ async function seferEkle(req, tripId) {
             },
             ariziSeferBilgileriInput: {
                 aracPlaka: plaka || trip.bus?.licensePlate,
-                seferAciklama: `${routeStops[0]?.title || ""} - ${routeStops[routeStops.length - 1]?.title || ""}`,
-                hareketTarihi: moment(`${trip.date}`).format("YYYY-MM-DD"),
-                hareketSaati: moment(trip.time, "HH:mm").format("HH:mm"),
+                seferAciklama: `${trip.route?.fromStop?.title || ""} - ${trip.route?.toStop?.title || ""}`,
+                hareketTarihi: `${hareketTarihi}`,
+                hareketSaati: hareketSaati,
                 aracTelefonu: trip.bus?.phoneNumber || "5554443322",
                 firmaSeferNo: `TRIP-${trip.id}`,
-                seferBitisTarihi: seferBitis.format("YYYY-MM-DD"),
-                seferBitisSaati: seferBitis.format("HH:mm")
+                seferBitisTarihi: `${seferBitisTarihi}`,
+                seferBitisSaati: seferBitisSaati
             }
         };
 
-        console.log("🚍 [UETDS] seferEkle isteği gönderiliyor...");
-        console.table(args.ariziSeferBilgileriInput);
+        console.log("🚍 [UETDS] seferEkle isteği:", args);
 
+        // SOAP client
         const client = await soap.createClientAsync(wsdl);
         client.setSecurity(new soap.BasicAuthSecurity(username, password));
-        const [result] = await client.seferEkleAsync(args);
 
-        console.log("✅ [UETDS] seferEkle yanıtı:", result.return);
+        const [result, rawResponse] = await client.seferEkleAsync(args);
 
-        // Kaydet
+        console.log("✅ [UETDS] seferEkle yanıtı:", result);
+
+        // Başarılıysa Trip modeline UETDS referans numarasını kaydedebilirsin
         if (result?.return?.uetdsSeferReferansNo) {
             trip.uetdsRefNo = result.return.uetdsSeferReferansNo;
             await trip.save();
@@ -126,7 +98,7 @@ async function seferEkle(req, tripId) {
 
         return result.return;
     } catch (err) {
-        console.error("❌ [UETDS] seferEkle Hatası:", err);
+        console.error("❌ [UETDS] seferEkle Hatası:", err.message || err);
         throw err;
     }
 }
