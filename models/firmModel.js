@@ -23,6 +23,19 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM("active", "inactive"),
       defaultValue: "active",
     },
+    uetdsUsername: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    uetdsPassword: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    isUetdsTestMode: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: true
+    },
     comissionRate: {
       type: DataTypes.DECIMAL,
       allowNull: false,

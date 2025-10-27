@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@chenfengyuan/datepicker": "^1.0.10",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bootstrap-multiselect": "^1.1.0",
     "connect-session-sequelize": "^8.0.2",
@@ -22,10 +23,13 @@
     "morgan": "~1.9.1",
     "mysql2": "^3.14.0",
     "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
     "nodemon": "^3.1.9",
     "pdfkit": "^0.13.0",
+    "public-ip": "^8.0.0",
     "pug": "2.0.0-beta11",
     "sequelize": "^6.37.7",
+    "soap": "^1.6.0",
     "world-countries": "file:vendor/world-countries"
   },
   "devDependencies": {

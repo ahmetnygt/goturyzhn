@@ -17,6 +17,7 @@ const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTick
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
 const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
 const countries = require("world-countries");
+const { seferEkle, kullaniciKontrol } = require('../utilities/uetdsService');
 
 const TURKISH_COLLATOR = (() => {
     try {
@@ -5221,61 +5222,71 @@ exports.getTripsList = async (req, res, next) => {
     }
 }
 
-
 exports.postSaveTrip = async (req, res, next) => {
     try {
-        const { routeId, firstDate, lastDate, departureTime, busModelId, busId } = convertEmptyFieldsToNull(req.body);
+        const { routeId, firstDate, lastDate, departureTime, busModelId, busId } =
+            convertEmptyFieldsToNull(req.body);
 
         const route = await req.models.Route.findOne({ where: { id: routeId } });
-        if (!route) {
-            return res.status(404).json({ error: "Hat bulunamadı" });
-        }
+        if (!route) return res.status(404).json({ error: "Hat bulunamadı" });
 
-        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: route.id }, order: [["order", "ASC"]] });
-        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
+        const routeStops = await req.models.RouteStop.findAll({
+            where: { routeId: route.id },
+            order: [["order", "ASC"]],
+        });
+
+        const stops = await req.models.Stop.findAll({
+            where: { id: { [Op.in]: [...new Set(routeStops.map((rs) => rs.stopId))] } },
+        });
 
         const bus = await req.models.Bus.findOne({ where: { id: busId } });
         const captainId = bus?.captainId ?? null;
 
-
         const start = new Date(firstDate);
         const end = new Date(lastDate);
+        const diffDays =
+            Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-        const diffTime = end.getTime() - start.getTime();
-        let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // gün farkı + dahil
-
-        const fromStop = stops.find(s => s.id == route.fromStopId);
-        const toStop = stops.find(s => s.id == route.toStopId);
-
-        if (!fromStop || !toStop) {
+        const fromStop = stops.find((s) => s.id == route.fromStopId);
+        const toStop = stops.find((s) => s.id == route.toStopId);
+        if (!fromStop || !toStop)
             return res.status(400).json({ error: "Yer bilgisi bulunamadı" });
-        }
 
         let trips = [];
-
         for (let i = 0; i < diffDays; i++) {
             const tripDate = new Date(start);
             tripDate.setDate(start.getDate() + i);
 
             trips.push({
-                routeId: routeId,
-                busModelId: busModelId,
-                busId: busId,
-                captainId: captainId,
-                date: tripDate.toISOString().split("T")[0], // YYYY-MM-DD
+                routeId,
+                busModelId,
+                busId,
+                captainId,
+                date: tripDate.toISOString().split("T")[0],
                 time: departureTime,
                 fromPlaceString: fromStop.title,
                 toPlaceString: toStop.title,
             });
         }
 
-        // topluca insert → performanslı
-        await req.models.Trip.bulkCreate(trips);
+        // 1️⃣ Kaydet
+        const createdTrips = await req.models.Trip.bulkCreate(trips, { returning: true });
 
-        return res.status(201).json({ message: `${trips.length} sefer başarıyla eklendi` });
+        // 2️⃣ Kullanıcıya hızlı yanıt ver
+        res.status(201).json({ message: `${createdTrips.length} sefer eklendi` });
+
+        // 3️⃣ UETDS'ye asenkron bildirim (arka planda)
+        for (const trip of createdTrips) {
+            try {
+                const result = await seferEkle(req, trip.id);
+                console.log(`UETDS bildirimi başarılı → Trip #${trip.id}`, result?.response?.sonucMesaj || result);
+            } catch (err) {
+                console.error(`Trip #${trip.id} UETDS bildirimi hatası:`, err.message);
+            }
+        }
     } catch (err) {
         console.error("postSaveTrip error:", err);
-        return res.status(500).json({ error: "Bir hata oluştu", detail: err.message });
+        res.status(500).json({ error: "Bir hata oluştu", detail: err.message });
     }
 };
 

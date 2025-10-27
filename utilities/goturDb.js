@@ -43,7 +43,7 @@ function initGoturModels() {
 
 function getGoturSyncPromise() {
     if (!goturSyncPromise) {
-        goturSyncPromise = goturDB.sync({ }).catch((error) => {
+        goturSyncPromise = goturDB.sync({}).catch((error) => {
             goturSyncPromise = null;
             throw error;
         });

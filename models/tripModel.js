@@ -65,6 +65,10 @@ module.exports = (sequelize) => {
     busPlanString: {
       type: DataTypes.STRING,
     },
+    uetdsRefNo:{
+      type: DataTypes.BIGINT,
+      allowNull:true
+    },
     isDeleted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
