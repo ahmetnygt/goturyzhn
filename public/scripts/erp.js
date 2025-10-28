@@ -6157,6 +6157,8 @@ let editingStopId = null
 $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
     placeSelect.empty()
+    const stopUetdsSelect = $(".stop-uetds")
+    stopUetdsSelect.empty()
     await $.ajax({
         url: "/get-places-data",
         type: "GET",
@@ -6166,6 +6168,51 @@ $(".stops-nav").on("click", async e => {
                 placeSelect.append(`<option value="${p.id}">${p.title}</option>`)
             })
             refreshSearchableSelect(placeSelect)
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
+        }
+    })
+
+    await $.ajax({
+        url: "/get-uetds-places-data",
+        type: "GET",
+        success: function (uetdsPlaces) {
+            if (!Array.isArray(uetdsPlaces)) {
+                return
+            }
+
+            const selectElement = stopUetdsSelect[0]
+            if (!selectElement) {
+                return
+            }
+
+            const emptyOption = document.createElement("option")
+            emptyOption.value = ""
+            emptyOption.selected = true
+            selectElement.appendChild(emptyOption)
+
+            uetdsPlaces.forEach(place => {
+                if (!place) {
+                    return
+                }
+
+                const { uetdsProvinceCode, uetdsDistrictCode, provinceName, districtName } = place
+                if (uetdsProvinceCode === undefined || uetdsDistrictCode === undefined) {
+                    return
+                }
+
+                const option = document.createElement("option")
+                option.value = `${uetdsProvinceCode}|${uetdsDistrictCode}`
+                option.dataset.provinceName = provinceName || ""
+                option.dataset.districtName = districtName || ""
+                option.textContent = `${provinceName || ""} / ${districtName || ""} (${uetdsDistrictCode})`
+                selectElement.appendChild(option)
+            })
+
+            refreshSearchableSelect(stopUetdsSelect)
+            stopUetdsSelect.val("")
+            stopUetdsSelect.trigger("change")
         },
         error: function (xhr, status, error) {
             console.log(error)
@@ -6200,7 +6247,10 @@ $(".stops-nav").on("click", async e => {
                         const stopPlaceSelect = $(".stop-place")
                         stopPlaceSelect.val("")
                         stopPlaceSelect.trigger("change")
-                        $(".stop-uetds").val("")
+                        const stopUetdsSelect = $(".stop-uetds")
+                        stopUetdsSelect.val("")
+                        stopUetdsSelect.trigger("change")
+                        refreshSearchableSelect(stopUetdsSelect)
                         $(".stop-service").prop("checked", false)
                         $(".stop-active").prop("checked", true)
                         $(".stop-panel").css("display", "none")
@@ -6225,7 +6275,22 @@ $(".stops-nav").on("click", async e => {
                         const stopPlaceSelect = $(".stop-place")
                         stopPlaceSelect.val(response.placeId)
                         stopPlaceSelect.trigger("change")
-                        $(".stop-uetds").val(response.UETDS_code)
+                        const stopUetdsSelect = $(".stop-uetds")
+                        if (response.uetdsProvinceId && response.uetdsDistrictId) {
+                            const uetdsValue = `${response.uetdsProvinceId}|${response.uetdsDistrictId}`
+                            stopUetdsSelect.val(uetdsValue)
+                            if (stopUetdsSelect.val() !== uetdsValue) {
+                                const fallbackOption = document.createElement("option")
+                                fallbackOption.value = uetdsValue
+                                fallbackOption.textContent = `${response.uetdsProvinceId} / ${response.uetdsDistrictId}`
+                                stopUetdsSelect[0]?.appendChild(fallbackOption)
+                                stopUetdsSelect.val(uetdsValue)
+                            }
+                        } else {
+                            stopUetdsSelect.val("")
+                        }
+                        stopUetdsSelect.trigger("change")
+                        refreshSearchableSelect(stopUetdsSelect)
                         $(".stop-service").prop("checked", response.isServiceArea)
                         $(".stop-active").prop("checked", response.isActive)
                         $(".stop-panel").css("display", "flex")
@@ -6258,7 +6323,10 @@ $(".add-stop").on("click", e => {
     const stopPlaceSelect = $(".stop-place")
     stopPlaceSelect.val("")
     stopPlaceSelect.trigger("change")
-    $(".stop-uetds").val("")
+    const stopUetdsSelect = $(".stop-uetds")
+    stopUetdsSelect.val("")
+    stopUetdsSelect.trigger("change")
+    refreshSearchableSelect(stopUetdsSelect)
     $(".stop-service").prop("checked", false)
     $(".stop-active").prop("checked", true)
     editingStopId = null
@@ -6271,12 +6339,22 @@ $(".save-stop").on("click", async e => {
     let webTitle = ($(".stop-web-title").val() || "").trim()
     const stopPlaceSelect = $(".stop-place")
     const placeId = (stopPlaceSelect.val() || "").trim()
-    const UETDS_code = ($(".stop-uetds").val() || "").trim()
+    const stopUetdsSelect = $(".stop-uetds")
+    const rawUetdsValue = (stopUetdsSelect.val() || "").trim()
     const isServiceArea = $(".stop-service").is(":checked")
     const isActive = $(".stop-active").is(":checked")
 
-    if (!title || !placeId || !UETDS_code) {
+    if (!title || !placeId || !rawUetdsValue) {
         showError("Durak adı, yer ve UETDS kodu boş bırakılamaz.")
+        return
+    }
+
+    const [rawProvinceCode, rawDistrictCode] = rawUetdsValue.split("|")
+    const uetdsProvinceCode = (rawProvinceCode || "").trim()
+    const uetdsDistrictCode = (rawDistrictCode || "").trim()
+
+    if (!uetdsProvinceCode || !uetdsDistrictCode) {
+        showError("Lütfen geçerli bir UETDS kodu seçiniz.")
         return
     }
 
@@ -6288,7 +6366,16 @@ $(".save-stop").on("click", async e => {
     await $.ajax({
         url: "/post-save-stop",
         type: "POST",
-        data: { id: editingStopId, title, webTitle, placeId, UETDS_code, isServiceArea, isActive },
+        data: {
+            id: editingStopId,
+            title,
+            webTitle,
+            placeId,
+            uetdsProvinceCode,
+            uetdsDistrictCode,
+            isServiceArea,
+            isActive,
+        },
         success: function (response) {
             $(".stop-panel").css("display", "none")
             $(".blackout").css("display", "none")

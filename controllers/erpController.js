@@ -5173,6 +5173,10 @@ exports.getStopsList = async (req, res, next) => {
 exports.getStop = async (req, res, next) => {
     const { id } = req.query;
     const stop = await req.models.Stop.findOne({ where: { id } });
+    if (!stop) {
+        return res.status(404).json({ message: "Durak bulunamadı" });
+    }
+
     res.json(stop);
 };
 
@@ -5196,29 +5200,102 @@ exports.getPlacesData = async (req, res, next) => {
     }
 };
 
+exports.getUetdsPlacesData = async (req, res, next) => {
+    try {
+        const places = await req.commonModels.UetdsPlace.findAll({
+            order: [
+                ["provinceName", "ASC"],
+                ["districtName", "ASC"],
+            ],
+        });
+        res.json(places);
+    } catch (err) {
+        console.error("Hata:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+function parsePositiveInteger(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    const parsed = Number(value);
+
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return null;
+    }
+
+    return parsed;
+}
+
 exports.postSaveStop = async (req, res, next) => {
     try {
         const data = convertEmptyFieldsToNull(req.body);
-        const { id, title, webTitle, placeId, UETDS_code, isServiceArea, isActive } = data;
+        const {
+            id,
+            title,
+            webTitle,
+            placeId,
+            uetdsProvinceCode,
+            uetdsDistrictCode,
+            isServiceArea,
+            isActive,
+        } = data;
 
-        const [stop, created] = await req.models.Stop.upsert(
-            {
-                id,
-                title,
-                webTitle: webTitle ? webTitle : title,
-                placeId,
-                UETDS_code,
-                isServiceArea: isServiceArea === 'true' || isServiceArea === true,
-                isActive: isActive === 'true' || isActive === true,
-            },
-            { returning: true }
-        );
+        const provinceCodeNumber = parsePositiveInteger(uetdsProvinceCode);
+        const districtCodeNumber = parsePositiveInteger(uetdsDistrictCode);
+        const placeIdNumber = parsePositiveInteger(placeId);
+        const stopId = parsePositiveInteger(id);
 
-        if (created) {
-            return res.json({ message: "Eklendi", stop });
-        } else {
-            return res.json({ message: "Güncellendi", stop });
+        if (!title) {
+            return res.status(400).json({ message: "Durak adı gereklidir." });
         }
+
+        if (!placeIdNumber) {
+            return res.status(400).json({ message: "Lütfen geçerli bir yer seçiniz." });
+        }
+
+        if (!provinceCodeNumber || !districtCodeNumber) {
+            return res.status(400).json({ message: "Lütfen geçerli bir UETDS kodu seçiniz." });
+        }
+
+        const uetdsPlace = await req.commonModels.UetdsPlace.findOne({
+            where: {
+                uetdsProvinceCode: provinceCodeNumber,
+                uetdsDistrictCode: districtCodeNumber,
+            },
+        });
+
+        if (!uetdsPlace) {
+            return res.status(400).json({ message: "Seçilen UETDS kodu bulunamadı." });
+        }
+
+        const payload = {
+            title,
+            webTitle: webTitle ? webTitle : title,
+            placeId: placeIdNumber,
+            uetdsProvinceId: uetdsPlace.uetdsProvinceCode,
+            uetdsDistrictId: uetdsPlace.uetdsDistrictCode,
+            isServiceArea: isServiceArea === 'true' || isServiceArea === true,
+            isActive: isActive === 'true' || isActive === true,
+        };
+
+        if (stopId) {
+            const existingStop = await req.models.Stop.findByPk(stopId);
+
+            if (!existingStop) {
+                return res.status(404).json({ message: "Durak bulunamadı" });
+            }
+
+            await existingStop.update(payload);
+
+            return res.json({ message: "Güncellendi", stop: existingStop });
+        }
+
+        const newStop = await req.models.Stop.create(payload);
+
+        return res.json({ message: "Eklendi", stop: newStop });
     } catch (err) {
         console.error("Hata:", err);
         res.status(500).json({ message: err.message });
