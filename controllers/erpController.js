@@ -115,42 +115,6 @@ const removeDiacritics = (value) =>
         ? value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         : value;
 
-function slugifyPlaceValue(value) {
-    if (typeof value !== "string") {
-        if (value === undefined || value === null) {
-            return "";
-        }
-        value = String(value);
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return "";
-    }
-
-    let lowered;
-    try {
-        lowered = trimmed.toLocaleLowerCase("tr-TR");
-    } catch (error) {
-        lowered = trimmed.toLowerCase();
-    }
-
-    const normalized = removeDiacritics(lowered);
-    const base = normalized.replace(/[^a-z0-9]+/g, "-");
-    const cleaned = base.replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
-
-    if (cleaned) {
-        return cleaned;
-    }
-
-    const fallback = normalized.replace(/\s+/g, "-").replace(/^-+|-+$/g, "");
-    if (fallback) {
-        return fallback;
-    }
-
-    return trimmed.replace(/\s+/g, "-");
-}
-
 function normalizeTakeText(value) {
     if (typeof value !== "string") {
         return "";
@@ -5232,109 +5196,18 @@ exports.getPlacesData = async (req, res, next) => {
     }
 };
 
-exports.getUetdsPlaces = async (req, res, next) => {
-    try {
-        if (!req.commonModels?.UetdsPlace) {
-            return res.status(500).json({ message: "UETDS verilerine erişilemiyor" });
-        }
-
-        const places = await req.commonModels.UetdsPlace.findAll({
-            order: [
-                ["uetdsProvinceCode", "ASC"],
-                ["uetdsDistrictCode", "ASC"],
-            ],
-        });
-
-        res.json(places);
-    } catch (err) {
-        console.error("UETDS place fetch error:", err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
 exports.postSaveStop = async (req, res, next) => {
     try {
         const data = convertEmptyFieldsToNull(req.body);
-        let { id, title, webTitle, placeId, UETDS_code, isServiceArea, isActive } = data;
-
-        const trimmedTitle = typeof title === "string" ? title.trim() : title;
-        const trimmedWebTitle = typeof webTitle === "string" ? webTitle.trim() : webTitle;
-        const trimmedUetdsCode = typeof UETDS_code === "string" ? UETDS_code.trim() : UETDS_code;
-
-        let resolvedPlaceId = placeId;
-        let resolvedProvinceId = data.uetdsProvinceId || null;
-        let resolvedDistrictId = data.uetdsDistrictId || null;
-
-        let matchedUetdsPlace = null;
-
-        if (trimmedUetdsCode) {
-            const numericDistrictCode = Number(trimmedUetdsCode);
-            if (!Number.isNaN(numericDistrictCode) && req.commonModels?.UetdsPlace) {
-                matchedUetdsPlace = await req.commonModels.UetdsPlace.findOne({
-                    where: { uetdsDistrictCode: numericDistrictCode },
-                });
-            }
-        }
-
-        if (matchedUetdsPlace) {
-            resolvedProvinceId = matchedUetdsPlace.uetdsProvinceCode;
-            resolvedDistrictId = matchedUetdsPlace.uetdsDistrictCode;
-
-            if (!resolvedPlaceId) {
-                resolvedPlaceId = matchedUetdsPlace.uetdsDistrictCode;
-            }
-
-            if (resolvedPlaceId) {
-                const identifier = resolvedPlaceId;
-                const [placeRecord, created] = await req.commonModels.Place.findOrCreate({
-                    where: { id: identifier },
-                    defaults: {
-                        id: identifier,
-                        title: matchedUetdsPlace.districtName,
-                        slug: slugifyPlaceValue(matchedUetdsPlace.districtName),
-                        provinceId: matchedUetdsPlace.uetdsProvinceCode,
-                    },
-                });
-
-                if (!created) {
-                    const updates = {};
-                    if (placeRecord.title !== matchedUetdsPlace.districtName) {
-                        updates.title = matchedUetdsPlace.districtName;
-                    }
-                    const desiredSlug = slugifyPlaceValue(matchedUetdsPlace.districtName);
-                    if (desiredSlug && placeRecord.slug !== desiredSlug) {
-                        updates.slug = desiredSlug;
-                    }
-                    if (
-                        matchedUetdsPlace.uetdsProvinceCode !== undefined &&
-                        matchedUetdsPlace.uetdsProvinceCode !== null &&
-                        Number(placeRecord.provinceId) !== Number(matchedUetdsPlace.uetdsProvinceCode)
-                    ) {
-                        updates.provinceId = matchedUetdsPlace.uetdsProvinceCode;
-                    }
-
-                    if (Object.keys(updates).length > 0) {
-                        await placeRecord.update(updates);
-                    }
-                }
-
-                resolvedPlaceId = placeRecord.id;
-            }
-        }
-
-        if (resolvedPlaceId === undefined || resolvedPlaceId === "") {
-            resolvedPlaceId = null;
-        }
+        const { id, title, webTitle, placeId, UETDS_code, isServiceArea, isActive } = data;
 
         const [stop, created] = await req.models.Stop.upsert(
             {
                 id,
-                title: trimmedTitle,
-                webTitle: trimmedWebTitle ? trimmedWebTitle : trimmedTitle,
-                placeId: resolvedPlaceId,
-                UETDS_code: trimmedUetdsCode,
-                uetdsProvinceId: resolvedProvinceId,
-                uetdsDistrictId: resolvedDistrictId,
+                title,
+                webTitle: webTitle ? webTitle : title,
+                placeId,
+                UETDS_code,
                 isServiceArea: isServiceArea === 'true' || isServiceArea === true,
                 isActive: isActive === 'true' || isActive === true,
             },

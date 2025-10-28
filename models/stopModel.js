@@ -19,8 +19,8 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    UETDS_code: {
-      type: DataTypes.STRING,
+    uetdsProvinceId: {
+      type: DataTypes.BIGINT,
       allowNull: true,
     },
     uetdsProvinceId: {
