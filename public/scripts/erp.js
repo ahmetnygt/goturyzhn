@@ -6153,286 +6153,97 @@ $(".save-staff").on("click", async e => {
 })
 
 let editingStopId = null
-let cachedStopUetdsPlaces = [];
-
-const formatUetdsPlaceLabel = place => {
-    if (!place) {
-        return "";
-    }
-
-    const provinceName = (place.provinceName || "").trim();
-    const districtName = (place.districtName || "").trim();
-    const code = place.uetdsDistrictCode !== undefined && place.uetdsDistrictCode !== null
-        ? ` (${place.uetdsDistrictCode})`
-        : "";
-
-    if (provinceName && districtName) {
-        return `${provinceName} / ${districtName}${code}`;
-    }
-
-    return `${districtName || provinceName}${code}`.trim();
-};
-
-const buildUetdsPlaceSearchText = place => {
-    if (!place) {
-        return "";
-    }
-
-    const parts = [];
-    if (place.provinceName) parts.push(place.provinceName);
-    if (place.districtName) parts.push(place.districtName);
-    if (place.uetdsProvinceCode !== undefined && place.uetdsProvinceCode !== null) {
-        parts.push(String(place.uetdsProvinceCode));
-    }
-    if (place.uetdsDistrictCode !== undefined && place.uetdsDistrictCode !== null) {
-        parts.push(String(place.uetdsDistrictCode));
-    }
-
-    return parts.join(" ");
-};
-
-const findCachedStopUetdsPlace = value => {
-    if (value === undefined || value === null) {
-        return null;
-    }
-
-    const target = String(value);
-    if (!target) {
-        return null;
-    }
-
-    return cachedStopUetdsPlaces.find(place => String(place.uetdsDistrictCode) === target) || null;
-};
-
-const ensureStopPlaceOption = ($select, uetdsPlace) => {
-    if (!$select || !$select.length || !uetdsPlace) {
-        return;
-    }
-
-    const value = String(uetdsPlace.uetdsDistrictCode ?? "");
-    if (!value) {
-        return;
-    }
-
-    let existingOption = null;
-    $select.find("option").each(function () {
-        if (String(this.value) === value) {
-            existingOption = this;
-            return false;
-        }
-        return undefined;
-    });
-
-    const label = formatUetdsPlaceLabel(uetdsPlace);
-    const searchText = buildUetdsPlaceSearchText(uetdsPlace);
-
-    if (existingOption) {
-        if (existingOption.textContent !== label) {
-            existingOption.textContent = label;
-        }
-        if (existingOption.dataset) {
-            existingOption.dataset.searchText = searchText;
-        }
-        return;
-    }
-
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    if (option.dataset) {
-        option.dataset.searchText = searchText;
-    }
-
-    $select[0].appendChild(option);
-};
-
-const populateStopUetdsSelect = async () => {
-    const stopUetdsSelect = $(".stop-uetds");
-    if (!stopUetdsSelect.length) {
-        cachedStopUetdsPlaces = [];
-        return;
-    }
-
-    try {
-        const response = await $.ajax({ url: "/get-uetds-places", type: "GET" });
-        cachedStopUetdsPlaces = Array.isArray(response) ? response : [];
-    } catch (error) {
-        console.log(error);
-        cachedStopUetdsPlaces = [];
-    }
-
-    const selectElement = stopUetdsSelect[0];
-    while (selectElement.firstChild) {
-        selectElement.removeChild(selectElement.firstChild);
-    }
-
-    const emptyOption = document.createElement("option");
-    emptyOption.value = "";
-    emptyOption.selected = true;
-    selectElement.appendChild(emptyOption);
-
-    cachedStopUetdsPlaces.forEach(place => {
-        if (place?.uetdsDistrictCode === undefined || place?.uetdsDistrictCode === null) {
-            return;
-        }
-
-        const option = document.createElement("option");
-        option.value = String(place.uetdsDistrictCode);
-        option.textContent = formatUetdsPlaceLabel(place);
-
-        if (option.dataset) {
-            option.dataset.searchText = buildUetdsPlaceSearchText(place);
-            option.dataset.provinceCode = place.uetdsProvinceCode ?? "";
-            option.dataset.provinceName = place.provinceName || "";
-            option.dataset.districtName = place.districtName || "";
-            option.dataset.districtCode = place.uetdsDistrictCode ?? "";
-        }
-
-        selectElement.appendChild(option);
-    });
-
-    stopUetdsSelect.val("");
-    refreshSearchableSelect(stopUetdsSelect);
-};
 
 $(".stops-nav").on("click", async e => {
     const placeSelect = $(".stop-place")
-    const placeSelectElement = placeSelect[0]
-
-    if (placeSelectElement) {
-        while (placeSelectElement.firstChild) {
-            placeSelectElement.removeChild(placeSelectElement.firstChild)
-        }
-        const emptyOption = document.createElement("option")
-        emptyOption.value = ""
-        emptyOption.selected = true
-        placeSelectElement.appendChild(emptyOption)
-    }
-
-    try {
-        const places = await $.ajax({ url: "/get-places-data", type: "GET" })
-        if (Array.isArray(places) && placeSelectElement) {
+    placeSelect.empty()
+    await $.ajax({
+        url: "/get-places-data",
+        type: "GET",
+        success: function (places) {
+            placeSelect.append(`<option value="" selected></option>`)
             places.forEach(p => {
-                const option = document.createElement("option")
-                option.value = String(p.id)
-                option.textContent = p.title || String(p.id)
-                if (option.dataset) {
-                    option.dataset.searchText = `${p.title || ""} ${p.slug || ""} ${p.id}`
-                }
-                placeSelectElement.appendChild(option)
+                placeSelect.append(`<option value="${p.id}">${p.title}</option>`)
             })
+            refreshSearchableSelect(placeSelect)
+        },
+        error: function (xhr, status, error) {
+            console.log(error)
         }
-    } catch (error) {
-        console.log(error)
-    }
+    })
 
-    refreshSearchableSelect(placeSelect)
+    await $.ajax({
+        url: "/get-stops-list",
+        type: "GET",
+        data: {},
+        success: function (response) {
+            $(".stop-list-nodes").html(response)
 
-    await populateStopUetdsSelect()
+            $(".stop-delete").on("click", async function (e) {
+                e.preventDefault()
+                e.stopPropagation()
 
-    try {
-        const response = await $.ajax({ url: "/get-stops-list", type: "GET", data: {} })
-        $(".stop-list-nodes").html(response)
-
-        $(".stop-delete").on("click", async function (e) {
-            e.preventDefault()
-            e.stopPropagation()
-
-            const $button = $(this)
-            const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
-            if (!window.confirm(warningMessage)) {
-                return
-            }
-
-            try {
-                const data = { id: $button.data("id") }
-                await $.ajax({ url: "/post-delete-stop", type: "POST", data })
-                const id = String($button.data("id"))
-                if (String(editingStopId) === id) {
-                    editingStopId = null
-                    $(".stop-title").val("")
-                    $(".stop-web-title").val("")
-                    const stopPlaceSelect = $(".stop-place")
-                    stopPlaceSelect.val("")
-                    stopPlaceSelect.trigger("change")
-                    refreshSearchableSelect(stopPlaceSelect)
-                    const stopUetdsSelect = $(".stop-uetds")
-                    stopUetdsSelect.val("")
-                    refreshSearchableSelect(stopUetdsSelect)
-                    $(".stop-service").prop("checked", false)
-                    $(".stop-active").prop("checked", true)
-                    $(".stop-panel").css("display", "none")
-                    $(".save-stop").html("KAYDET")
+                const $button = $(this)
+                const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
+                if (!window.confirm(warningMessage)) {
+                    return
                 }
-                $button.closest(".btn-group").remove()
-            } catch (err) {
-                showError(getAjaxErrorMessage(err))
-            }
-        })
 
-        $(".stop-button").on("click", async e => {
-            const id = e.currentTarget.dataset.id
-            editingStopId = id
-            await $.ajax({
-                url: "/get-stop",
-                type: "GET",
-                data: { id },
-                success: function (response) {
-                    $(".stop-title").val(response.title)
-                    $(".stop-web-title").val(response.webTitle)
-                    const stopPlaceSelect = $(".stop-place")
-                    const stopUetdsSelect = $(".stop-uetds")
-
-                    const placeValue = response.placeId !== null && response.placeId !== undefined
-                        ? String(response.placeId)
-                        : ""
-
-                    if (placeValue) {
-                        const matchedPlace = findCachedStopUetdsPlace(placeValue)
-                        if (matchedPlace) {
-                            ensureStopPlaceOption(stopPlaceSelect, matchedPlace)
-                        }
-                        stopPlaceSelect.val(placeValue)
-                    } else {
+                try {
+                    const data = { id: $button.data("id") }
+                    await $.ajax({ url: "/post-delete-stop", type: "POST", data })
+                    const id = String($button.data("id"))
+                    if (String(editingStopId) === id) {
+                        editingStopId = null
+                        $(".stop-title").val("")
+                        $(".stop-web-title").val("")
+                        const stopPlaceSelect = $(".stop-place")
                         stopPlaceSelect.val("")
+                        stopPlaceSelect.trigger("change")
+                        $(".stop-uetds").val("")
+                        $(".stop-service").prop("checked", false)
+                        $(".stop-active").prop("checked", true)
+                        $(".stop-panel").css("display", "none")
+                        $(".save-stop").html("KAYDET")
                     }
-                    stopPlaceSelect.trigger("change")
-                    refreshSearchableSelect(stopPlaceSelect)
-
-                    const rawUetdsValue =
-                        response.uetdsDistrictId !== null && response.uetdsDistrictId !== undefined
-                            ? String(response.uetdsDistrictId)
-                            : (response.UETDS_code !== null && response.UETDS_code !== undefined
-                                ? String(response.UETDS_code)
-                                : "")
-
-                    if (rawUetdsValue) {
-                        const matchedUetds = findCachedStopUetdsPlace(rawUetdsValue) || findCachedStopUetdsPlace(response.placeId)
-                        if (matchedUetds) {
-                            ensureStopPlaceOption(stopPlaceSelect, matchedUetds)
-                        }
-                        stopUetdsSelect.val(rawUetdsValue)
-                    } else {
-                        stopUetdsSelect.val("")
-                    }
-                    refreshSearchableSelect(stopUetdsSelect)
-
-                    $(".stop-service").prop("checked", response.isServiceArea)
-                    $(".stop-active").prop("checked", response.isActive)
-                    $(".stop-panel").css("display", "flex")
-                    $(".save-stop").html("KAYDET")
-                },
-                error: function (xhr, status, error) {
-                    console.log(error)
+                    $button.closest(".btn-group").remove()
+                } catch (err) {
+                    showError(getAjaxErrorMessage(err))
                 }
             })
-        })
 
-        $(".blackout").css("display", "block")
-        $(".stops").css("display", "block")
-    } catch (error) {
-        console.log(error)
-    }
+            $(".stop-button").on("click", async e => {
+                const id = e.currentTarget.dataset.id
+                editingStopId = id
+                await $.ajax({
+                    url: "/get-stop",
+                    type: "GET",
+                    data: { id },
+                    success: function (response) {
+                        $(".stop-title").val(response.title)
+                        $(".stop-web-title").val(response.webTitle)
+                        const stopPlaceSelect = $(".stop-place")
+                        stopPlaceSelect.val(response.placeId)
+                        stopPlaceSelect.trigger("change")
+                        $(".stop-uetds").val(response.UETDS_code)
+                        $(".stop-service").prop("checked", response.isServiceArea)
+                        $(".stop-active").prop("checked", response.isActive)
+                        $(".stop-panel").css("display", "flex")
+                        $(".save-stop").html("KAYDET")
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                })
+            })
+
+            $(".blackout").css("display", "block")
+            $(".stops").css("display", "block")
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    })
 })
 
 $(".stops-close").on("click", e => {
@@ -6447,10 +6258,7 @@ $(".add-stop").on("click", e => {
     const stopPlaceSelect = $(".stop-place")
     stopPlaceSelect.val("")
     stopPlaceSelect.trigger("change")
-    refreshSearchableSelect(stopPlaceSelect)
-    const stopUetdsSelect = $(".stop-uetds")
-    stopUetdsSelect.val("")
-    refreshSearchableSelect(stopUetdsSelect)
+    $(".stop-uetds").val("")
     $(".stop-service").prop("checked", false)
     $(".stop-active").prop("checked", true)
     editingStopId = null
@@ -6462,33 +6270,13 @@ $(".save-stop").on("click", async e => {
     const title = ($(".stop-title").val() || "").trim()
     let webTitle = ($(".stop-web-title").val() || "").trim()
     const stopPlaceSelect = $(".stop-place")
-    let placeId = (stopPlaceSelect.val() || "").trim()
-    const stopUetdsSelect = $(".stop-uetds")
-    const UETDS_code = (stopUetdsSelect.val() || "").trim()
+    const placeId = (stopPlaceSelect.val() || "").trim()
+    const UETDS_code = ($(".stop-uetds").val() || "").trim()
     const isServiceArea = $(".stop-service").is(":checked")
     const isActive = $(".stop-active").is(":checked")
 
-    const matchedUetdsPlace = findCachedStopUetdsPlace(UETDS_code)
-    if (!placeId && matchedUetdsPlace) {
-        placeId = String(matchedUetdsPlace.uetdsDistrictCode)
-        ensureStopPlaceOption(stopPlaceSelect, matchedUetdsPlace)
-        stopPlaceSelect.val(placeId)
-        stopPlaceSelect.trigger("change")
-        refreshSearchableSelect(stopPlaceSelect)
-    }
-
-    if (!title) {
-        showError("Lütfen durak adı giriniz.")
-        return
-    }
-
-    if (!UETDS_code) {
-        showError("Lütfen UETDS kodu seçiniz.")
-        return
-    }
-
-    if (!placeId) {
-        showError("Lütfen yer seçiniz.")
+    if (!title || !placeId || !UETDS_code) {
+        showError("Durak adı, yer ve UETDS kodu boş bırakılamaz.")
         return
     }
 
@@ -6497,55 +6285,19 @@ $(".save-stop").on("click", async e => {
         $(".stop-web-title").val(webTitle)
     }
 
-    const selectedUetdsOption = stopUetdsSelect.find("option:selected")
-    const uetdsProvinceId = selectedUetdsOption.length
-        ? (selectedUetdsOption.data("provinceCode") || (matchedUetdsPlace ? matchedUetdsPlace.uetdsProvinceCode : ""))
-        : (matchedUetdsPlace ? matchedUetdsPlace.uetdsProvinceCode : "")
-    const uetdsDistrictId = selectedUetdsOption.length
-        ? (selectedUetdsOption.data("districtCode") || (matchedUetdsPlace ? matchedUetdsPlace.uetdsDistrictCode : ""))
-        : (matchedUetdsPlace ? matchedUetdsPlace.uetdsDistrictCode : "")
-
     await $.ajax({
         url: "/post-save-stop",
         type: "POST",
-        data: {
-            id: editingStopId,
-            title,
-            webTitle,
-            placeId,
-            UETDS_code,
-            uetdsProvinceId,
-            uetdsDistrictId,
-            isServiceArea,
-            isActive
-        },
+        data: { id: editingStopId, title, webTitle, placeId, UETDS_code, isServiceArea, isActive },
         success: function (response) {
             $(".stop-panel").css("display", "none")
             $(".blackout").css("display", "none")
             $(".stops").css("display", "none")
         },
         error: function (xhr, status, error) {
-            console.log(error)
+            console.log(error);
         }
     })
-})
-
-$(document).on("change", ".stop-uetds", e => {
-    const value = ($(e.currentTarget).val() || "").trim()
-    if (!value) {
-        return
-    }
-
-    const matched = findCachedStopUetdsPlace(value)
-    if (!matched) {
-        return
-    }
-
-    const stopPlaceSelect = $(".stop-place")
-    ensureStopPlaceOption(stopPlaceSelect, matched)
-    stopPlaceSelect.val(String(matched.uetdsDistrictCode))
-    stopPlaceSelect.trigger("change")
-    refreshSearchableSelect(stopPlaceSelect)
 })
 
 let editingRouteId = null
