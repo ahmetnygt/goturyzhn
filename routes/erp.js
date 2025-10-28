@@ -94,6 +94,7 @@ router.post('/post-save-stop', erpController.postSaveStop);
 router.post('/post-delete-stop', erpController.postDeleteStop);
 router.get('/get-stops-data', erpController.getStopsData);
 router.get('/get-places-data', erpController.getPlacesData);
+router.get('/get-uetds-places', erpController.getUetdsPlaces);
 
 router.get('/get-prices-list', erpController.getPricesList);
 router.post('/post-save-prices', erpController.postSavePrices);
