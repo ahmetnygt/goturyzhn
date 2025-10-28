@@ -42,26 +42,7 @@ const WSDL_URL = "https://servis.turkiye.gov.tr/services/g2g/kdgm/test/uetdsariz
         // console.log("✅ UETDS ipTanimla sonucu:");
         // console.dir(resulttt, { depth: null });
 
-        // 4️⃣ Sefer Ekle
-        const [seferResult] = await client.seferEkleAsync({
-            wsuser: {                   // ← dikkat: wsuser (UetdsYtsUser değil)
-                kullaniciAdi: username,
-                sifre: password
-            },
-            ariziSeferBilgileriInput: { // ← dikkat: küçük "a", ASCII "i", "ı" değil
-                aracPlaka: "06TARIFESIZ123",
-                seferAciklama: "Götür Bilet Test",
-                hareketTarihi: "2025-10-27T09:00:00", // xs:dateTime formatında (Zorunlu)
-                hareketSaati: "09:00",
-                aracTelefonu: "5554443322",
-                firmaSeferNo: "1734-01",
-                seferBitisTarihi: "2025-10-27T13:00:00", // xs:dateTime
-                seferBitisSaati: "13:00"
-            }
-        });
-
-        console.log("🚍 [UETDS] seferEkle yanıtı:");
-        console.dir(seferResult, { depth: null });
+        console.log(client.describe().UdhbUetdsAriziService.UdhbUetdsAriziServicePort.personelIptal)
     } catch (err) {
         console.error("❌ SOAP Hatası:", err);
     }

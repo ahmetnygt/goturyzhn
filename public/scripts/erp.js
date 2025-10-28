@@ -2506,7 +2506,7 @@ async function loadTrip(date, time, tripId) {
         });
 
         // Stop restriction save
-        $(".trip-stop-restriction-save").off().on("click", async function () {
+        $(".trip-stop-restriction-save").off("click").on("click", async function () {
             const entries = Object.entries(tripStopRestrictionChanges);
             if (entries.length === 0) {
                 closeTripStopRestriction();

@@ -1,6 +1,9 @@
 const { Sequelize } = require("sequelize");
 const PlaceFactory = require("../models/placeModel");
 const FirmFactory = require("../models/firmModel");
+const UetdsPlaceFactory = require("../models/uetdsPlaceModel");
+const placesSeedData = require("../seeders/placeSeeder.json");
+const uetdsPlacesSeedData = require("../seeders/uetdsPlaceSeeder.json");
 
 const GOTUR_DB_NAME = process.env.GOTUR_DB_NAME || "gotur";
 const GOTUR_DB_USERNAME = process.env.GOTUR_DB_USERNAME || "root";
@@ -33,6 +36,7 @@ const goturDB = new Sequelize(
 const goturModels = Object.freeze({
     Firm: FirmFactory(goturDB),
     Place: PlaceFactory(goturDB),
+    UetdsPlace: UetdsPlaceFactory(goturDB),
 });
 
 let goturSyncPromise;
@@ -41,8 +45,26 @@ function initGoturModels() {
     return goturModels;
 }
 
-function getGoturSyncPromise() {
+async function getGoturSyncPromise() {
     if (!goturSyncPromise) {
+        try {
+            await goturDB.sync();
+
+            const placeCount = await goturModels.Place.count();
+
+            if (placeCount === 0 && Array.isArray(placesSeedData) && placesSeedData.length > 0) {
+                await goturModels.Place.bulkCreate(placesSeedData, { ignoreDuplicates: true });
+            }
+
+            const uetdsPlaceCount = await goturModels.UetdsPlace.count();
+
+            if (uetdsPlaceCount === 0 && Array.isArray(uetdsPlacesSeedData) && uetdsPlacesSeedData.length > 0) {
+                await goturModels.UetdsPlace.bulkCreate(uetdsPlacesSeedData, { ignoreDuplicates: true });
+            }
+
+        } catch (error) {
+            console.error("Places tablosu başlangıç verileri yüklenirken hata oluştu:", error);
+        }
         goturSyncPromise = goturDB.sync({}).catch((error) => {
             goturSyncPromise = null;
             throw error;

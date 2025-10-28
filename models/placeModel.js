@@ -11,9 +11,13 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    slug: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     provinceId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-    },
+    }
   });
 };
