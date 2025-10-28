@@ -23,10 +23,6 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    uetdsProvinceId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-    },
     uetdsDistrictId: {
       type: DataTypes.BIGINT,
       allowNull: true,
