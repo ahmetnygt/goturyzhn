@@ -1,71 +1,17 @@
-* {
-  box-sizing: border-box;
-}
-
 html,
 body {
-  width: 100%;
-  min-height: 100%;
+  min-width: 1280px;
 }
 
 body {
-  margin: 0;
-  font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  color: #0f172a;
-  background-color: #f8fafc;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
-.navbar {
-  padding-block: 1rem;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  background-color: #ffffff !important;
+.navbar-expand-lg .navbar-collapse {
+  display: flex !important;
+  flex-basis: auto;
 }
 
-.navbar .container-fluid {
-  gap: 1rem;
-}
-
-.navbar-logo {
-  max-height: 48px;
-  width: auto;
-}
-
-.navbar-nav .nav-link {
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.navbar-nav .nav-link:hover,
-.navbar-nav .nav-link:focus {
-  color: #2563eb;
-}
-
-@media (max-width: 991.98px) {
-  .navbar .container-fluid {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  #navbarSupportedContent {
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-  }
-
-  .navbar-nav {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .navbar-nav .nav-link {
-    font-size: 1.125rem;
-  }
-
-  .navbar-toggler {
-    display: none;
-  }
+.navbar-expand-lg .navbar-toggler {
+  display: none;
 }

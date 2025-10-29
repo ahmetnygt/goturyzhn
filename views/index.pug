@@ -1,43 +1,5 @@
-extends layout
-
-block append styles
-  link(rel='stylesheet', href='/stylesheets/index.css')
+ extends layout
 
 block content
-  header.hero
-    .hero__content
-      span.hero__eyebrow GöTÜR YZHN
-      h1.hero__title Şehirler arası yolculukta yeni nesil deneyim
-      p.hero__description
-        | Konforlu araçlarımız ve dinamik rota seçeneklerimizle istediğiniz noktaya güvenle ulaşın.
-      .hero__actions
-        a.btn.btn-primary.btn-lg(href="#seferler") Seferleri Gör
-        a.btn.btn-outline-secondary.btn-lg(href="#kampanyalar") Kampanyalar
-    img.hero__image(src='/images/anafartalarturizm.png', alt='GöTÜR YZHN araç filosu')
-
-  section.selection
-    .selection__container
-      h2.selection__title Yolculuğunu hemen planla
-      form.selection__form(action="#" method="get")
-        .selection__field
-          label(for='fromStop') Nereden
-          select#fromStop.form-select(name='fromStop')
-            option(value='') Şehir veya durak seçiniz
-            option(value='istanbul') İstanbul
-            option(value='ankara') Ankara
-            option(value='izmir') İzmir
-        .selection__field
-          label(for='toStop') Nereye
-          select#toStop.form-select(name='toStop')
-            option(value='') Şehir veya durak seçiniz
-            option(value='bursa') Bursa
-            option(value='adana') Adana
-            option(value='antalya') Antalya
-        .selection__field
-          label(for='travelDate') Tarih
-          input#travelDate.form-control(type='date' name='travelDate')
-        .selection__field
-          label(for='passengers') Yolcu Sayısı
-          input#passengers.form-control(type='number' name='passengers' min='1' value='1')
-        .selection__actions
-          button.btn.btn-primary.btn-lg(type='submit') Sefer Ara
+  h1= title
+  p Welcome to #{title}
