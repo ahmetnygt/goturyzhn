@@ -3,10 +3,10 @@ const initModels = require("./initModels");
 const bcrypt = require("bcrypt");
 const connections = {};
 
-const DB_USERNAME = process.env.DB_USERNAME || "root";
-const DB_PASSWORD = process.env.DB_PASSWORD || "anadolutat1071";
+const DB_USERNAME = process.env.DB_USERNAME
+const DB_PASSWORD = process.env.DB_PASSWORD
 const DEFAULT_USER_PASSWORD =
-  process.env.DEFAULT_USER_PASSWORD || "anadolutat1071";
+  process.env.DEFAULT_USER_PASSWORD
 
 function buildConnectionOptions() {
   const options = {

@@ -5,9 +5,9 @@ const UetdsPlaceFactory = require("../models/uetdsPlaceModel");
 const placesSeedData = require("../seeders/placeSeeder.json");
 const uetdsPlacesSeedData = require("../seeders/uetdsPlaceSeeder.json");
 
-const GOTUR_DB_NAME = process.env.GOTUR_DB_NAME || "gotur";
-const GOTUR_DB_USERNAME = process.env.GOTUR_DB_USERNAME || "root";
-const GOTUR_DB_PASSWORD = process.env.GOTUR_DB_PASSWORD || "anadolutat1071";
+const GOTUR_DB_NAME = process.env.GOTUR_DB_NAME
+const GOTUR_DB_USERNAME = process.env.GOTUR_DB_USERNAME
+const GOTUR_DB_PASSWORD = process.env.GOTUR_DB_PASSWORD
 
 const goturConnectionOptions = {
     host: process.env.GOTUR_DB_HOST,
