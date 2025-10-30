@@ -111,6 +111,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    uetdsRefNo: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     payment: {
       type: DataTypes.ENUM("cash", "card", "point"),
       allowNull: true,

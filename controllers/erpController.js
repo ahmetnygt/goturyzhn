@@ -17,7 +17,7 @@ const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTick
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
 const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
 const countries = require("world-countries");
-const { seferEkle, kullaniciKontrol, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal } = require('../utilities/uetdsService');
+const { seferEkle, kullaniciKontrol, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupGuncelle, yolcuEkle, seferGrupListesi, seferGrupEkle, yolcuIptalUetdsYolcuRefNoIle } = require('../utilities/uetdsService');
 
 const TURKISH_COLLATOR = (() => {
     try {
@@ -2965,7 +2965,9 @@ exports.postTickets = async (req, res, next) => {
             }
 
             if (seenIdNumbers.has(normalizedIdNumber)) {
-                return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
+                return res.status(400).json({
+                    message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.`,
+                });
             }
 
             seenIdNumbers.add(normalizedIdNumber);
@@ -2973,7 +2975,7 @@ exports.postTickets = async (req, res, next) => {
             ticket.idNumber = normalizedIdNumber;
         }
 
-        // --- req.models.Trip.where'i dinamik kur ---
+        // --- Sefer belirleme ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
@@ -3017,8 +3019,8 @@ exports.postTickets = async (req, res, next) => {
 
         if (status === "reservation" || status === "completed") {
             const seatNumbers = tickets
-                .map(t => t?.seatNumber)
-                .filter(seat => seat !== undefined && seat !== null && seat !== "");
+                .map((t) => t?.seatNumber)
+                .filter((seat) => seat !== undefined && seat !== null && seat !== "");
             const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, seatNumbers);
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
@@ -3027,13 +3029,13 @@ exports.postTickets = async (req, res, next) => {
             }
         }
 
-        // --- RouteStops ve Stops (boş dizi korumalı) ---
+        // --- RouteStops ve Stops ---
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
         });
 
-        const stopIds = [...new Set(routeStops.map(rs => rs?.stopId).filter(Boolean))];
+        const stopIds = [...new Set(routeStops.map((rs) => rs?.stopId).filter(Boolean))];
         let stops = [];
         if (stopIds.length) {
             stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
@@ -3044,9 +3046,11 @@ exports.postTickets = async (req, res, next) => {
         const ticketGroupId = group.id;
 
         // --- PNR (sadece fromId & toId varsa) ---
-        const pnr = (fromId && toId) ? await generatePNR(req.models, fromId, toId, stops) : null;
+        const pnr = fromId && toId ? await generatePNR(req.models, fromId, toId, stops) : null;
 
-        const pendingIds = Array.isArray(req.body.pendingIds) ? req.body.pendingIds : JSON.parse(req.body.pendingIds);
+        const pendingIds = Array.isArray(req.body.pendingIds)
+            ? req.body.pendingIds
+            : JSON.parse(req.body.pendingIds);
 
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
@@ -3054,22 +3058,30 @@ exports.postTickets = async (req, res, next) => {
 
         // --- Tüm biletleri sırayla kaydet ---
         for (let i = 0; i < tickets.length; i++) {
-            const t = tickets[i]
+            const t = tickets[i];
             if (!t) continue;
 
-            console.log({ id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id })
-            const pendingTicket = await req.models.Ticket.findOne({ where: { id: pendingIds[i], tripId: trip.id, seatNo: t.seatNumber, userId: req.session.firmUser.id } })
-            const pendingTicketGroupId = pendingTicket?.ticketGroupId
+            const pendingTicket = await req.models.Ticket.findOne({
+                where: {
+                    id: pendingIds[i],
+                    tripId: trip.id,
+                    seatNo: t.seatNumber,
+                    userId: req.session.firmUser.id,
+                },
+            });
 
-            if (pendingTicket) {
-                await pendingTicket.destroy().then(r => console.log("pending silindi"))
-            }
+            const pendingTicketGroupId = pendingTicket?.ticketGroupId;
+            if (pendingTicket) await pendingTicket.destroy().then(() => console.log("pending silindi"));
 
             if (pendingTicketGroupId) {
-                const remainingTicketsInGroup = await req.models.Ticket.count({ where: { ticketGroupId: pendingTicketGroupId } })
+                const remainingTicketsInGroup = await req.models.Ticket.count({
+                    where: { ticketGroupId: pendingTicketGroupId },
+                });
 
                 if (remainingTicketsInGroup === 0) {
-                    await req.models.TicketGroup.destroy({ where: { id: pendingTicketGroupId } }).then(r => console.log("pending grup silindi"))
+                    await req.models.TicketGroup.destroy({ where: { id: pendingTicketGroupId } }).then(() =>
+                        console.log("pending grup silindi")
+                    );
                 }
             }
 
@@ -3101,7 +3113,7 @@ exports.postTickets = async (req, res, next) => {
                 takeOffText: takeOffTitle,
             });
 
-            // CUSTOMER KONTROLÜ (boş alanları sorguya koyma)
+            // --- Müşteri kaydı / puan sistemi ---
             const nameUp = (t.name || "").toLocaleUpperCase("tr-TR");
             const surnameUp = (t.surname || "").toLocaleUpperCase("tr-TR");
 
@@ -3114,59 +3126,108 @@ exports.postTickets = async (req, res, next) => {
                 existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
             }
 
-            if (!existingCustomer) {
-                if (!isReservationStatus) {
-                    await req.models.Customer.create({
-                        idNumber: t.idNumber || null,
-                        name: nameUp || null,
-                        surname: surnameUp || null,
-                        phoneNumber: t.phoneNumber || null,
-                        gender: t.gender || null,
-                        nationality: t.nationality || null,
-                        customerType: t.type || null,
-                        customerCategory: t.category || null
-                    });
-                }
-            }
-            else {
-                ticket.customerId = existingCustomer.id
-                if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
+            if (!existingCustomer && !isReservationStatus) {
+                await req.models.Customer.create({
+                    idNumber: t.idNumber || null,
+                    name: nameUp || null,
+                    surname: surnameUp || null,
+                    phoneNumber: t.phoneNumber || null,
+                    gender: t.gender || null,
+                    nationality: t.nationality || null,
+                    customerType: t.type || null,
+                    customerCategory: t.category || null,
+                });
+            } else if (existingCustomer) {
+                ticket.customerId = existingCustomer.id;
+                if (
+                    existingCustomer.customerCategory == "member" &&
+                    existingCustomer.pointOrPercent == "point"
+                ) {
                     if (ticket.payment === "point") {
-                        existingCustomer.point_amount = Number(existingCustomer.point_amount) - Number(ticket.price)
+                        existingCustomer.point_amount -= Number(ticket.price);
                     } else {
-                        existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price) * 0.05
+                        existingCustomer.point_amount += Number(ticket.price) * 0.05;
                     }
                 }
-                await ticket.save()
-                await existingCustomer.save()
+                await ticket.save();
+                await existingCustomer.save();
             }
 
+            // --- Transaction / kasa işlemleri ---
             if (ticket.status === "completed" && ticket.payment !== "point") {
-                const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
-                const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+                const fromTitle = stops.find((s) => s.id == ticket.fromRouteStopId)?.title || "";
+                const toTitle = stops.find((s) => s.id == ticket.toRouteStopId)?.title || "";
 
                 await req.models.Transaction.create({
                     userId: req.session.firmUser.id,
                     type: "income",
-                    category: ticket.payment === "cash" ? "cash_sale" : ticket.payment === "card" ? "card_sale" : "point_sale",
+                    category:
+                        ticket.payment === "cash"
+                            ? "cash_sale"
+                            : ticket.payment === "card"
+                                ? "card_sale"
+                                : "point_sale",
                     amount: ticket.price,
                     description: `${trip.date} ${trip.time} | ${fromTitle} - ${toTitle}`,
-                    ticketId: ticket.id
+                    ticketId: ticket.id,
                 });
 
-                const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
+                const register = await req.models.CashRegister.findOne({
+                    where: { userId: req.session.firmUser.id },
+                });
                 if (register) {
                     if (ticket.payment === "cash") {
-                        register.cash_balance = Number(register.cash_balance) + (Number(ticket.price) || 0);
+                        register.cash_balance += Number(ticket.price) || 0;
                     } else if (ticket.payment === "card") {
-                        register.card_balance = Number(register.card_balance) + (Number(ticket.price) || 0);
+                        register.card_balance += Number(ticket.price) || 0;
                     }
                     await register.save();
                 }
             }
 
-            res.locals.newRecordId = ticket.id;
+            // --- ✅ UETDS Entegrasyonu (sadece completed biletlerde) ---
+            if (status === "completed" && trip.uetdsRefNo) {
+                try {
+                    // 1️⃣ Grup referansını çek
+                    const grup = await seferGrupListesi(req, trip);
+                    if (!grup) {
+                        console.warn(`⚠️ Trip #${trip.id}: Grup bulunamadı, yolcu gönderilmedi.`);
+                        continue;
+                    }
+
+                    // 2️⃣ Yolcuyu ekle
+                    const yolcuResult = await yolcuEkle(req, trip, grup.grupId, t);
+                    console.log(`✅ [UETDS] ${t.name} ${t.surname} eklendi:`, yolcuResult?.sonucMesaji);
+
+                    // 2.1️⃣ Yolcu refNo'yu Ticket tablosuna kaydet
+                    const yolcuRefNo = yolcuResult?.uetdsYolcuRefNo || yolcuResult?.return?.uetdsYolcuRefNo;
+                    if (yolcuRefNo) {
+                        ticket.uetdsRefNo = yolcuRefNo;
+                        await ticket.save();
+                        console.log(`🎫 [UETDS] YolcuRefNo kaydedildi: ${yolcuRefNo} (Ticket #${ticket.id})`);
+                    }
+
+                    // 3️⃣ Grup ücretini güncelle
+                    const toplamUcret = await req.models.Ticket.sum("price", {
+                        where: { tripId: trip.id, status: "completed" },
+                    });
+
+                    if (toplamUcret > 0) {
+                        const guncelleSonuc = await seferGrupGuncelle(req, trip, grup.grupId, {
+                            grupUcret: toplamUcret,
+                        });
+                        console.log(
+                            `💰 [UETDS] Grup ücreti güncellendi (${toplamUcret}):`,
+                            guncelleSonuc?.sonucMesaji
+                        );
+                    }
+                } catch (uetdsErr) {
+                    console.error(`❌ [UETDS] Trip #${trip.id} hata:`, uetdsErr.message);
+                }
+            }
+
             console.log(`${t.name} Kaydedildi - ${pnr || "-"}`);
+            res.locals.newRecordId = ticket.id;
         }
 
         return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
@@ -3734,71 +3795,151 @@ exports.getCancelOpenTicket = async (req, res, next) => {
 
 exports.postCancelTicket = async (req, res, next) => {
     try {
-        const tripDate = req.body.date
-        const tripTime = req.body.time
-        const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } })
-        const seats = JSON.parse(req.body.seats);
+        const tripDate = req.body.date;
+        const tripTime = req.body.time;
+
+        const trip = await req.models.Trip.findOne({
+            where: { date: tripDate, time: tripTime },
+        });
+        if (!trip) return res.status(404).json({ message: "Sefer bulunamadı." });
+
+        const seats = JSON.parse(req.body.seats || "[]");
         const pnr = req.body.pnr;
 
-        const tickets = await req.models.Ticket.findAll({ where: { pnr: pnr, seatNo: { [Op.in]: seats }, tripId: trip.id } });
-        const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(tickets.map(t => t.fromRouteStopId)), ...new Set(tickets.map(t => t.toRouteStopId))] } } })
+        const tickets = await req.models.Ticket.findAll({
+            where: { pnr, seatNo: { [Op.in]: seats }, tripId: trip.id },
+        });
+        if (!tickets.length) {
+            return res.status(404).json({ message: "Bilet bulunamadı." });
+        }
 
-        for (let i = 0; i < tickets.length; i++) {
-            if (tickets[i].tripId == trip.id) {
-                const ticket = tickets[i]
-                const currentStatus = ticket.status
-                ticket.status = currentStatus === "reservation" ? "canceled" : "refund";
-                await ticket.save();
+        const stopIds = [
+            ...new Set(tickets.map((t) => t.fromRouteStopId)),
+            ...new Set(tickets.map((t) => t.toRouteStopId)),
+        ].filter(Boolean);
 
-                if (ticket.status == "refund" && ticket.payment !== "point") {
-                    const fromTitle = (stops.find(s => s.id == ticket.fromRouteStopId))?.title || "";
-                    const toTitle = (stops.find(s => s.id == ticket.toRouteStopId))?.title || "";
+        const stops = stopIds.length
+            ? await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } })
+            : [];
 
-                    await req.models.Transaction.create({
-                        userId: req.session.firmUser.id,
-                        type: "expense",
-                        category: ticket.payment === "cash" ? "cash_refund" : ticket.payment === "card" ? "card_refund" : "point_refund",
-                        amount: ticket.price,
-                        description: `Bilet iade edildi | ${fromTitle} - ${toTitle}`,
-                        ticketId: ticket.id
+        let didAnyRefund = false;
+
+        for (const ticket of tickets) {
+            if (ticket.tripId !== trip.id) continue;
+
+            const currentStatus = ticket.status;
+            ticket.status = currentStatus === "reservation" ? "canceled" : "refund";
+            await ticket.save();
+
+            // 💸 Ödeme iadesi (refund ise)
+            if (ticket.status === "refund" && ticket.payment !== "point") {
+                didAnyRefund = true;
+
+                const fromTitle = stops.find((s) => s.id == ticket.fromRouteStopId)?.title || "";
+                const toTitle = stops.find((s) => s.id == ticket.toRouteStopId)?.title || "";
+
+                await req.models.Transaction.create({
+                    userId: req.session.firmUser.id,
+                    type: "expense",
+                    category:
+                        ticket.payment === "cash"
+                            ? "cash_refund"
+                            : ticket.payment === "card"
+                                ? "card_refund"
+                                : "point_refund",
+                    amount: ticket.price,
+                    description: `Bilet iade edildi | ${fromTitle} - ${toTitle}`,
+                    ticketId: ticket.id,
+                });
+
+                const register = await req.models.CashRegister.findOne({
+                    where: { userId: req.session.firmUser.id },
+                });
+                if (register) {
+                    if (ticket.payment === "cash") {
+                        register.cash_balance -= Number(ticket.price) || 0;
+                    } else if (ticket.payment === "card") {
+                        register.card_balance -= Number(ticket.price) || 0;
+                    }
+                    await register.save();
+                }
+            }
+
+            // 💎 Puan iadesi (point ödemesi)
+            if (ticket.status === "refund" && ticket.payment === "point") {
+                didAnyRefund = true;
+
+                const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
+                const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
+
+                const orConds = [];
+                if (ticket.idNumber) orConds.push({ idNumber: ticket.idNumber });
+                if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
+
+                if (orConds.length) {
+                    const customer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
+                    if (
+                        customer?.customerCategory === "member" &&
+                        customer?.pointOrPercent === "point"
+                    ) {
+                        customer.point_amount = Number(customer.point_amount || 0) + Number(ticket.price || 0);
+                        await customer.save();
+                    }
+                }
+            }
+
+            // 🚨 UETDS bildirimi sadece REFUND için (ve ref numarası varsa)
+            if (
+                ticket.status === "refund" &&
+                trip.uetdsRefNo &&
+                ticket.uetdsRefNo
+            ) {
+                try {
+                    await yolcuIptalUetdsYolcuRefNoIle(
+                        req,
+                        trip,
+                        ticket.uetdsRefNo,
+                        "Yolcu iadesi gerçekleştirildi"
+                    );
+                } catch (e) {
+                    console.error(`❌ [UETDS] Yolcu iptal hatası (Ticket #${ticket.id}):`, e.message);
+                }
+            }
+
+            res.locals.newRecordId = ticket.id;
+        }
+
+        // 🧮 Grupların ücretini iptal(ler) sonrası TEK SEFERDE güncelle
+        if (didAnyRefund && trip.uetdsRefNo) {
+            try {
+                // 1) Seferdeki grubu bul
+                const group = await seferGrupListesi(req, trip);
+                if (!group) {
+                    console.warn(`⚠️ Trip #${trip.id}: Grup bulunamadı, ücret güncellenemedi.`);
+                } else {
+                    // 2) Kalan completed biletlerin toplamını hesapla
+                    const toplamUcret = await req.models.Ticket.sum("price", {
+                        where: { tripId: trip.id, status: "completed" },
                     });
 
-                    const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
-                    if (register) {
-                        if (ticket.payment === "cash") {
-                            register.cash_balance = Number(register.cash_balance) - (Number(ticket.price) || 0);
-                        } else if (ticket.payment === "card") {
-                            register.card_balance = Number(register.card_balance) - (Number(ticket.price) || 0);
-                        }
-                        await register.save();
-                    }
+                    // 3) UETDS'de grup ücretini güncelle
+                    const sonuc = await seferGrupGuncelle(req, trip, group.grupId, {
+                        grupUcret: toplamUcret || 0,
+                    });
+                    console.log(
+                        `💰 [UETDS] Grup ücreti güncellendi (${toplamUcret || 0}):`,
+                        sonuc?.sonucMesaji
+                    );
                 }
-                else if (ticket.status == "refund" && ticket.payment == "point") {
-                    const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
-                    const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
-
-                    const orConds = [];
-                    if (ticket.idNumber) orConds.push({ idNumber: ticket.idNumber });
-                    if (nameUp && surnameUp) orConds.push({ name: nameUp, surname: surnameUp });
-
-                    let existingCustomer = null;
-                    if (orConds.length) {
-                        existingCustomer = await req.models.Customer.findOne({ where: { [Op.or]: orConds } });
-                    }
-
-                    if (existingCustomer.customerCategory == "member" && existingCustomer.pointOrPercent == "point") {
-                        existingCustomer.point_amount = Number(existingCustomer.point_amount) + Number(ticket.price)
-                    }
-                    await existingCustomer.save()
-                }
-                res.locals.newRecordId = ticket.id;
+            } catch (e) {
+                console.error(`❌ [UETDS] Grup ücret güncelleme hatası (Trip #${trip.id}):`, e.message);
             }
         }
 
-        res.status(200).json({ message: "Biletler başarıyla iptal edildi." });
+        return res.status(200).json({ message: "Biletler başarıyla iptal edildi." });
     } catch (err) {
         console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
     }
 };
 
@@ -4048,107 +4189,54 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
 
 exports.postMoveTickets = async (req, res, next) => {
     try {
-        const pnr = req.body.pnr
-        const rawOldSeats = JSON.parse(req.body.oldSeats)
-        const newSeats = JSON.parse(req.body.newSeats)
-        const newTrip = req.body.newTrip
-        const fromId = req.body.fromId
-        const toId = req.body.toId
+        const pnr = req.body.pnr;
+        const rawOldSeats = JSON.parse(req.body.oldSeats);
+        const newSeats = JSON.parse(req.body.newSeats);
+        const newTripId = req.body.newTrip;
+        const fromId = req.body.fromId;
+        const toId = req.body.toId;
 
-        if (!Array.isArray(rawOldSeats) || !Array.isArray(newSeats) || rawOldSeats.length !== newSeats.length) {
-            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." });
+        if (
+            !Array.isArray(rawOldSeats) ||
+            !Array.isArray(newSeats) ||
+            rawOldSeats.length !== newSeats.length
+        ) {
+            return res.status(400).json({
+                message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz.",
+            });
         }
 
-        const trip = await req.models.Trip.findOne({ where: { id: newTrip } })
+        const newTrip = await req.models.Trip.findOne({ where: { id: newTripId } });
+        if (!newTrip)
+            return res.status(404).json({ message: "Hedef sefer bulunamadı." });
 
-        if (!trip) {
-            return res.status(404).json({ message: "Hedef sefer bulunamadı." })
-        }
+        // 🎟 Eski biletleri bul
+        const tickets = await req.models.Ticket.findAll({
+            where: { pnr, seatNo: { [Op.in]: rawOldSeats } },
+        });
 
-        trip.modifiedTime = trip.time
+        if (!tickets.length)
+            return res
+                .status(404)
+                .json({ message: "Taşınacak biletler bulunamadı." });
 
-        const routeStops = await req.models.RouteStop.findAll({ where: { routeId: trip.routeId }, order: [["order", "ASC"]] })
-        const currentRouteStop = routeStops.find(rs => rs.stopId == fromId)
-        const routeStopOrder = currentRouteStop ? currentRouteStop.order : null
+        const route =
+            newTrip?.routeId
+                ? await req.models.Route.findByPk(newTrip.routeId, { raw: true })
+                : null;
 
-        if (currentRouteStop) {
-            const offsets = await req.models.TripStopTime.findAll({ where: { tripId: trip.id }, raw: true })
-            const offsetMap = buildOffsetMap(offsets)
-            const stopTimes = computeRouteStopTimes(trip, routeStops, offsetMap)
-            const matchedStopTime = stopTimes.find(st => st.order === routeStopOrder)
-            if (matchedStopTime) {
-                trip.modifiedTime = matchedStopTime.time
-            }
-        }
-
-        console.log(`${trip.date} ${trip.modifiedTime}`)
-
-        const tokenIds = []
-        const seatNumbers = []
-
-        const normalizeSeatValue = (value) => {
-            if (value === null || value === undefined) {
-                return null
-            }
-            if (typeof value === "number") {
-                return value
-            }
-            const parsed = Number(value)
-            return Number.isNaN(parsed) ? value : parsed
-        }
-
-        rawOldSeats.forEach((value) => {
-            if (typeof value === "string") {
-                const trimmed = value.trim()
-                const tokenMatch = trimmed.match(/^ticket-(\d+)$/)
-                if (tokenMatch) {
-                    tokenIds.push(Number(tokenMatch[1]))
-                    return
-                }
-                if (trimmed) {
-                    seatNumbers.push(normalizeSeatValue(trimmed))
-                    return
-                }
-            } else if (value !== null && value !== undefined) {
-                seatNumbers.push(normalizeSeatValue(value))
-            }
-        })
-
-        const tokenTickets = tokenIds.length
-            ? await req.models.Ticket.findAll({ where: { pnr, id: { [Op.in]: tokenIds } } })
-            : []
-        const seatTickets = seatNumbers.length
-            ? await req.models.Ticket.findAll({ where: { pnr, seatNo: { [Op.in]: seatNumbers } } })
-            : []
-
-        const tokenMap = new Map(tokenTickets.map((ticket) => [String(ticket.id), ticket]))
-        const seatMap = new Map(seatTickets.map((ticket) => [String(ticket.seatNo), ticket]))
-
-        const tickets = rawOldSeats.map((value) => {
-            if (typeof value === "string") {
-                const trimmed = value.trim()
-                const tokenMatch = trimmed.match(/^ticket-(\d+)$/)
-                if (tokenMatch) {
-                    return tokenMap.get(tokenMatch[1]) || null
-                }
-                return seatMap.get(String(normalizeSeatValue(trimmed))) || null
-            }
-            return seatMap.get(String(normalizeSeatValue(value))) || null
-        }).filter(Boolean)
-
-        if (tickets.length !== rawOldSeats.length) {
-            return res.status(404).json({ message: "Seçilen biletlerden bazıları bulunamadı." })
-        }
-
-        if (tickets.length !== newSeats.length) {
-            return res.status(400).json({ message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz." })
-        }
-
-        const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
         const newSeatNumbers = Array.isArray(newSeats) ? newSeats : [];
+
+        // 🔁 Tekli koltuk limiti kontrolü
         if (route) {
-            const excludeIds = tickets.map(t => t.id);
-            const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, newSeatNumbers, excludeIds);
+            const excludeIds = tickets.map((t) => t.id);
+            const singleSeatCheck = await checkSingleSeatLimit(
+                req.models,
+                newTrip,
+                route,
+                newSeatNumbers,
+                excludeIds
+            );
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
                     message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
@@ -4156,29 +4244,99 @@ exports.postMoveTickets = async (req, res, next) => {
             }
         }
 
+        const oldTripIds = [...new Set(tickets.map((t) => t.tripId))];
+
+        // 🔄 Taşıma işlemleri
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i];
 
-            t.seatNo = newSeats[i]
-            t.tripId = newTrip
-            t.fromRouteStopId = fromId
-            t.toRouteStopId = toId
-            t.optionDate = trip.date
-            t.optionTime = `${trip.date} ${trip.modifiedTime}`
-
-            if (t.status === "open") {
-                t.status = "completed"
+            // 🧹 Eski UETDS yolcu kaydını sil
+            if (t.uetdsRefNo && t.tripId) {
+                try {
+                    await yolcuIptalUetdsYolcuRefNoIle(req, { uetdsRefNo: t.tripUetdsRefNo }, t.uetdsRefNo, "Bilet taşındı");
+                    console.log(`🧾 [UETDS] Eski yolcu silindi: Ticket #${t.id}`);
+                } catch (e) {
+                    console.error(`❌ [UETDS] Eski yolcu silme hatası (#${t.id}):`, e.message);
+                }
             }
 
-            await t.save()
+            // 🧾 UETDS referanslarını sıfırla
+            t.uetdsRefNo = null;
+
+            // 🚍 Yeni sefer bilgileri
+            t.tripId = newTrip.id;
+            t.seatNo = newSeats[i];
+            t.fromRouteStopId = fromId;
+            t.toRouteStopId = toId;
+            t.optionDate = newTrip.date;
+            t.optionTime = `${newTrip.date} ${newTrip.time}`;
+            if (t.status === "open") t.status = "completed";
+
+            await t.save();
+
+            // 👥 Yeni sefer grubunu getir
+            const group = await seferGrupListesi(req, newTrip);
+
+            // 👤 Yolcuyu yeniden ekle
+            if (newTrip.uetdsRefNo && group) {
+                try {
+                    const result = await yolcuEkle(req, newTrip, group.grupId, t);
+                    if (result?.uetdsYolcuRefNo) {
+                        t.uetdsRefNo = result.uetdsYolcuRefNo;
+                        await t.save();
+                        console.log(`✅ [UETDS] Yolcu yeni sefere eklendi: Ticket #${t.id}`);
+                    }
+                } catch (e) {
+                    console.error(`❌ [UETDS] Yeni yolcu ekleme hatası (#${t.id}):`, e.message);
+                }
+            }
         }
 
-        res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+        // 💰 Grup ücretlerini güncelle
+        try {
+            // Eski sefer(ler)
+            for (const oldTripId of oldTripIds) {
+                const oldTrip = await req.models.Trip.findByPk(oldTripId);
+                if (oldTrip?.uetdsRefNo) {
+                    const group = await seferGrupListesi(req, oldTrip);
+                    if (group) {
+                        const toplamUcret = await req.models.Ticket.sum("price", {
+                            where: { tripId: oldTrip.id, status: "completed" },
+                        });
+                        await seferGrupGuncelle(req, oldTrip, group.grupId, {
+                            grupUcret: toplamUcret || 0,
+                        });
+                        console.log(`💰 [UETDS] Eski sefer grup ücreti güncellendi (${oldTrip.id})`);
+                    }
+                }
+            }
+
+            // Yeni sefer
+            if (newTrip.uetdsRefNo) {
+                const group = await seferGrupListesi(req, newTrip);
+                if (group) {
+                    const toplamUcret = await req.models.Ticket.sum("price", {
+                        where: { tripId: newTrip.id, status: "completed" },
+                    });
+                    await seferGrupGuncelle(req, newTrip, group.grupId, {
+                        grupUcret: toplamUcret || 0,
+                    });
+                    console.log(`💰 [UETDS] Yeni sefer grup ücreti güncellendi (${newTrip.id})`);
+                }
+            }
+        } catch (e) {
+            console.error("⚠️ [UETDS] Grup ücret güncelleme hatası:", e.message);
+        }
+
+        res.status(200).json({ message: "Bilet taşıma işlemi başarıyla tamamlandı." });
     } catch (err) {
         console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        res.status(500).json({
+            message: "Kayıt sırasında bir hata oluştu.",
+            detail: err.message,
+        });
     }
-}
+};
 
 exports.postAttachOpenTicket = async (req, res, next) => {
     try {
@@ -5666,10 +5824,22 @@ exports.postSaveTrip = async (req, res, next) => {
         // 3️⃣ UETDS'ye asenkron bildirim (arka planda)
         for (const trip of createdTrips) {
             try {
+                // 🚍 Sefer oluştur
                 const result = await seferEkle(req, trip.id);
-                console.log(`UETDS bildirimi başarılı → Trip #${trip.id}`, result?.response?.sonucMesaj || result);
+                console.log(`✅ UETDS bildirimi başarılı → Trip #${trip.id}`);
+
+                // 🚀 Grup oluştur (yalnızca log)
+                const fullTrip = await req.models.Trip.findByPk(trip.id, {
+                    include: [{ model: req.models.Route, as: "route" }],
+                });
+
+                const groupResult = await seferGrupEkle(req, fullTrip);
+                console.log(
+                    `📦 UETDS grup oluşturuldu (Trip #${trip.id}) → Grup Ref: ${groupResult?.uetdsGrupRefNo || "Belirtilmemiş"}`
+                );
+
             } catch (err) {
-                console.error(`Trip #${trip.id} UETDS bildirimi hatası:`, err.message);
+                console.error(`❌ Trip #${trip.id} UETDS bildirimi hatası:`, err.message);
             }
         }
     } catch (err) {

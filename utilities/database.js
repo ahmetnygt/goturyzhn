@@ -44,17 +44,6 @@ async function getTenantConnection(subdomain) {
     DB_PASSWORD,
     buildConnectionOptions()
   );
-  // const sequelize = new Sequelize(
-  //   tenantKey,
-  //   "doadmin",
-  //   "AVNS_rfP7FS1Hdg-KSHpn02u",
-  //   {
-  //     host: "dbaas-db-5929049-do-user-22627641-0.g.db.ondigitalocean.com",
-  //     port: 25060,
-  //     dialect: "mysql",
-  //     logging: false,
-  //   }
-  // );
 
   const models = initModels(sequelize);
 

@@ -482,4 +482,249 @@ async function personelIptal(req, tripId, staffRow, iptalAciklama = "Personel ka
     return response;
 }
 
-module.exports = { seferEkle, seferGuncelle, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal };
+async function seferGrupEkle(req, trip) {
+    try {
+        const { wsdl, username, password } = await getFirmCredentials(req);
+
+        if (!trip || !trip.uetdsRefNo) throw new Error("UETDS sefer referans numarası yok.");
+
+        // Başlangıç ve bitiş duraklarını çek
+        const route = await req.models.Route.findByPk(trip.routeId);
+        if (!route) throw new Error("Hat bulunamadı.");
+
+        const [fromStop, toStop] = await Promise.all([
+            req.models.Stop.findByPk(route.fromStopId),
+            req.models.Stop.findByPk(route.toStopId)
+        ]);
+
+        if (!fromStop || !toStop)
+            throw new Error("Durak bilgileri eksik (başlangıç veya bitiş).");
+
+        const args = {
+            wsuser: {
+                kullaniciAdi: username,
+                sifre: password,
+                targetNSAlias: "tns",
+                targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+            },
+            uetdsSeferReferansNo: trip.uetdsRefNo,
+            seferGrupBilgileriInput: {
+                grupAciklama: `${fromStop.title} - ${toStop.title}`,
+                baslangicUlke: "TR",
+                baslangicIl: fromStop.uetdsProvinceId || 0,
+                baslangicIlce: fromStop.uetdsDistrictId || 0,
+                baslangicYer: fromStop.webTitle || fromStop.title,
+                bitisUlke: "TR",
+                bitisIl: toStop.uetdsProvinceId || 0,
+                bitisIlce: toStop.uetdsDistrictId || 0,
+                bitisYer: toStop.webTitle || toStop.title,
+                grupAdi: `${fromStop.title} - ${toStop.title} Grubu`,
+                grupUcret: "0",
+                targetNSAlias: "tns",
+                targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+            },
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        };
+
+        console.log("📦 [UETDS] seferGrupEkle isteği:", args);
+
+        const client = await soap.createClientAsync(wsdl);
+        client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+        const [result] = await client.seferGrupEkleAsync(args);
+
+        console.log("✅ [UETDS] seferGrupEkle yanıtı:", result?.return);
+
+        return result?.return;
+    } catch (err) {
+        console.error("❌ [UETDS] seferGrupEkle hatası:", err.message);
+        throw err;
+    }
+}
+
+async function seferGrupListesi(req, trip) {
+    const { wsdl, username, password } = await getFirmCredentials(req);
+
+    if (!trip?.uetdsRefNo)
+        throw new Error("Seferin UETDS referans numarası bulunamadı.");
+
+    const args = {
+        wsuser: {
+            kullaniciAdi: username,
+            sifre: password,
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        },
+        uetdsSeferReferansNo: trip.uetdsRefNo,
+        targetNSAlias: "tns",
+        targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+    };
+
+    const client = await soap.createClientAsync(wsdl);
+    client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+    const [result] = await client.seferGrupListesiAsync(args);
+    console.log("📋 [UETDS] seferGrupListesi sonucu:", result?.return);
+
+    const grup = result?.return?.["grupListe"]?.[0] || null;
+
+    return grup || null;
+}
+
+async function seferGrupGuncelle(req, trip, grupId, options = {}) {
+    try {
+        const { wsdl, username, password } = await getFirmCredentials(req);
+
+        if (!trip?.uetdsRefNo) throw new Error("Seferin UETDS referans numarası yok.");
+        if (!grupId) throw new Error("Güncellenecek grup ID'si belirtilmemiş.");
+
+        // Esnek parametrelerle doldurulacak veri
+        const {
+            grupAciklama,
+            baslangicUlke,
+            baslangicIl,
+            baslangicIlce,
+            baslangicYer,
+            bitisUlke,
+            bitisIl,
+            bitisIlce,
+            bitisYer,
+            grupAdi,
+            grupUcret,
+        } = options;
+
+        // Trip üzerinden durak bilgilerini çek (gerekiyorsa)
+        let fromStop = null, toStop = null;
+        if (!baslangicIl || !bitisIl) {
+            const route = await req.models.Route.findByPk(trip.routeId);
+            if (route) {
+                [fromStop, toStop] = await Promise.all([
+                    req.models.Stop.findByPk(route.fromStopId),
+                    req.models.Stop.findByPk(route.toStopId),
+                ]);
+            }
+        }
+
+        const args = {
+            wsuser: {
+                kullaniciAdi: username,
+                sifre: password,
+                targetNSAlias: "tns",
+                targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+            },
+            uetdsSeferReferansNo: trip.uetdsRefNo,
+            grupId: String(grupId),
+            seferGrupBilgileriInput: {
+                grupAciklama:
+                    grupAciklama ||
+                    `${fromStop?.title || ""} - ${toStop?.title || ""}`.trim(),
+                baslangicUlke: baslangicUlke || "TR",
+                baslangicIl: baslangicIl || fromStop?.uetdsProvinceId || 0,
+                baslangicIlce: baslangicIlce || fromStop?.uetdsDistrictId || 0,
+                baslangicYer: baslangicYer || fromStop?.webTitle || fromStop?.title || "",
+                bitisUlke: bitisUlke || "TR",
+                bitisIl: bitisIl || toStop?.uetdsProvinceId || 0,
+                bitisIlce: bitisIlce || toStop?.uetdsDistrictId || 0,
+                bitisYer: bitisYer || toStop?.webTitle || toStop?.title || "",
+                grupAdi:
+                    grupAdi ||
+                    `${fromStop?.title || ""} - ${toStop?.title || ""} Grubu`.trim(),
+                grupUcret: grupUcret != null ? String(grupUcret) : "0",
+                targetNSAlias: "tns",
+                targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+            },
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        };
+
+        console.log("🧾 [UETDS] seferGrupGuncelle isteği:", args);
+
+        const client = await soap.createClientAsync(wsdl);
+        client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+        const [result] = await client.seferGrupGuncelleAsync(args);
+
+        console.log("✅ [UETDS] seferGrupGuncelle yanıtı:", result?.return);
+
+        return result?.return;
+    } catch (err) {
+        console.error("❌ [UETDS] seferGrupGuncelle hatası:", err.message);
+        throw err;
+    }
+}
+
+async function yolcuEkle(req, trip, grupRefNo, ticket) {
+    const { wsdl, username, password } = await getFirmCredentials(req);
+
+    if (!trip?.uetdsRefNo) throw new Error("Seferin UETDS referans numarası yok.");
+    if (!grupRefNo) throw new Error("UETDS grup referans numarası yok.");
+
+    const args = {
+        wsuser: {
+            kullaniciAdi: username,
+            sifre: password,
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        },
+        uetdsSeferReferansNo: trip.uetdsRefNo,
+        seferYolcuBilgileriInput: {
+            uyrukUlke: (ticket.nationality || "TR").toUpperCase(),
+            tcKimlikPasaportNo: String(ticket.idNumber),
+            cinsiyet: ticket.gender === "f" ? "K" : "E",
+            adi: ticket.name,
+            soyadi: ticket.surname,
+            koltukNo: String(ticket.seatNumber || ticket.seatNo),
+            telefonNo: ticket.phoneNumber || "",
+            grupId: grupRefNo,
+            hesKodu: "",
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        },
+        targetNSAlias: "tns",
+        targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+    };
+
+    console.log("👤 [UETDS] yolcuEkle isteği:", args);
+
+    const client = await soap.createClientAsync(wsdl);
+    client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+    const [result] = await client.yolcuEkleAsync(args);
+    console.log("✅ [UETDS] yolcuEkle yanıtı:", result?.return);
+
+    return result?.return;
+}
+
+async function yolcuIptalUetdsYolcuRefNoIle(req, trip, passengerRefNo, reason = "Yolcu iadesi") {
+    const { wsdl, username, password } = await getFirmCredentials(req);
+
+    if (!trip?.uetdsRefNo) throw new Error("Seferin UETDS referans numarası yok.");
+    if (!passengerRefNo) throw new Error("Yolcu UETDS referans numarası belirtilmemiş.");
+
+    const args = {
+        wsuser: {
+            kullaniciAdi: username,
+            sifre: password,
+            targetNSAlias: "tns",
+            targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+        },
+        uetdsSeferReferansNo: trip.uetdsRefNo,
+        uetdsYolcuReferansNo: String(passengerRefNo),
+        iptalAciklama: reason,
+        targetNSAlias: "tns",
+        targetNamespace: "http://uetds.unetws.udhb.gov.tr/",
+    };
+
+    console.log("🧾 [UETDS] yolcuIptalUetdsYolcuRefNoIle args:", args);
+
+    const client = await soap.createClientAsync(wsdl);
+    client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+    const [result] = await client.yolcuIptalUetdsYolcuRefNoIleAsync(args);
+
+    console.log("✅ [UETDS] yolcuIptalUetdsYolcuRefNoIle yanıtı:", result?.return);
+    return result?.return ?? result;
+}
+
+module.exports = { seferEkle, seferGuncelle, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupEkle, seferGrupListesi, seferGrupGuncelle, yolcuEkle, yolcuIptalUetdsYolcuRefNoIle };
