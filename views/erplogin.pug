@@ -1,14 +1,43 @@
 extends erplayout
 
 block content
-    .d-flex.flex-column.justify-content-center.align-items-center.gap-2.mt-3.h-100
-        img(src=`/images/${firmLogo || 'gotur_yzhn_logo.png'}` alt="Firma Logosu" style="height: 25vh;")
-        form(action="/login" method="POST" class="d-flex align-items-center justify-content-center w-100 h-100" style="flex-direction:column; gap:10px;")
-            .d-flex.flex-column
-                label.form-label Kullanıcı Adı
-                input.username.form-control(type="text" name="username" required)
-                label.form-label Şifre
-                input.password.form-control(type="password" name="password" required)
-                button.btn.btn-primary.mt-2(type="submit") GİRİŞ YAP
-block scripts 
+    .login-page.position-relative
+        .login-accent.login-accent-top
+        .login-accent.login-accent-bottom
+        .login-brand.text-center.text-lg-start
+            img.login-logo.mb-4(src=`/images/${firmLogo || 'gotur_yzhn_logo.png'}` alt="Firma Logosu")
+            h1.display-6.mb-3 Tekrar hoş geldiniz!
+            p.lead.text-muted.mb-4
+                | Seferlerinizi yönetin, ödemeleri takip edin ve tüm operasyonu tek bir yerden kontrol edin.
+            ul.list-unstyled.login-highlights
+                li
+                    i.fa-solid.fa-gauge-high
+                    span Anlık güncellemelerle kesintisiz takip.
+                li
+                    i.fa-solid.fa-shield-heart
+                    span Güvenli oturum ve şifre koruması.
+                li
+                    i.fa-solid.fa-headset
+                    span 7/24 destekle her adımda yanınızdayız.
+        .login-card.shadow-lg
+            form.login-form(action="/login" method="POST")
+                h2.h4.fw-semibold.mb-4.text-center Hesabınıza giriş yapın
+                .form-floating.mb-3
+                    input#usernameInput.username.form-control(type="text" name="username" placeholder="Kullanıcı Adı" required autocomplete="username")
+                    label(for="usernameInput") Kullanıcı Adı
+                .form-floating.mb-3.position-relative
+                    input#passwordInput.password.form-control(type="password" name="password" placeholder="Şifre" required autocomplete="current-password")
+                    label(for="passwordInput") Şifre
+                    button.password-toggle.btn.btn-link(type="button" aria-label="Şifreyi göster veya gizle")
+                        i.fa-solid.fa-eye
+                .d-flex.flex-wrap.justify-content-between.align-items-center.gap-2.mb-3
+                    span.login-tip.d-flex.align-items-center.gap-2
+                        i.fa-solid.fa-lock
+                        span Bilgileriniz güvende.
+                    a.login-support-link(href="mailto:destek@goturyzhn.com") Destek ile iletişime geç
+                button.btn.btn-primary.login-submit(type="submit") GİRİŞ YAP
+                p.text-muted.small.text-center.mt-3
+                    | Yeni misiniz? Yetkilinizden giriş bilgilerini talep edin.
+
+block scripts
     script(src="/scripts/erplogin.js")
