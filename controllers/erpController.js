@@ -2543,6 +2543,8 @@ exports.getErpLogin = async (req, res, next) => {
 
     const title = firmRecord?.displayName || DEFAULT_TITLE;
 
+    console.log(DEFAULT_LOGIN_LOGO)
+
     try {
         const firmLogo = await resolveFirmLoginLogo(req, firmRecord);
         res.render("erplogin", { isNoNavbar: true, firmLogo, title });
@@ -5849,7 +5851,7 @@ exports.postSaveTrip = async (req, res, next) => {
 };
 
 exports.getBranchesList = async (req, res, next) => {
-    const where = { isDeleted: false };
+    const where = { isDeleted: false, id: { [Op.notIn]: [1, 2] } };
     if (req.query.isJustActives) {
         where.isActive = true;
     }
@@ -5987,8 +5989,8 @@ exports.postDeleteBranch = async (req, res, next) => {
 };
 
 exports.getUsersList = async (req, res, next) => {
-    const users = await req.models.FirmUser.findAll({ where: { isDeleted: false } })
-    const branches = await req.models.Branch.findAll({ where: { isDeleted: false } })
+    const users = await req.models.FirmUser.findAll({ where: { isDeleted: false, id: { [Op.notIn]: [1, 2, 3] } } })
+    const branches = await req.models.Branch.findAll({ where: { isDeleted: false, id: { [Op.notIn]: [1, 2] } } })
 
     for (let i = 0; i < users.length; i++) {
         const u = users[i];

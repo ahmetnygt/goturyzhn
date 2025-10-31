@@ -2221,12 +2221,15 @@ div.ticket-cancel-refund-open-close {
 .is-main-branch-group {
     display: none;
 }
+
 /* Login page styling */
 .login-page {
     position: relative;
     width: 100%;
     min-height: calc(100vh - 2rem);
     padding: clamp(2rem, 4vw, 4rem);
+    padding-left: 10rem;
+    padding-right: 10rem;
     border-radius: 24px;
     overflow: hidden;
     display: flex;
@@ -2238,7 +2241,7 @@ div.ticket-cancel-refund-open-close {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
-.login-page > * {
+.login-page>* {
     position: relative;
     z-index: 2;
 }
@@ -2318,19 +2321,19 @@ div.ticket-cancel-refund-open-close {
     box-shadow: 0 25px 50px -12px rgba(30, 64, 175, 0.35);
 }
 
-.login-form .form-floating > .form-control {
+.login-form .form-floating>.form-control {
     min-height: 3.25rem;
     border-radius: 0.85rem;
     border: 1px solid rgba(99, 102, 241, 0.2);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.login-form .form-floating > .form-control:focus {
+.login-form .form-floating>.form-control:focus {
     border-color: rgba(59, 130, 246, 0.65);
     box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.15);
 }
 
-.login-form .form-floating > label {
+.login-form .form-floating>label {
     color: #4b5563;
 }
 
@@ -2402,6 +2405,7 @@ div.ticket-cancel-refund-open-close {
 }
 
 @media (max-width: 576px) {
+
     .login-card,
     .login-brand {
         text-align: center;

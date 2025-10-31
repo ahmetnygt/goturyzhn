@@ -115,9 +115,9 @@ html
               if permissions.includes("REPORTS_MANAGE")
                 li.nav-item
                   a.nav-link.reports-nav(href="#") Raporlar
-              if permissions.includes("FIRM_MANAGE")
-                li.nav-item
-                  a.nav-link.firm-settings-nav(href="#") Firma
+              //- if permissions.includes("FIRM_MANAGE")
+              //-   li.nav-item
+              //-     a.nav-link.firm-settings-nav(href="#") Firma
           if firmUser
             - const firmUserName = firmUser && firmUser.name ? firmUser.name : ''
             - const firmUserUsername = firmUser && firmUser.username ? firmUser.username : ''
