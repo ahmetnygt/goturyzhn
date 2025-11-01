@@ -957,6 +957,9 @@ exports.getDayTripsList = async (req, res, next) => {
 
         const isPastPermission = req.session.permissions.includes("TRIP_PAST_VIEW")
         const isInactivePermission = req.session.permissions.includes("TRIP_CANCELLED_VIEW")
+        const isRestrictionDisabledLocal = value =>
+            value === false || value === "false" || value === 0 || value === "0";
+
         const trips = await req.models.Trip.findAll({
             where: { date: date, routeId: { [Op.in]: routeIds } },
             include: [
@@ -1007,6 +1010,32 @@ exports.getDayTripsList = async (req, res, next) => {
                 continue
             }
             const routeStopOrder = matchedRouteStop.order
+
+            const futureRouteStops = routeStops.filter(rs => rs.order > routeStopOrder)
+            if (futureRouteStops.length) {
+                const restrictions = await req.models.RouteStopRestriction.findAll({
+                    where: { tripId: t.id, fromRouteStopId: matchedRouteStop.id },
+                    attributes: ["toRouteStopId", "isAllowed"],
+                    raw: true
+                })
+
+                const restrictionMap = new Map(
+                    restrictions.map(r => [String(r.toRouteStopId), r.isAllowed])
+                )
+
+                const allRestricted = futureRouteStops.every(rs => {
+                    const key = String(rs.id)
+                    if (!restrictionMap.has(key)) {
+                        return false
+                    }
+
+                    return isRestrictionDisabledLocal(restrictionMap.get(key))
+                })
+
+                if (allRestricted) {
+                    continue
+                }
+            }
 
             if (routeStopOrder !== routeStops.length - 1) {
                 const offsets = await req.models.TripStopTime.findAll({ where: { tripId: t.id }, raw: true })
