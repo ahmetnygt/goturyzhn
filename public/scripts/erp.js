@@ -2394,6 +2394,56 @@ async function loadTrip(date, time, tripId) {
                     $(".trip-stop-restriction-content").html(response);
                     tripStopRestrictionChanges = {};
                     tripStopRestrictionDirty = false;
+
+                    // Stop restriction checkbox
+                    $(".trip-stop-restriction-checkbox").off().on("change", function () {
+                        const fromId2 = this.dataset.from;
+                        const toId2 = this.dataset.to;
+                        const key = `${fromId2}-${toId2}`;
+                        const initial = this.dataset.initial === "true";
+                        const isAllowed = this.checked;
+                        console.log(fromId2, toId2, key, initial, isAllowed)
+                        if (isAllowed === initial) {
+                            delete tripStopRestrictionChanges[key];
+                        } else {
+                            tripStopRestrictionChanges[key] = isAllowed;
+                        }
+                        tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
+                    });
+
+                    // Stop restriction save
+                    $(".trip-stop-restriction-save").off("click").on("click", async function () {
+                        const entries = Object.entries(tripStopRestrictionChanges);
+                        if (entries.length === 0) {
+                            closeTripStopRestriction();
+                            return;
+                        }
+                        try {
+                            await Promise.all(entries.map(([key, isAllowed]) => {
+                                const [fromId3, toId3] = key.split("-");
+                                return $.post("/post-trip-stop-restriction", {
+                                    tripId: currentTripId,
+                                    fromId: fromId3,
+                                    toId: toId3,
+                                    isAllowed: isAllowed ? 1 : 0
+                                });
+                            }));
+                            entries.forEach(([key, isAllowed]) => {
+                                const [fromId3, toId3] = key.split("-");
+                                const checkbox = document.querySelector(`.trip-stop-restriction-checkbox[data-from='${fromId3}'][data-to='${toId3}']`);
+                                if (checkbox) {
+                                    checkbox.dataset.initial = String(isAllowed);
+                                }
+                            });
+                            tripStopRestrictionChanges = {};
+                            tripStopRestrictionDirty = false;
+                            closeTripStopRestriction();
+                            loadTrip(currentTripDate, currentTripTime, currentTripId);
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    });
+
                     $(".trip-stop-restriction-pop-up").css("display", "block");
                     $(".blackout").css("display", "block");
                 },
@@ -2487,54 +2537,6 @@ async function loadTrip(date, time, tripId) {
                 showError(message);
             } finally {
                 $button.prop("disabled", false);
-            }
-        });
-
-        // Stop restriction checkbox
-        $(".trip-stop-restriction-checkbox").off().on("change", function () {
-            const fromId2 = this.dataset.from;
-            const toId2 = this.dataset.to;
-            const key = `${fromId2}-${toId2}`;
-            const initial = this.dataset.initial === "true";
-            const isAllowed = this.checked;
-            if (isAllowed === initial) {
-                delete tripStopRestrictionChanges[key];
-            } else {
-                tripStopRestrictionChanges[key] = isAllowed;
-            }
-            tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
-        });
-
-        // Stop restriction save
-        $(".trip-stop-restriction-save").off("click").on("click", async function () {
-            const entries = Object.entries(tripStopRestrictionChanges);
-            if (entries.length === 0) {
-                closeTripStopRestriction();
-                return;
-            }
-            try {
-                await Promise.all(entries.map(([key, isAllowed]) => {
-                    const [fromId3, toId3] = key.split("-");
-                    return $.post("/post-trip-stop-restriction", {
-                        tripId: currentTripId,
-                        fromId: fromId3,
-                        toId: toId3,
-                        isAllowed: isAllowed ? 1 : 0
-                    });
-                }));
-                entries.forEach(([key, isAllowed]) => {
-                    const [fromId3, toId3] = key.split("-");
-                    const checkbox = document.querySelector(`.trip-stop-restriction-checkbox[data-from='${fromId3}'][data-to='${toId3}']`);
-                    if (checkbox) {
-                        checkbox.dataset.initial = String(isAllowed);
-                    }
-                });
-                tripStopRestrictionChanges = {};
-                tripStopRestrictionDirty = false;
-                closeTripStopRestriction();
-                loadTrip(currentTripDate, currentTripTime, currentTripId);
-            } catch (err) {
-                console.log(err);
             }
         });
 
