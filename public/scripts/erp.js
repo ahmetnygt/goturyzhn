@@ -3158,11 +3158,52 @@ function highlightTripRowByData(date, time, tripId) {
 async function renderTripRows(html, options = {}) {
     const { autoSelect = false } = options || {};
 
-    $(".tripRows").html(html);
+    const $tripRowsContainer = $(".tripRows");
+    $tripRowsContainer.html(html);
 
-    const $rows = $(".tripRow");
+    const $rows = $tripRowsContainer.children(".tripRow");
+    const sortedRows = $rows.get().sort((a, b) => {
+        const $a = $(a);
+        const $b = $(b);
 
-    $rows.off("click").on("click", async e => {
+        const dateA = getTripDateFromRow($a);
+        const dateB = getTripDateFromRow($b);
+
+        if (dateA && dateB) {
+            const diff = dateA.getTime() - dateB.getTime();
+            if (diff !== 0) {
+                return diff;
+            }
+        } else if (dateA) {
+            return -1;
+        } else if (dateB) {
+            return 1;
+        }
+
+        const timeA = normalizeTimeString($a.data("time"));
+        const timeB = normalizeTimeString($b.data("time"));
+
+        if (timeA && timeB) {
+            const timeDiff = timeA.localeCompare(timeB);
+            if (timeDiff !== 0) {
+                return timeDiff;
+            }
+        } else if (timeA) {
+            return -1;
+        } else if (timeB) {
+            return 1;
+        }
+
+        return 0;
+    });
+
+    sortedRows.forEach(row => {
+        $tripRowsContainer.append(row);
+    });
+
+    const $sortedRows = $tripRowsContainer.children(".tripRow");
+
+    $sortedRows.off("click").on("click", async e => {
         const $row = $(e.currentTarget);
         selectTripRow($row);
 
@@ -3247,7 +3288,7 @@ async function renderTripRows(html, options = {}) {
     bindTripActivationButtons($(".trip-cancel-button"), false);
     bindTripActivationButtons($(".trip-active-button"), true);
 
-    const $current = findCurrentTripRow($rows);
+    const $current = findCurrentTripRow($sortedRows);
     if ($current.length) {
         selectTripRow($current);
         return false;
@@ -3257,7 +3298,7 @@ async function renderTripRows(html, options = {}) {
         return false;
     }
 
-    const $next = findClosestUpcomingTripRow($rows);
+    const $next = findClosestUpcomingTripRow($sortedRows);
     if ($next.length) {
         selectTripRow($next);
         try {
