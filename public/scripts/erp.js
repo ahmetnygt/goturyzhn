@@ -6519,7 +6519,7 @@ const initializeRouteTimePickers = () => {
     });
 };
 
-$(document).on("click", ".route-tab", e => {
+$(".route-tab").on("click", e => {
     const targetId = e.currentTarget?.dataset?.target;
     if (!targetId) return;
     setRouteActiveTab(targetId);
