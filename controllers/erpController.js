@@ -3121,11 +3121,18 @@ exports.postTickets = async (req, res, next) => {
 
         let normalizedIdNumbers = [];
         const seenIdNumbers = new Set();
+        const requiresIdentityNumber = status !== "reservation";
+
         for (const ticket of tickets) {
             const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
 
             if (!normalizedIdNumber) {
-                return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                if (requiresIdentityNumber) {
+                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                }
+
+                ticket.idNumber = null;
+                continue;
             }
 
             if (seenIdNumbers.has(normalizedIdNumber)) {
