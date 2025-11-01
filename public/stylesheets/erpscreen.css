@@ -651,6 +651,11 @@ select.price-button-select {
     display: none;
 }
 
+.trip-list-nodes {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
 .trip-settings {
     flex: 0 0 auto;
     width: 50%;
