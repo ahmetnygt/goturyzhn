@@ -30,6 +30,7 @@ router.get('/get-trip-revenues', erpController.getTripRevenues);
 router.get('/get-trip-cargo-list', erpController.getTripCargoList);
 router.get('/get-trip-stop-restriction', erpController.getTripStopRestriction);
 router.post('/post-trip-stop-restriction', erpController.postTripStopRestriction);
+router.post('/post-trip-stop-restriction-all', erpController.postTripStopRestrictionAll);
 router.post('/post-trip-time-adjustment', erpController.postTripTimeAdjustment);
 
 router.get('/get-trip-notes', erpController.getTripNotes);
