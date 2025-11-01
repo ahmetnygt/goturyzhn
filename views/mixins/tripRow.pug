@@ -1,6 +1,12 @@
 if trips.length
     each t in trips
-        .tripRow(class=`${t.isExpired?"expired":""} ${t.isActive?"":"disabled"}`  data-time=t.time data-date=t.date data-tripid=t.id)
+        .tripRow(
+            class=`${t.isExpired?"expired":""} ${t.isActive?"":"disabled"}`
+            data-time=t.time
+            data-date=t.date
+            data-tripid=t.id
+            data-sort-time=t.modifiedTime
+        )
             div 
                 p #{t.dateString}
             div 
