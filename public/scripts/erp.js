@@ -3060,7 +3060,8 @@ function formatDateForRequest(dateInput) {
 
 function getTripDateFromRow($row) {
     const date = normalizeDateString($row.data("date"));
-    const time = normalizeTimeString($row.data("time"));
+    const sortTime = $row.data("sortTime");
+    const time = normalizeTimeString(sortTime !== undefined ? sortTime : $row.data("time"));
 
     if (!date || !time) {
         return null;
@@ -3180,8 +3181,10 @@ async function renderTripRows(html, options = {}) {
             return 1;
         }
 
-        const timeA = normalizeTimeString($a.data("time"));
-        const timeB = normalizeTimeString($b.data("time"));
+        const sortTimeA = $a.data("sortTime");
+        const sortTimeB = $b.data("sortTime");
+        const timeA = normalizeTimeString(sortTimeA !== undefined ? sortTimeA : $a.data("time"));
+        const timeB = normalizeTimeString(sortTimeB !== undefined ? sortTimeB : $b.data("time"));
 
         if (timeA && timeB) {
             const timeDiff = timeA.localeCompare(timeB);
