@@ -1831,145 +1831,278 @@ exports.getTripStopRestriction = async (req, res, next) => {
 const moment = require("moment");
 const { seferGuncelle } = require("../utilities/uetdsService"); // seferGuncelle fonksiyonunun yolu
 
+const parseAllowedValue = value => value === true || value === "true" || value === 1 || value === "1";
+const isRestrictionDisabled = value => value === false || value === "false" || value === 0 || value === "0";
+
+async function applyTripStopRestrictionChange(req, tripId, fromRouteStopId, toRouteStopId, isAllowedInput) {
+    const normalizedTripId = Number(tripId);
+    const normalizedFromId = Number(fromRouteStopId);
+    const normalizedToId = Number(toRouteStopId);
+
+    if (!normalizedTripId || !normalizedFromId || !normalizedToId) {
+        throw new Error("Geçersiz sefer veya durak bilgisi.");
+    }
+
+    const allowed = parseAllowedValue(isAllowedInput);
+
+    const restriction = await req.models.RouteStopRestriction.findOne({
+        where: {
+            tripId: normalizedTripId,
+            fromRouteStopId: normalizedFromId,
+            toRouteStopId: normalizedToId,
+        },
+    });
+
+    if (restriction) {
+        await restriction.update({ isAllowed: allowed });
+    } else {
+        await req.models.RouteStopRestriction.create({
+            tripId: normalizedTripId,
+            fromRouteStopId: normalizedFromId,
+            toRouteStopId: normalizedToId,
+            isAllowed: allowed,
+        });
+    }
+
+    const trip = await req.models.Trip.findOne({
+        where: { id: normalizedTripId },
+        include: [
+            {
+                model: req.models.Route,
+                as: "route",
+                include: [
+                    { model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] },
+                    { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] },
+                ],
+            },
+            { model: req.models.Bus, as: "bus", attributes: ["licensePlate", "phoneNumber"] },
+        ],
+    });
+
+    if (!trip) {
+        throw new Error("Trip bulunamadı.");
+    }
+
+    const routeStopsRaw = await req.models.RouteStop.findAll({
+        where: { routeId: trip.routeId },
+        order: [["order", "ASC"]],
+        raw: true,
+    });
+
+    if (!routeStopsRaw.length) {
+        throw new Error("Rota durakları bulunamadı.");
+    }
+
+    const stopIds = routeStopsRaw.map(rs => rs.stopId);
+    const stops = await req.models.Stop.findAll({
+        where: { id: { [Op.in]: stopIds } },
+        raw: true,
+    });
+    const stopTitleMap = new Map(stops.map(stop => [Number(stop.id), stop.title || ""]));
+
+    const routeStops = routeStopsRaw.map(rs => ({
+        ...rs,
+        title: stopTitleMap.get(Number(rs.stopId)) || "",
+    }));
+
+    const firstStop = routeStops[0];
+    const lastStop = routeStops[routeStops.length - 1];
+    let newFirstStop = firstStop;
+    let newLastStop = lastStop;
+
+    const restrictions = await req.models.RouteStopRestriction.findAll({
+        where: { tripId: normalizedTripId },
+        raw: true,
+    });
+
+    const isStopRestricted = (routeStopId, field = "fromRouteStopId") =>
+        restrictions.some(
+            r => Number(r[field]) === Number(routeStopId) && isRestrictionDisabled(r.isAllowed)
+        );
+
+    if (isStopRestricted(firstStop.id, "fromRouteStopId")) {
+        for (let i = 1; i < routeStops.length; i += 1) {
+            if (!isStopRestricted(routeStops[i].id, "fromRouteStopId")) {
+                newFirstStop = routeStops[i];
+                break;
+            }
+        }
+    } else {
+        newFirstStop = firstStop;
+    }
+
+    if (isStopRestricted(lastStop.id, "toRouteStopId")) {
+        for (let i = routeStops.length - 2; i >= 0; i -= 1) {
+            if (!isStopRestricted(routeStops[i].id, "toRouteStopId")) {
+                newLastStop = routeStops[i];
+                break;
+            }
+        }
+    } else {
+        newLastStop = lastStop;
+    }
+
+    const changed = newFirstStop.id !== firstStop.id || newLastStop.id !== lastStop.id;
+    let uetdsResult = null;
+
+    if (changed) {
+        const startIndex = routeStops.findIndex(r => Number(r.id) === Number(newFirstStop.id));
+        const endIndex = routeStops.findIndex(r => Number(r.id) === Number(newLastStop.id));
+        const sliceStart = Math.min(startIndex, endIndex);
+        const sliceEnd = Math.max(startIndex, endIndex) + 1;
+        const subRoute = routeStops.slice(sliceStart, sliceEnd);
+
+        const totalSeconds = subRoute.reduce((acc, stop) => {
+            if (!stop.duration) return acc;
+            const [h = 0, m = 0, s = 0] = String(stop.duration)
+                .split(":")
+                .map(n => parseInt(n || 0, 10));
+            return acc + h * 3600 + m * 60 + s;
+        }, 0);
+
+        const hareketTarihi = moment(trip.date).format("YYYY-MM-DD");
+        const hareketSaati = moment(trip.time, ["HH:mm", "HH:mm:ss"]).format("HH:mm");
+        const startDateTime = moment(`${hareketTarihi} ${hareketSaati}`, "YYYY-MM-DD HH:mm");
+        const endDateTime = startDateTime.clone().add(totalSeconds, "seconds");
+
+        const seferBitisTarihi = endDateTime.format("YYYY-MM-DD");
+        const seferBitisSaati = endDateTime.format("HH:mm");
+
+        uetdsResult = await seferGuncelle(req, trip.id, {
+            referansNo: trip.uetdsRefNo,
+            seferAciklama: `${newFirstStop.title} - ${newLastStop.title}`.trim(),
+            hareketTarihi,
+            hareketSaati,
+            seferBitisTarihi,
+            seferBitisSaati,
+        });
+    }
+
+    return {
+        message: changed ? "Restriction değişti, UETDS güncellendi" : "Restriction kaydedildi, rota değişmedi.",
+        updated: changed,
+        uetds: uetdsResult,
+    };
+}
+
 exports.postTripStopRestriction = async (req, res, next) => {
     try {
         const { tripId, fromId, toId, isAllowed } = req.body;
-        const allowed =
-            isAllowed === true || isAllowed === "true" || isAllowed === 1 || isAllowed === "1";
 
-        // 1️⃣ Restriction kaydını güncelle veya oluştur
-        const restriction = await req.models.RouteStopRestriction.findOne({
-            where: { tripId, fromRouteStopId: fromId, toRouteStopId: toId },
-        });
-
-        if (restriction) {
-            await restriction.update({ isAllowed: allowed });
-        } else {
-            await req.models.RouteStopRestriction.create({
-                tripId,
-                fromRouteStopId: fromId,
-                toRouteStopId: toId,
-                isAllowed: allowed,
-            });
+        if (!tripId || !fromId || !toId) {
+            return res.status(400).json({ message: "Geçersiz kısıtlama bilgisi." });
         }
 
-        // 2️⃣ Trip ve rota bilgilerini al
-        const trip = await req.models.Trip.findOne({
-            where: { id: tripId },
-            include: [
-                {
-                    model: req.models.Route,
-                    as: "route",
-                    include: [
-                        { model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] },
-                        { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] },
-                    ],
-                },
-                { model: req.models.Bus, as: "bus", attributes: ["licensePlate", "phoneNumber"] },
-            ],
-        });
-
-        if (!trip) throw new Error("Trip bulunamadı.");
-
-        const routeStops = await req.models.RouteStop.findAll({
-            where: { routeId: trip.routeId },
-            order: [["order", "ASC"]],
-            raw: true,
-        });
-
-        if (!routeStops.length) throw new Error("Rota durakları bulunamadı.");
-
-        // 3️⃣ Orijinal başlangıç ve bitiş durakları
-        const firstStop = routeStops[0];
-        const lastStop = routeStops[routeStops.length - 1];
-        let newFirstStop = firstStop;
-        let newLastStop = lastStop;
-
-        // 4️⃣ Tüm restriction kayıtlarını kontrol et
-        const restrictions = await req.models.RouteStopRestriction.findAll({ where: { tripId } });
-
-        const isStopRestricted = (stopId, field = "fromRouteStopId") =>
-            restrictions.some((r) => r[field] === stopId && r.isAllowed === false);
-
-        // 🔹 İlk durak engellenmişse -> bir sonraki aktif durağı bul
-        if (isStopRestricted(firstStop.id, "fromRouteStopId")) {
-            for (let i = 1; i < routeStops.length; i++) {
-                if (!isStopRestricted(routeStops[i].id, "fromRouteStopId")) {
-                    newFirstStop = routeStops[i];
-                    break;
-                }
-            }
-        } else {
-            // Eğer engel kalktıysa ve eski ilk durak aktifse -> orijinale dön
-            newFirstStop = firstStop;
-        }
-
-        // 🔹 Son durak engellenmişse -> sondan bir önceki aktif durağı bul
-        if (isStopRestricted(lastStop.id, "toRouteStopId")) {
-            for (let i = routeStops.length - 2; i >= 0; i--) {
-                if (!isStopRestricted(routeStops[i].id, "toRouteStopId")) {
-                    newLastStop = routeStops[i];
-                    break;
-                }
-            }
-        } else {
-            // Eğer engel kalktıysa ve eski son durak aktifse -> orijinale dön
-            newLastStop = lastStop;
-        }
-
-        // 5️⃣ Rota değişmiş mi kontrol et
-        const changed = newFirstStop.id !== firstStop.id || newLastStop.id !== lastStop.id;
-
-        if (changed) {
-            // duration değerlerinden toplam süreyi hesapla
-            const startIndex = routeStops.findIndex((r) => r.id === newFirstStop.id);
-            const endIndex = routeStops.findIndex((r) => r.id === newLastStop.id);
-            const subRoute = routeStops.slice(startIndex, endIndex + 1);
-
-            const totalSeconds = subRoute.reduce((acc, stop) => {
-                if (!stop.duration) return acc;
-                const [h, m, s] = stop.duration.split(":").map((n) => parseInt(n || 0));
-                return acc + h * 3600 + m * 60 + (s || 0);
-            }, 0);
-
-            // kalkış ve bitiş zamanlarını hesapla
-            const hareketTarihi = moment(trip.date).format("YYYY-MM-DD");
-            const hareketSaati = moment(trip.time, ["HH:mm", "HH:mm:ss"]).format("HH:mm");
-            const startDateTime = moment(`${hareketTarihi} ${hareketSaati}`, "YYYY-MM-DD HH:mm");
-            const endDateTime = startDateTime.clone().add(totalSeconds, "seconds");
-
-            const seferBitisTarihi = endDateTime.format("YYYY-MM-DD");
-            const seferBitisSaati = endDateTime.format("HH:mm");
-
-            console.log(
-                `🕓 Yeni rota aralığı: ${newFirstStop.title} → ${newLastStop.title} | Süre: ${Math.round(
-                    totalSeconds / 60
-                )} dk`
-            );
-
-            // 6️⃣ UETDS tarafında seferi güncelle
-            const result = await seferGuncelle(req, trip.id, {
-                referansNo: trip.uetdsRefNo,
-                seferAciklama: `${newFirstStop.title} - ${newLastStop.title}`,
-                hareketTarihi,
-                hareketSaati,
-                seferBitisTarihi,
-                seferBitisSaati,
-            });
-
-            console.log("📡 [UETDS] Güncelle sonucu:", result);
-
-            return res.json({
-                message: "Restriction değişti, UETDS güncellendi",
-                updated: true,
-                uetds: result,
-            });
-        }
-
-        res.json({ message: "Restriction kaydedildi, rota değişmedi." });
+        const result = await applyTripStopRestrictionChange(req, tripId, fromId, toId, isAllowed);
+        res.json(result);
     } catch (err) {
         console.error("❌ Restriction işlem hatası:", err);
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.postTripStopRestrictionAll = async (req, res, next) => {
+    try {
+        const { tripId, changes } = req.body;
+
+        const normalizedTripId = Number(tripId);
+        if (!normalizedTripId) {
+            return res.status(400).json({ message: "Geçersiz sefer bilgisi." });
+        }
+
+        let parsedChanges = changes;
+        if (typeof parsedChanges === "string") {
+            try {
+                parsedChanges = JSON.parse(parsedChanges);
+            } catch (error) {
+                return res.status(400).json({ message: "Geçersiz kısıtlama verisi." });
+            }
+        }
+
+        if (!Array.isArray(parsedChanges)) {
+            parsedChanges = [];
+        }
+
+        const normalizedChanges = parsedChanges
+            .map(change => ({
+                fromId: change?.fromId ?? change?.fromRouteStopId,
+                toId: change?.toId ?? change?.toRouteStopId,
+                isAllowed: change?.isAllowed,
+            }))
+            .filter(change => Number(change.fromId) && Number(change.toId));
+
+        if (!normalizedChanges.length) {
+            return res.status(400).json({ message: "Kısıtlama değişikliği bulunamadı." });
+        }
+
+        const baseTrip = await req.models.Trip.findByPk(normalizedTripId);
+        if (!baseTrip) {
+            return res.status(404).json({ message: "Sefer bulunamadı." });
+        }
+
+        const now = moment();
+        const today = now.format("YYYY-MM-DD");
+
+        const candidateTrips = await req.models.Trip.findAll({
+            where: {
+                routeId: baseTrip.routeId,
+                date: { [Op.gte]: today },
+            },
+        });
+
+        const targetTrips = candidateTrips
+            .filter(trip => {
+                const tripMoment = moment(`${trip.date} ${trip.time}`, [
+                    "YYYY-MM-DD HH:mm:ss",
+                    "YYYY-MM-DD HH:mm",
+                ]);
+                return tripMoment.isSameOrAfter(now);
+            })
+            .sort((a, b) => {
+                const aMoment = moment(`${a.date} ${a.time}`, ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm"]);
+                const bMoment = moment(`${b.date} ${b.time}`, ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm"]);
+                if (aMoment.isBefore(bMoment)) return -1;
+                if (aMoment.isAfter(bMoment)) return 1;
+                return a.id - b.id;
+            });
+
+        if (!targetTrips.length) {
+            return res.json({
+                success: true,
+                message: "Uygulanacak aktif sefer bulunamadı.",
+                appliedTripIds: [],
+            });
+        }
+
+        const results = [];
+
+        for (const trip of targetTrips) {
+            for (const change of normalizedChanges) {
+                const result = await applyTripStopRestrictionChange(
+                    req,
+                    trip.id,
+                    change.fromId,
+                    change.toId,
+                    change.isAllowed
+                );
+                results.push({
+                    tripId: trip.id,
+                    fromId: Number(change.fromId),
+                    toId: Number(change.toId),
+                    updated: result.updated,
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: "Kısıtlama değişiklikleri ilgili seferlere uygulandı.",
+            appliedTripIds: targetTrips.map(t => t.id),
+            results,
+        });
+    } catch (err) {
+        console.error("postTripStopRestrictionAll error:", err);
+        res.status(500).json({ message: err.message || "Internal Server Error" });
     }
 };
 

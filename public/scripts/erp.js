@@ -13,6 +13,7 @@ let selectedTicketStopId = currentStop;
 let fromId;
 let toId;
 let fromStr;
+let currentTripRouteId;
 // --- Abortable group for loadTrip ---
 let __GTR_tr_loadToken = 0;
 let __GTR_tr_jqXHRs = [];
@@ -2032,6 +2033,7 @@ async function loadTrip(date, time, tripId) {
         currentTripTime = $("#tripTime").val();
         currentTripPlaceTime = $("#tripPlaceTime").val();
         currentTripId = $("#tripId").val();
+        currentTripRouteId = $("#tripRouteId").val();
         selectedSeats = [];
         selectedTakenSeats = [];
         clearSelectedTakenTicketContext();
@@ -2048,6 +2050,7 @@ async function loadTrip(date, time, tripId) {
         $("#tripTime").remove();
         $("#tripPlaceTime").remove();
         $("#tripId").remove();
+        $("#tripRouteId").remove();
         $("#fromId").remove();
         $("#toId").remove();
         $("#fromStr").remove();
@@ -2409,6 +2412,79 @@ async function loadTrip(date, time, tripId) {
                             tripStopRestrictionChanges[key] = isAllowed;
                         }
                         tripStopRestrictionDirty = Object.keys(tripStopRestrictionChanges).length > 0;
+                    });
+
+                    $(".trip-stop-restriction-save-all").off("click").on("click", async function () {
+                        const entries = Object.entries(tripStopRestrictionChanges);
+                        if (entries.length === 0) {
+                            closeTripStopRestriction();
+                            return;
+                        }
+
+                        if (!currentTripId) {
+                            showError("Sefer bilgisi bulunamadı.");
+                            return;
+                        }
+
+                        if (!currentTripRouteId) {
+                            showError("Hat bilgisi bulunamadı.");
+                            return;
+                        }
+
+                        const changes = entries.map(([key, isAllowed]) => {
+                            const [fromId3, toId3] = key.split("-");
+                            return {
+                                fromId: fromId3,
+                                toId: toId3,
+                                isAllowed: isAllowed ? 1 : 0,
+                            };
+                        });
+
+                        const $saveAllButton = $(this);
+                        const $saveButton = $(".trip-stop-restriction-save");
+                        const originalSaveAllHtml = $saveAllButton.html();
+
+                        $saveAllButton
+                            .prop("disabled", true)
+                            .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+                        $saveButton.prop("disabled", true);
+
+                        try {
+                            const response = await $.post("/post-trip-stop-restriction-all", {
+                                tripId: currentTripId,
+                                routeId: currentTripRouteId,
+                                changes: JSON.stringify(changes),
+                            });
+
+                            entries.forEach(([key, isAllowed]) => {
+                                const [fromId3, toId3] = key.split("-");
+                                const checkbox = document.querySelector(
+                                    `.trip-stop-restriction-checkbox[data-from='${fromId3}'][data-to='${toId3}']`
+                                );
+                                if (checkbox) {
+                                    checkbox.dataset.initial = String(isAllowed);
+                                }
+                            });
+
+                            tripStopRestrictionChanges = {};
+                            tripStopRestrictionDirty = false;
+                            closeTripStopRestriction();
+                            await loadTrip(currentTripDate, currentTripTime, currentTripId);
+
+                            if (response?.message && window.GTR && typeof window.GTR.toast === "function") {
+                                window.GTR.toast(response.message, "success");
+                            }
+                        } catch (err) {
+                            const message =
+                                err?.responseJSON?.message ||
+                                err?.responseJSON?.error ||
+                                err?.responseText ||
+                                "Durak kısıtlama işlemi sırasında bir hata oluştu.";
+                            showError(message);
+                        } finally {
+                            $saveAllButton.prop("disabled", false).html(originalSaveAllHtml);
+                            $saveButton.prop("disabled", false);
+                        }
                     });
 
                     // Stop restriction save
