@@ -89,7 +89,7 @@ function computeTripEndDateTime(hareketTarihi, hareketSaati, routeStops = [], st
 // görev -> turKodu
 function mapDutyToTurKodu(duty) {
     switch (duty) {
-        case "driver": return 1;     // Sürücü
+        case "driver": return 0;     // Sürücü
         case "assistant": return 2;  // Muavin
         case "hostess": return 3;    // Host/Hostes
         default: return 0;
@@ -727,4 +727,49 @@ async function yolcuIptalUetdsYolcuRefNoIle(req, trip, passengerRefNo, reason = 
     return result?.return ?? result;
 }
 
-module.exports = { seferEkle, seferGuncelle, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupEkle, seferGrupListesi, seferGrupGuncelle, yolcuEkle, yolcuIptalUetdsYolcuRefNoIle };
+async function seferDetayCiktisiAl(req, tripId) {
+    const { wsdl, username, password } = await getFirmCredentials(req);
+
+    const trip = await req.models.Trip.findByPk(tripId);
+    if (!trip || !trip.uetdsRefNo) {
+        throw new Error("Seferin UETDS referans numarası bulunamadı.");
+    }
+
+    const args = {
+        wsuser: {
+            kullaniciAdi: username,
+            sifre: password,
+        },
+        uetdsSeferReferansNo: trip.uetdsRefNo,
+    };
+
+    console.log("📤 [UETDS] seferDetayCiktisiAl args:", args);
+
+    const client = await soap.createClientAsync(wsdl);
+    client.setSecurity(new soap.BasicAuthSecurity(username, password));
+
+    const [result] = await client.seferDetayCiktisiAlAsync(args);
+    const data = result?.return ?? result;
+
+    console.log("📥 [UETDS] seferDetayCiktisiAl yanıt:", {
+        sonucKodu: data?.sonucKodu,
+        sonucMesaji: data?.sonucMesaji,
+        pdfLength: data?.sonucPdf?.length || 0,
+    });
+
+    if (data?.sonucKodu !== 0) {
+        throw new Error(`UETDS hata: ${data?.sonucMesaji || "Bilinmeyen hata"}`);
+    }
+
+    if (!data?.sonucPdf) {
+        throw new Error("PDF verisi alınamadı (sonucPdf boş).");
+    }
+
+    return {
+        sonucKodu: data.sonucKodu,
+        sonucMesaji: data.sonucMesaji,
+        pdfBase64: data.sonucPdf,
+    };
+}
+
+module.exports = { seferEkle, seferGuncelle, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupEkle, seferGrupListesi, seferGrupGuncelle, yolcuEkle, yolcuIptalUetdsYolcuRefNoIle, seferDetayCiktisiAl };

@@ -1691,6 +1691,43 @@ async function loadTrip(date, time, tripId) {
         // Trip HTML
         $(".busPlan").html(tripResponse);
 
+        async function openSeferDetayPDF(tripId) {
+            try {
+                const response = await fetch(`/uetdsTripDetail/${tripId}`, {
+                    method: "GET",
+                    headers: { "Accept": "application/json" }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP hata: ${response.status}`);
+                }
+
+                // response.json() sadece bir kez çağrılır
+                const data = await response.json();
+
+                if (!data?.pdfBase64) {
+                    alert("PDF alınamadı: " + (data?.sonucMesaji || "Bilinmeyen hata"));
+                    return;
+                }
+
+                const byteCharacters = atob(data.pdfBase64);
+                const byteNumbers = new Array(byteCharacters.length)
+                    .fill(0)
+                    .map((_, i) => byteCharacters.charCodeAt(i));
+                const pdfBlob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                window.open(pdfUrl, "_blank");
+            } catch (err) {
+                console.error("❌ openSeferDetayPDF hata:", err);
+                alert("PDF açılırken hata oluştu: " + err.message);
+            }
+        }
+
+        $(".uetds-trip-detail-report").off("click").on("click", async function (e) {
+            await openSeferDetayPDF(tripId)
+        })
+
         // Boş satırları temizle
         document.querySelectorAll('.seat-row').forEach(row => {
             const seats = row.querySelectorAll('.seat');

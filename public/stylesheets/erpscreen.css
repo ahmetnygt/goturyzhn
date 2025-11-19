@@ -2040,6 +2040,8 @@ div.ticket-cancel-refund-open-close {
     position: absolute;
     left: 105%;
     top: 0;
+    overflow-y: auto;
+    max-height: 25vh;
 }
 
 .ticket-op-button {

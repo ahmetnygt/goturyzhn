@@ -77,6 +77,7 @@
                 if trip.isAccountCut || permissions.includes('PRINT_SEAT_PLAN_INVOICE_WITHOUT_CUT')
                     li
                         a.dropdown-item.trip-seat-plan-report(href="#") Koltuk Planlı Yolcu Listesi
+                a.dropdown-item.uetds-trip-detail-report(href="#") UETDS Sefer Detay Çıktısı
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b

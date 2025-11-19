@@ -157,5 +157,6 @@ router.get('/dailyUserAccount', auth, erpController.getDailyUserAccountReport);
 router.get('/upcomingTickets', auth, erpController.getUpcomingTicketsReport);
 router.get('/externalReturnTickets', auth, erpController.getExternalReturnTicketsReport);
 router.get('/busTransactions', auth, erpController.getBusTransactionsReport);
+router.get("/uetdsTripDetail/:tripId", erpController.getSeferDetayCiktisi);
 
 module.exports = router;

@@ -17,7 +17,7 @@ const generateUpcomingTicketsReport = require("../utilities/reports/upcomingTick
 const generateExternalReturnTicketsReport = require('../utilities/reports/externalReturnTicketsReport');
 const generateBusTransactionsReport = require("../utilities/reports/busTransactionsReport");
 const countries = require("world-countries");
-const { seferEkle, kullaniciKontrol, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupGuncelle, yolcuEkle, seferGrupListesi, seferGrupEkle, yolcuIptalUetdsYolcuRefNoIle } = require('../utilities/uetdsService');
+const { seferEkle, kullaniciKontrol, seferIptal, seferAktif, seferPlakaDegistir, personelEkle, personelIptal, seferGrupGuncelle, yolcuEkle, seferGrupListesi, seferGrupEkle, yolcuIptalUetdsYolcuRefNoIle, seferDetayCiktisiAl } = require('../utilities/uetdsService');
 
 const TURKISH_COLLATOR = (() => {
     try {
@@ -1623,6 +1623,20 @@ exports.getBusAccountCutReceipt = async (req, res, next) => {
         res.status(500).json({ message: "Hesap fişi oluşturulamadı." });
     }
 };
+
+exports.getSeferDetayCiktisi = async (req, res, next) => {
+    try {
+        const { tripId } = req.params;
+        if (!tripId) return res.status(400).json({ message: "tripId gerekli." });
+
+        const result = await seferDetayCiktisiAl(req, tripId);
+        res.json(result);
+    } catch (err) {
+        console.error("❌ seferDetayCiktisiAl error:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
 
 exports.getTripSeatPlanReport = async (req, res, next) => {
     try {

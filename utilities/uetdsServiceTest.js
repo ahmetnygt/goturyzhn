@@ -41,8 +41,8 @@ const WSDL_URL = "https://servis.turkiye.gov.tr/services/g2g/kdgm/test/uetdsariz
         // // 5️⃣ Yanıtı yazdır
         // console.log("✅ UETDS ipTanimla sonucu:");
         // console.dir(resulttt, { depth: null });
-        console.log("yolcuIptalUetdsYolcuRefNoIle: ")
-        console.log(client.describe().UdhbUetdsAriziService.UdhbUetdsAriziServicePort.yolcuIptalUetdsYolcuRefNoIle)
+        console.log("seferDetayCiktisiAl: ")
+        console.log(client.describe().UdhbUetdsAriziService.UdhbUetdsAriziServicePort.seferDetayCiktisiAl)
     } catch (err) {
         console.error("❌ SOAP Hatası:", err);
     }
