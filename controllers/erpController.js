@@ -4763,9 +4763,18 @@ exports.postSaveBusPlan = async (req, res, next) => {
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        const { id, title, description, plan, planBinary, maxPassenger
+        // rowCount ve colCount değerlerini burada destructuring ile alıyoruz
+        const {
+            id,
+            title,
+            description,
+            plan,
+            planBinary,
+            maxPassenger,
+            rowCount,
+            colCount
         } = data;
-        console.log(maxPassenger)
+
         const [busModel, created] = await req.models.BusModel.upsert(
             {
                 id,
@@ -4773,7 +4782,9 @@ exports.postSaveBusPlan = async (req, res, next) => {
                 description,
                 plan,
                 planBinary,
-                maxPassenger
+                maxPassenger,
+                rowCount: rowCount ? parseInt(rowCount) : 0,
+                colCount: colCount ? parseInt(colCount) : 5
             },
             { returning: true }
         );

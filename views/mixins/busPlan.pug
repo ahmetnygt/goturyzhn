@@ -101,58 +101,67 @@
 .seats
     - let seatNumber = 0
     - let seatIndex = 0
-    - for(let i = 0; i < 16; i++)
-        .seat-row
-            -for(let j = 0; j < 5; j++){
-            -   if(busModel.planBinary[seatIndex] == 0){
-                -if((seatIndex+1)%5==0){
-                    .seat.none
-                        |0
-                -}
-                -else{
-                    .seat.hidden
-                        |0
-                -}
-            -}
-            -   else{
-            -       seatNumber++
-                .seat(class=`${tickets[seatNumber]?tickets[seatNumber].status!=="pending"?tickets[seatNumber].gender:"":""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber} ${tickets[seatNumber]?tickets[seatNumber].stopOrder:""}`
-                    data-seat-number=seatNumber
-                    data-seat-type=seatTypes[seatNumber]
-                    data-pending-ticket-id=tickets[seatNumber]?tickets[seatNumber].status=="pending"?tickets[seatNumber].id:"":""
-                    data-group-id=tickets[seatNumber]?tickets[seatNumber].ticketGroupId:""
-                    data-pnr=tickets[seatNumber]?tickets[seatNumber].pnr:"" 
-                    data-gender=tickets[seatNumber]?tickets[seatNumber].gender:""  
-                    data-from=tickets[seatNumber]?tickets[seatNumber].from:"" 
-                    data-to=tickets[seatNumber]?tickets[seatNumber].to:"" 
-                    data-name=tickets[seatNumber]?tickets[seatNumber].name+" "+tickets[seatNumber].surname:"" 
-                    data-phone=tickets[seatNumber]?tickets[seatNumber].phoneNumber:"" 
-                    data-price=tickets[seatNumber]?tickets[seatNumber].price:""
-                    data-created-at=tickets[seatNumber]?tickets[seatNumber].createdAt:""
-                    data-user-name=tickets[seatNumber]?tickets[seatNumber].user:""
-                    data-branch=tickets[seatNumber]?tickets[seatNumber].userBranch:""
-                    data-take-on=tickets[seatNumber]?tickets[seatNumber].takeOnText:""
-                    data-take-off=tickets[seatNumber]?tickets[seatNumber].takeOffText:""
-                    data-is-own-branch-ticket=tickets[seatNumber]?tickets[seatNumber].isOwnBranchTicket:""
-                    data-is-own-branch-stop=tickets[seatNumber]?tickets[seatNumber].isOwnBranchStop:""
-                    data-status=tickets[seatNumber]?tickets[seatNumber].status:"" 
-                    data-refund-option=tickets[seatNumber]?tickets[seatNumber].tripRefundOptionDate:"" 
-                    data-payment=tickets[seatNumber]?tickets[seatNumber].payment:""
-                    data-next-route-stop-order=(tickets[seatNumber] && tickets[seatNumber].nextRouteStopOrder != null ? tickets[seatNumber].nextRouteStopOrder : "")
-                    data-next-route-stop-id=(tickets[seatNumber] && tickets[seatNumber].nextRouteStopId != null ? tickets[seatNumber].nextRouteStopId : "")
-                    data-trip-id=trip.id)
+    //- Veritabanından gelen row/col, yoksa varsayılan (eski kayıtlar için) 16x5
+    - const rowCount = (busModel.rowCount && busModel.rowCount > 0) ? busModel.rowCount : 16
+    - const colCount = (busModel.colCount && busModel.colCount > 0) ? busModel.colCount : 5
 
-                    p.seat-number #{seatNumber}
-                    p.from #{tickets[seatNumber]?tickets[seatNumber].from:""}
-                    .seat-content
-                        p.web #{tickets[seatNumber]?tickets[seatNumber].status == "web"?"WEB":"":""}
-                        if tickets[seatNumber]
-                            if tickets[seatNumber].price
-                                p.price #{tickets[seatNumber]?tickets[seatNumber].price+"₺":""}
-                    p.to #{tickets[seatNumber]?tickets[seatNumber].to:""}
-            -}
-            -   seatIndex++;
-            -}
+    - for(let i = 0; i < rowCount; i++)
+        .seat-row
+            - for(let j = 0; j < colCount; j++){
+                //- Binary string sınırlarını aşmamak için kontrol
+                - if(seatIndex < busModel.planBinary.length) {
+
+                    //- DURUM 0 (Boşluk/Koridor)
+                    - if(busModel.planBinary[seatIndex] == '0'){
+                        //- ÖNEMLİ: Artık gereksiz sağ boşlukları backend'e kaydetmediğimiz için, 
+                        //- buradaki her "0" aslında bir koridor veya şoför yanı boşluğudur.
+                        //- Bu yüzden hepsini .seat.hidden (yer kaplayan boşluk) yapıyoruz.
+                        //- Eski .seat.none (display:none) mantığını kaldırıyoruz.
+                        .seat.hidden
+                            |0
+                    -}
+
+                    //- DURUM 1 (Koltuk)
+                    - else {
+                        - seatNumber++
+                        .seat(class=`${tickets[seatNumber]?tickets[seatNumber].status!=="pending"?tickets[seatNumber].gender:"":""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber} ${tickets[seatNumber]?tickets[seatNumber].stopOrder:""}`
+                            data-seat-number=seatNumber
+                            data-seat-type=seatTypes[seatNumber]
+                            data-pending-ticket-id=tickets[seatNumber]?tickets[seatNumber].status=="pending"?tickets[seatNumber].id:"":""
+                            data-group-id=tickets[seatNumber]?tickets[seatNumber].ticketGroupId:""
+                            data-pnr=tickets[seatNumber]?tickets[seatNumber].pnr:"" 
+                            data-gender=tickets[seatNumber]?tickets[seatNumber].gender:""  
+                            data-from=tickets[seatNumber]?tickets[seatNumber].from:"" 
+                            data-to=tickets[seatNumber]?tickets[seatNumber].to:"" 
+                            data-name=tickets[seatNumber]?tickets[seatNumber].name+" "+tickets[seatNumber].surname:"" 
+                            data-phone=tickets[seatNumber]?tickets[seatNumber].phoneNumber:"" 
+                            data-price=tickets[seatNumber]?tickets[seatNumber].price:""
+                            data-created-at=tickets[seatNumber]?tickets[seatNumber].createdAt:""
+                            data-user-name=tickets[seatNumber]?tickets[seatNumber].user:""
+                            data-branch=tickets[seatNumber]?tickets[seatNumber].userBranch:""
+                            data-take-on=tickets[seatNumber]?tickets[seatNumber].takeOnText:""
+                            data-take-off=tickets[seatNumber]?tickets[seatNumber].takeOffText:""
+                            data-is-own-branch-ticket=tickets[seatNumber]?tickets[seatNumber].isOwnBranchTicket:""
+                            data-is-own-branch-stop=tickets[seatNumber]?tickets[seatNumber].isOwnBranchStop:""
+                            data-status=tickets[seatNumber]?tickets[seatNumber].status:"" 
+                            data-refund-option=tickets[seatNumber]?tickets[seatNumber].tripRefundOptionDate:"" 
+                            data-payment=tickets[seatNumber]?tickets[seatNumber].payment:""
+                            data-next-route-stop-order=(tickets[seatNumber] && tickets[seatNumber].nextRouteStopOrder != null ? tickets[seatNumber].nextRouteStopOrder : "")
+                            data-next-route-stop-id=(tickets[seatNumber] && tickets[seatNumber].nextRouteStopId != null ? tickets[seatNumber].nextRouteStopId : "")
+                            data-trip-id=trip.id)
+
+                            p.seat-number #{seatNumber}
+                            p.from #{tickets[seatNumber]?tickets[seatNumber].from:""}
+                            .seat-content
+                                p.web #{tickets[seatNumber]?tickets[seatNumber].status == "web"?"WEB":"":""}
+                                if tickets[seatNumber]
+                                    if tickets[seatNumber].price
+                                        p.price #{tickets[seatNumber]?tickets[seatNumber].price+"₺":""}
+                            p.to #{tickets[seatNumber]?tickets[seatNumber].to:""}
+                    - }
+                - }
+                - seatIndex++;
+            - }
 input#fromId(type="hidden" value=fromId)
 input#toId(type="hidden" value=toId)
 input#fromStr(type="hidden" value=fromStr)

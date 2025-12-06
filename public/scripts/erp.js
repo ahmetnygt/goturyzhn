@@ -1728,14 +1728,6 @@ async function loadTrip(date, time, tripId) {
             await openSeferDetayPDF(tripId)
         })
 
-        // Boş satırları temizle
-        document.querySelectorAll('.seat-row').forEach(row => {
-            const seats = row.querySelectorAll('.seat');
-            if (Array.from(seats).every(seat => seat.classList.contains('hidden') || seat.classList.contains('none'))) {
-                row.remove();
-            }
-        });
-
         // Diğer alanlar
         $(".ticket-ops-pop-up").html(ticketOpsResponse);
         $(".trip-notes").html(tripNotesResponse);
@@ -5679,36 +5671,88 @@ $(".bus-plans-nav").on("click", async e => {
                                 return
                             }
 
+                            // 1. Izgara Analizi: Dolu olan en son satır ve sütunu tespit et
+                            const $inputs = $(".bus-plan-create-input");
+                            const SOURCE_COL_WIDTH = 5; // Paneldeki varsayılan ızgara genişliği (CSS'e göre 5'tir)
+
+                            let maxRowIndex = 0;
+                            let maxColIndex = 0;
+
+                            $inputs.each((i, e) => {
+                                // Inputun değerini kontrol et (boş mu?)
+                                // normalizeBusPlanInputValue fonksiyonu erp.js içinde tanımlı, onu kullanıyoruz
+                                const val = normalizeBusPlanInputValue(e.value);
+
+                                if (val) {
+                                    // Bu inputun 5'li ızgaradaki koordinatlarını bul
+                                    const r = Math.floor(i / SOURCE_COL_WIDTH);
+                                    const c = i % SOURCE_COL_WIDTH;
+
+                                    if (r > maxRowIndex) maxRowIndex = r;
+                                    if (c > maxColIndex) maxColIndex = c;
+                                }
+                            });
+
+                            // Eğer hiç veri girilmemişse en az 1x1 olsun (veya hata verdirilebilir)
+                            // maxIndex 0-based olduğu için sayıyı bulmak için +1 ekliyoruz
+                            const rowCount = maxRowIndex + 1;
+                            const colCount = maxColIndex + 1;
+
+                            // 2. Yeni Planı Oluştur: Sadece dolu sınırlara kadar olan veriyi al
                             let maxPassenger = 0;
-                            let plan = []
-                            let planBinary = ""
-                            $(".bus-plan-create-input").each((i, e) => {
-                                plan.push(e.value ? e.value : 0)
-                                if (e.value && e.value !== "Ş" && e.value !== ">") {
-                                    planBinary = `${planBinary}${1}`
-                                    maxPassenger += 1;
-                                }
-                                else {
-                                    planBinary = `${planBinary}${0}`
-                                }
-                            })
+                            let plan = [];
+                            let planBinary = "";
 
-                            const planJSON = JSON.stringify(plan)
+                            for (let r = 0; r < rowCount; r++) {
+                                for (let c = 0; c < colCount; c++) {
+                                    // Orijinal düz listedeki indeksi hesapla (r * 5 + c)
+                                    const sourceIndex = (r * SOURCE_COL_WIDTH) + c;
+                                    const input = $inputs[sourceIndex];
+                                    const rawVal = input ? input.value : null;
 
+                                    // Değer temizliği
+                                    const val = normalizeBusPlanInputValue(rawVal);
+                                    const finalVal = val ? val : 0; // Veritabanına boşsa 0, değilse değer gider
+
+                                    plan.push(finalVal);
+
+                                    // Binary ve Yolcu Sayısı Hesaplama
+                                    // Şoför (Ş) ve Kapı (>) yolcu sayısına dahil edilmez, binary'de 0 olur
+                                    if (finalVal && finalVal !== "Ş" && finalVal !== ">") {
+                                        planBinary += "1";
+                                        maxPassenger++;
+                                    } else {
+                                        planBinary += "0";
+                                    }
+                                }
+                            }
+
+                            const planJSON = JSON.stringify(plan);
+
+                            // 3. Veriyi Gönder
                             await $.ajax({
                                 url: "/post-save-bus-plan",
                                 type: "POST",
-                                data: { id, title, description, plan: planJSON, planBinary, maxPassenger },
+                                data: {
+                                    id: editingBusPlanId, // veya ilgili ID değişkeni
+                                    title,
+                                    description,
+                                    plan: planJSON,
+                                    planBinary,
+                                    maxPassenger,
+                                    rowCount, // Yeni hesaplanan satır sayısı (örn: 6)
+                                    colCount  // Yeni hesaplanan sütun sayısı (örn: 4)
+                                },
+                                // ... success ve error handler'lar aynı kalır
                                 success: function (response) {
-                                    $(".bus-plans").css("display", "none")
-                                    $(".blackout").css("display", "none")
-
-                                    $(".bus-plan-panel").html("")
+                                    // ...
+                                    $(".bus-plan-panel").html(""); // Paneli temizle
+                                    // ...
                                 },
                                 error: function (xhr, status, error) {
                                     console.log(error);
                                 }
-                            })
+                            });
                         })
                     },
                     error: function (xhr, status, error) {
@@ -5847,7 +5891,8 @@ $(".add-bus-plan").on("click", async e => {
 
             attachBusPlanInputEvents()
 
-            $(".save-bus-plan").on("click", async e => {
+            // BURASI GÜNCELLENMELİ:
+            $(".save-bus-plan").off("click").on("click", async e => {
                 const title = $(".bus-plan-title").val()
                 const description = $(".bus-plan-description").val()
 
@@ -5856,31 +5901,70 @@ $(".add-bus-plan").on("click", async e => {
                     return
                 }
 
-                let maxPassenger = 0;
-                let plan = []
-                let planBinary = ""
-                $(".bus-plan-create-input").each((i, e) => {
-                    plan.push(e.value ? e.value : 0)
-                    if (e.value && e.value !== "Ş" && e.value !== ">") {
-                        planBinary = `${planBinary}${1}`
-                        maxPassenger += 1;
-                    }
-                    else {
-                        planBinary = `${planBinary}${0}`
-                    }
-                })
+                // --- HESAPLAMA MANTIĞI BURAYA DA EKLENDİ ---
+                const $inputs = $(".bus-plan-create-input");
+                const SOURCE_COL_WIDTH = 5;
 
-                const planJSON = JSON.stringify(plan)
+                let maxRowIndex = 0;
+                let maxColIndex = 0;
+
+                $inputs.each((i, e) => {
+                    const val = normalizeBusPlanInputValue(e.value);
+                    if (val) {
+                        const r = Math.floor(i / SOURCE_COL_WIDTH);
+                        const c = i % SOURCE_COL_WIDTH;
+                        if (r > maxRowIndex) maxRowIndex = r;
+                        if (c > maxColIndex) maxColIndex = c;
+                    }
+                });
+
+                const rowCount = maxRowIndex + 1;
+                const colCount = maxColIndex + 1;
+
+                let maxPassenger = 0;
+                let plan = [];
+                let planBinary = "";
+
+                for (let r = 0; r < rowCount; r++) {
+                    for (let c = 0; c < colCount; c++) {
+                        const sourceIndex = (r * SOURCE_COL_WIDTH) + c;
+                        const input = $inputs[sourceIndex];
+                        const rawVal = input ? input.value : null;
+                        const val = normalizeBusPlanInputValue(rawVal);
+                        const finalVal = val ? val : 0;
+
+                        plan.push(finalVal);
+
+                        if (finalVal && finalVal !== "Ş" && finalVal !== ">") {
+                            planBinary += "1";
+                            maxPassenger++;
+                        } else {
+                            planBinary += "0";
+                        }
+                    }
+                }
+                const planJSON = JSON.stringify(plan);
+                // -------------------------------------------
 
                 await $.ajax({
                     url: "/post-save-bus-plan",
                     type: "POST",
-                    data: { title, description, plan: planJSON, planBinary, maxPassenger },
+                    data: {
+                        title,
+                        description,
+                        plan: planJSON,
+                        planBinary,
+                        maxPassenger,
+                        rowCount, // Yeni alan
+                        colCount  // Yeni alan
+                    },
                     success: function (response) {
                         $(".bus-plans").css("display", "none")
                         $(".blackout").css("display", "none")
-
                         $(".bus-plan-panel").html("")
+
+                        // Listeyi yenilemek için sayfayı tetikleyebilirsiniz
+                        $(".bus-plans-nav").click();
                     },
                     error: function (xhr, status, error) {
                         console.log(error);

@@ -2,45 +2,59 @@ const { getTenantConnection } = require("../utilities/database");
 const { initGoturModels } = require("../utilities/goturDb");
 const { DEFAULT_TENANT_KEY, resolveTenantKey } = require("../utilities/tenantConfig");
 
+// Ortak DB cache
 let cachedCommonModels;
-
 function getCommonModels() {
-    if (!cachedCommonModels) {
-        cachedCommonModels = initGoturModels();
-    }
-
+    if (!cachedCommonModels) cachedCommonModels = initGoturModels();
     return cachedCommonModels;
 }
 
 module.exports = async (req, res, next) => {
     try {
-        const explicitTenantKey =
-            req.get("x-tenant-key") ||
-            req.get("x-tenant") ||
-            req.query.tenantKey ||
-            req.query.tenant ||
-            DEFAULT_TENANT_KEY;
+        let tenantKey;
 
-        const subdomain = resolveTenantKey(req.hostname, explicitTenantKey);
+        /* ==========================================================
+         * 1) API request
+         * ========================================================== */
+        const isApiRequest =
+            req.originalUrl.startsWith("/api/") ||
+            req.path.startsWith("/api/");
 
-        if (!subdomain) {
-            return res.status(400).json({ error: "Subdomain bulunamadı" });
+        if (isApiRequest) {
+            tenantKey = req.get("x-tenant-key") || req.get("x-tenant");
+
+            if (!tenantKey) {
+                console.error("❌ API çağrısı fakat API key ile tenant bulunamadı.");
+                return res.status(400).json({
+                    error: "API tenant bulunamadı — X-Api-Key doğru mu?"
+                });
+            }
         }
 
-        // tenant DB
-        const { sequelize, models } = await getTenantConnection(subdomain);
+        /* ==========================================================
+         * 2) Normal WEBSITE request
+         * ========================================================== */
+        else {
+            // domain/subdomain çözümlemesi
+            tenantKey = resolveTenantKey(req.hostname);
 
-        // ortak DB (gotur)
-        const commonModels = getCommonModels();
+            if (!tenantKey) {
+                console.error("❌ Tenant/subdomain çözümlenemedi.");
+                return res.status(400).send("Tenant belirlenemedi.");
+            }
+        }
+
+        const { sequelize, models } = await getTenantConnection(tenantKey);
 
         req.db = sequelize;
-        req.models = models;             // tenant modelleri
-        req.commonModels = commonModels; // ortak modeller
-        req.tenantKey = subdomain;
+        req.models = models;
+        req.commonModels = getCommonModels();
+        req.tenantKey = tenantKey;
 
-        next();
+        return next();
+
     } catch (err) {
-        console.error("Tenant çözümleme hatası:", err);
-        res.status(500).json({ error: "Tenant çözümleme hatası" });
+        console.error("❌ Tenant Middleware Crash:", err);
+        return res.status(500).json({ error: "Tenant çözümleme hatası", detail: err.message });
     }
 };

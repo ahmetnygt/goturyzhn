@@ -9,6 +9,7 @@ var logger = require("morgan");
 
 var usersRouter = require("./routes/users");
 var erpRouter = require("./routes/erp");
+var apiRouter = require("./routes/api");
 
 const { goturDB, initGoturModels } = require("./utilities/goturDb"); // ortak kullanıcı & session DB
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
@@ -68,6 +69,7 @@ app.use((req, res, next) => {
 // routerlar
 app.use("/users", usersRouter);
 app.use("/", erpRouter);
+app.use("/api", apiRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

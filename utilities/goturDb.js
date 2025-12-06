@@ -1,7 +1,9 @@
 const { Sequelize } = require("sequelize");
 const PlaceFactory = require("../models/placeModel");
 const FirmFactory = require("../models/firmModel");
+const ApiKeyFactory = require("../models/apiKeyModel");
 const UetdsPlaceFactory = require("../models/uetdsPlaceModel");
+const TicketPaymentFactory = require("../models/ticketPaymentModel");
 const placesSeedData = require("../seeders/placeSeeder.json");
 const uetdsPlacesSeedData = require("../seeders/uetdsPlaceSeeder.json");
 
@@ -36,7 +38,9 @@ const goturDB = new Sequelize(
 const goturModels = Object.freeze({
     Firm: FirmFactory(goturDB),
     Place: PlaceFactory(goturDB),
+    ApiKey: ApiKeyFactory(goturDB),
     UetdsPlace: UetdsPlaceFactory(goturDB),
+    TicketPayment: TicketPaymentFactory(goturDB),
 });
 
 let goturSyncPromise;
@@ -48,7 +52,7 @@ function initGoturModels() {
 async function getGoturSyncPromise() {
     if (!goturSyncPromise) {
         try {
-            await goturDB.sync();
+            await goturDB.sync({});
 
             const placeCount = await goturModels.Place.count();
 
