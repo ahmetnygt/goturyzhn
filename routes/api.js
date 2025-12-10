@@ -20,4 +20,13 @@ router.post("/payment/create", apiController.createPayment);
 router.get("/payment/:id", apiController.getPaymentDetail);
 router.post("/payment/:id/complete", apiController.paymentComplete);
 
+router.post("/auth/register", apiController.register);
+router.post("/auth/login", apiController.login);
+
+router.get("/customer/:id", apiController.getProfile);
+router.post("/customer/update", apiController.updateProfile);
+router.get("/customer/:id/tickets", apiController.getCustomerTickets); 
+
+router.post("/ticket/cancel", apiController.cancelTicket);
+
 module.exports = router;

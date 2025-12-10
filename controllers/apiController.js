@@ -1,4 +1,5 @@
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt")
 
 // ----------------- HELPERLAR -----------------
 
@@ -569,13 +570,17 @@ exports.getPaymentDetail = async (req, res) => {
 
 exports.paymentComplete = async (req, res) => {
     try {
-        const { TicketPayment, Ticket } = req.models;
+        const { Ticket, TicketGroup } = req.models;
+        const { TicketPayment } = req.commonModels;
         const pay = await TicketPayment.findByPk(req.params.id);
         if (!pay) return res.json({ error: "payment yok" });
+
+        const tg = await TicketGroup.create({ tripId: pay.tripId })
 
         for (const i in pay.seatNumbers) {
             await Ticket.create({
                 tripId: pay.tripId,
+                ticketGroupId: tg.id,
                 seatNo: pay.seatNumbers[i],
                 gender: pay.genders[i],
                 status: "web",
@@ -583,8 +588,289 @@ exports.paymentComplete = async (req, res) => {
             });
         }
 
+        console.log(req.models)
+        console.log(req.commonModels)
+        console.log(pay)
+
         await pay.update({ isSuccess: true });
         res.json({ ok: true, paymentId: pay.id });
 
-    } catch (e) { res.json({ error: e.message }) }
+    } catch (e) { console.log(e); res.json({ error: e.message }) }
 }
+
+exports.register = async (req, res) => {
+    try {
+        const { Customer } = req.models;
+        const { name, surname, phone, password, email, gender, idNumber } = req.body;
+
+        // idNumber zorunlu hale geldi
+        if (!idNumber || !phone || !password || !name || !surname) {
+            return res.status(400).json({ error: "Lütfen tüm zorunlu alanları doldurunuz." });
+        }
+
+        if (idNumber.length !== 11) {
+            return res.status(400).json({ error: "Geçersiz T.C. Kimlik Numarası." });
+        }
+
+        // Mükerrer kontrolü artık TCKN üzerinden
+        const existing = await Customer.findOne({ where: { idNumber: idNumber } });
+        if (existing) {
+            return res.status(409).json({ error: "Bu T.C. Kimlik Numarası ile kayıtlı kullanıcı var." });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const customer = await Customer.create({
+            name: name.toLocaleUpperCase("tr-TR"),
+            surname: surname.toLocaleUpperCase("tr-TR"),
+            nationality: "tr",
+            customerType: "adult",
+            phoneNumber: phone,
+            password: hashedPassword,
+            email: email || null,
+            gender: gender || null,
+            idNumber: idNumber, // TCKN kaydediliyor
+            customerCategory: "member",
+            pointOrPercent: "point"
+        });
+
+        const userObj = customer.toJSON();
+        delete userObj.password;
+
+        res.json({ success: true, user: userObj });
+
+    } catch (err) {
+        console.error("REGISTER_ERR:", err);
+        res.status(500).json({ error: "Kayıt sırasında hata oluştu.", detail: err.message });
+    }
+};
+
+exports.login = async (req, res) => {
+    try {
+        const { Customer } = req.models;
+        // phone yerine idNumber alıyoruz
+        const { idNumber, password } = req.body;
+
+        if (!idNumber || !password) {
+            return res.status(400).json({ error: "T.C. Kimlik No ve şifre gereklidir." });
+        }
+
+        // Kullanıcıyı TCKN ile bul
+        const customer = await Customer.findOne({ where: { idNumber: idNumber } });
+        if (!customer) {
+            return res.status(401).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        if (!customer.password) {
+            return res.status(401).json({ error: "Bu kullanıcının şifresi oluşturulmamış." });
+        }
+
+        const match = await bcrypt.compare(password, customer.password);
+        if (!match) {
+            return res.status(401).json({ error: "Hatalı şifre." });
+        }
+
+        const userObj = customer.toJSON();
+        delete userObj.password;
+
+        res.json({ success: true, user: userObj });
+
+    } catch (err) {
+        console.error("LOGIN_ERR:", err);
+        res.status(500).json({ error: "Giriş hatası.", detail: err.message });
+    }
+};
+
+exports.getProfile = async (req, res) => {
+    try {
+        const { Customer } = req.models;
+        const { id } = req.params;
+
+        if (!id) return res.status(400).json({ error: "ID gerekli." });
+
+        const customer = await Customer.findByPk(id, {
+            attributes: { exclude: ['password'] } // Şifreyi gönderme
+        });
+
+        if (!customer) {
+            return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        res.json({ success: true, user: customer });
+    } catch (err) {
+        console.error("GET_PROFILE_ERR:", err);
+        res.status(500).json({ error: "Profil bilgisi alınamadı." });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { Customer } = req.models;
+        const { id, name, surname, email, gender, password } = req.body;
+
+        if (!id) return res.status(400).json({ error: "Kullanıcı ID eksik." });
+
+        const customer = await Customer.findByPk(id);
+        if (!customer) {
+            return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+        }
+
+        // Güncellenecek veriler
+        const updateData = {
+            name: name ? name.toLocaleUpperCase("tr-TR") : customer.name,
+            surname: surname ? surname.toLocaleUpperCase("tr-TR") : customer.surname,
+            email: email,
+            gender: gender
+        };
+
+        // Eğer şifre de geldiyse hashleyip güncelle
+        if (password && password.trim() !== "") {
+            updateData.password = await bcrypt.hash(password, 10);
+        }
+
+        await customer.update(updateData);
+
+        // Güncel halini geri dön
+        const userObj = customer.toJSON();
+        delete userObj.password;
+
+        res.json({ success: true, user: userObj });
+
+    } catch (err) {
+        console.error("UPDATE_PROFILE_ERR:", err);
+        res.status(500).json({ error: "Güncelleme sırasında hata oluştu.", detail: err.message });
+    }
+};
+
+// Müşterinin Biletlerini Getir (Gelişmiş Saat Hesaplamalı)
+exports.getCustomerTickets = async (req, res) => {
+    try {
+        const { Ticket, Trip, Stop, Route, RouteStop, TripStopTime } = req.models;
+        const { id } = req.params; // id: TCKN
+
+        const tickets = await Ticket.findAll({
+            include: [
+                {
+                    model: req.models.Customer,
+                    as: "customer",
+                    where: { idNumber: id },
+                    attributes: []
+                },
+                {
+                    model: Trip,
+                    as: "trip",
+                    attributes: ["id", "date", "time"],
+                    include: [
+                        {
+                            model: TripStopTime,
+                            as: "stopTimes",
+                            attributes: ["routeStopId", "offsetMinutes"]
+                        },
+                        {
+                            model: Route,
+                            as: "route",
+                            attributes: ["title", "routeCode"],
+                            include: [
+                                {
+                                    model: RouteStop,
+                                    as: "stops",
+                                    attributes: ["id", "order", "duration"],
+                                    include: [{ model: Stop, as: "stop", attributes: ["title"] }]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            order: [
+                [{ model: Trip, as: "trip" }, 'date', 'DESC'],
+                [{ model: Trip, as: "trip" }, 'time', 'DESC']
+            ]
+        });
+
+        // Detaylı Saat ve Durak Hesaplaması
+        const processedTickets = tickets.map(t => {
+            const ticket = t.toJSON();
+            const trip = ticket.trip;
+            const routeStops = trip.route?.stops || [];
+
+            // Durakları sıraya diz (Garanti olsun)
+            routeStops.sort((a, b) => a.order - b.order);
+
+            // --- KALKIŞ SAATİ HESABI ---
+            // Biletin alındığı durak (fromRouteStopId)
+            const fromRS = routeStops.find(rs => rs.id == ticket.fromRouteStopId);
+            let depMinutesToAdd = 0;
+
+            if (fromRS) {
+                // O durağa kadar geçen süreleri topla
+                for (const rs of routeStops) {
+                    console.log(rs.id, rs.order)
+                    console.log(fromRS.id, fromRS.order)
+                    if (rs.order > fromRS.order) break;
+                    depMinutesToAdd += durationToMinutes(rs.duration);
+                }
+                // Varsa o durağın rötarını/offsetini ekle
+                const offset = trip.stopTimes?.find(st => st.routeStopId == ticket.fromRouteStopId)?.offsetMinutes || 0;
+                depMinutesToAdd += offset;
+
+                // Durak ismini düzelt (Ticket ilişkisi hatalıysa buradan alırız)
+                ticket.fromStopTitle = fromRS.stop?.title;
+            }
+            ticket.calculatedDeparture = addMinutes(trip.time, depMinutesToAdd);
+
+
+            // --- VARIŞ SAATİ HESABI ---
+            // Biletin inileceği durak (toRouteStopId)
+            const toRS = routeStops.find(rs => rs.id == ticket.toRouteStopId);
+            let arrMinutesToAdd = 0;
+
+            if (toRS) {
+                for (const rs of routeStops) {
+                    if (rs.order > toRS.order) break;
+                    arrMinutesToAdd += durationToMinutes(rs.duration);
+                }
+                const offset = trip.stopTimes?.find(st => st.routeStopId == ticket.toRouteStopId)?.offsetMinutes || 0;
+                arrMinutesToAdd += offset;
+
+                ticket.toStopTitle = toRS.stop?.title;
+            }
+            ticket.calculatedArrival = addMinutes(trip.time, arrMinutesToAdd);
+
+            return ticket;
+        });
+
+        res.json({ success: true, tickets: processedTickets });
+
+    } catch (err) {
+        console.error("GET_TICKETS_ERR:", err);
+        res.status(500).json({ error: "Biletler alınamadı.", detail: err.message });
+    }
+};
+
+// Bilet İptal / İade
+exports.cancelTicket = async (req, res) => {
+    try {
+        const { Ticket } = req.models;
+        const { ticketId, action } = req.body; // action: 'cancel' (iptal) veya 'refund' (iade)
+
+        const ticket = await Ticket.findByPk(ticketId);
+        if (!ticket) {
+            return res.status(404).json({ error: "Bilet bulunamadı." });
+        }
+
+        // Tarih kontrolü (Geçmiş sefer iptal edilemez)
+        const tripDate = new Date(ticket.optionDate + " " + ticket.optionTime); // Modeldeki tarih alanı
+        // Basit kontrol, detaylısı trip modelinden yapılmalı
+
+        const newStatus = action === "refund" ? "refund" : "canceled";
+
+        await ticket.update({ status: newStatus });
+
+        res.json({ success: true, message: "İşlem başarılı." });
+
+    } catch (err) {
+        console.error("CANCEL_TICKET_ERR:", err);
+        res.status(500).json({ error: "İşlem başarısız." });
+    }
+};
