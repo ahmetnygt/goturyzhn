@@ -11,13 +11,13 @@ html
     link(rel='stylesheet' href='/stylesheets/erpscreen.css')
     link(rel='stylesheet' href='/flatpickr/dist/flatpickr.min.css')
     link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css')
-    link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css')
+    link(rel='stylesheet' href='https://cdnjs.cloudflare.com/SearchableSelect.js/6.7.2/css/all.min.css')
   body
     .loading
       .loader
     .error-popup
       .gtr-header
-        span HATA
+        span ERROR
       .error-close
         i.fa-solid.fa-x
       .p-3
@@ -33,96 +33,93 @@ html
             ul.navbar-nav.mb-2.mb-lg-0
               li.nav-item.dropdown
                 a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Bilet
+                  | Ticket
                 ul.dropdown-menu
                   li
-                    a.dropdown-item.ticket-search(href="#") Bilet Ara
+                    a.dropdown-item.ticket-search(href="#") Search Ticket
                   if permissions.includes('OPEN_TICKET_SALE')
                     li
-                      a.dropdown-item.open-ticket-nav(href="#") Açık Bilet Sat
+                      a.dropdown-item.open-ticket-nav(href="#") Sell Open Ticket
               li.nav-item.dropdown
                 a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Kasa
+                  | Register
                 ul.dropdown-menu
                   li
-                    a.dropdown-item.register-nav(href="#") Kasam
+                    a.dropdown-item.register-nav(href="#") My Register
                   if permissions.includes('REGISTER_RECORD_MANAGE')
                     li
-                      a.dropdown-item.add-income-nav(href="#") Gelir Ekle
+                      a.dropdown-item.add-income-nav(href="#") Add Income
                     li
-                      a.dropdown-item.add-expense-nav(href="#") Gider Ekle
+                      a.dropdown-item.add-expense-nav(href="#") Add Expense
                   if permissions.includes('REGISTER_VIEW_OTHERS')
                     li
-                      a.dropdown-item.other-register-nav(href="#") Diğer Kasalar
+                      a.dropdown-item.other-register-nav(href="#") Other Registers
               li.nav-item.dropdown
                 a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                  | Ödeme
+                  | Payment
                 ul.dropdown-menu
                   if permissions.includes('REGISTER_USER_PAYMENT')
                     li
-                      a.dropdown-item.payment-request-nav(href="#") Ödeme İste
+                      a.dropdown-item.payment-request-nav(href="#") Request Payment
                     li
-                      a.dropdown-item.payment-send-nav(href="#") Ödeme Yap
+                      a.dropdown-item.payment-send-nav(href="#") Send Payment
                   li
-                    a.dropdown-item.pending-payments-nav(href="#") Bekleyen Ödemelerim
+                    a.dropdown-item.pending-payments-nav(href="#") My Pending Payments
                   li
-                    a.dropdown-item.pending-collections-nav(href="#") Bekleyen Tahsilatlarım
+                    a.dropdown-item.pending-collections-nav(href="#") My Pending Collections
               if permissions.includes("SUBSCRIPTION_MANAGE")
                 li.nav-item.dropdown
                   a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                    | Abonelik
+                    | Subscription
                   ul.dropdown-menu
                     li
-                      a.dropdown-item.member-nav(href="#") Aboneler
+                      a.dropdown-item.member-nav(href="#") Subscribers
               if permissions.includes("FLEET_MANAGE")
                 li.nav-item.dropdown
                   a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                    | Filo
+                    | Fleet
                   ul.dropdown-menu
                     li
-                      a.dropdown-item.bus-nav(href="#") Otobüsler
+                      a.dropdown-item.bus-nav(href="#") Buses
                     li
-                      a.dropdown-item.bus-income-nav(href="#") Gelir Ekle
+                      a.dropdown-item.bus-income-nav(href="#") Add Income
                     li
-                      a.dropdown-item.bus-expense-nav(href="#") Gider Ekle
+                      a.dropdown-item.bus-expense-nav(href="#") Add Expense
                     li
-                      a.dropdown-item.bus-transactions-report-nav(href="#") Otobüs Gelir Gideri
+                      a.dropdown-item.bus-transactions-report-nav(href="#") Bus Transactions
               if permissions.includes("ADMIN_PANEL_MANAGE")
                 li.nav-item.dropdown
                   a.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
-                    | Yönetim
+                    | Management
                   ul.dropdown-menu
                     li
-                      a.dropdown-item.branch-settings-nav(href="#") Şubeler
+                      a.dropdown-item.branch-settings-nav(href="#") Branches
                     li
-                      a.dropdown-item.user-settings-nav(href="#") Kullanıcılar
+                      a.dropdown-item.user-settings-nav(href="#") Users
                     li
-                      a.dropdown-item.bus-plans-nav(href="#") Otobüs Planları
+                      a.dropdown-item.bus-plans-nav(href="#") Bus Plans
                     li
-                      a.dropdown-item.staff-nav(href="#") Personeller
+                      a.dropdown-item.staff-nav(href="#") Staff
                     li
-                      a.dropdown-item.stops-nav(href="#") Duraklar
+                      a.dropdown-item.stops-nav(href="#") Stops
                     li
-                      a.dropdown-item.route-nav(href="#") Hatlar
+                      a.dropdown-item.route-nav(href="#") Routes
                     li
-                      a.dropdown-item.trip-nav(href="#") Seferler
+                      a.dropdown-item.trip-nav(href="#") Trips
                     li
-                      a.dropdown-item.price-nav(href="#") Fiyatlar
+                      a.dropdown-item.price-nav(href="#") Prices
                     li
-                      a.dropdown-item.customer-nav(href="#") Müşteriler
+                      a.dropdown-item.customer-nav(href="#") Customers
                     li
-                      a.dropdown-item.announcement-add-nav(href="#") Duyuru Ekle
+                      a.dropdown-item.announcement-add-nav(href="#") Add Announcement
               if permissions.includes("REPORTS_MANAGE")
                 li.nav-item
-                  a.nav-link.reports-nav(href="#") Raporlar
-              //- if permissions.includes("FIRM_MANAGE")
-              //-   li.nav-item
-              //-     a.nav-link.firm-settings-nav(href="#") Firma
+                  a.nav-link.reports-nav(href="#") Reports
           if firmUser
             - const firmUserName = firmUser && firmUser.name ? firmUser.name : ''
             - const firmUserUsername = firmUser && firmUser.username ? firmUser.username : ''
             - const firmUserPhone = firmUser && firmUser.phoneNumber ? firmUser.phoneNumber : ''
-            - const firmUserDisplayName = firmUserName || 'GİRİŞ YAPILDI'
+            - const firmUserDisplayName = firmUserName || 'LOGGED IN'
             div.ms-auto.d-flex.align-items-center
               .dropdown
                 button#navbarUserDropdown.btn.btn-outline-secondary.d-flex.align-items-center.gap-2.navbar-user-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false" data-user-name=firmUserName data-user-username=firmUserUsername data-user-phone=firmUserPhone)
@@ -130,63 +127,63 @@ html
                   span.text-nowrap #{firmUserDisplayName}
                 ul.dropdown-menu.dropdown-menu-end(aria-labelledby="navbarUserDropdown")
                   li
-                    button.user-menu-profile.dropdown-item(type="button") Bilgilerim
+                    button.user-menu-profile.dropdown-item(type="button") My Profile
                   li
-                    button.user-menu-password.dropdown-item(type="button") Şifremi Değiştir
+                    button.user-menu-password.dropdown-item(type="button") Change Password
                   li
                     form(action="/logout" method="post" class="m-0")
                       button.dropdown-item.d-flex.align-items-center.gap-2.text-danger(type="submit")
                         i.fa-solid.fa-right-from-bracket
-                        span Çıkış Yap
+                        span Logout
     div(style="padding:1rem 1rem 0rem 1rem!important;")
       block content
 
     if firmUser
       .user-profile-popup
         .gtr-header
-          span BİLGİLERİM
+          span MY PROFILE
         .user-profile-close
           i.fa-solid.fa-x
         form#userProfileForm
           .p-3.d-flex.flex-column.gap-3
             p.text-danger.d-none#userProfileError
             .input-group
-              span.input-group-text Ad Soyad
+              span.input-group-text Full Name
               input#profileNameInput.form-control.profile-name-input(type="text" name="name" autocomplete="name" required)
             .input-group
-              span.input-group-text Kullanıcı Adı
+              span.input-group-text Username
               input#profileUsernameInput.form-control.profile-username-input(type="text" name="username" autocomplete="username" required)
             .input-group
-              span.input-group-text Telefon
+              span.input-group-text Phone
               input#profilePhoneInput.form-control.profile-phone-input(type="text" name="phoneNumber" autocomplete="tel")
             .d-flex.justify-content-end.gap-2
-              button.btn.btn-outline-secondary.user-profile-cancel(type="button") Vazgeç
-              button.btn.btn-outline-primary(type="submit") Güncelle
+              button.btn.btn-outline-secondary.user-profile-cancel(type="button") Cancel
+              button.btn.btn-outline-primary(type="submit") Update
       .change-password-popup
         .gtr-header
-          span ŞİFREMİ DEĞİŞTİR
+          span CHANGE PASSWORD
         .change-password-close
           i.fa-solid.fa-x
         form#changePasswordForm
           .p-3.d-flex.flex-column.gap-3
             p.text-danger.d-none#changePasswordError
             .input-group
-              span.input-group-text Eski Şifre
+              span.input-group-text Current Password
               input#currentPasswordInput.form-control(type="password" name="currentPassword" autocomplete="current-password" required)
             .input-group
-              span.input-group-text Yeni Şifre
+              span.input-group-text New Password
               input#newPasswordInput.form-control(type="password" name="newPassword" autocomplete="new-password" required)
             .input-group
-              span.input-group-text Yeni Şifre (Tekrar)
+              span.input-group-text New Password (Again)
               input#confirmPasswordInput.form-control(type="password" name="confirmPassword" autocomplete="new-password" required)
             .d-flex.justify-content-end.gap-2
-              button.btn.btn-outline-secondary.change-password-cancel(type="button") Vazgeç
-              button.btn.btn-outline-primary(type="submit") Güncelle
+              button.btn.btn-outline-secondary.change-password-cancel(type="button") Cancel
+              button.btn.btn-outline-primary(type="submit") Update
     script(src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js")
     script(src="https://code.jquery.com/jquery-3.7.1.min.js")
     script(src="/flatpickr/dist/flatpickr.min.js")
-    script(src="/flatpickr/dist/l10n/tr.js")
+    script(src="/flatpickr/dist/l10n/en.js")
     script(src="/scripts/erp.js")
     block scripts

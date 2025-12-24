@@ -6,10 +6,10 @@ const SUMMARY_COLUMNS = 3;
 
 const formatCurrency = (value) => {
   const amount = Number(value || 0);
-  return `${amount.toLocaleString('tr-TR', {
+  return `${amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} TL`;
+  })} $`;
 };
 
 const chunk = (arr, size) => {
@@ -43,7 +43,7 @@ function generateDailyUserAccountReport(data, output) {
     doc.registerFont('Bold', boldFontPath);
     doc.font('Regular');
   } catch (err) {
-    console.warn('Font yüklenemedi, varsayılan font kullanılacak:', err.message);
+    console.warn('Font could not be loaded, using default:', err.message);
   }
 
   const xStart = doc.page.margins.left;
@@ -56,27 +56,9 @@ function generateDailyUserAccountReport(data, output) {
     }
   };
 
-  // Title
-  const title = 'Günlük Kullanıcı Hesabı Raporu'.toLocaleUpperCase('tr-TR');
+  const title = 'DAILY USER ACCOUNT REPORT'.toUpperCase();
   doc.font('Bold').fontSize(14).text(title, xStart, doc.y, { width: pageWidth, align: 'center' });
   doc.moveDown(0.5);
-
-  // const metaLines = [];
-  // if (query.user) metaLines.push(`Kullanıcı: ${query.user}`);
-  // if (query.branch) metaLines.push(`Şube: ${query.branch}`);
-  // if (query.startDate || query.endDate) {
-  //   metaLines.push(`Tarih Aralığı: ${(query.startDate || '-')}${query.endDate ? ` - ${query.endDate}` : ''}`);
-  // }
-  // if (query.generatedAt) metaLines.push(`Oluşturma: ${query.generatedAt}`);
-
-  // if (metaLines.length) {
-  //   doc.font('Regular').fontSize(9);
-  //   metaLines.forEach((line) => {
-  //     ensureVerticalSpace(12);
-  //     doc.text(line, xStart, doc.y, { width: pageWidth });
-  //   });
-  //   doc.moveDown(0.5);
-  // }
 
   const drawSummaryRow = (items) => {
     if (!items.length) return;
@@ -121,12 +103,12 @@ function generateDailyUserAccountReport(data, output) {
   doc.moveDown();
 
   const columns = [
-    { key: 'date', header: 'Tarih', width: 85, align: 'center' },
-    { key: 'type', header: 'Hareket Tipi', width: 95 },
-    { key: 'description', header: 'Açıklama', width: 160 },
-    { key: 'document', header: 'Belge No', width: 90 },
-    { key: 'incomeOrExpense', header: 'Tür', width: 45 },
-    { key: 'amount', header: 'Miktar', width: 45 },
+    { key: 'date', header: 'Date', width: 85, align: 'center' },
+    { key: 'type', header: 'Transaction Type', width: 95 },
+    { key: 'description', header: 'Description', width: 160 },
+    { key: 'document', header: 'Document No', width: 90 },
+    { key: 'incomeOrExpense', header: 'Type', width: 45 },
+    { key: 'amount', header: 'Amount', width: 45 },
   ];
 
   const totalWidth = columns.reduce((acc, c) => acc + c.width, 0);
@@ -141,12 +123,9 @@ function generateDailyUserAccountReport(data, output) {
   const paddingY = 4;
   const rowGap = 6;
 
-  const tableWidth = columns.reduce((acc, c) => acc + c.width, 0);
-
   const drawTableHeader = () => {
     ensureVerticalSpace(18);
     const headerY = doc.y;
-    let headerBottom = headerY;
     let x = xStart;
 
     doc.font('Bold').fontSize(9);
@@ -156,17 +135,12 @@ function generateDailyUserAccountReport(data, output) {
         width: col.width,
         align: col.align || 'center',
       });
-      headerBottom = Math.max(headerBottom, doc.y);
       doc.x = xStart;
       doc.y = headerY;
       x += col.width;
     });
 
-    // const underlineY = headerBottom + 2;
-    // doc.y = underlineY;
-    // doc.moveTo(xStart, underlineY).lineTo(xStart + tableWidth, underlineY).stroke();
-    // doc.y = underlineY + 4;
-    doc.moveDown(1.6)
+    doc.moveDown(1.6);
     doc.font('Regular').fontSize(8);
   };
 
@@ -203,7 +177,7 @@ function generateDailyUserAccountReport(data, output) {
 
   if (!rows.length) {
     ensureVerticalSpace(20);
-    doc.font('Bold').fontSize(9).text('Kayıt bulunamadı.', xStart, doc.y + 8);
+    doc.font('Bold').fontSize(9).text('No records found.', xStart, doc.y + 8);
     doc.font('Regular').fontSize(8);
   } else {
     rows.forEach((row) => {
@@ -232,28 +206,27 @@ module.exports = {
 if (require.main === module) {
   const sample = {
     query: {
-      user: 'Test Kullanıcı',
+      user: 'Test User',
       startDate: '2023-12-05 00:00',
       endDate: '2023-12-05 23:59',
     },
     summaryItems: [
-      { label: 'Satılan Bilet Adedi', value: '11' },
-      { label: 'İade Bilet Adedi', value: '0' },
-      { label: 'Nakit Satış Tutarı', value: formatCurrency(8800) },
+      { label: 'Tickets Sold', value: '11' },
+      { label: 'Refunded Tickets', value: '0' },
+      { label: 'Cash Sales Amount', value: formatCurrency(8800) },
     ],
     netSummary: [
-      { label: 'Nakit', value: formatCurrency(-2302) },
-      { label: 'Kredi Kartı', value: formatCurrency(0) },
-      { label: 'Toplam', value: formatCurrency(-2302) },
+      { label: 'Cash', value: formatCurrency(-2302) },
+      { label: 'Credit Card', value: formatCurrency(0) },
+      { label: 'Total', value: formatCurrency(-2302) },
     ],
     rows: [
       {
         date: '05.12.2023 11:34:24',
-        type: 'Nakit bilet satış',
-        description: 'Örnek açıklama',
+        type: 'Cash ticket sale',
+        description: 'Sample description',
         document: 'PNR: ABC123',
-        income: formatCurrency(900),
-        expense: '',
+        amount: formatCurrency(900),
       },
     ],
   };

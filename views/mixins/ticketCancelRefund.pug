@@ -1,5 +1,5 @@
 p.m-0.text-center.fs-5.fw-bold #{trip.date} - #{trip.time}
-p.mb-3.text-center İşlem yapmak istediğiniz biletleri seçin.
+p.mb-3.text-center Select the tickets you want to process.
 .tickets_
     each t in tickets
         .ticket-cancel-box(class=t.gender data-pnr=t.pnr data-seat-number=t.seatNo)
@@ -17,20 +17,20 @@ p.mb-3.text-center İşlem yapmak istediğiniz biletleri seçin.
                 |   / 
                 span.phone #{t.phoneNumber}
             p 
-                b İşlem Yapan:
+                b Processed By:
                 |   Ahmet / Çanakkale
             p 
-                b Ücret:
+                b Price:
                 span.price   
                     |   #{t.price}
                 |₺
             p 
-                b Tahsilat Tipi:
-                span.payment   Nakit
+                b Payment Method:
+                span.payment   Cash
             p 
                 b PNR:
                 span.pnr   #{t.pnr}
             p 
-                b İşlem Zamanı:
+                b Transaction Time:
                 span.createdAt
-                    |   #{t.createdAt}  
+                    |   #{t.createdAt}

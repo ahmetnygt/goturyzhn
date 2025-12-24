@@ -1,7 +1,6 @@
 const { Op } = require("sequelize");
-const bcrypt = require("bcrypt")
-
-// ----------------- HELPERLAR -----------------
+const bcrypt = require("bcrypt");
+const branchModel = require("../models/branchModel");
 
 function addMinutes(time, minutesToAdd) {
     if (!time) return null;
@@ -37,10 +36,9 @@ function calcDuration(start, end) {
     const h = Math.floor(diff / 60);
     const m = diff % 60;
 
-    return `${h} saat ${m} dakika`;
+    return `${h} hours ${m} minutes`;
 }
 
-// planBinary: "010101..." → ["1","","2","3",...]
 function generateSeatPlan(binary = "") {
     const plan = [];
     let seatNumber = 1;
@@ -56,7 +54,6 @@ function generateSeatPlan(binary = "") {
     return plan;
 }
 
-// Bus özelliklerini icon+label haline getir
 function buildBusFeatures(bus) {
     if (!bus) return [];
 
@@ -72,28 +69,28 @@ function buildBusFeatures(bus) {
     if (bus.hasSeatScreen) {
         features.push({
             key: "seatScreen",
-            label: "Koltuk Ekranı",
+            label: "Seat Screen",
             icon: "/svg/feature-screen.svg",
         });
     }
     if (bus.hasPowerOutlet || bus.hasUsbPort) {
         features.push({
             key: "power",
-            label: "Priz / USB",
+            label: "Power / USB",
             icon: "/svg/feature-power.svg",
         });
     }
     if (bus.hasCatering) {
         features.push({
             key: "catering",
-            label: "İkram",
+            label: "Snacks",
             icon: "/svg/feature-snack.svg",
         });
     }
     if (bus.hasComfortableSeat) {
         features.push({
             key: "comfortSeat",
-            label: "Rahat Koltuk",
+            label: "Comfort Seat",
             icon: "/svg/feature-seat.svg",
         });
     }
@@ -106,7 +103,6 @@ exports.getStops = async (req, res) => {
         const { Stop } = req.models;
         const tenantKey = req.tenantKey;
 
-        // Bu firmanın aktif durakları
         const stops = await Stop.findAll({
             where: { isActive: true },
             attributes: ["id", "placeId", "title", "isActive"],
@@ -122,7 +118,7 @@ exports.getStops = async (req, res) => {
     } catch (err) {
         console.error("STOP_LIST_ERROR:", err);
         return res.status(500).json({
-            error: "Beklenmeyen bir hata oluştu",
+            error: "An unexpected error occurred",
             detail: err.message
         });
     }
@@ -148,20 +144,18 @@ exports.search = async (req, res) => {
         if (!from || !to || !date) {
             return res
                 .status(400)
-                .json({ error: "from, to ve date zorunludur." });
+                .json({ error: "from, to, and date are required." });
         }
 
-        // 1) placeId → stop çöz
         const fromStop = await Stop.findOne({ where: { placeId: from } });
         const toStop = await Stop.findOne({ where: { placeId: to } });
 
         if (!fromStop || !toStop) {
             return res.status(404).json({
-                error: "From/To durak bulunamadı.",
+                error: "From/To stop not found.",
             });
         }
 
-        // 2) RouteStop → routeId listeleri
         const fromRouteStops = await RouteStop.findAll({
             where: { stopId: fromStop.id },
             attributes: ["routeId", "order"],
@@ -178,7 +172,6 @@ exports.search = async (req, res) => {
         const toMap = {};
         toRouteStops.forEach((rs) => (toMap[rs.routeId] = rs.order));
 
-        // 3) Doğru sıradaki rotalar
         const validRouteIds = [];
         for (const routeId of Object.keys(fromMap)) {
             if (toMap[routeId] && fromMap[routeId] < toMap[routeId]) {
@@ -190,7 +183,6 @@ exports.search = async (req, res) => {
             return res.json({ tenant: tenantKey, count: 0, trips: [] });
         }
 
-        // 4) Tripleri çek
         const trips = await Trip.findAll({
             where: {
                 routeId: validRouteIds,
@@ -216,7 +208,6 @@ exports.search = async (req, res) => {
             return res.json({ tenant: tenantKey, count: 0, trips: [] });
         }
 
-        // 5) RouteStop bilgilerini rotaya göre grupla
         const routeStopsMap = {};
         const allRouteStops = await RouteStop.findAll({
             where: { routeId: validRouteIds },
@@ -228,7 +219,6 @@ exports.search = async (req, res) => {
             routeStopsMap[rs.routeId].push(rs);
         }
 
-        // 5.1) Timeline için durak isimleri
         const stopIds = [
             ...new Set(allRouteStops.map((rs) => rs.stopId)),
         ];
@@ -241,7 +231,6 @@ exports.search = async (req, res) => {
             stopTitleById[s.id] = s.title;
         });
 
-        // 5.2) Koltuklar için Ticket'lar (dolu koltuklar)
         const tripIds = trips.map((t) => t.id);
         const occupiedStatuses = [
             "web",
@@ -249,7 +238,7 @@ exports.search = async (req, res) => {
             "completed",
             "reservation",
             "pending",
-        ]; // open, canceled, refund hariç
+        ];
 
         const allTickets = await Ticket.findAll({
             where: {
@@ -266,7 +255,6 @@ exports.search = async (req, res) => {
             ticketsByTrip[tic.tripId].push(tic);
         });
 
-        // 6) Trip formatlama (PUG uyumlu)
         const formattedTrips = [];
 
         for (const trip of trips) {
@@ -280,7 +268,6 @@ exports.search = async (req, res) => {
 
             if (!fromRS || !toRS) continue;
 
-            // base time hesaplama (ilk durağın saati trip.time kabul)
             function getBaseTime(targetRS) {
                 let totalMinutes = 0;
 
@@ -292,7 +279,6 @@ exports.search = async (req, res) => {
                 return addMinutes(trip.time, totalMinutes);
             }
 
-            // offsetMinutes (TripStopTime) ile rötar
             function getFinalTime(routeStopId, baseTime) {
                 const ts = trip.stopTimes?.find(
                     (st) => st.routeStopId === routeStopId
@@ -309,7 +295,6 @@ exports.search = async (req, res) => {
 
             const durationText = calcDuration(fromFinal, toFinal);
 
-            // Fiyat
             let priceAmount = 0;
 
             let priceRow = await Price.findOne({
@@ -332,7 +317,6 @@ exports.search = async (req, res) => {
             }
 
 
-            // Bus plan + fullness + tickets
             const planBinary =
                 (trip.busModel && trip.busModel.planBinary) ||
                 (trip.busModel && trip.busModel.plan) ||
@@ -360,10 +344,8 @@ exports.search = async (req, res) => {
                     ? Math.round((occupiedSeatCount / totalSeats) * 100)
                     : 0;
 
-            // Bus özellikleri
             const busFeatures = buildBusFeatures(trip.bus);
 
-            // Route timeline (sadece yolcunun bindiği kısım)
             const timelineStops = routeStops.filter(
                 (rs) =>
                     rs.order >= fromRS.order && rs.order <= toRS.order
@@ -378,12 +360,10 @@ exports.search = async (req, res) => {
                 };
             });
 
-            // Route açıklaması
             const routeDescription =
                 (trip.route && trip.route.description) ||
                 `${fromStop.title} - ${toStop.title}`;
 
-            // PUG’un beklediği format
             formattedTrips.push({
                 tripId: trip.id,
                 routeId: trip.routeId,
@@ -395,7 +375,6 @@ exports.search = async (req, res) => {
                 toStopId: toStop.id,
                 toStr: toStop.title,
 
-                // PUG: t.time, t.duration
                 time: fromFinal,
                 duration: durationText,
 
@@ -423,7 +402,7 @@ exports.search = async (req, res) => {
     } catch (err) {
         console.error("TRIP_SEARCH_ERROR:", err);
         res.status(500).json({
-            error: "Beklenmeyen hata",
+            error: "Unexpected error",
             detail: err.message,
         });
     }
@@ -441,26 +420,24 @@ exports.createPayment = async (req, res) => {
 
         const { TicketPayment } = req.commonModels;
 
-        // 🔐 VALIDASYON
         if (!tripId || !fromStopId || !toStopId) {
             return res.status(400).json({
-                error: "tripId, fromStopId ve toStopId zorunludur."
+                error: "tripId, fromStopId, and toStopId are required."
             });
         }
 
         if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
             return res.status(400).json({
-                error: "En az bir seatNumbers gönderilmelidir."
+                error: "At least one seatNumber must be provided."
             });
         }
 
         if (!Array.isArray(genders) || genders.length !== seatNumbers.length) {
             return res.status(400).json({
-                error: "genders array’i seatNumbers ile aynı uzunlukta olmalıdır."
+                error: "genders array must have the same length as seatNumbers."
             });
         }
 
-        // 🔥 PAYMENT OLUŞTUR
         const payment = await TicketPayment.create({
             tripId,
             fromStopId,
@@ -478,7 +455,7 @@ exports.createPayment = async (req, res) => {
     } catch (err) {
         console.error("PAYMENT_CREATE_ERROR:", err);
         return res.status(500).json({
-            error: "Beklenmeyen hata",
+            error: "Unexpected error",
             detail: err.message
         });
     }
@@ -491,13 +468,11 @@ exports.getPaymentDetail = async (req, res) => {
 
         const paymentId = req.params.id;
 
-        // 1) Payment kaydını çek
         const payment = await TicketPayment.findByPk(paymentId);
         if (!payment) {
-            return res.status(404).json({ error: "Payment bulunamadı." });
+            return res.status(404).json({ error: "Payment not found." });
         }
 
-        // 2) Trip’i çek
         const trip = await Trip.findOne({
             where: { id: payment.tripId },
             include: [
@@ -516,14 +491,12 @@ exports.getPaymentDetail = async (req, res) => {
         });
 
         if (!trip) {
-            return res.status(404).json({ error: "Trip bulunamadı." });
+            return res.status(404).json({ error: "Trip not found." });
         }
 
-        // 3) Sefer durak bilgileri
         const fromStop = await Stop.findByPk(payment.fromStopId);
         const toStop = await Stop.findByPk(payment.toStopId);
 
-        // 4) Fiyatı bul
         let price = await Price.findOne({
             where: {
                 fromStopId: payment.fromStopId,
@@ -544,7 +517,6 @@ exports.getPaymentDetail = async (req, res) => {
         const perSeat = price?.webPrice || price?.price1 || 0;
         const totalPrice = perSeat * payment.seatNumbers.length;
 
-        // 5) JSON formatını hazırla
         return res.json({
             paymentId,
             trip: {
@@ -562,7 +534,7 @@ exports.getPaymentDetail = async (req, res) => {
     } catch (err) {
         console.error("PAYMENT_DETAIL_ERROR:", err);
         return res.status(500).json({
-            error: "Beklenmeyen hata",
+            error: "Unexpected error",
             detail: err.message
         });
     }
@@ -570,32 +542,50 @@ exports.getPaymentDetail = async (req, res) => {
 
 exports.paymentComplete = async (req, res) => {
     try {
-        const { Ticket, TicketGroup } = req.models;
+        const { Ticket, TicketGroup, FirmUser } = req.models;
         const { TicketPayment } = req.commonModels;
-        const pay = await TicketPayment.findByPk(req.params.id);
-        if (!pay) return res.json({ error: "payment yok" });
 
-        const tg = await TicketGroup.create({ tripId: pay.tripId })
+        const { phone, email, names, surnames, idNumbers } = req.body;
+
+        const pay = await TicketPayment.findByPk(req.params.id);
+        if (!pay) return res.status(404).json({ error: "Payment record not found." });
+
+        if (pay.isSuccess) return res.json({ success: true, message: "This transaction has already been processed." });
+
+        let webUser = await FirmUser.findOne({ where: { username: "WEB" } });
+
+        const tg = await TicketGroup.create({ tripId: pay.tripId });
 
         for (const i in pay.seatNumbers) {
+
+            const pName = names && names[i] ? names[i] : "";
+            const pSurname = surnames && surnames[i] ? surnames[i] : "";
+            const pIdNumber = idNumbers && idNumbers[i] ? idNumbers[i] : "";
+
             await Ticket.create({
                 tripId: pay.tripId,
                 ticketGroupId: tg.id,
                 seatNo: pay.seatNumbers[i],
                 gender: pay.genders[i],
                 status: "web",
-                nationality: "TR"
+                nationality: "TR",
+                phoneNumber: phone,
+                email: email,
+                name: pName.toLocaleUpperCase("tr-TR"),
+                surname: pSurname.toLocaleUpperCase("tr-TR"),
+                idNumber: pIdNumber,
+                userId: webUser.id,
             });
         }
 
-        console.log(req.models)
-        console.log(req.commonModels)
-        console.log(pay)
-
         await pay.update({ isSuccess: true });
-        res.json({ ok: true, paymentId: pay.id });
 
-    } catch (e) { console.log(e); res.json({ error: e.message }) }
+        res.json({ success: true, paymentId: pay.id, ticketGroupId: tg.id });
+
+    } catch (e) {
+        console.error("API_PAYMENT_COMPLETE_ERR:", e);
+        res.status(500).json({ error: e.message || "Error creating ticket." });
+    }
 }
 
 exports.register = async (req, res) => {
@@ -603,19 +593,17 @@ exports.register = async (req, res) => {
         const { Customer } = req.models;
         const { name, surname, phone, password, email, gender, idNumber } = req.body;
 
-        // idNumber zorunlu hale geldi
         if (!idNumber || !phone || !password || !name || !surname) {
-            return res.status(400).json({ error: "Lütfen tüm zorunlu alanları doldurunuz." });
+            return res.status(400).json({ error: "Please fill in all required fields." });
         }
 
         if (idNumber.length !== 11) {
-            return res.status(400).json({ error: "Geçersiz T.C. Kimlik Numarası." });
+            return res.status(400).json({ error: "Invalid ID Number." });
         }
 
-        // Mükerrer kontrolü artık TCKN üzerinden
         const existing = await Customer.findOne({ where: { idNumber: idNumber } });
         if (existing) {
-            return res.status(409).json({ error: "Bu T.C. Kimlik Numarası ile kayıtlı kullanıcı var." });
+            return res.status(409).json({ error: "A user with this ID Number already exists." });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -629,7 +617,7 @@ exports.register = async (req, res) => {
             password: hashedPassword,
             email: email || null,
             gender: gender || null,
-            idNumber: idNumber, // TCKN kaydediliyor
+            idNumber: idNumber,
             customerCategory: "member",
             pointOrPercent: "point"
         });
@@ -641,33 +629,31 @@ exports.register = async (req, res) => {
 
     } catch (err) {
         console.error("REGISTER_ERR:", err);
-        res.status(500).json({ error: "Kayıt sırasında hata oluştu.", detail: err.message });
+        res.status(500).json({ error: "Registration failed.", detail: err.message });
     }
 };
 
 exports.login = async (req, res) => {
     try {
         const { Customer } = req.models;
-        // phone yerine idNumber alıyoruz
         const { idNumber, password } = req.body;
 
         if (!idNumber || !password) {
-            return res.status(400).json({ error: "T.C. Kimlik No ve şifre gereklidir." });
+            return res.status(400).json({ error: "ID Number and password are required." });
         }
 
-        // Kullanıcıyı TCKN ile bul
         const customer = await Customer.findOne({ where: { idNumber: idNumber } });
         if (!customer) {
-            return res.status(401).json({ error: "Kullanıcı bulunamadı." });
+            return res.status(401).json({ error: "User not found." });
         }
 
         if (!customer.password) {
-            return res.status(401).json({ error: "Bu kullanıcının şifresi oluşturulmamış." });
+            return res.status(401).json({ error: "No password set for this user." });
         }
 
         const match = await bcrypt.compare(password, customer.password);
         if (!match) {
-            return res.status(401).json({ error: "Hatalı şifre." });
+            return res.status(401).json({ error: "Incorrect password." });
         }
 
         const userObj = customer.toJSON();
@@ -677,7 +663,7 @@ exports.login = async (req, res) => {
 
     } catch (err) {
         console.error("LOGIN_ERR:", err);
-        res.status(500).json({ error: "Giriş hatası.", detail: err.message });
+        res.status(500).json({ error: "Login failed.", detail: err.message });
     }
 };
 
@@ -686,20 +672,20 @@ exports.getProfile = async (req, res) => {
         const { Customer } = req.models;
         const { id } = req.params;
 
-        if (!id) return res.status(400).json({ error: "ID gerekli." });
+        if (!id) return res.status(400).json({ error: "ID required." });
 
         const customer = await Customer.findByPk(id, {
-            attributes: { exclude: ['password'] } // Şifreyi gönderme
+            attributes: { exclude: ['password'] }
         });
 
         if (!customer) {
-            return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+            return res.status(404).json({ error: "User not found." });
         }
 
         res.json({ success: true, user: customer });
     } catch (err) {
         console.error("GET_PROFILE_ERR:", err);
-        res.status(500).json({ error: "Profil bilgisi alınamadı." });
+        res.status(500).json({ error: "Could not retrieve profile info." });
     }
 };
 
@@ -708,14 +694,13 @@ exports.updateProfile = async (req, res) => {
         const { Customer } = req.models;
         const { id, name, surname, email, gender, password } = req.body;
 
-        if (!id) return res.status(400).json({ error: "Kullanıcı ID eksik." });
+        if (!id) return res.status(400).json({ error: "User ID missing." });
 
         const customer = await Customer.findByPk(id);
         if (!customer) {
-            return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+            return res.status(404).json({ error: "User not found." });
         }
 
-        // Güncellenecek veriler
         const updateData = {
             name: name ? name.toLocaleUpperCase("tr-TR") : customer.name,
             surname: surname ? surname.toLocaleUpperCase("tr-TR") : customer.surname,
@@ -723,14 +708,12 @@ exports.updateProfile = async (req, res) => {
             gender: gender
         };
 
-        // Eğer şifre de geldiyse hashleyip güncelle
         if (password && password.trim() !== "") {
             updateData.password = await bcrypt.hash(password, 10);
         }
 
         await customer.update(updateData);
 
-        // Güncel halini geri dön
         const userObj = customer.toJSON();
         delete userObj.password;
 
@@ -738,15 +721,14 @@ exports.updateProfile = async (req, res) => {
 
     } catch (err) {
         console.error("UPDATE_PROFILE_ERR:", err);
-        res.status(500).json({ error: "Güncelleme sırasında hata oluştu.", detail: err.message });
+        res.status(500).json({ error: "Update failed.", detail: err.message });
     }
 };
 
-// Müşterinin Biletlerini Getir (Gelişmiş Saat Hesaplamalı)
 exports.getCustomerTickets = async (req, res) => {
     try {
         const { Ticket, Trip, Stop, Route, RouteStop, TripStopTime } = req.models;
-        const { id } = req.params; // id: TCKN
+        const { id } = req.params;
 
         const tickets = await Ticket.findAll({
             include: [
@@ -788,40 +770,31 @@ exports.getCustomerTickets = async (req, res) => {
             ]
         });
 
-        // Detaylı Saat ve Durak Hesaplaması
         const processedTickets = tickets.map(t => {
             const ticket = t.toJSON();
             const trip = ticket.trip;
             const routeStops = trip.route?.stops || [];
 
-            // Durakları sıraya diz (Garanti olsun)
             routeStops.sort((a, b) => a.order - b.order);
 
-            // --- KALKIŞ SAATİ HESABI ---
-            // Biletin alındığı durak (fromRouteStopId)
             const fromRS = routeStops.find(rs => rs.id == ticket.fromRouteStopId);
             let depMinutesToAdd = 0;
 
             if (fromRS) {
-                // O durağa kadar geçen süreleri topla
                 for (const rs of routeStops) {
                     console.log(rs.id, rs.order)
                     console.log(fromRS.id, fromRS.order)
                     if (rs.order > fromRS.order) break;
                     depMinutesToAdd += durationToMinutes(rs.duration);
                 }
-                // Varsa o durağın rötarını/offsetini ekle
                 const offset = trip.stopTimes?.find(st => st.routeStopId == ticket.fromRouteStopId)?.offsetMinutes || 0;
                 depMinutesToAdd += offset;
 
-                // Durak ismini düzelt (Ticket ilişkisi hatalıysa buradan alırız)
                 ticket.fromStopTitle = fromRS.stop?.title;
             }
             ticket.calculatedDeparture = addMinutes(trip.time, depMinutesToAdd);
 
 
-            // --- VARIŞ SAATİ HESABI ---
-            // Biletin inileceği durak (toRouteStopId)
             const toRS = routeStops.find(rs => rs.id == ticket.toRouteStopId);
             let arrMinutesToAdd = 0;
 
@@ -844,33 +817,30 @@ exports.getCustomerTickets = async (req, res) => {
 
     } catch (err) {
         console.error("GET_TICKETS_ERR:", err);
-        res.status(500).json({ error: "Biletler alınamadı.", detail: err.message });
+        res.status(500).json({ error: "Could not retrieve tickets.", detail: err.message });
     }
 };
 
-// Bilet İptal / İade
 exports.cancelTicket = async (req, res) => {
     try {
         const { Ticket } = req.models;
-        const { ticketId, action } = req.body; // action: 'cancel' (iptal) veya 'refund' (iade)
+        const { ticketId, action } = req.body;
 
         const ticket = await Ticket.findByPk(ticketId);
         if (!ticket) {
-            return res.status(404).json({ error: "Bilet bulunamadı." });
+            return res.status(404).json({ error: "Ticket not found." });
         }
 
-        // Tarih kontrolü (Geçmiş sefer iptal edilemez)
-        const tripDate = new Date(ticket.optionDate + " " + ticket.optionTime); // Modeldeki tarih alanı
-        // Basit kontrol, detaylısı trip modelinden yapılmalı
+        const tripDate = new Date(ticket.optionDate + " " + ticket.optionTime);
 
         const newStatus = action === "refund" ? "refund" : "canceled";
 
         await ticket.update({ status: newStatus });
 
-        res.json({ success: true, message: "İşlem başarılı." });
+        res.json({ success: true, message: "Transaction successful." });
 
     } catch (err) {
         console.error("CANCEL_TICKET_ERR:", err);
-        res.status(500).json({ error: "İşlem başarısız." });
+        res.status(500).json({ error: "Transaction failed." });
     }
 };

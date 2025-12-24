@@ -20,6 +20,6 @@ if cargos.length
                     p.text-center.m-0.text-muted.small #{cargo.paymentLabel}
             button.trip-cargo-refund.btn.btn-outline-danger.col-1(type="button" data-id=cargo.id)
                 i.fa-solid.fa-rotate-left.me-1
-                | İADE
+                | REFUND
 else
-    p.text-center.text-muted.m-0 Bu sefere ait kargo bulunamadı.
+    p.text-center.text-muted.m-0 No cargo found for this trip.

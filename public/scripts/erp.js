@@ -481,7 +481,7 @@ let tripStopRestrictionDirty = false;
 let tripCargoStops = [];
 let tripTimeAdjustStops = [];
 let tripTimeAdjustPicker;
-const tripCargoListLoadingHtml = '<p class="text-center text-muted m-0 trip-cargo-list-placeholder">Kargolar yükleniyor...</p>';
+const tripCargoListLoadingHtml = '<p class="text-center text-muted m-0 trip-cargo-list-placeholder">Loading cargos...</p>';
 
 function updateClock() {
     const clockElement = document.getElementById('clock');
@@ -497,9 +497,7 @@ function updateClock() {
     return true;
 }
 
-// İlk yüklemede çalıştır
 const hasClock = updateClock();
-// Her saniyede bir güncelle
 if (hasClock) {
     setInterval(updateClock, 1000);
 }
@@ -643,7 +641,7 @@ const showError = message => {
             : message && message.message
                 ? message.message
                 : JSON.stringify(message);
-    $(".error-popup .error-message").text(msg || "Bilinmeyen hata");
+    $(".error-popup .error-message").text(msg || "Unknown error");
     $(".error-popup").css("display", "block");
 };
 
@@ -689,7 +687,7 @@ const getAjaxErrorMessage = err =>
     err?.responseText ||
     err?.statusText ||
     err?.message ||
-    "Bilinmeyen hata";
+    "Unknown error";
 
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
@@ -720,7 +718,7 @@ window.fetch = async (...args) => {
         }
         return res;
     } catch (err) {
-        showError(err.message || "Bilinmeyen hata");
+        showError(err.message || "Unknown error");
         throw err;
     } finally {
         hideLoading();
@@ -887,7 +885,7 @@ function updateTripCargoToOptions(defaultTo) {
 
     const placeholder = $("<option>")
         .val("")
-        .text("Seçiniz")
+        .text("Select")
         .prop("disabled", true);
 
     const selectedFrom = $(".trip-cargo-from").val();
@@ -924,7 +922,7 @@ function populateTripCargoStops(stops, defaults = {}) {
 
     const placeholder = $("<option>")
         .val("")
-        .text("Seçiniz")
+        .text("Select")
         .prop("disabled", true);
 
     $from.empty().append(placeholder);
@@ -958,7 +956,7 @@ function populateTripTimeAdjustStops(stops) {
 
     const placeholder = $("<option>")
         .val("")
-        .text("Seçiniz")
+        .text("Select")
         .prop("disabled", true);
 
     $select.empty().append(placeholder);
@@ -1216,7 +1214,7 @@ function hideInlineError($element) {
 
 function showInlineError($element, message) {
     if ($element && $element.length) {
-        $element.text(message || "Bilinmeyen hata").removeClass("d-none");
+        $element.text(message || "Unknown error").removeClass("d-none");
         return;
     }
     showError(message);
@@ -1317,12 +1315,12 @@ $("#userProfileForm").on("submit", async e => {
     const phoneNumber = $("#profilePhoneInput").val().trim();
 
     if (!name) {
-        showInlineError($error, "Ad soyad boş bırakılamaz.");
+        showInlineError($error, "Name cannot be empty.");
         return;
     }
 
     if (!username) {
-        showInlineError($error, "Kullanıcı adı boş bırakılamaz.");
+        showInlineError($error, "Username cannot be empty.");
         return;
     }
 
@@ -1351,7 +1349,7 @@ $("#userProfileForm").on("submit", async e => {
             err?.responseText ||
             err?.statusText ||
             err?.message ||
-            "Bilinmeyen hata";
+            "Unknown error";
         showInlineError($error, message);
     }
 });
@@ -1366,22 +1364,22 @@ $("#changePasswordForm").on("submit", async e => {
     const confirmPassword = $("#confirmPasswordInput").val();
 
     if (!currentPassword) {
-        showInlineError($error, "Eski şifreyi giriniz.");
+        showInlineError($error, "Please enter your old password.");
         return;
     }
 
     if (!newPassword) {
-        showInlineError($error, "Yeni şifreyi giriniz.");
+        showInlineError($error, "Please enter your new password.");
         return;
     }
 
     if (newPassword.length < 6) {
-        showInlineError($error, "Yeni şifre en az 6 karakter olmalıdır.");
+        showInlineError($error, "New password must be at least 6 characters.");
         return;
     }
 
     if (newPassword !== confirmPassword) {
-        showInlineError($error, "Yeni şifreler eşleşmiyor.");
+        showInlineError($error, "New passwords do not match.");
         return;
     }
 
@@ -1404,7 +1402,7 @@ $("#changePasswordForm").on("submit", async e => {
             err?.responseText ||
             err?.statusText ||
             err?.message ||
-            "Bilinmeyen hata";
+            "Unknown error";
         showInlineError($error, message);
     }
 });
@@ -1415,27 +1413,27 @@ function initPlateInput(selector) {
     const el = document.querySelector(selector);
     if (!el) return;
 
-    // Yalnızca A-Z ve 0-9 kalsın, harfleri büyüt
+    // Keep only A-Z and 0-9, uppercase letters
     const sanitize = s => (s || "")
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "");
 
-    // Anlık biçim: DD [SPACE] L{1,3} [SPACE] N{2,4}
+    // Instant format: DD [SPACE] L{1,3} [SPACE] N{2,4}
     function formatPlate(raw) {
         const s = sanitize(raw);
 
-        // 1) İl kodu -> ilk 2 rakam
+        // 1) City code -> first 2 digits
         let d = s.match(/^\d{1,2}/)?.[0] || "";
         let rest = s.slice(d.length);
 
-        // 2) Harfler -> 1-3 harf
+        // 2) Letters -> 1-3 letters
         let L = rest.match(/^[A-Z]{1,3}/)?.[0] || "";
         rest = rest.slice(L.length);
 
-        // 3) Rakamlar -> 2-4 rakam
+        // 3) Numbers -> 2-4 numbers
         let n = rest.match(/^\d{1,4}/)?.[0] || "";
 
-        // kes: toplam kısımların üst sınırlarını aşma
+        // cut: do not exceed upper limits of parts
         d = d.slice(0, 2);
         L = L.slice(0, 3);
         n = n.slice(0, 4);
@@ -1447,27 +1445,27 @@ function initPlateInput(selector) {
         return out;
     }
 
-    // Kesin doğrulama (blur için)
+    // Strict validation (for blur)
     function isValidPlate(val) {
-        // Biçim kontrolü
+        // Format check
         const m = /^(\d{2})\s([A-Z]{1,3})\s(\d{2,4})$/.exec(val);
         if (!m) return false;
 
         const il = parseInt(m[1], 10);
-        if (il < 1 || il > 81) return false; // il kodu 01–81
+        if (il < 1 || il > 81) return false; // city code 01–81
 
-        // Harflerde Türkçe ş,ç,ğ,ö,ü,ı kullanılmadığı varsayılır (regex zaten dışladı)
+        // Assumes Turkish chars ş,ç,ğ,ö,ü,ı are not used (regex already excluded)
         return true;
     }
 
     el.addEventListener("input", () => {
-        // Caret karmaşıklığına girmeden basitçe yeniden biçimlendir
+        // Simply reformat without getting into caret complexity
         el.value = formatPlate(el.value);
     });
 
     el.addEventListener("blur", () => {
         if (!isValidPlate(el.value)) {
-            // Geçersizse temizle
+            // Clear if invalid
             el.value = "";
         }
     });
@@ -1658,7 +1656,7 @@ initTcknInputs(".customer-search-idNumber");
 initTcknInputs(".trip-cargo-sender-identity");
 
 
-// Seferi yükler
+// Loads the trip
 async function loadTrip(date, time, tripId) {
     const __thisLoadToken = ++__GTR_tr_loadToken;
     __GTR_abortTripGroup();
@@ -1671,7 +1669,7 @@ async function loadTrip(date, time, tripId) {
 
         const commonData = { date, time, tripId, stopId: currentStop };
 
-        // Bağımsız istekleri paralel çalıştır
+        // Run independent requests in parallel
         const [
             tripResponse,
             passengersResponse,
@@ -1699,14 +1697,14 @@ async function loadTrip(date, time, tripId) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP hata: ${response.status}`);
+                    throw new Error(`HTTP error: ${response.status}`);
                 }
 
-                // response.json() sadece bir kez çağrılır
+                // response.json() called only once
                 const data = await response.json();
 
                 if (!data?.pdfBase64) {
-                    alert("PDF alınamadı: " + (data?.sonucMesaji || "Bilinmeyen hata"));
+                    alert("PDF could not be retrieved: " + (data?.sonucMesaji || "Unknown error"));
                     return;
                 }
 
@@ -1719,8 +1717,8 @@ async function loadTrip(date, time, tripId) {
                 const pdfUrl = URL.createObjectURL(pdfBlob);
                 window.open(pdfUrl, "_blank");
             } catch (err) {
-                console.error("❌ openSeferDetayPDF hata:", err);
-                alert("PDF açılırken hata oluştu: " + err.message);
+                console.error("❌ openSeferDetayPDF error:", err);
+                alert("Error opening PDF: " + err.message);
             }
         }
 
@@ -1728,12 +1726,12 @@ async function loadTrip(date, time, tripId) {
             await openSeferDetayPDF(tripId)
         })
 
-        // Diğer alanlar
+        // Other fields
         $(".ticket-ops-pop-up").html(ticketOpsResponse);
         $(".trip-notes").html(tripNotesResponse);
         $(".stops-times").html(routeStopsResponse);
 
-        // Yolcu tablosu ve satır tıklama
+        // Passenger table and row click
         $(".passenger-table").html(passengersResponse);
         $(".passenger-table tbody tr").off().on("click", function (e) {
             const $row = $(this);
@@ -1741,7 +1739,7 @@ async function loadTrip(date, time, tripId) {
 
             const $popup = $(".taken-ticket-ops-pop-up");
 
-            // Aynı satıra tıklanırsa popup kapat
+            // Close popup if same row clicked
             if (currentPassengerRow && currentPassengerRow.is($row) && $popup.is(":visible")) {
                 $popup.hide();
                 currentPassengerRow = null;
@@ -1768,7 +1766,7 @@ async function loadTrip(date, time, tripId) {
 
             updateTakenTicketOpsVisibility($row);
 
-            // Popup'ı mouse konumuna yerleştir
+            // Position popup at mouse location
             let left = e.pageX + 10;
             let top = e.pageY + 10;
 
@@ -1777,13 +1775,13 @@ async function loadTrip(date, time, tripId) {
             const viewportWidth = $(window).width();
             const viewportHeight = $(window).height();
 
-            // Sağ kenarı taşmasın
+            // Prevent overflow right
             if (left + popupWidth > viewportWidth) {
                 left = e.pageX - popupWidth - 10;
                 if (left < 0) left = 0;
             }
 
-            // Alt kenarı taşmasın
+            // Prevent overflow bottom
             if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
                 top = e.pageY - popupHeight - 10;
                 if (top < 0) top = 0;
@@ -1847,28 +1845,28 @@ async function loadTrip(date, time, tripId) {
             });
         };
 
-        // Koltuk tıklama
+        // Seat click
         $(".busPlan").off("click.seat").on("click.seat", ".seat", function (e) {
             const $seat = $(this);
             resetTicketOpButtons();
             const rect = this.getBoundingClientRect();
             const { createdAt, seatNumber, groupId } = e.currentTarget.dataset;
-            const isTaken = Boolean(createdAt); // dolu koltuk mu?
+            const isTaken = Boolean(createdAt); // is seat taken?
 
-            // ---- Taşıma modu ----
+            // ---- Moving mode ----
             if (isMovingActive) {
                 $(".move-to-trip-date").html(`${new Date(currentTripDate).getDate()}/${Number(new Date(currentTripDate).getMonth()) + 1} | ${currentTripPlaceTime.split(":")[0] + "." + currentTripPlaceTime.split(":")[1]}`);
                 $(".move-to-trip-place").html(`${currentStopStr}`);
                 $(".move-to").css("display", "flex");
-                // DOLU koltuklarda (grup) davranış
+                // TAKEN seats (group) behavior
                 if (isTaken) {
                     if (selectedTakenSeats.length > 0) {
-                        // varsa temizle
+                        // clear if exists
                         selectedTakenSeats = [];
                         $(".seat").removeClass("selected");
                         clearSelectedTakenTicketContext();
                     } else {
-                        // grupça seç
+                        // select as group
                         const seatNumbers = [];
                         $(".seat").each((i, el) => {
                             if (el.dataset.groupId == groupId) {
@@ -1882,44 +1880,44 @@ async function loadTrip(date, time, tripId) {
                     return;
                 }
 
-                // BOŞ koltuklarda hedef seçim
+                // EMPTY seats target selection
                 const already = selectedSeats.includes(seatNumber);
                 const targetCount = movingSelectedSeats.length;
 
                 if (already) {
-                    // seçimi kaldır
+                    // remove selection
                     selectedSeats = selectedSeats.filter(s => s !== seatNumber);
                     $seat.removeClass("selected");
                     return;
                 }
 
                 if (selectedSeats.length >= targetCount) {
-                    alert("Transfer edilen yolcu sayısından fazla koltuk seçtiniz.");
+                    alert("You selected more seats than the number of transferred passengers.");
                     return;
                 }
 
                 selectedSeats.push(seatNumber);
                 $seat.addClass("selected");
 
-                // İlgili buton metnini güncelle
+                // Update related button text
                 const $btn = $(".moving-ticket-button").eq(selectedSeats.length - 1);
                 if ($btn.length) {
                     $btn.html($btn.html() + ` => ${seatNumber}`);
                 }
 
-                return; // taşıma modunda popup yok
+                return; // no popup in moving mode
             }
 
-            // ---- Normal mod (popup + seçim) ----
+            // ---- Normal mode (popup + selection) ----
 
             if (!isTaken && selectedTakenSeats.length > 0) {
-                alert("Dolu koltuk seçiliyken boş koltuk seçemezsiniz.");
+                alert("You cannot select an empty seat while a taken seat is selected.");
                 $(".ticket-ops-pop-up").hide();
                 return;
             }
 
             if (isTaken && selectedSeats.length > 0) {
-                alert("Boş koltuk seçiliyken dolu koltuk seçemezsiniz.");
+                alert("You cannot select a taken seat while an empty seat is selected.");
                 $(".ticket-ops-pop-up").hide();
                 return;
             }
@@ -1974,12 +1972,12 @@ async function loadTrip(date, time, tripId) {
                 movePopupToSeat($seat);
             }
 
-            // Seçim davranışı (normal mod)
+            // Selection behavior (normal mode)
             if (!isTaken) {
                 const isSeatSelected = selectedSeats.includes(seatNumber);
                 const seatIndex = isSeatSelected ? selectedSeats.indexOf(seatNumber) : -1;
 
-                // boş koltuk toggle
+                // toggle empty seat
                 if (!isSeatSelected) {
                     selectedSeats.push(seatNumber);
                     $seat.addClass("selected");
@@ -2006,11 +2004,11 @@ async function loadTrip(date, time, tripId) {
                     : null;
 
                 if (activeGroupId && activeGroupId !== groupId) {
-                    alert("Başka bir bilet grubu zaten seçili. Önce mevcut seçimi kaldırın.");
+                    alert("Another ticket group is already selected. Please clear current selection first.");
                     return;
                 }
 
-                // dolu koltuk: grupça seç/kaldır
+                // taken seat: select/deselect group
                 currentGroupId = $seat.data("group-id");
                 selectedTicketStopId = currentStop;
                 updateTakenTicketOpsVisibility($seat);
@@ -2033,7 +2031,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Komşu koltuk cinsiyet bilgisi
+        // Neighbor seat gender info
         document.querySelectorAll('.seat').forEach(seat => {
             const gender = seat.dataset.gender;
             if (gender !== 'm' && gender !== 'f') return;
@@ -2057,7 +2055,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Hidden input'lardan güncel verileri çek
+        // Pull current data from hidden inputs
         currentTripDate = $("#tripDate").val();
         currentTripTime = $("#tripTime").val();
         currentTripPlaceTime = $("#tripPlaceTime").val();
@@ -2091,7 +2089,7 @@ async function loadTrip(date, time, tripId) {
         const tripBusId = $(".trip-bus-license-plate").data("current-bus-id");
         const tripBusModelId = $(".trip-bus-plan").data("current-bus-model-id");
 
-        // Bus model ve bus listelerini paralel al
+        // Get bus model and bus list in parallel
         try {
             const [busModels, buses] = await Promise.all([
                 $.get("/get-bus-models-data"),
@@ -2102,7 +2100,7 @@ async function loadTrip(date, time, tripId) {
             const $plateEl = $(".trip-bus-license-plate");
 
             if ($planEl.is("select")) {
-                const planOpts = [$("<option>").val("").html("Koltuk planı seçiniz.").prop("disabled", true).prop("selected", true)];
+                const planOpts = [$("<option>").val("").html("Select seat plan").prop("disabled", true).prop("selected", true)];
                 busModels.forEach(bm => planOpts.push($("<option>").val(bm.id).html(bm.title)));
                 $planEl.html(planOpts);
                 if (tripBusModelId) $planEl.val(tripBusModelId);
@@ -2126,7 +2124,7 @@ async function loadTrip(date, time, tripId) {
             }
 
             if ($plateEl.is("select")) {
-                const plateOpts = [$("<option>").val("").html("Plaka seçiniz.").prop("disabled", true).prop("selected", true)];
+                const plateOpts = [$("<option>").val("").html("Select license plate").prop("disabled", true).prop("selected", true)];
                 buses.forEach(b => {
                     const busModel = busModels.find(bm => bm.id === b.busModelId);
                     const opt = $("<option>")
@@ -2182,7 +2180,7 @@ async function loadTrip(date, time, tripId) {
             console.log(err);
         }
 
-        // Move-to listesi (ayrı istek)
+        // Move-to list (separate request)
         await $.ajax({
             url: "/get-route-stops-list-moving",
             type: "GET",
@@ -2235,7 +2233,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Dışarı tıklama → popup kapat
+        // Click outside → close popup
         $(document).off("click.ticketPopups").on("click.ticketPopups", (e) => {
             if ($(e.target).closest(".ticket-ops-pop-up, .taken-ticket-ops-pop-up, .seat").length) return;
             $(".ticket-ops-pop-up, .taken-ticket-ops-pop-up").hide();
@@ -2283,9 +2281,9 @@ async function loadTrip(date, time, tripId) {
                     const driverOpts = drivers.map(d => `<option value="${d.id}">${d.name} ${d.surname}</option>`).join("");
                     const assistantOpts = assistants.map(a => `<option value="${a.id}">${a.name} ${a.surname}</option>`).join("");
                     const hostessOpts = hostesses.map(h => `<option value="${h.id}">${h.name} ${h.surname}</option>`).join("");
-                    $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Seçilmedi</option>` + driverOpts);
-                    $(".trip-staff-assistant").html(`<option value="">Seçilmedi</option>` + assistantOpts);
-                    $(".trip-staff-hostess").html(`<option value="">Seçilmedi</option>` + hostessOpts);
+                    $(".trip-staff-captain, .trip-staff-second, .trip-staff-third").html(`<option value="">Not selected</option>` + driverOpts);
+                    $(".trip-staff-assistant").html(`<option value="">Not selected</option>` + assistantOpts);
+                    $(".trip-staff-hostess").html(`<option value="">Not selected</option>` + hostessOpts);
                     $(".trip-staff-captain").val($("#captainId").val());
                     $(".trip-staff-second").val($("#driver2Id").val());
                     $(".trip-staff-third").val($("#driver3Id").val());
@@ -2318,7 +2316,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Cargo ekleme
+        // Add cargo
         $(".trip-cargo-add").off().on("click", async function () {
             try {
                 const stops = await $.get("/get-trip-stops", { tripId: currentTripId });
@@ -2331,11 +2329,11 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Cargo liste
+        // Cargo list
         $(".trip-cargo-list").off().on("click", async function (e) {
             e.preventDefault();
             if (!currentTripId) {
-                showError("Sefer bilgisi bulunamadı.");
+                showError("Trip information not found.");
                 return;
             }
 
@@ -2354,11 +2352,11 @@ async function loadTrip(date, time, tripId) {
                     const cargoId = Number($button.data("id"));
 
                     if (!cargoId) {
-                        showError("Kargo bilgisi bulunamadı.");
+                        showError("Cargo information not found.");
                         return;
                     }
 
-                    const confirmMessage = "Bu kargo kaydını iade etmek istediğinize emin misiniz?";
+                    const confirmMessage = "Are you sure you want to refund this cargo entry?";
                     if (!window.confirm(confirmMessage)) {
                         return;
                     }
@@ -2369,7 +2367,7 @@ async function loadTrip(date, time, tripId) {
                     try {
                         await $.post("/post-refund-cargo", { cargoId });
                     } catch (err) {
-                        const message = err?.responseJSON?.message || err?.responseText || "Kargo iadesi sırasında bir hata oluştu.";
+                        const message = err?.responseJSON?.message || err?.responseText || "An error occurred during cargo refund.";
                         showError(message);
                         $button.prop("disabled", false).html(originalHtml);
                         return;
@@ -2380,20 +2378,20 @@ async function loadTrip(date, time, tripId) {
                     $group.remove();
 
                     if (!$container.find(".btn-group").length) {
-                        $container.html('<p class="text-center text-muted m-0">Bu sefere ait kargo bulunamadı.</p>');
+                        $container.html('<p class="text-center text-muted m-0">No cargo found for this trip.</p>');
                     }
                 });
             } catch (err) {
                 console.log(err);
-                showError("Kargo listesi alınamadı.");
-                $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Kargo listesi alınamadı.</p>');
+                showError("Cargo list could not be retrieved.");
+                $(".trip-cargo-list-nodes").html('<p class="text-center text-danger m-0">Cargo list could not be retrieved.</p>');
             }
         });
 
-        // Trip iptal/aktif
+        // Cancel/Active Trip
         $(".trip-option-cancel-trip").off().on("click", async function (e) {
             e.stopPropagation();
-            if (!confirm("Seferi iptal etmek istediğinize emin misiniz?")) return;
+            if (!confirm("Are you sure you want to cancel the trip?")) return;
             try {
                 await $.post("/post-trip-active", { tripId: currentTripId, isActive: false });
                 loadTrip(currentTripDate, currentTripTime, currentTripId);
@@ -2405,7 +2403,7 @@ async function loadTrip(date, time, tripId) {
 
         $(".trip-option-active-trip").off().on("click", async function (e) {
             e.stopPropagation();
-            if (!confirm("Seferi aktif etmek istediğinize emin misiniz?")) return;
+            if (!confirm("Are you sure you want to activate the trip?")) return;
             try {
                 await $.post("/post-trip-active", { tripId: currentTripId, isActive: true });
                 loadTrip(currentTripDate, currentTripTime, currentTripId);
@@ -2415,7 +2413,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Stop restriction aç
+        // Open Stop restriction
         $(".trip-option-stop-restriction").off().on("click", function (e) {
             e.stopPropagation();
             $.ajax({
@@ -2451,12 +2449,12 @@ async function loadTrip(date, time, tripId) {
                         }
 
                         if (!currentTripId) {
-                            showError("Sefer bilgisi bulunamadı.");
+                            showError("Trip information not found.");
                             return;
                         }
 
                         if (!currentTripRouteId) {
-                            showError("Hat bilgisi bulunamadı.");
+                            showError("Route information not found.");
                             return;
                         }
 
@@ -2508,7 +2506,7 @@ async function loadTrip(date, time, tripId) {
                                 err?.responseJSON?.message ||
                                 err?.responseJSON?.error ||
                                 err?.responseText ||
-                                "Durak kısıtlama işlemi sırasında bir hata oluştu.";
+                                "An error occurred during stop restriction update.";
                             showError(message);
                         } finally {
                             $saveAllButton.prop("disabled", false).html(originalSaveAllHtml);
@@ -2564,7 +2562,7 @@ async function loadTrip(date, time, tripId) {
             e.stopPropagation();
 
             if (!currentTripId) {
-                showError("Sefer bilgisi bulunamadı.");
+                showError("Trip information not found.");
                 return;
             }
 
@@ -2576,14 +2574,14 @@ async function loadTrip(date, time, tripId) {
                 $(".blackout").css("display", "block");
             } catch (err) {
                 console.log(err);
-                showError("Durak listesi alınamadı.");
+                showError("Stop list could not be retrieved.");
             }
         });
 
         // Time change confirm
         $(".trip-time-adjust-confirm").off().on("click", async function () {
             if (!currentTripId) {
-                showError("Sefer bilgisi bulunamadı.");
+                showError("Trip information not found.");
                 return;
             }
 
@@ -2592,28 +2590,28 @@ async function loadTrip(date, time, tripId) {
             const amount = $(".trip-time-adjust-amount").val();
 
             if (!routeStopId) {
-                showError("Lütfen bir durak seçiniz.");
+                showError("Please select a stop.");
                 return;
             }
 
             if (!direction) {
-                showError("Lütfen yön seçiniz.");
+                showError("Please select a direction.");
                 return;
             }
 
             if (!amount) {
-                showError("Lütfen süre seçiniz.");
+                showError("Please select a duration.");
                 return;
             }
 
             const [hours, minutes] = amount.split(":").map(Number);
             if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-                showError("Geçerli bir süre giriniz.");
+                showError("Please enter a valid duration.");
                 return;
             }
 
             if (hours * 60 + minutes === 0) {
-                showError("Süre 0 olamaz.");
+                showError("Duration cannot be 0.");
                 return;
             }
 
@@ -2638,14 +2636,14 @@ async function loadTrip(date, time, tripId) {
                 }
             } catch (err) {
                 console.log(err);
-                const message = err?.responseJSON?.message || err?.responseText || err?.statusText || "Sefer saati güncellenemedi.";
+                const message = err?.responseJSON?.message || err?.responseText || err?.statusText || "Trip time could not be updated.";
                 showError(message);
             } finally {
                 $button.prop("disabled", false);
             }
         });
 
-        // Ticket operations menüsü aç/kapat
+        // Open/close Ticket operations menu
         $(".ticket-op").on("click", e => {
             e.stopPropagation();
             $(".ticket-op ul").css("display", "none");
@@ -2656,12 +2654,12 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // (Dikkat: bu satır önceki document click handler'ını kaldırır)
+        // (Warning: this line removes previous document click handlers)
         $(document).off("click").on("click", () => {
             $(".ticket-op ul").css("display", "none");
         });
 
-        // Ticket-op butonu
+        // Ticket-op button
         $(".ticket-op-button").on("click", async e => {
             const button = e.currentTarget;
             const action = e.currentTarget.dataset.action;
@@ -2697,7 +2695,7 @@ async function loadTrip(date, time, tripId) {
                         $(".ticket-row").remove();
                         $(".ticket-info").remove();
                         $(".ticket-button-action").attr("data-action", action);
-                        $(".ticket-button-action").html(action == "sell" ? "SAT" : "REZERVE ET");
+                        $(".ticket-button-action").html(action == "sell" ? "SELL" : "RESERVE");
                         $(".ticket-rows").prepend(response);
 
                         seatTypes = [];
@@ -2752,12 +2750,12 @@ async function loadTrip(date, time, tripId) {
                         $(".blackout").css("display", "block");
 
                         flatpickr($(".reservation-expire input.changable.date"), {
-                            locale: "tr",
+                            locale: "en",
                             altInput: true,
                             altFormat: "d F Y",
                         });
                         flatpickr($(".reservation-expire input.changable.time"), {
-                            locale: "tr",
+                            locale: "en",
                             enableTime: true,
                             noCalendar: true,
                         });
@@ -2850,7 +2848,7 @@ async function loadTrip(date, time, tripId) {
                     err?.responseText ||
                     err?.statusText ||
                     err?.message ||
-                    "Bilinmeyen hata";
+                    "Unknown error";
                 showError(message);
             }
         });
@@ -2897,10 +2895,10 @@ async function loadTrip(date, time, tripId) {
                 $(".passenger-info-popup .take-on").html(data.takeOn || "");
                 $(".passenger-info-popup .take-off").html(data.takeOff || "");
                 $(".passenger-info-popup .price").html(data.price ? data.price + "₺" : "");
-                $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Nakit" : data.payment == "card" ? "Kredi Kartı" : data.payment == "point" ? "Puan" : "");
+                $(".passenger-info-popup .payment").html(data.payment == "cash" ? "Cash" : data.payment == "card" ? "Credit Card" : data.payment == "point" ? "Point" : "");
                 $(".passenger-info-popup .pnr").html(data.pnr ? data.pnr : "");
                 const date2 = new Date(data.createdAt);
-                $(".passenger-info-popup .createdAt").html(date2.toLocaleDateString() + " " + date2.toLocaleTimeString());
+                $(".passenger-info-popup .createdAt").html(date2.toLocaleDateString("en-US") + " " + date2.toLocaleTimeString("en-US"));
 
                 $(".passenger-info-popup").css({
                     left: popupLeft + "px",
@@ -2914,7 +2912,7 @@ async function loadTrip(date, time, tripId) {
             $(".passenger-info-popup").hide();
         });
 
-        // Hesap kesim aç
+        // Open account cut
         $(".account-cut").off().on("click", async () => {
             $(".account-cut-popup .account-deduction1, .account-cut-popup .account-deduction2, .account-cut-popup .account-deduction3, .account-cut-popup .account-deduction4, .account-cut-popup .account-deduction5, .account-cut-popup .account-tip, .account-cut-popup .account-description, .account-cut-popup .account-payed").prop("readonly", false);
             $(".account-cut-save").show();
@@ -2937,8 +2935,8 @@ async function loadTrip(date, time, tripId) {
                 $(".account-cut-popup .account-commission").val(accountCutData.comissionAmount.toFixed(2));
                 $(".account-cut-popup .account-needtopay").val(accountCutData.needToPay.toFixed(2));
                 $(".account-cut-popup .account-payed").val(accountCutData.needToPay.toFixed(2));
-                $(".account-cut-deductions-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "İnternet biletleri dahil edilmiştir." : "İnternet biletleri dahil edilmemiştir.");
-                $(".account-cut-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "İnternet biletleri dahil edilmiştir." : "İnternet biletleri dahil edilmemiştir.");
+                $(".account-cut-deductions-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "Internet tickets included." : "Internet tickets excluded.");
+                $(".account-cut-popup .isInternet").html(accountCutData.isPaysInternet == 1 ? "Internet tickets included." : "Internet tickets excluded.");
                 for (let i = 1; i <= 5; i++) {
                     $(".account-cut-deductions-popup .account-deduction" + i).val("");
                     $(".account-cut-popup .account-deduction" + i).val("");
@@ -2967,13 +2965,13 @@ async function loadTrip(date, time, tripId) {
             $(".blackout").css("display", "block");
         });
 
-        // Hesap kesim çıktı
+        // Account cut receipt
         $(".accountCut").off().on("click", e => {
             e.preventDefault();
             window.open(`/get-bus-account-cut-receipt?tripId=${currentTripId}&stopId=${currentStop}`, "_blank", "width=800,height=600");
         });
 
-        // Koltuk planı raporu
+        // Seat plan report
         $(".trip-seat-plan-report").off().on("click", e => {
             e.preventDefault();
             if (!currentTripId) return;
@@ -2984,7 +2982,7 @@ async function loadTrip(date, time, tripId) {
             window.open(`/trip-seat-plan?${params.toString()}`, "_blank", "width=900,height=700");
         });
 
-        // Hesap kesim geri al
+        // Undo account cut
         $(".account-cut-undo").off().on("click", async () => {
             try {
                 const data2 = await $.ajax({
@@ -3015,7 +3013,7 @@ async function loadTrip(date, time, tripId) {
             }
         });
 
-        // Hesap kesim geri al butonu
+        // Undo account cut btn
         $(".account-cut-undo-btn").off().on("click", async () => {
             if (!accountCutId) return;
             try {
@@ -3028,7 +3026,7 @@ async function loadTrip(date, time, tripId) {
             $(".blackout").css("display", "none");
         });
 
-        // Hesap kesim kesintileri popup cancel/continue
+        // Account cut deductions popup cancel/continue
         $(".account-cut-deductions-cancel").off().on("click", () => {
             $(".account-cut-deductions-popup").css("display", "none");
             $(".blackout").css("display", "none");
@@ -3342,13 +3340,13 @@ async function renderTripRows(html, options = {}) {
                 || Number($button.closest(".btn-group").find(".trip-button").data("id"));
 
             if (!tripId) {
-                showError("Sefer bilgisi bulunamadı.");
+                showError("Trip information not found.");
                 return;
             }
 
             const confirmMessage = isActive
-                ? "Seferi aktif etmek istediğinize emin misiniz?"
-                : "Seferi iptal etmek istediğinize emin misiniz?";
+                ? "Are you sure you want to activate the trip?"
+                : "Are you sure you want to cancel the trip?";
 
             if (!window.confirm(confirmMessage)) {
                 return;
@@ -3422,12 +3420,12 @@ async function renderTripRows(html, options = {}) {
     return false;
 }
 
-// Site ilk açıldığında bugünün seferini yükler ve en yakın aktif seferi açar
+// Load today's trips and open the closest active trip on site load
 $(document).ready(function () {
     loadTripsList(new Date(), { autoSelect: true });
 })
 
-// Sefer listesini yükler
+// Load trip list
 async function loadTripsList(dateInput, options = {}) {
     const formattedDate = formatDateForRequest(dateInput);
 
@@ -3444,7 +3442,7 @@ async function loadTripsList(dateInput, options = {}) {
     });
 }
 
-// Bilet kesim ekranını kapatır
+// Close ticket issuance screen
 function ticketClose() {
     selectedSeats = [];
     $(".ticket-info-pop-up").css("display", "none");
@@ -3452,11 +3450,11 @@ function ticketClose() {
     $(".ticket-row").remove();
 }
 
-// Takvim
+// Calendar
 const calendar = $("#calendar")
 flatpickr(calendar, {
     inline: true,
-    locale: "tr",
+    locale: "en",
     defaultDate: new Date(),
     onChange: async function (selectedDates, dateStr, instance) {
         loadTripsList(dateStr, { autoSelect: true })
@@ -3464,7 +3462,7 @@ flatpickr(calendar, {
 })
 const tripCalendar = $(".trip-settings-calendar")
 flatpickr(tripCalendar, {
-    locale: "tr",
+    locale: "en",
     defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
@@ -3511,16 +3509,17 @@ flatpickr(tripCalendar, {
 
     },
 })
+
 const tripFirstDate = $(".trip-first-date")
 flatpickr(tripFirstDate, {
-    locale: "tr",
+    locale: "en",
     defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
 })
 const tripLastDate = $(".trip-last-date")
 flatpickr(tripLastDate, {
-    locale: "tr",
+    locale: "en",
     defaultDate: new Date(),
     altInput: true,
     altFormat: "d F Y",
@@ -3563,7 +3562,7 @@ const validateTicketForm = action => {
     const requiresIdentityNumber = action === "sell" || action === "complete";
 
     if (requiresPassengerInfo && !phoneValue) {
-        showError("Lütfen telefon numarası giriniz.");
+        showError("Please enter a phone number.");
         return false;
     }
 
@@ -3573,13 +3572,13 @@ const validateTicketForm = action => {
 
             const nameValue = getTrimmedValue($row.find(".name input").val());
             if (!nameValue) {
-                showError("Lütfen isim giriniz.");
+                showError("Please enter a name.");
                 return false;
             }
 
             const surnameValue = getTrimmedValue($row.find(".surname input").val());
             if (!surnameValue) {
-                showError("Lütfen soyisim giriniz.");
+                showError("Please enter a surname.");
                 return false;
             }
 
@@ -3587,7 +3586,7 @@ const validateTicketForm = action => {
                 const $identityInput = $row.find(".identity input");
                 const idNumberValue = getTrimmedValue($identityInput.val());
                 if (!idNumberValue) {
-                    showError("Lütfen kimlik numarası giriniz.");
+                    showError("Please enter an ID number.");
                     return false;
                 }
 
@@ -3595,7 +3594,7 @@ const validateTicketForm = action => {
                 if (nationalityValue === "tr") {
                     const sanitizedIdNumber = sanitizeTcknValue(idNumberValue);
                     if (!isValidSanitizedTckn(sanitizedIdNumber)) {
-                        showError("Lütfen geçerli bir T.C. kimlik numarası giriniz.");
+                        showError("Please enter a valid T.C. identity number.");
                         return false;
                     }
 
@@ -3611,13 +3610,13 @@ const validateTicketForm = action => {
         if ($reservationWrapper.length) {
             const $dateInput = $reservationWrapper.find("input.date");
             if ($dateInput.length && !getTrimmedValue($dateInput.val())) {
-                showError("Lütfen rezervasyon opsiyon tarihini giriniz.");
+                showError("Please enter reservation expiration date.");
                 return false;
             }
 
             const $timeInput = $reservationWrapper.find("input.time");
             if ($timeInput.length && !getTrimmedValue($timeInput.val())) {
-                showError("Lütfen rezervasyon opsiyon saatini giriniz.");
+                showError("Please enter reservation expiration time.");
                 return false;
             }
         }
@@ -3626,7 +3625,7 @@ const validateTicketForm = action => {
     return true;
 };
 
-// Boş koltuk menüsü alt menüsünü açar
+// Open empty seat submenu
 $(".ticket-op").on("click", e => {
     e.stopPropagation();
 
@@ -3640,15 +3639,15 @@ $(".ticket-op").on("click", e => {
     }
 });
 
-// Başka yere tıklandığında boş koltuk menüsü kapanır
+// Click outside empty seat menu closes it
 $(document).off("click").on("click", () => {
     $(".ticket-op ul").css("display", "none");
 });
 
 $("#currentStop").on("change", async (e) => {
     const $sel = $(e.currentTarget);
-    currentStop = $sel.val();                               // seçilen value
-    currentStopStr = $sel.find("option:selected").text().trim(); // seçilen option'un text'i
+    currentStop = $sel.val();                             // selected value
+    currentStopStr = $sel.find("option:selected").text().trim(); // selected option text
 
     try {
         const response = await $.ajax({
@@ -3674,7 +3673,7 @@ $("#currentStop").on("change", async (e) => {
 });
 
 
-// Bilet kesim ekranındaki onaylama tuşu
+// Ticket action button confirm
 $(".ticket-button-action").on("click", async e => {
     const action = e.currentTarget.dataset.action;
 
@@ -3689,13 +3688,13 @@ $(".ticket-button-action").on("click", async e => {
         const pointOrPercent = span.data("pointorpercent");
         const pointAmount = Number(span.data("pointamount") || 0);
         if ($(".ticket-rows").find(".payment").find("select").val() == "point" && pointAmount < price) {
-            alert("Müşterinin puanı fiyatı karşılamıyor. Başka bir ödeme yöntemi deneyin.");
+            alert("Customer points are not enough. Try another payment method.");
         }
         else {
             let usePointPayment = false;
             if (firstTicket.length) {
                 if (pointOrPercent === "point" && pointAmount >= price) {
-                    usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Müşterinin puanı yeterli. Puanla mı keselim? Tamam: Puan, İptal: Para");
+                    usePointPayment = $(".ticket-rows").find(".payment").find("select").val() == "point" ? true : confirm("Customer points are sufficient. Use points? OK: Points, Cancel: Cash");
                     if (usePointPayment) {
                         $(".ticket-rows").find(".payment").find("select").val("point");
                     }
@@ -3948,7 +3947,7 @@ $(".ticket-button-action").on("click", async e => {
                     $(".tickets").html("")
                     cancelingSeatPNR = null
                     selectedTakenSeats = []
-                    $(".cancel-action-button").html(`BİLET SEÇİN`)
+                    $(".cancel-action-button").html(`SELECT TICKET`)
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
@@ -3973,7 +3972,7 @@ $(".ticket-button-action").on("click", async e => {
                     $(".tickets").html("")
                     cancelingSeatPNR = null
                     selectedTakenSeats = []
-                    $(".cancel-action-button").html(`BİLET SEÇİN`)
+                    $(".cancel-action-button").html(`SELECT TICKET`)
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
@@ -3998,7 +3997,7 @@ $(".ticket-button-action").on("click", async e => {
                     $(".tickets").html("")
                     cancelingSeatPNR = null
                     selectedTakenSeats = []
-                    $(".cancel-action-button").html(`BİLET SEÇİN`)
+                    $(".cancel-action-button").html(`SELECT TICKET`)
                     loadTrip(currentTripDate, currentTripTime, currentTripId)
                 },
                 error: function (xhr, status, error) {
@@ -4118,7 +4117,7 @@ $(".taken-ticket-op").on("click", async e => {
 
     if (action == "complete") {
         $(".ticket-button-action").attr("data-action", "complete")
-        $(".ticket-button-action").html("SAT")
+        $(".ticket-button-action").html("SELL")
         await $.ajax({
             url: "/get-ticket-row",
             type: "GET",
@@ -4163,12 +4162,12 @@ $(".taken-ticket-op").on("click", async e => {
                 })
 
                 flatpickr($(".reservation-expire input.changable.date"), {
-                    locale: "tr",
+                    locale: "en",
                     altInput: true,
                     altFormat: "d F Y",
                 })
                 flatpickr($(".reservation-expire input.changable.time"), {
-                    locale: "tr",
+                    locale: "en",
                     enableTime: true,
                     noCalendar: true,
                 })
@@ -4197,7 +4196,7 @@ $(".taken-ticket-op").on("click", async e => {
 
     else if (action == "edit") {
         $(".ticket-button-action").attr("data-action", "edit")
-        $(".ticket-button-action").html("KAYDET")
+        $(".ticket-button-action").html("SAVE")
         await $.ajax({
             url: "/get-ticket-row",
             type: "GET",
@@ -4242,12 +4241,12 @@ $(".taken-ticket-op").on("click", async e => {
                 })
 
                 flatpickr($(".reservation-expire input.changable.date"), {
-                    locale: "tr",
+                    locale: "en",
                     altInput: true,
                     altFormat: "d F Y",
                 })
                 flatpickr($(".reservation-expire input.changable.time"), {
-                    locale: "tr",
+                    locale: "en",
                     enableTime: true,
                     noCalendar: true,
                 })
@@ -4286,7 +4285,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
-                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İPTAL")
+                $(".ticket-cancel-refund-open .gtr-header span").html("CANCEL TICKET")
                 $(".ticket-cancel-refund-open .tickets").prepend(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
@@ -4300,19 +4299,19 @@ $(".taken-ticket-op").on("click", async e => {
                         e.currentTarget.classList.remove("selected")
                         selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
                         if (selectedTakenSeats > 0) {
-                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL ET`)
+                            $(".cancel-action-button").html(`CANCEL ${selectedTakenSeats.length} TICKETS`)
                             $(".cancel-action-button").removeClass("disabled")
                         }
                         else {
                             $(".cancel-action-button").addClass("disabled")
-                            $(".cancel-action-button").html(`BİLET SEÇİN`)
+                            $(".cancel-action-button").html(`SELECT TICKET`)
                         }
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "none")
                     }
                     else {
                         e.currentTarget.classList.add("selected")
                         selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
-                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İPTAL ET`)
+                        $(".cancel-action-button").html(`CANCEL ${selectedTakenSeats.length} TICKETS`)
                         $(".cancel-action-button").removeClass("disabled")
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
                     }
@@ -4340,7 +4339,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
-                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET İADE")
+                $(".ticket-cancel-refund-open .gtr-header span").html("REFUND TICKET")
                 $(".ticket-cancel-refund-open .tickets").html(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
@@ -4354,19 +4353,19 @@ $(".taken-ticket-op").on("click", async e => {
                         e.currentTarget.classList.remove("selected")
                         selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
                         if (selectedTakenSeats > 0) {
-                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İADE ET`)
+                            $(".cancel-action-button").html(`REFUND ${selectedTakenSeats.length} TICKETS`)
                             $(".cancel-action-button").removeClass("disabled")
                         }
                         else {
                             $(".cancel-action-button").addClass("disabled")
-                            $(".cancel-action-button").html(`BİLET SEÇİN`)
+                            $(".cancel-action-button").html(`SELECT TICKET`)
                         }
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "none")
                     }
                     else {
                         e.currentTarget.classList.add("selected")
                         selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
-                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET İADE ET`)
+                        $(".cancel-action-button").html(`REFUND ${selectedTakenSeats.length} TICKETS`)
                         $(".cancel-action-button").removeClass("disabled")
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
                     }
@@ -4394,7 +4393,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: { pnr: pnr, seats: seatNumbers, date: tripDate, time: tripTime },
             success: function (response) {
-                $(".ticket-cancel-refund-open .gtr-header span").html("BİLET AÇIĞA AL")
+                $(".ticket-cancel-refund-open .gtr-header span").html("OPEN TICKET")
                 $(".ticket-cancel-refund-open .tickets").html(response)
                 $(".ticket-cancel-refund-open").css("display", "block")
                 $(".blackout").css("display", "block")
@@ -4408,19 +4407,19 @@ $(".taken-ticket-op").on("click", async e => {
                         e.currentTarget.classList.remove("selected")
                         selectedTakenSeats = selectedTakenSeats.filter(i => i !== e.currentTarget.dataset.seatNumber);
                         if (selectedTakenSeats > 0) {
-                            $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET AÇIĞA AL`)
+                            $(".cancel-action-button").html(`OPEN ${selectedTakenSeats.length} TICKETS`)
                             $(".cancel-action-button").removeClass("disabled")
                         }
                         else {
                             $(".cancel-action-button").addClass("disabled")
-                            $(".cancel-action-button").html(`BİLET SEÇİN`)
+                            $(".cancel-action-button").html(`SELECT TICKET`)
                         }
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "none")
                     }
                     else {
                         e.currentTarget.classList.add("selected")
                         selectedTakenSeats.push(e.currentTarget.dataset.seatNumber)
-                        $(".cancel-action-button").html(`${selectedTakenSeats.length} ADET AÇIĞA AL`)
+                        $(".cancel-action-button").html(`OPEN ${selectedTakenSeats.length} TICKETS`)
                         $(".cancel-action-button").removeClass("disabled")
                         $(e.currentTarget).find(".ticket-cancel-check").css("display", "block")
                     }
@@ -4450,7 +4449,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: { pnr: movingSeatPNR, tripId: currentTripId, stopId: selectedTicketStopId },
             success: async function (response) {
-                $(".moving .gtr-header span").html("BİLET TRANSFER");
+                $(".moving .gtr-header span").html("TICKET TRANSFER");
                 $(".moving .info").html(response);
                 isMovingActive = true;
                 $(".taken-ticket-ops-pop-up").hide();
@@ -4526,7 +4525,7 @@ $(".taken-ticket-op").on("click", async e => {
 
         if (!firstPnr && !ticketIds.length) {
             movingMode = null;
-            showError("Açık bileti bağlamak için gerekli bilgiler bulunamadı.");
+            showError("Required information to attach open ticket not found.");
             return;
         }
 
@@ -4551,7 +4550,7 @@ $(".taken-ticket-op").on("click", async e => {
             type: "GET",
             data: requestData,
             success: async function (response) {
-                $(".moving .gtr-header span").html("AÇIK BİLET BAĞLA");
+                $(".moving .gtr-header span").html("ATTACH OPEN TICKET");
                 $(".moving .info").html(response);
                 isMovingActive = true;
                 $(".taken-ticket-ops-pop-up").hide();
@@ -4655,12 +4654,12 @@ $(".taken-ticket-op").on("click", async e => {
 $(".moving-confirm").on("click", async e => {
     if (movingMode === "attach_open") {
         if (!movingSelectedSeats.length) {
-            showError("Lütfen bağlanacak açık bileti seçiniz.");
+            showError("Please select an open ticket to attach.");
             return;
         }
 
         if (selectedSeats.length !== movingSelectedSeats.length) {
-            showError("Seçilen koltuk sayısı ile bağlanacak bilet sayısı eşleşmelidir.");
+            showError("The number of selected seats must match the number of tickets to attach.");
             return;
         }
 
@@ -4715,7 +4714,7 @@ $(".trip-revenue-close").on("click", e => {
 })
 
 function closeTripStopRestriction() {
-    if (tripStopRestrictionDirty && !confirm('Kaydedilmemiş değişiklikler var. Kapatmak istiyor musunuz?')) {
+    if (tripStopRestrictionDirty && !confirm('There are unsaved changes. Do you want to close?')) {
         return;
     }
     $(".trip-stop-restriction-pop-up").css("display", "none");
@@ -4780,7 +4779,7 @@ $(".trip-staff-close").on("click", e => {
     };
     const changed = Object.keys(tripStaffInitial).some(k => tripStaffInitial[k] !== current[k]);
     if (changed) {
-        if (!confirm("Değişiklikler kaydedilmedi. Çıkmak istiyor musunuz?")) {
+        if (!confirm("Changes not saved. Do you want to exit?")) {
             return;
         }
     }
@@ -4801,7 +4800,7 @@ $(".trip-cargo-list-close").on("click", e => {
 $(".trip-cargo-save").on("click", async e => {
     e.preventDefault();
     if (!currentTripId) {
-        showError("Sefer bilgisi bulunamadı.");
+        showError("Trip information not found.");
         return;
     }
 
@@ -4818,29 +4817,29 @@ $(".trip-cargo-save").on("click", async e => {
     };
 
     if (!data.fromStopId || !data.toStopId) {
-        showError("Lütfen nereden ve nereye bilgilerini seçiniz.");
+        showError("Please select origin and destination.");
         return;
     }
     if (!data.senderName) {
-        showError("Gönderen adını giriniz.");
+        showError("Enter sender name.");
         return;
     }
     if (!data.senderPhone) {
-        showError("Gönderen telefonunu giriniz.");
+        showError("Enter sender phone.");
         return;
     }
     if (!data.senderIdentity) {
-        showError("Gönderen TC bilgisini giriniz.");
+        showError("Enter sender ID number.");
         return;
     }
     if (!data.payment) {
-        showError("Ödeme tipini seçiniz.");
+        showError("Select payment type.");
         return;
     }
 
     const priceValue = Number(data.price);
     if (!data.price || Number.isNaN(priceValue) || priceValue <= 0) {
-        showError("Geçerli bir ücret giriniz.");
+        showError("Enter a valid price.");
         return;
     }
 
@@ -4857,7 +4856,7 @@ $(".trip-cargo-save").on("click", async e => {
 });
 
 $(".ticket-close").on("click", async e => {
-    console.log("kapat")
+    console.log("close")
     let pendingIds = $("#pendingIds").val()
     if (pendingIds) {
         let jsonSeats = JSON.stringify(selectedSeats)
@@ -4916,8 +4915,8 @@ $(".ticket-button-cancel").on("click", async e => {
 
 $(".add-trip-note-button").on("click", e => {
     editingNoteId = null;
-    $(".add-trip-note .gtr-header span").html("SEFERE NOT EKLE")
-    $("button.save-trip-note").html("EKLE")
+    $(".add-trip-note .gtr-header span").html("ADD TRIP NOTE")
+    $("button.save-trip-note").html("ADD")
     $(".trip-note-text").val("");
     $(".blackout").css("display", "block")
     $(".add-trip-note").css("display", "flex")
@@ -4987,7 +4986,7 @@ $(".save-trip-note").on("click", async e => {
         }
     }
     else {
-        alert("Herhangi bir sefer seçmediniz.")
+        alert("No trip selected.")
         $(".blackout").css("display", "none")
         $(".add-trip-note").css("display", "none")
     }
@@ -4997,8 +4996,8 @@ $(".note-edit").off("click").on("click", e => {
     const noteEl = $(e.currentTarget).closest(".note");
     editingNoteId = noteEl.data("id");
     const text = noteEl.find(".note-text").text();
-    $(".add-trip-note .gtr-header span").html("NOTU DÜZENLE")
-    $("button.save-trip-note").html("DÜZENLE")
+    $(".add-trip-note .gtr-header span").html("EDIT NOTE")
+    $("button.save-trip-note").html("EDIT")
     $(".trip-note-text").val(text);
     $(".blackout").css("display", "block");
     $(".add-trip-note").css("display", "flex");
@@ -5007,7 +5006,7 @@ $(".note-edit").off("click").on("click", e => {
 $(".note-delete").off("click").on("click", async e => {
     const noteEl = $(e.currentTarget).closest(".note");
     const noteId = noteEl.data("id");
-    if (confirm("Notu silmek istediğinize emin misiniz?")) {
+    if (confirm("Are you sure you want to delete the note?")) {
         await $.ajax({
             url: "/post-delete-trip-note",
             type: "POST",
@@ -5041,8 +5040,8 @@ $("a.open-ticket-nav").on("click", async e => {
         url: "/get-stops-data",
         type: "GET",
         success: function (stops) {
-            fromSelect.append(`<option value="" selected>Seçiniz</option>`)
-            toSelect.append(`<option value="" selected>Seçiniz</option>`)
+            fromSelect.append(`<option value="" selected>Select</option>`)
+            toSelect.append(`<option value="" selected>Select</option>`)
             stops.forEach(s => {
                 fromSelect.append(`<option value="${s.id}">${s.title}</option>`)
                 toSelect.append(`<option value="${s.id}">${s.title}</option>`)
@@ -5067,12 +5066,12 @@ $(".open-ticket-next").on("click", async e => {
     const count = $(".open-ticket-count").val()
 
     if (!fromId || !toId) {
-        showError("Lütfen nereden ve nereye bilgilerini seçiniz.")
+        showError("Please select origin and destination.")
         return
     }
 
     if (!count || Number(count) <= 0) {
-        showError("Lütfen bilet adedi için 0'dan büyük bir değer giriniz.")
+        showError("Please enter a value greater than 0 for ticket quantity.")
         return
     }
 
@@ -5112,9 +5111,9 @@ $(".open-ticket-next").on("click", async e => {
             $(".open-ticket-sale").css("display", "none")
             $(".ticket-info-pop-up_from").html($(`.open-ticket-from option[value=${fromId}]`).text().toLocaleUpperCase())
             $(".ticket-info-pop-up_to").html($(`.open-ticket-from option[value=${toId}]`).text().toLocaleUpperCase())
-            $(".ticket-header--date").html("AÇIK BİLET")
+            $(".ticket-header--date").html("OPEN TICKET")
             $(".ticket-button-action").attr("data-action", "sell_open")
-            $(".ticket-button-action").html("AÇIK SAT")
+            $(".ticket-button-action").html("SELL OPEN")
             $(".ticket-info-pop-up").css("display", "block")
         },
         error: function (xhr, status, error) {
@@ -5174,7 +5173,7 @@ $(".ticket-search-button").on("click", async e => {
                 const rect = this.getBoundingClientRect();
                 const $popup = $(".search-ticket-ops-pop-up");
 
-                // Popup'ı mouse konumuna yerleştir
+                // Position popup at mouse location
                 let left = e.pageX + 10;
                 let top = e.pageY + 10;
 
@@ -5183,13 +5182,13 @@ $(".ticket-search-button").on("click", async e => {
                 const viewportWidth = $(window).width();
                 const viewportHeight = $(window).height();
 
-                // Sağ kenarı taşmasın
+                // Prevent overflow right
                 if (left + popupWidth > viewportWidth) {
                     left = e.pageX - popupWidth - 10;
                     if (left < 0) left = 0;
                 }
 
-                // Alt kenarı taşmasın
+                // Prevent overflow bottom
                 if (top + popupHeight > $(window).scrollTop() + viewportHeight) {
                     top = e.pageY - popupHeight - 10;
                     if (top < 0) top = 0;
@@ -5294,7 +5293,7 @@ $(".other-register-nav").on("click", async e => {
         type: "GET",
         data: { onlyData: true },
         success: function (branches) {
-            branchSelect.append(`<option value="">Şube Seç</option>`)
+            branchSelect.append(`<option value="">Select Branch</option>`)
             branches.forEach(b => {
                 branchSelect.append(`<option value="${b.id}">${b.title}</option>`)
             })
@@ -5322,7 +5321,7 @@ $(".other-register-branch").on("change", async e => {
             type: "GET",
             data: { id: branchId },
             success: function (response) {
-                userSelect.append(`<option value="">Kullanıcı Seç</option>`)
+                userSelect.append(`<option value="">Select User</option>`)
                 response.forEach(u => {
                     userSelect.append(`<option value="${u.id}">${u.name}</option>`)
                 })
@@ -5385,12 +5384,12 @@ $(".add-transaction-button").on("click", async e => {
     const description = ($(".transaction-description").val() || "").toString().trim()
 
     if (Number.isNaN(normalizedAmount) || normalizedAmount <= 0) {
-        showError("Lütfen 0'dan büyük bir miktar giriniz.")
+        showError("Please enter an amount greater than 0.")
         return
     }
 
     if (!description) {
-        showError("Lütfen bir açıklama giriniz.")
+        showError("Please enter a description.")
         return
     }
 
@@ -5473,7 +5472,7 @@ let busTransactionType = null;
 
 const loadBusTransactions = async busId => {
     if (!busId) {
-        $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Otobüs seçiniz.</p>');
+        $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Select a bus.</p>');
         return;
     }
 
@@ -5486,35 +5485,35 @@ const loadBusTransactions = async busId => {
         $(".bus-transaction-list").html(response);
     } catch (err) {
         const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
-        showError(message || "İşlem listesi alınamadı.");
+        showError(message || "Could not retrieve transaction list.");
     }
 };
 
 const openBusTransactionModal = async type => {
     busTransactionType = type;
-    const title = type === "income" ? "OTOBÜS GELİRİ EKLE" : "OTOBÜS GİDERİ EKLE";
-    const buttonLabel = type === "income" ? "GELİR EKLE" : "GİDER EKLE";
+    const title = type === "income" ? "ADD BUS INCOME" : "ADD BUS EXPENSE";
+    const buttonLabel = type === "income" ? "ADD INCOME" : "ADD EXPENSE";
     $(".bus-transaction-title").text(title);
     $(".bus-transaction-button").text(buttonLabel);
 
     const select = $(".bus-transaction-bus");
     select.empty();
-    select.append('<option value="">Otobüs Seç</option>');
+    select.append('<option value="">Select Bus</option>');
 
     try {
         const buses = await $.ajax({ url: "/get-buses-data", type: "GET" });
         buses.forEach(b => {
-            const plate = b.licensePlate ? b.licensePlate : `Otobüs #${b.id}`;
+            const plate = b.licensePlate ? b.licensePlate : `Bus #${b.id}`;
             select.append(`<option value="${b.id}">${plate}</option>`);
         });
     } catch (err) {
         const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
-        showError(message || "Otobüs listesi alınamadı.");
+        showError(message || "Could not retrieve bus list.");
     }
 
     $(".bus-transaction-amount").val("");
     $(".bus-transaction-description").val("");
-    $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Otobüs seçiniz.</p>');
+    $(".bus-transaction-list").html('<p class="text-center text-muted mb-0">Select a bus.</p>');
 
     $(".bus-transaction").css("display", "block");
     $(".blackout").css("display", "block");
@@ -5553,22 +5552,22 @@ $(".bus-transaction-button").on("click", async e => {
     const description = $(".bus-transaction-description").val();
 
     if (!busTransactionType) {
-        showError("İşlem tipi belirlenemedi.");
+        showError("Transaction type not determined.");
         return;
     }
 
     if (!busId) {
-        showError("Lütfen bir otobüs seçiniz.");
+        showError("Please select a bus.");
         return;
     }
 
     if (!amountRaw || isNaN(Number(amountRaw))) {
-        showError("Geçerli bir tutar giriniz.");
+        showError("Please enter a valid amount.");
         return;
     }
 
     if (!description || !description.trim()) {
-        showError("Lütfen bir açıklama giriniz.");
+        showError("Please enter a description.");
         return;
     }
 
@@ -5589,11 +5588,11 @@ $(".bus-transaction-button").on("click", async e => {
         await loadBusTransactions(busId);
     } catch (err) {
         const message = err?.responseJSON?.message || err?.responseText || err?.statusText || err?.message;
-        showError(message || "İşlem kaydedilemedi.");
+        showError(message || "Transaction could not be saved.");
     }
 });
 
-let activeBusPlanCount = 0
+let activeBusPlanCount = 0;
 
 $(".bus-plans-nav").on("click", async e => {
     $(".bus-plan-panel").html("")
@@ -5623,14 +5622,14 @@ $(".bus-plans-nav").on("click", async e => {
                 e.stopPropagation()
 
                 if (activeBusPlanCount <= 1) {
-                    window.alert("Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin.")
+                    window.alert("You cannot delete the only existing bus plan. Please add a new plan before deleting this one.")
                     return
                 }
 
                 const $button = $(this)
                 const title = $button.data("title")
-                window.alert("Bu otobüs planını silerseniz bu planı kullanan otobüs ve seferler de etkilenecektir.")
-                const message = `${title || "Bu planı"} silmek istediğinize emin misiniz?`
+                window.alert("Deleting this bus plan will also affect buses and trips using this plan.")
+                const message = `Are you sure you want to delete ${title || "this plan"}?`
                 if (message && !window.confirm(message)) {
                     return
                 }
@@ -5667,24 +5666,24 @@ $(".bus-plans-nav").on("click", async e => {
                             const description = $(".bus-plan-description").val()
 
                             if (areAllBusPlanInputsEmpty() && (!title || !title.trim() || !description || !description.trim())) {
-                                showError("Otobüs planı boşken isim ve açıklama alanları boş bırakılamaz.")
+                                showError("Name and description cannot be empty when the bus plan is empty.")
                                 return
                             }
 
-                            // 1. Izgara Analizi: Dolu olan en son satır ve sütunu tespit et
+                            // 1. Grid Analysis: Find the last filled row and column
                             const $inputs = $(".bus-plan-create-input");
-                            const SOURCE_COL_WIDTH = 5; // Paneldeki varsayılan ızgara genişliği (CSS'e göre 5'tir)
+                            const SOURCE_COL_WIDTH = 5; // Default grid width in panel (based on CSS)
 
                             let maxRowIndex = 0;
                             let maxColIndex = 0;
 
                             $inputs.each((i, e) => {
-                                // Inputun değerini kontrol et (boş mu?)
-                                // normalizeBusPlanInputValue fonksiyonu erp.js içinde tanımlı, onu kullanıyoruz
+                                // Check input value (is it empty?)
+                                // Using normalizeBusPlanInputValue defined in erp.js
                                 const val = normalizeBusPlanInputValue(e.value);
 
                                 if (val) {
-                                    // Bu inputun 5'li ızgaradaki koordinatlarını bul
+                                    // Calculate coordinates in 5-column grid
                                     const r = Math.floor(i / SOURCE_COL_WIDTH);
                                     const c = i % SOURCE_COL_WIDTH;
 
@@ -5693,31 +5692,31 @@ $(".bus-plans-nav").on("click", async e => {
                                 }
                             });
 
-                            // Eğer hiç veri girilmemişse en az 1x1 olsun (veya hata verdirilebilir)
-                            // maxIndex 0-based olduğu için sayıyı bulmak için +1 ekliyoruz
+                            // If no data entered, default to at least 1x1 (or error can be thrown)
+                            // maxIndex is 0-based, so add +1 for count
                             const rowCount = maxRowIndex + 1;
                             const colCount = maxColIndex + 1;
 
-                            // 2. Yeni Planı Oluştur: Sadece dolu sınırlara kadar olan veriyi al
+                            // 2. Create New Plan: Take data only up to filled boundaries
                             let maxPassenger = 0;
                             let plan = [];
                             let planBinary = "";
 
                             for (let r = 0; r < rowCount; r++) {
                                 for (let c = 0; c < colCount; c++) {
-                                    // Orijinal düz listedeki indeksi hesapla (r * 5 + c)
+                                    // Calculate index in original flat list (r * 5 + c)
                                     const sourceIndex = (r * SOURCE_COL_WIDTH) + c;
                                     const input = $inputs[sourceIndex];
                                     const rawVal = input ? input.value : null;
 
-                                    // Değer temizliği
+                                    // Clean value
                                     const val = normalizeBusPlanInputValue(rawVal);
-                                    const finalVal = val ? val : 0; // Veritabanına boşsa 0, değilse değer gider
+                                    const finalVal = val ? val : 0; // Send 0 if empty, otherwise value
 
                                     plan.push(finalVal);
 
-                                    // Binary ve Yolcu Sayısı Hesaplama
-                                    // Şoför (Ş) ve Kapı (>) yolcu sayısına dahil edilmez, binary'de 0 olur
+                                    // Calculate Binary and Passenger Count
+                                    // Driver (Ş) and Door (>) are not included in passenger count, 0 in binary
                                     if (finalVal && finalVal !== "Ş" && finalVal !== ">") {
                                         planBinary += "1";
                                         maxPassenger++;
@@ -5729,24 +5728,24 @@ $(".bus-plans-nav").on("click", async e => {
 
                             const planJSON = JSON.stringify(plan);
 
-                            // 3. Veriyi Gönder
+                            // 3. Send Data
                             await $.ajax({
                                 url: "/post-save-bus-plan",
                                 type: "POST",
                                 data: {
-                                    id: editingBusPlanId, // veya ilgili ID değişkeni
+                                    id: editingBusPlanId, // or relevant ID variable
                                     title,
                                     description,
                                     plan: planJSON,
                                     planBinary,
                                     maxPassenger,
-                                    rowCount, // Yeni hesaplanan satır sayısı (örn: 6)
-                                    colCount  // Yeni hesaplanan sütun sayısı (örn: 4)
+                                    rowCount, // Newly calculated row count (e.g., 6)
+                                    colCount  // Newly calculated col count (e.g., 4)
                                 },
-                                // ... success ve error handler'lar aynı kalır
+                                // ... success and error handlers remain same
                                 success: function (response) {
                                     // ...
-                                    $(".bus-plan-panel").html(""); // Paneli temizle
+                                    $(".bus-plan-panel").html(""); // Clear panel
                                     // ...
                                 },
                                 error: function (xhr, status, error) {
@@ -5849,7 +5848,7 @@ const attachBusPlanInputEvents = () => {
         input.dataset.lastValidValue = normalized
     })
 
-    // duplicate kontrolünü change eventine taşıdık
+    // moved duplicate check to change event
     inputs.off("change.busPlan").on("change.busPlan", event => {
         const input = event.currentTarget
         const normalized = normalizeBusPlanInputValue(input.value)
@@ -5891,17 +5890,17 @@ $(".add-bus-plan").on("click", async e => {
 
             attachBusPlanInputEvents()
 
-            // BURASI GÜNCELLENMELİ:
+            // THIS NEEDS UPDATE:
             $(".save-bus-plan").off("click").on("click", async e => {
                 const title = $(".bus-plan-title").val()
                 const description = $(".bus-plan-description").val()
 
                 if (areAllBusPlanInputsEmpty() && (!title || !title.trim() || !description || !description.trim())) {
-                    showError("Otobüs planı boşken isim ve açıklama alanları boş bırakılamaz.")
+                    showError("Name and description cannot be empty when the bus plan is empty.")
                     return
                 }
 
-                // --- HESAPLAMA MANTIĞI BURAYA DA EKLENDİ ---
+                // --- CALCULATION LOGIC ADDED HERE TOO ---
                 const $inputs = $(".bus-plan-create-input");
                 const SOURCE_COL_WIDTH = 5;
 
@@ -5955,15 +5954,15 @@ $(".add-bus-plan").on("click", async e => {
                         plan: planJSON,
                         planBinary,
                         maxPassenger,
-                        rowCount, // Yeni alan
-                        colCount  // Yeni alan
+                        rowCount, // New field
+                        colCount  // New field
                     },
                     success: function (response) {
                         $(".bus-plans").css("display", "none")
                         $(".blackout").css("display", "none")
                         $(".bus-plan-panel").html("")
 
-                        // Listeyi yenilemek için sayfayı tetikleyebilirsiniz
+                        // Trigger page to refresh list
                         $(".bus-plans-nav").click();
                     },
                     error: function (xhr, status, error) {
@@ -6095,8 +6094,8 @@ $(".bus-nav").on("click", async e => {
 
                 const $button = $(this)
                 const plate = $button.data("plate")
-                window.alert("Bu otobüsü silerseniz bunu kullanan seferler de etkilenecektir.")
-                const message = `${plate || "Bu otobüsü"} silmek istediğinize emin misiniz?`
+                window.alert("Deleting this bus will also affect trips using this bus.")
+                const message = `Are you sure you want to delete ${plate || "this bus"}?`
                 if (message && !window.confirm(message)) {
                     return
                 }
@@ -6116,7 +6115,7 @@ $(".bus-nav").on("click", async e => {
                         $(".bus-list").addClass("col-12").removeClass("col-4")
                         $(".bus-info").css("display", "none")
                         $(".bus-settings").css("display", "none")
-                        $(".save-bus").html("KAYDET")
+                        $(".save-bus").html("SAVE")
                     }
                     $button.closest(".btn-group").remove()
                 } catch (err) {
@@ -6143,7 +6142,7 @@ $(".bus-nav").on("click", async e => {
                         $(".bus-list").removeClass("col-12").addClass("col-4")
                         $(".bus-info").css("display", "flex")
                         $(".bus-settings").css("display", "block")
-                        $(".save-bus").html("KAYDET")
+                        $(".save-bus").html("SAVE")
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -6184,7 +6183,7 @@ $(".add-bus").on("click", e => {
     $(".bus-list").removeClass("col-12").addClass("col-4")
     $(".bus-info").css("display", "flex")
     $(".bus-settings").css("display", "block")
-    $(".save-bus").html("EKLE")
+    $(".save-bus").html("ADD")
 })
 
 $(".save-bus").on("click", async e => {
@@ -6201,7 +6200,7 @@ $(".save-bus").on("click", async e => {
     const normalizedBusModelId = typeof busModelId === "string" ? busModelId.trim() : busModelId
 
     if (!trimmedLicensePlate || !normalizedBusModelId || !trimmedPhoneNumber) {
-        showError("Lütfen plaka, otobüs modeli ve araç telefonu bilgilerini doldurunuz.")
+        showError("Please fill in the license plate, bus model, and vehicle phone number fields.")
         return
     }
 
@@ -6246,8 +6245,8 @@ $(".staff-nav").on("click", async e => {
 
                 const $button = $(this)
                 const name = $button.data("name")
-                window.alert("Bu personeli silerseniz bu personeli kullanan otobüs ve seferler de etkilenecektir.")
-                const message = `${name || "Bu personeli"} silmek istediğinize emin misiniz?`
+                window.alert("Deleting this staff member will also affect buses and trips using this staff member.")
+                const message = `Are you sure you want to delete ${name || "this staff member"}?`
                 if (message && !window.confirm(message)) {
                     return
                 }
@@ -6269,7 +6268,7 @@ $(".staff-nav").on("click", async e => {
                         staffNationalitySelect.val("")
                         refreshSearchableSelect(staffNationalitySelect)
                         $(".staff-panel").css("display", "none")
-                        $(".save-staff").html("KAYDET")
+                        $(".save-staff").html("SAVE")
                     }
                     $button.closest(".btn-group").remove()
                 } catch (err) {
@@ -6296,7 +6295,7 @@ $(".staff-nav").on("click", async e => {
                         staffNationalitySelect.val(res.nationality || "")
                         refreshSearchableSelect(staffNationalitySelect)
                         $(".staff-panel").css("display", "flex")
-                        $(".save-staff").html("KAYDET")
+                        $(".save-staff").html("SAVE")
                     },
                     error: function (xhr, status, error) {
                         console.log(error)
@@ -6332,7 +6331,7 @@ $(".add-staff").on("click", e => {
     refreshSearchableSelect(staffNationalitySelect)
     editingStaffId = null
     $(".staff-panel").css("display", "flex")
-    $(".save-staff").html("EKLE")
+    $(".save-staff").html("ADD")
 })
 
 $(".save-staff").on("click", async e => {
@@ -6346,37 +6345,37 @@ $(".save-staff").on("click", async e => {
     const nationality = $(".staff-nationality").val()
 
     if (!idNumber) {
-        showError("Lütfen kimlik numarası giriniz.")
+        showError("Please enter ID number.")
         return
     }
 
     if (!duty) {
-        showError("Lütfen görev seçiniz.")
+        showError("Please select a duty.")
         return
     }
 
     if (!name) {
-        showError("Lütfen isim giriniz.")
+        showError("Please enter a name.")
         return
     }
 
     if (!surname) {
-        showError("Lütfen soyisim giriniz.")
+        showError("Please enter a surname.")
         return
     }
 
     if (!phoneNumber) {
-        showError("Lütfen telefon numarası giriniz.")
+        showError("Please enter a phone number.")
         return
     }
 
     if (!gender) {
-        showError("Lütfen cinsiyet seçiniz.")
+        showError("Please select a gender.")
         return
     }
 
     if (!nationality) {
-        showError("Lütfen uyruk seçiniz.")
+        showError("Please select nationality.")
         return
     }
 
@@ -6474,7 +6473,7 @@ $(".stops-nav").on("click", async e => {
                 e.stopPropagation()
 
                 const $button = $(this)
-                const warningMessage = "Bu durağı silerseniz bu durağı kullanan hatlar, şubeler, bu şubelerin kullanıcıları ve seferler de silinecektir."
+                const warningMessage = "Deleting this stop will also delete routes, branches, branch users, and trips associated with this stop."
                 if (!window.confirm(warningMessage)) {
                     return
                 }
@@ -6497,7 +6496,7 @@ $(".stops-nav").on("click", async e => {
                         $(".stop-service").prop("checked", false)
                         $(".stop-active").prop("checked", true)
                         $(".stop-panel").css("display", "none")
-                        $(".save-stop").html("KAYDET")
+                        $(".save-stop").html("SAVE")
                     }
                     $button.closest(".btn-group").remove()
                 } catch (err) {
@@ -6537,7 +6536,7 @@ $(".stops-nav").on("click", async e => {
                         $(".stop-service").prop("checked", response.isServiceArea)
                         $(".stop-active").prop("checked", response.isActive)
                         $(".stop-panel").css("display", "flex")
-                        $(".save-stop").html("KAYDET")
+                        $(".save-stop").html("SAVE")
                     },
                     error: function (xhr, status, error) {
                         console.log(error);
@@ -6574,7 +6573,7 @@ $(".add-stop").on("click", e => {
     $(".stop-active").prop("checked", true)
     editingStopId = null
     $(".stop-panel").css("display", "flex")
-    $(".save-stop").html("EKLE")
+    $(".save-stop").html("ADD")
 })
 
 $(".save-stop").on("click", async e => {
@@ -6588,7 +6587,7 @@ $(".save-stop").on("click", async e => {
     const isActive = $(".stop-active").is(":checked")
 
     if (!title || !placeId || !rawUetdsValue) {
-        showError("Durak adı, yer ve UETDS kodu boş bırakılamaz.")
+        showError("Stop name, place, and UETDS code cannot be empty.")
         return
     }
 
@@ -6597,7 +6596,7 @@ $(".save-stop").on("click", async e => {
     const uetdsDistrictCode = (rawDistrictCode || "").trim()
 
     if (!uetdsProvinceCode || !uetdsDistrictCode) {
-        showError("Lütfen geçerli bir UETDS kodu seçiniz.")
+        showError("Please select a valid UETDS code.")
         return
     }
 
@@ -6799,7 +6798,7 @@ $(".route-nav").on("click", async e => {
                                 $(".route-list").removeClass("col-12").addClass("col-4")
                                 $(".route-info").css("display", "flex")
                                 $(".route-settings").css("display", "block")
-                                $(".save-route").html("KAYDET")
+                                $(".save-route").html("SAVE")
                             },
                             error: function (xhr, status, error) {
                                 console.log(error);
@@ -6843,16 +6842,16 @@ $(".add-route").on("click", e => {
     $(".route-list").removeClass("col-12").addClass("col-4")
     $(".route-info").css("display", "flex")
     $(".route-settings").css("display", "block")
-    $(".save-route").html("EKLE")
+    $(".save-route").html("ADD")
     setRouteActiveTab(ROUTE_TAB_DEFAULT_ID)
     initializeRouteTimePickers()
 })
 
 const timeInput = document.querySelector(".route-stop-duration");
 
-// Yazarken 2 haneden sonra ":" ekle
+// Add ":" after 2 digits while typing
 timeInput.addEventListener("input", () => {
-    let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
+    let val = timeInput.value.replace(/[^0-9]/g, ""); // numbers only
 
     if (val.length > 2) {
         val = val.slice(0, 2) + ":" + val.slice(2, 4);
@@ -6862,7 +6861,7 @@ timeInput.addEventListener("input", () => {
 });
 
 
-// Odak kaybedince kontrol et
+// Validate on blur
 timeInput.addEventListener("blur", () => {
     let value = timeInput.value;
 
@@ -6875,15 +6874,15 @@ timeInput.addEventListener("blur", () => {
         return;
     }
 
-    // Saat aralığını düzelt
+    // Fix hour range
     if (hh < 0) hh = 0;
     if (hh > 23) hh = 23;
 
-    // Dakika aralığını düzelt
+    // Fix minute range
     if (mm < 0) mm = 0;
     if (mm > 59) mm = 59;
 
-    // Tek haneli saat/dakika başına 0 koy
+    // Pad single digits with 0
     timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
         .toString()
         .padStart(2, "0")}`;
@@ -6931,16 +6930,16 @@ $(".add-route-stop-button").on("click", async e => {
                 const timeInput = document.querySelector(".route-stops .route-stop:last-of-type .duration-input");
 
                 if (timeInput) {
-                    // Yazarken 2 haneden sonra ":" ekle
+                    // Add ":" after 2 digits while typing
                     timeInput.addEventListener("input", () => {
-                        let val = timeInput.value.replace(/[^0-9]/g, ""); // sadece rakam
+                        let val = timeInput.value.replace(/[^0-9]/g, ""); // numbers only
                         if (val.length >= 3) {
                             val = val.slice(0, 2) + ":" + val.slice(2, 4);
                         }
                         timeInput.value = val;
                     });
 
-                    // Odak kaybedince kontrol et
+                    // Validate on blur
                     timeInput.addEventListener("blur", () => {
                         let value = timeInput.value;
 
@@ -6953,15 +6952,15 @@ $(".add-route-stop-button").on("click", async e => {
                             return;
                         }
 
-                        // Saat aralığını düzelt
+                        // Fix hour range
                         if (hh < 0) hh = 0;
                         if (hh > 23) hh = 23;
 
-                        // Dakika aralığını düzelt
+                        // Fix minute range
                         if (mm < 0) mm = 0;
                         if (mm > 59) mm = 59;
 
-                        // Tek haneli saat/dakika başına 0 koy
+                        // Pad single digits with 0
                         timeInput.value = `${hh.toString().padStart(2, "0")}:${mm
                             .toString()
                             .padStart(2, "0")}`;
@@ -6991,12 +6990,12 @@ $(".save-route").on("click", async e => {
     syncRouteStopsState()
 
     if (!routeCode || !routeTitle || !routeDescription) {
-        showError("Hat kodu, hat adı ve açıklama alanları boş bırakılamaz.")
+        showError("Route code, route title, and description fields cannot be empty.")
         return
     }
 
     if (!routeStops.length) {
-        showError("Lütfen hat için en az bir durak ekleyin.")
+        showError("Please add at least one stop for the route.")
         return
     }
 
@@ -7184,7 +7183,7 @@ const resetPriceAddRow = () => {
     selects.each(function () {
         const select = $(this);
         const field = select.data("field");
-        let options = '<option value="">Seçiniz</option>';
+        let options = '<option value="">Select</option>';
         priceStops.forEach(pl => {
             options += `<option value="${pl.id}">${pl.title}</option>`;
         });
@@ -7225,8 +7224,8 @@ $(".price-nav").on("click", async e => {
                 const from = $button.data("from")
                 const to = $button.data("to")
                 const message = from && to
-                    ? `${from} - ${to} fiyatını silmek istediğinize emin misiniz?`
-                    : "Bu fiyatı silmek istediğinize emin misiniz?"
+                    ? `Are you sure you want to delete the price for ${from} - ${to}?`
+                    : "Are you sure you want to delete this price?"
                 if (message && !window.confirm(message)) {
                     return
                 }
@@ -7258,7 +7257,7 @@ $(".price-nav").on("click", async e => {
                             class: "price-button-select",
                             "data-field": field
                         });
-                        select.append('<option value="">Seçiniz</option>');
+                        select.append('<option value="">Select</option>');
                         priceStops.forEach(pl => {
                             const option = $("<option>", {
                                 value: pl.id,
@@ -7320,7 +7319,7 @@ $(".price-nav").on("click", async e => {
 
 $(".price-close").on("click", e => {
     if ($(".price-list-nodes .price-button-inputs").length) {
-        const confirmClose = confirm("Kaydedilmemiş değişiklikler var. Kapatmak istediğinize emin misiniz?");
+        const confirmClose = confirm("There are unsaved changes. Are you sure you want to close?");
         if (!confirmClose) return;
     }
     $(".prices").css("display", "none");
@@ -7370,17 +7369,17 @@ const savePriceAdd = async closeAfterSave => {
     const data = collectPriceRowData(row, { includeId: false, appendTimeSuffix: false });
 
     if (!data.fromStopId) {
-        showError("Lütfen Nereden bilgisini seçiniz.");
+        showError("Please select the 'From' location.");
         return;
     }
 
     if (!data.toStopId) {
-        showError("Lütfen Nereye bilgisini seçiniz.");
+        showError("Please select the 'To' location.");
         return;
     }
 
     if (data.price1 == null) {
-        showError("Lütfen Fiyat1 bilgisini giriniz.");
+        showError("Please enter 'Price 1'.");
         return;
     }
 
@@ -7449,27 +7448,27 @@ $(".save-trip").on("click", async e => {
     const busId = $(".trip-bus").val()
 
     if (!routeId) {
-        showError("Lütfen hat seçiniz.")
+        showError("Please select a route.")
         return
     }
 
     if (!firstDate) {
-        showError("Lütfen ilk tarihi seçiniz.")
+        showError("Please select the start date.")
         return
     }
 
     if (!lastDate) {
-        showError("Lütfen son tarihi seçiniz.")
+        showError("Please select the end date.")
         return
     }
 
     if (!departureTime) {
-        showError("Lütfen kalkış saatini giriniz.")
+        showError("Please enter the departure time.")
         return
     }
 
     if (!busModelId) {
-        showError("Lütfen otobüs planını seçiniz.")
+        showError("Please select the bus plan.")
         return
     }
 
@@ -7511,7 +7510,7 @@ $(document)
         e.stopPropagation()
 
         const $button = $(this)
-        const message = "Bu şubeyi silerseniz bu şubeye bağlı kullanıcılar da silinecektir."
+        const message = "If you delete this branch, the users linked to this branch will also be deleted."
         if (message && !window.confirm(message)) {
             return
         }
@@ -7594,7 +7593,7 @@ $(".branch-settings-nav").on("click", async e => {
                         $("#isMainBranch").prop("checked", response.isMainBranch)
                         $(".branch").css("width", "90vw")
                         $(".branch-list").removeClass("col-12").addClass("col-4")
-                        $(".save-branch").html("KAYDET")
+                        $(".save-branch").html("SAVE")
                         $(".branch-info").css("display", "flex")
                         $(".branch-settings").css("display", "block")
                         $(".branch-title").val(response.title)
@@ -7642,7 +7641,7 @@ if ($("#isMainBranch").is(":checked")) {
     $(".is-main-branch-group").show();
 }
 
-// Checkbox değiştiğinde kontrol et
+// Check when checkbox changes
 $("#isMainBranch").on("change", function () {
     if ($(this).is(":checked")) {
         $(".is-main-branch-group").hide();
@@ -7669,7 +7668,7 @@ $(".add-branch").on("click", async e => {
     $(".branch-list").removeClass("col-12").addClass("col-4")
     $(".branch-info").css("display", "flex")
     $(".branch-settings").css("display", "block")
-    $(".save-branch").html("EKLE")
+    $(".save-branch").html("ADD")
 })
 
 $(".save-branch").on("click", async e => {
@@ -7696,17 +7695,17 @@ $(".save-branch").on("click", async e => {
     const defaultDeduction5 = $(".branch-deduction5").val()
 
     if (!title || !String(title).trim()) {
-        showError("Şube adı zorunludur.")
+        showError("Branch name is required.")
         return
     }
 
     if (!stop) {
-        showError("Bulunduğu durak seçilmelidir.")
+        showError("The stop it is located in must be selected.")
         return
     }
 
     if (!isMainBranch && (!mainBranch || !String(mainBranch).trim())) {
-        showError("Ana şube seçilmelidir.")
+        showError("Main branch must be selected.")
         return
     }
 
@@ -7845,7 +7844,7 @@ $(".user-settings-nav").on("click", async e => {
                 e.stopPropagation()
 
                 const $button = $(this)
-                if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?.")) {
+                if (!window.confirm("Are you sure you want to delete this user?")) {
                     return
                 }
 
@@ -7865,7 +7864,7 @@ $(".user-settings-nav").on("click", async e => {
                         $(".user-list").addClass("col-12").removeClass("col-4")
                         $(".user-info").css("display", "none")
                         $(".user-settings").css("display", "none")
-                        $(".save-user").html("KAYDET")
+                        $(".save-user").html("SAVE")
                         renderPermissions({ register: [], trip: [], sales: [], account_cut: [] })
                     }
                     $button.closest(".btn-group").remove()
@@ -7886,7 +7885,7 @@ $(".user-settings-nav").on("click", async e => {
                         $("#isUserActive").prop("checked", response.isActive)
                         $(".users").css("width", "90vw")
                         $(".user-list").removeClass("col-12").addClass("col-4")
-                        $(".save-user").html("KAYDET")
+                        $(".save-user").html("SAVE")
                         $(".user-info").css("display", "flex")
                         $(".user-settings").css("display", "block")
                         $(".user-name").val(response.name)
@@ -8008,7 +8007,7 @@ $(".customer-nav").on("click", async e => {
                 const tripTime = $btn.data("tripTime");
 
                 if (!tripId || !tripDate || !tripTime) {
-                    showMemberTicketFeedback($btn, "Bu bilet için aktif bir sefer bulunamadı.");
+                    showMemberTicketFeedback($btn, "No active trip found for this ticket.");
                     return;
                 }
 
@@ -8039,13 +8038,13 @@ $(".customer-nav").on("click", async e => {
                     const notFound = status === 404 || errorCode === "TRIP_NOT_FOUND";
 
                     if (notFound) {
-                        const fallbackMessage = "Bu bilet için aktif bir sefer bulunamadı.";
+                        const fallbackMessage = "No active trip found for this ticket.";
                         const message = error?.responseJSON?.message || fallbackMessage;
                         console.warn("Trip not found for ticket", { tripId, tripDate, tripTime, error });
                         showMemberTicketFeedback($btn, message);
                     } else {
                         console.error(error);
-                        showError("Sefer bilgisi yüklenemedi.");
+                        showError("Trip information could not be loaded.");
                     }
                 } finally {
                     $btn.prop("disabled", false);
@@ -8061,7 +8060,7 @@ $(".customer-nav").on("click", async e => {
 $(".announcement-add-nav").on("click", async e => {
     const branchSelect = $(".announcement-branch")
     branchSelect.empty()
-    branchSelect.append(`<option value="" selected>Herkes</option>`)
+    branchSelect.append(`<option value="" selected>Everyone</option>`)
     try {
         const branches = await $.ajax({ url: "/get-branches-list", type: "GET", data: { onlyData: true, isJustActives: false } })
         branches.forEach(b => branchSelect.append(`<option value="${b.id}">${b.title}</option>`))
@@ -8087,17 +8086,17 @@ $(".announcement-add-button").on("click", async e => {
     const showPopup = $(".announcement-show-popup").is(":checked")
 
     if (!message) {
-        showError("Lütfen bir mesaj girin.")
+        showError("Please enter a message.")
         return
     }
 
     if (!branchId) {
-        showError("Lütfen bir şube seçin.")
+        showError("Please select a branch.")
         return
     }
 
     if (!showTicker && !showPopup) {
-        showError("En az bir gösterim seçilmelidir.")
+        showError("At least one display type must be selected.")
         return
     }
     await $.ajax({
@@ -8147,7 +8146,7 @@ $(".customer-search-btn").on("click", async e => {
                 const tripTime = $btn.data("tripTime");
 
                 if (!tripId || !tripDate || !tripTime) {
-                    showMemberTicketFeedback($btn, "Bu bilet için aktif bir sefer bulunamadı.");
+                    showMemberTicketFeedback($btn, "No active trip found for this ticket.");
                     return;
                 }
 
@@ -8178,13 +8177,13 @@ $(".customer-search-btn").on("click", async e => {
                     const notFound = status === 404 || errorCode === "TRIP_NOT_FOUND";
 
                     if (notFound) {
-                        const fallbackMessage = "Bu bilet için aktif bir sefer bulunamadı.";
+                        const fallbackMessage = "No active trip found for this ticket.";
                         const message = error?.responseJSON?.message || fallbackMessage;
                         console.warn("Trip not found for ticket", { tripId, tripDate, tripTime, error });
                         showMemberTicketFeedback($btn, message);
                     } else {
                         console.error(error);
-                        showError("Sefer bilgisi yüklenemedi.");
+                        showError("Could not load trip info.");
                     }
                 } finally {
                     $btn.prop("disabled", false);
@@ -8332,7 +8331,7 @@ $(".member-nav").on("click", async e => {
                 const tripTime = $btn.data("tripTime");
 
                 if (!tripId || !tripDate || !tripTime) {
-                    showMemberTicketFeedback($btn, "Bu bilet için aktif bir sefer bulunamadı.");
+                    showMemberTicketFeedback($btn, "No active trip found for this ticket.");
                     return;
                 }
 
@@ -8363,13 +8362,13 @@ $(".member-nav").on("click", async e => {
                     const notFound = status === 404 || errorCode === "TRIP_NOT_FOUND";
 
                     if (notFound) {
-                        const fallbackMessage = "Bu bilet için aktif bir sefer bulunamadı.";
+                        const fallbackMessage = "No active trip found for this ticket.";
                         const message = error?.responseJSON?.message || fallbackMessage;
                         console.warn("Trip not found for ticket", { tripId, tripDate, tripTime, error });
                         showMemberTicketFeedback($btn, message);
                     } else {
                         console.error(error);
-                        showError("Sefer bilgisi yüklenemedi.");
+                        showError("Could not load trip info.");
                     }
                 } finally {
                     $btn.prop("disabled", false);
@@ -8410,7 +8409,7 @@ const initializeReportPopup = async (reportKey, popup) => {
             time_24hr: true,
             altInput: true,
             altFormat: "d F Y H:i",
-            locale: "tr",
+            locale: "en",
         };
 
         if (defaultDate) {
@@ -8425,11 +8424,11 @@ const initializeReportPopup = async (reportKey, popup) => {
             fetch("/get-stops-list?onlyData=true").then(r => r.json())
         ]);
 
-        const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+        const branchSel = popup.find(".report-branch").empty().append('<option value="">Select</option>');
         branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
 
-        const fromSel = popup.find(".report-from").empty().append('<option value="">Seçiniz</option>');
-        const toSel = popup.find(".report-to").empty().append('<option value="">Seçiniz</option>');
+        const fromSel = popup.find(".report-from").empty().append('<option value="">Select</option>');
+        const toSel = popup.find(".report-to").empty().append('<option value="">Select</option>');
         stops.forEach(s => {
             fromSel.append(`<option value="${s.id}">${s.title}</option>`);
             toSel.append(`<option value="${s.id}">${s.title}</option>`);
@@ -8437,7 +8436,7 @@ const initializeReportPopup = async (reportKey, popup) => {
 
         branchSel.off("change").on("change", async function () {
             const id = $(this).val();
-            const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+            const userSel = popup.find(".report-user").empty().append('<option value="">Select</option>');
             if (id) {
                 const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
                 users.forEach(u => userSel.append(`<option value="${u.id}">${u.name}</option>`));
@@ -8452,12 +8451,12 @@ const initializeReportPopup = async (reportKey, popup) => {
     if (report === "externalReturnTickets" && !popup.data("initialized")) {
         try {
             const branches = await fetch("/get-branches-list?onlyData=true").then(r => r.json());
-            const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+            const branchSel = popup.find(".report-branch").empty().append('<option value="">Select</option>');
             branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
 
             branchSel.off("change").on("change", async function () {
                 const id = $(this).val();
-                const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+                const userSel = popup.find(".report-user").empty().append('<option value="">Select</option>');
                 if (id) {
                     try {
                         const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
@@ -8483,12 +8482,12 @@ const initializeReportPopup = async (reportKey, popup) => {
     if (report === "externalReturnTickets" && !popup.data("initialized")) {
         try {
             const branches = await fetch("/get-branches-list?onlyData=true").then(r => r.json());
-            const branchSel = popup.find(".report-branch").empty().append('<option value="">Seçiniz</option>');
+            const branchSel = popup.find(".report-branch").empty().append('<option value="">Select</option>');
             branches.forEach(b => branchSel.append(`<option value="${b.id}">${b.title}</option>`));
 
             branchSel.off("change").on("change", async function () {
                 const id = $(this).val();
-                const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+                const userSel = popup.find(".report-user").empty().append('<option value="">Select</option>');
                 if (id) {
                     try {
                         const users = await fetch(`/get-users-by-branch?id=${id}`).then(r => r.json());
@@ -8514,7 +8513,7 @@ const initializeReportPopup = async (reportKey, popup) => {
     if (report === "dailyUserAccount" && !popup.data("initialized")) {
         try {
             const users = await fetch("/get-users-list?onlyData=true").then(r => r.json());
-            const userSel = popup.find(".report-user").empty().append('<option value="">Seçiniz</option>');
+            const userSel = popup.find(".report-user").empty().append('<option value="">Select</option>');
             users.forEach(u => {
                 userSel.append(`<option value="${u.id}">${u.name}</option>`);
             });
@@ -8534,9 +8533,9 @@ const initializeReportPopup = async (reportKey, popup) => {
     if (reportKey === "busTransactions" && !popup.data("initialized")) {
         try {
             const buses = await fetch("/get-buses-data").then(r => r.json());
-            const busSelect = popup.find(".report-bus").empty().append('<option value="">Tümü</option>');
+            const busSelect = popup.find(".report-bus").empty().append('<option value="">All</option>');
             buses.forEach(bus => {
-                const title = bus.licensePlate ? bus.licensePlate : `Otobüs #${bus.id}`;
+                const title = bus.licensePlate ? bus.licensePlate : `Bus #${bus.id}`;
                 busSelect.append(`<option value="${bus.id}">${title}</option>`);
             });
         } catch (err) {
@@ -8682,7 +8681,7 @@ $(".member-info-save").on("click", async e => {
         button.data("defaultText", button.text());
     }
     const defaultText = button.data("defaultText");
-    button.prop("disabled", true).text("Kaydediliyor...");
+    button.prop("disabled", true).text("Saving...");
 
     $.ajax({
         url: "/post-update-customer",
@@ -8690,7 +8689,7 @@ $(".member-info-save").on("click", async e => {
         contentType: "application/json",
         data: JSON.stringify(payload),
         success: function (resp) {
-            button.text("Kaydedildi");
+            button.text("Saved");
             const updated = resp && resp.customer ? resp.customer : null;
             if (updated) {
                 const valueOrEmpty = (value) => (value === undefined || value === null ? "" : value);
@@ -8727,9 +8726,9 @@ $(".member-info-save").on("click", async e => {
                         cols.eq(1).find("p").text(valueOrEmpty(updated.name));
                         cols.eq(2).find("p").text(valueOrEmpty(updated.surname));
                         cols.eq(3).find("p").text(valueOrEmpty(updated.phoneNumber));
-                        const pointLabel = updated.pointOrPercent === "point" ? "Puan" : updated.pointOrPercent === "percent" ? "İndirim (%)" : "";
+                        const pointLabel = updated.pointOrPercent === "point" ? "Points" : updated.pointOrPercent === "percent" ? "Discount (%)" : "";
                         const pointValue = updated.pointOrPercent === "point"
-                            ? `${valueOrEmpty(updated.point_amount) || 0} puan`
+                            ? `${valueOrEmpty(updated.point_amount) || 0} points`
                             : updated.pointOrPercent === "percent"
                                 ? `${valueOrEmpty(updated.percent) || 0}%`
                                 : "";
@@ -8743,7 +8742,7 @@ $(".member-info-save").on("click", async e => {
                         cols.eq(3).find("p").text(valueOrEmpty(updated.phoneNumber));
                         const categoryCol = cols.eq(4).find("p");
                         if (categoryCol.length) {
-                            categoryCol.text(updated.customerCategory === "member" ? "Abone" : "");
+                            categoryCol.text(updated.customerCategory === "member" ? "Subscriber" : "");
                         }
                     }
                 }
@@ -8831,7 +8830,7 @@ $(".add-user").on("click", async e => {
     $(".user-list").removeClass("col-12").addClass("col-4")
     $(".user-info").css("display", "flex")
     $(".user-settings").css("display", "block")
-    $(".save-user").html("EKLE")
+    $(".save-user").html("ADD")
     await $.ajax({
         url: "/get-user",
         type: "GET",
@@ -8859,7 +8858,7 @@ $(".save-user").on("click", async e => {
     $(".user-phone").val(phone)
 
     if (!name || !username || !password || !branchId) {
-        showError("Lütfen Ad Soyad, Kullanıcı Adı, Şifre ve Şube alanlarını doldurunuz.")
+        showError("Please fill in the Full Name, Username, Password, and Branch fields.")
         return
     }
 
@@ -8889,7 +8888,7 @@ $(".save-user").on("click", async e => {
 })
 
 $(".register-reset-nav").on("click", async e => {
-    if (!confirm("Kasayı sıfırlamak istediğinize emin misiniz?")) return
+    if (!confirm("Are you sure you want to reset the register?")) return
     await $.ajax({
         url: "/post-reset-register",
         type: "POST",
@@ -9131,7 +9130,7 @@ function showNextPopup() {
     showingPopup = true;
     const a = popupQueue.shift();
     const pop = $("<div>").addClass("announcement-pop-up");
-    const header = $("<div>").addClass("gtr-header").append($("<span>").text("DUYURU"));
+    const header = $("<div>").addClass("gtr-header").append($("<span>").text("ANNOUNCEMENT"));
     const close = $("<div>").addClass("announcement-pop-up-close").append($("<i>").addClass("fa-solid fa-x"));
     close.on("click", async () => {
         await $.ajax({ url: "/post-announcement-seen", type: "POST", data: { announcementId: a.id } });
@@ -9200,7 +9199,7 @@ $(loadAnnouncements);
 
         let lowered;
         try {
-            lowered = value.toLocaleLowerCase("tr-TR");
+            lowered = value.toLocaleLowerCase("en-US");
         } catch (error) {
             lowered = value.toLowerCase();
         }
@@ -9217,9 +9216,9 @@ $(loadAnnouncements);
             this.originalNextSibling = select.nextSibling;
             this.placeholder = select.getAttribute("data-placeholder")
                 || select.getAttribute("placeholder")
-                || "Seçiniz";
-            this.searchPlaceholder = select.getAttribute("data-search-placeholder") || "Ara...";
-            this.noResultsText = select.getAttribute("data-no-results-text") || "Sonuç bulunamadı";
+                || "Select";
+            this.searchPlaceholder = select.getAttribute("data-search-placeholder") || "Search...";
+            this.noResultsText = select.getAttribute("data-no-results-text") || "No results found";
             this.id = `searchable-select-${++idCounter}`;
             this.isOpen = false;
             this.highlightIndex = -1;
@@ -9477,6 +9476,7 @@ $(loadAnnouncements);
                         label: trimmed,
                         searchText: toLocaleLower(trimmed),
                         isCustom: true,
+                        // English translation for custom entry
                     });
                 }
             }
@@ -9515,7 +9515,7 @@ $(loadAnnouncements);
 
                 if (option.isCustom) {
                     optionEl.classList.add("searchable-select__option--create");
-                    optionEl.textContent = `"${option.label}" değerini ekle`;
+                    optionEl.textContent = `Add value "${option.label}"`;
                     optionEl.setAttribute("aria-selected", "false");
                 } else {
                     optionEl.textContent = option.label;

@@ -2,7 +2,6 @@ const { getTenantConnection } = require("../utilities/database");
 const { initGoturModels } = require("../utilities/goturDb");
 const { DEFAULT_TENANT_KEY, resolveTenantKey } = require("../utilities/tenantConfig");
 
-// Ortak DB cache
 let cachedCommonModels;
 function getCommonModels() {
     if (!cachedCommonModels) cachedCommonModels = initGoturModels();
@@ -13,9 +12,6 @@ module.exports = async (req, res, next) => {
     try {
         let tenantKey;
 
-        /* ==========================================================
-         * 1) API request
-         * ========================================================== */
         const isApiRequest =
             req.originalUrl.startsWith("/api/") ||
             req.path.startsWith("/api/");
@@ -24,23 +20,19 @@ module.exports = async (req, res, next) => {
             tenantKey = req.get("x-tenant-key") || req.get("x-tenant");
 
             if (!tenantKey) {
-                console.error("❌ API çağrısı fakat API key ile tenant bulunamadı.");
+                console.error("❌ API call but tenant not found via API key.");
                 return res.status(400).json({
-                    error: "API tenant bulunamadı — X-Api-Key doğru mu?"
+                    error: "API tenant not found — Is X-Api-Key correct?"
                 });
             }
         }
 
-        /* ==========================================================
-         * 2) Normal WEBSITE request
-         * ========================================================== */
         else {
-            // domain/subdomain çözümlemesi
             tenantKey = resolveTenantKey(req.hostname);
 
             if (!tenantKey) {
-                console.error("❌ Tenant/subdomain çözümlenemedi.");
-                return res.status(400).send("Tenant belirlenemedi.");
+                console.error("❌ Tenant/subdomain could not be resolved.");
+                return res.status(400).send("Tenant could not be determined.");
             }
         }
 
@@ -55,6 +47,6 @@ module.exports = async (req, res, next) => {
 
     } catch (err) {
         console.error("❌ Tenant Middleware Crash:", err);
-        return res.status(500).json({ error: "Tenant çözümleme hatası", detail: err.message });
+        return res.status(500).json({ error: "Tenant resolution error", detail: err.message });
     }
 };

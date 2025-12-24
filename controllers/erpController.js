@@ -72,6 +72,7 @@ const NATIONALITY_OPTIONS = Object.freeze(
             return TURKISH_COLLATOR.compare(a.label, b.label);
         })
 );
+
 async function generatePNR(models, fromId, toId, stops) {
     const from = stops.find(s => s.id == fromId)?.title;
     const to = stops.find(s => s.id == toId)?.title;
@@ -91,9 +92,9 @@ async function generatePNR(models, fromId, toId, stops) {
     let exists = true;
 
     while (exists) {
-        const rand = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 karakter
+        const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
         pnr = `${fromCode}${toCode}${rand}`;
-        exists = await models.Ticket.findOne({ where: { pnr } }); // Sequelize'de sorgu
+        exists = await models.Ticket.findOne({ where: { pnr } });
     }
 
     return pnr;
@@ -313,7 +314,6 @@ function normalizePlanBinary(planBinary) {
 }
 
 async function calculateBusAccountData(models, tripId, stopId, user) {
-    // Normal tamamlanmış biletler
     const tickets = await models.Ticket.findAll({
         where: {
             tripId,
@@ -323,14 +323,12 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         raw: true
     });
 
-    // Şube verisi alınır
     const branch = await models.Branch.findOne({
         where: { id: user.branchId },
         raw: true
     });
     const isPaysInternet = branch?.isPaysInternet
 
-    // Eğer şube internet biletlerini kendi ödüyorsa, web/gotur biletleri de dahil edilir
     let webTickets = [];
     if (isPaysInternet) {
         webTickets = await models.Ticket.findAll({
@@ -343,16 +341,13 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         });
     }
 
-    // Kargolar
     const cargos = await models.Cargo.findAll({
         where: { tripId, fromStopId: stopId },
         raw: true
     });
 
-    // Bütün biletleri birleştir (normal + web)
     const allTickets = [...tickets, ...webTickets];
 
-    // Kullanıcı bilgileri (bilet ve kargoyu kesen kişiler)
     const ticketUserIds = allTickets.map(t => t.userId).filter(Boolean);
     const cargoUserIds = cargos.map(c => c.userId).filter(Boolean);
     const userIds = [...new Set([...ticketUserIds, ...cargoUserIds])];
@@ -362,11 +357,9 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         raw: true
     });
 
-    // userId -> branchId eşlemesi
     const userBranch = {};
     users.forEach(u => (userBranch[u.id] = u.branchId));
 
-    // Sayısal değişkenler
     const totalCount = allTickets.length + cargos.length;
     let totalAmount = 0;
     let myCash = 0,
@@ -390,14 +383,12 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
         }
     };
 
-    // Biletleri hesapla
     allTickets.forEach(t => {
         const amount = parseAmount(t.price);
         totalAmount += amount;
         accumulateByOwner(amount, t.payment, t.userId);
     });
 
-    // Kargoları hesapla
     cargos.forEach(c => {
         const amount = parseAmount(c.price);
         cargoCount += 1;
@@ -422,17 +413,13 @@ async function calculateBusAccountData(models, tripId, stopId, user) {
 }
 
 function addTime(baseTime, addTime) {
-    // "12:30:00" ve "01:00:00" gibi stringleri alır
     const [h1, m1, s1] = baseTime.split(":").map(Number);
     const [h2, m2, s2] = addTime.split(":").map(Number);
 
-    // toplam saniye
     let totalSeconds = (h1 * 3600 + m1 * 60 + s1) + (h2 * 3600 + m2 * 60 + s2);
 
-    // 24 saati geçerse mod 24 yap
     totalSeconds = totalSeconds % (24 * 3600);
 
-    // geri formatla
     const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
     const mm = String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, "0");
     const ss = String(totalSeconds % 60).padStart(2, "0");
@@ -797,7 +784,6 @@ function getSeatTypes(planBinary) {
         seatNo++;
         const col = i % SEATS_PER_ROW;
 
-        // A seat is double if there's another seat directly adjacent on either side
         const hasLeft = col > 0 && planBinary[i - 1] === '1';
         const hasRight = col < SEATS_PER_ROW - 1 && planBinary[i + 1] === '1';
         seatTypes[seatNo] = (hasLeft || hasRight) ? 'double' : 'single';
@@ -923,8 +909,8 @@ async function checkSingleSeatLimit(models, trip, route, seatNumbers, excludedTi
 exports.test = async (req, res, next) => {
     try {
         const tripId = 13;
-        await generateAccountReceiptFromDb(tripId, 1, 'bilet.pdf');
-        res.send('bilet.pdf created');
+        await generateAccountReceiptFromDb(tripId, 1, 'ticket.pdf');
+        res.send('ticket.pdf created');
     } catch (err) {
         console.error('PDF generation error:', err);
         res.status(500).json({ message: err.message });
@@ -943,13 +929,12 @@ exports.getDayTripsList = async (req, res, next) => {
         }
 
         if (!date) {
-            return res.status(400).json({ error: "Tarih bilgisi eksik." });
+            return res.status(400).json({ error: "Date information is missing." });
         }
 
-        // Tarih geçerli mi?
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
-            return res.status(400).json({ error: "Geçersiz tarih formatı." });
+            return res.status(400).json({ error: "Invalid date format." });
         }
 
         const routeStopsByPlace = await req.models.RouteStop.findAll({ where: { stopId: stopId } })
@@ -1057,7 +1042,7 @@ exports.getDayTripsList = async (req, res, next) => {
 
             return {
                 ...trip.toJSON(),
-                dateString: `${new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate)}`,
+                dateString: `${new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(tripDate)}`,
                 timeString: `${hours}.${minutes}`,
                 isExpired: trip.isExpired,
                 fullness: trip.fullness
@@ -1066,9 +1051,10 @@ exports.getDayTripsList = async (req, res, next) => {
         res.render("mixins/tripRow", { trips: tripArray, tripId })
     } catch (err) {
         console.error("getDayTripsList error:", err);
-        res.status(500).json({ error: "Sunucu hatası." });
+        res.status(500).json({ error: "Server error." });
     }
 };
+
 exports.getTrip = async (req, res, next) => {
     const tripDate = req.query.date
     const tripTime = req.query.time
@@ -1112,7 +1098,7 @@ exports.getTrip = async (req, res, next) => {
         const tripDate = new Date(trip.date);
         const [hours, minutes] = trip.modifiedTime.split(":");
         const pad = (num) => String(num).padStart(2, "0");
-        trip.dateString = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(tripDate);
+        trip.dateString = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(tripDate);
         trip.timeString = `${hours}.${minutes}`
 
         const ticketRecords = await req.models.Ticket.findAll({ where: { tripId: trip.id, status: { [Op.notIn]: ['canceled', 'refund'] } } });
@@ -1245,11 +1231,10 @@ exports.getTrip = async (req, res, next) => {
             grandAmount: totalSoldAmount + totalReservedAmount + cargoAmount
         }
 
-        // res.json({ trip, busModel, captain, route, tickets: newTicketArray, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
         res.render("mixins/busPlan", { trip, busModel, captain, route, tickets: newTicketArray, seatTypes, tripDate: tripDate, tripTime: tripTime, tripId: trip.id, fromId: stopId, toId: routeStops[routeStops.length - 1].stopId, fromStr, toStr, incomes })
     }
     else {
-        res.status(404).json({ error: "Sefer bulunamadı." })
+        res.status(404).json({ error: "Trip not found." })
     }
 
 }
@@ -1258,12 +1243,12 @@ exports.getTripStops = async (req, res, next) => {
     try {
         const tripId = Number(req.query.tripId);
         if (!tripId) {
-            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+            return res.status(400).json({ message: "Trip information missing." });
         }
 
         const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
         const routeStops = await req.models.RouteStop.findAll({
@@ -1314,7 +1299,7 @@ exports.getTripTable = async (req, res, next) => {
 
         ticket.from = stops.find(s => s.id == ticket.fromRouteStopId)?.title || ""
         ticket.to = stops.find(s => s.id == ticket.toRouteStopId)?.title || ""
-        ticket.gender = ticket.gender === "m" ? "BAY" : "BAYAN"
+        ticket.gender = ticket.gender === "m" ? "MALE" : "FEMALE"
         ticket.isOtherStop = currentStopId && ticket.fromRouteStopId != currentStopId
 
         const user = userMap[ticket.userId]
@@ -1386,7 +1371,6 @@ exports.getBusAccountCutData = async (req, res, next) => {
         const { tripId, stopId } = req.query;
         const firmUser = req.session.firmUser;
 
-        // Artık webTicket'lar da dahil hesaplama
         const data = await calculateBusAccountData(req.models, tripId, stopId, firmUser);
 
         const parseOptionalNumber = value => {
@@ -1450,7 +1434,7 @@ exports.getBusAccountCutData = async (req, res, next) => {
         });
     } catch (err) {
         console.error("getBusAccountCutData error:", err);
-        res.status(500).json({ message: "Hesap bilgisi alınamadı." });
+        res.status(500).json({ message: "Could not retrieve account information." });
     }
 };
 
@@ -1522,7 +1506,7 @@ exports.postBusAccountCut = async (req, res, next) => {
         res.json({ message: "OK" });
     } catch (err) {
         console.error("postBusAccountCut error:", err);
-        res.status(500).json({ message: "Hesap kesilemedi." });
+        res.status(500).json({ message: "Account cut failed." });
     }
 };
 
@@ -1530,7 +1514,7 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
     try {
         const { tripId, stopId } = req.query;
         const record = await req.models.BusAccountCut.findOne({ where: { tripId, stopId } });
-        if (!record) return res.status(404).json({ message: "Hesap bulunamadı." });
+        if (!record) return res.status(404).json({ message: "Account not found." });
         const data = await calculateBusAccountData(req.models, tripId, stopId, req.session.firmUser);
         res.json({
             id: record.id,
@@ -1554,7 +1538,7 @@ exports.getBusAccountCutRecord = async (req, res, next) => {
         });
     } catch (err) {
         console.error("getBusAccountCutRecord error:", err);
-        res.status(500).json({ message: "Hesap bilgisi alınamadı." });
+        res.status(500).json({ message: "Account information could not be retrieved." });
     }
 };
 
@@ -1563,7 +1547,7 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
         const { id } = req.body;
         const accountCut = await req.models.BusAccountCut.findOne({ where: { id } });
         if (!accountCut) {
-            return res.status(404).json({ message: "Hesap bulunamadı." });
+            return res.status(404).json({ message: "Account not found." });
         }
 
         const payedAmount = Number(accountCut.payedAmount) || 0;
@@ -1577,7 +1561,7 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
         const stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: [...new Set(routeStops.map(rs => rs.stopId))] } } })
 
         const baseDescription = await buildBusTransactionDescription(req.models, trip, accountCut.stopId, bus, routeStops, stops);
-        const fullDescription = baseDescription ? `Hesap kesimi geri alındı | ${baseDescription}` : "Hesap kesimi geri alındı";
+        const fullDescription = baseDescription ? `Account cut reverted | ${baseDescription}` : "Account cut reverted";
 
         await req.models.Transaction.create({
             userId: req.session.firmUser.id,
@@ -1608,7 +1592,7 @@ exports.postDeleteBusAccountCut = async (req, res, next) => {
         res.json({ message: "OK" });
     } catch (err) {
         console.error("postDeleteBusAccountCut error:", err);
-        res.status(500).json({ message: "Hesap geri alınamadı." });
+        res.status(500).json({ message: "Account revert failed." });
     }
 };
 
@@ -1620,14 +1604,14 @@ exports.getBusAccountCutReceipt = async (req, res, next) => {
         await generateAccountReceiptFromDb(tripId, stopId, res, req.models);
     } catch (err) {
         console.error("getBusAccountCutReceipt error:", err);
-        res.status(500).json({ message: "Hesap fişi oluşturulamadı." });
+        res.status(500).json({ message: "Account receipt could not be generated." });
     }
 };
 
 exports.getSeferDetayCiktisi = async (req, res, next) => {
     try {
         const { tripId } = req.params;
-        if (!tripId) return res.status(400).json({ message: "tripId gerekli." });
+        if (!tripId) return res.status(400).json({ message: "tripId is required." });
 
         const result = await seferDetayCiktisiAl(req, tripId);
         res.json(result);
@@ -1646,12 +1630,12 @@ exports.getTripSeatPlanReport = async (req, res, next) => {
         const isStopIdValid = Number.isFinite(stopId);
 
         if (!Number.isFinite(tripId) || tripId <= 0) {
-            return res.status(400).json({ message: 'Sefer bilgisi eksik.' });
+            return res.status(400).json({ message: 'Trip information missing.' });
         }
 
         const trip = await req.models.Trip.findOne({ where: { id: tripId }, raw: true });
         if (!trip) {
-            return res.status(404).json({ message: 'Sefer bulunamadı.' });
+            return res.status(404).json({ message: 'Trip not found.' });
         }
 
         const [route, busModel, bus, captain] = await Promise.all([
@@ -1663,7 +1647,7 @@ exports.getTripSeatPlanReport = async (req, res, next) => {
 
         const planArray = normalizePlanBinary(trip.busPlanString ?? busModel?.planBinary);
         if (!planArray.length) {
-            return res.status(400).json({ message: 'Sefer için tanımlı koltuk planı bulunamadı.' });
+            return res.status(400).json({ message: 'Seat plan not found for this trip.' });
         }
 
         const routeStops = await req.models.RouteStop.findAll({
@@ -1764,7 +1748,7 @@ exports.getTripSeatPlanReport = async (req, res, next) => {
         }, res);
     } catch (err) {
         console.error('getTripSeatPlanReport error:', err);
-        res.status(500).json({ message: 'Koltuk planı raporu oluşturulamadı.' });
+        res.status(500).json({ message: 'Seat plan report could not be generated.' });
     }
 };
 
@@ -1872,7 +1856,7 @@ exports.getTripStopRestriction = async (req, res, next) => {
 };
 
 const moment = require("moment");
-const { seferGuncelle } = require("../utilities/uetdsService"); // seferGuncelle fonksiyonunun yolu
+const { seferGuncelle } = require("../utilities/uetdsService");
 
 const parseAllowedValue = value => value === true || value === "true" || value === 1 || value === "1";
 const isRestrictionDisabled = value => value === false || value === "false" || value === 0 || value === "0";
@@ -1883,7 +1867,7 @@ async function applyTripStopRestrictionChange(req, tripId, fromRouteStopId, toRo
     const normalizedToId = Number(toRouteStopId);
 
     if (!normalizedTripId || !normalizedFromId || !normalizedToId) {
-        throw new Error("Geçersiz sefer veya durak bilgisi.");
+        throw new Error("Invalid trip or stop information.");
     }
 
     const allowed = parseAllowedValue(isAllowedInput);
@@ -1923,7 +1907,7 @@ async function applyTripStopRestrictionChange(req, tripId, fromRouteStopId, toRo
     });
 
     if (!trip) {
-        throw new Error("Trip bulunamadı.");
+        throw new Error("Trip not found.");
     }
 
     const routeStopsRaw = await req.models.RouteStop.findAll({
@@ -1933,7 +1917,7 @@ async function applyTripStopRestrictionChange(req, tripId, fromRouteStopId, toRo
     });
 
     if (!routeStopsRaw.length) {
-        throw new Error("Rota durakları bulunamadı.");
+        throw new Error("Route stops not found.");
     }
 
     const stopIds = routeStopsRaw.map(rs => rs.stopId);
@@ -2022,7 +2006,7 @@ async function applyTripStopRestrictionChange(req, tripId, fromRouteStopId, toRo
     }
 
     return {
-        message: changed ? "Restriction değişti, UETDS güncellendi" : "Restriction kaydedildi, rota değişmedi.",
+        message: changed ? "Restriction changed, UETDS updated." : "Restriction saved, route did not change.",
         updated: changed,
         uetds: uetdsResult,
     };
@@ -2033,13 +2017,13 @@ exports.postTripStopRestriction = async (req, res, next) => {
         const { tripId, fromId, toId, isAllowed } = req.body;
 
         if (!tripId || !fromId || !toId) {
-            return res.status(400).json({ message: "Geçersiz kısıtlama bilgisi." });
+            return res.status(400).json({ message: "Invalid restriction information." });
         }
 
         const result = await applyTripStopRestrictionChange(req, tripId, fromId, toId, isAllowed);
         res.json(result);
     } catch (err) {
-        console.error("❌ Restriction işlem hatası:", err);
+        console.error("❌ Restriction operation error:", err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -2050,7 +2034,7 @@ exports.postTripStopRestrictionAll = async (req, res, next) => {
 
         const normalizedTripId = Number(tripId);
         if (!normalizedTripId) {
-            return res.status(400).json({ message: "Geçersiz sefer bilgisi." });
+            return res.status(400).json({ message: "Invalid trip information." });
         }
 
         let parsedChanges = changes;
@@ -2058,7 +2042,7 @@ exports.postTripStopRestrictionAll = async (req, res, next) => {
             try {
                 parsedChanges = JSON.parse(parsedChanges);
             } catch (error) {
-                return res.status(400).json({ message: "Geçersiz kısıtlama verisi." });
+                return res.status(400).json({ message: "Invalid restriction data." });
             }
         }
 
@@ -2075,12 +2059,12 @@ exports.postTripStopRestrictionAll = async (req, res, next) => {
             .filter(change => Number(change.fromId) && Number(change.toId));
 
         if (!normalizedChanges.length) {
-            return res.status(400).json({ message: "Kısıtlama değişikliği bulunamadı." });
+            return res.status(400).json({ message: "No restriction changes found." });
         }
 
         const baseTrip = await req.models.Trip.findByPk(normalizedTripId);
         if (!baseTrip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
         const now = moment();
@@ -2112,7 +2096,7 @@ exports.postTripStopRestrictionAll = async (req, res, next) => {
         if (!targetTrips.length) {
             return res.json({
                 success: true,
-                message: "Uygulanacak aktif sefer bulunamadı.",
+                message: "No active trip found to apply.",
                 appliedTripIds: [],
             });
         }
@@ -2139,7 +2123,7 @@ exports.postTripStopRestrictionAll = async (req, res, next) => {
 
         res.json({
             success: true,
-            message: "Kısıtlama değişiklikleri ilgili seferlere uygulandı.",
+            message: "Restriction changes applied to relevant trips.",
             appliedTripIds: targetTrips.map(t => t.id),
             results,
         });
@@ -2157,33 +2141,32 @@ exports.postTripTimeAdjustment = async (req, res, next) => {
         const numericRouteStopId = Number(routeStopId);
 
         if (!numericTripId || !numericRouteStopId)
-            return res.status(400).json({ message: "Geçersiz sefer veya durak bilgisi." });
+            return res.status(400).json({ message: "Invalid trip or stop information." });
 
         const normalizedDirection =
             direction === "backward" ? "backward" : direction === "forward" ? "forward" : null;
         if (!normalizedDirection)
-            return res.status(400).json({ message: "Geçerli bir yön seçiniz." });
+            return res.status(400).json({ message: "Please select a valid direction." });
 
         const minutes = parseTimeInputToMinutes(amount);
-        if (minutes === null) return res.status(400).json({ message: "Geçerli bir süre giriniz." });
-        if (minutes === 0) return res.status(400).json({ message: "Süre 0 olamaz." });
+        if (minutes === null) return res.status(400).json({ message: "Please enter a valid duration." });
+        if (minutes === 0) return res.status(400).json({ message: "Duration cannot be 0." });
 
         const hasPermission =
             (req.session.permissions || []).includes("TRIP_TIME_ADJUST") ||
             (req.session.permissions || []).includes("TRIP_STOP_RESTRICT");
 
         if (!hasPermission)
-            return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+            return res.status(403).json({ message: "You are not authorized for this operation." });
 
         const trip = await req.models.Trip.findByPk(numericTripId);
-        if (!trip) return res.status(404).json({ message: "Sefer bulunamadı." });
+        if (!trip) return res.status(404).json({ message: "Trip not found." });
 
         const routeStop = await req.models.RouteStop.findOne({
             where: { id: numericRouteStopId, routeId: trip.routeId },
         });
-        if (!routeStop) return res.status(404).json({ message: "Sefer durağı bulunamadı." });
+        if (!routeStop) return res.status(404).json({ message: "Trip stop not found." });
 
-        // 🔹 offset kaydı oluştur/güncelle
         const delta = minutes * (normalizedDirection === "backward" ? -1 : 1);
 
         const [record, created] = await req.models.TripStopTime.findOrCreate({
@@ -2201,7 +2184,6 @@ exports.postTripTimeAdjustment = async (req, res, next) => {
             }
         }
 
-        // 🔹 Offset'leri çek
         const offsets = await req.models.TripStopTime.findAll({
             where: { tripId: numericTripId },
             raw: true,
@@ -2214,42 +2196,36 @@ exports.postTripTimeAdjustment = async (req, res, next) => {
         });
 
         if (!routeStops.length)
-            return res.status(400).json({ message: "Rota durakları bulunamadı." });
+            return res.status(400).json({ message: "Route stops not found." });
 
-        // 🧩 1) İlk durak ve offset
         const firstStop = routeStops[0];
         const firstOffsetRec = offsets.find(o => o.routeStopId === firstStop.id);
         const firstOffsetMinutes = firstOffsetRec ? Number(firstOffsetRec.offsetMinutes) || 0 : 0;
 
-        // 🧩 2) Toplam rota süresi (duration)
         const totalDurationSeconds = routeStops.reduce((acc, stop) => {
             if (!stop.duration) return acc;
             const [h, m, s] = stop.duration.split(":").map(n => parseInt(n || 0, 10));
             return acc + h * 3600 + m * 60 + (s || 0);
         }, 0);
 
-        // 🧩 3) Toplam offset (saniye)
         const totalOffsetSeconds = offsets.reduce(
             (acc, o) => acc + ((Number(o.offsetMinutes) || 0) * 60),
             0
         );
 
-        // 🧩 4) Başlangıç zamanı = Trip.time + ilk durak offset
         const hareketTarihi = moment(trip.date).format("YYYY-MM-DD");
         const baseStart = moment(trip.time, ["HH:mm", "HH:mm:ss"]);
         const hareketSaati = baseStart.clone().add(firstOffsetMinutes, "minutes").format("HH:mm");
         const startDateTime = moment(`${hareketTarihi} ${hareketSaati}`, "YYYY-MM-DD HH:mm");
 
-        // 🧩 5) Bitiş zamanı = toplam süre + offsetler (ilk offset hariç)
         const totalSecondsForEnd = totalDurationSeconds + (totalOffsetSeconds - (firstOffsetMinutes * 60));
         const endDateTime = startDateTime.clone().add(totalSecondsForEnd, "seconds");
 
         const seferBitisTarihi = endDateTime.format("YYYY-MM-DD");
         const seferBitisSaati = endDateTime.format("HH:mm");
 
-        console.log(`🕓 Yeni zamanlar → Kalkış: ${hareketSaati} | Varış: ${seferBitisSaati}`);
+        console.log(`🕓 New times → Departure: ${hareketSaati} | Arrival: ${seferBitisSaati}`);
 
-        // 🧩 6) UETDS Güncelle
         if (trip.uetdsRefNo) {
             const result = await seferGuncelle(req, trip.id, {
                 referansNo: trip.uetdsRefNo,
@@ -2258,14 +2234,14 @@ exports.postTripTimeAdjustment = async (req, res, next) => {
                 seferBitisTarihi,
                 seferBitisSaati,
             });
-            console.log("📡 [UETDS] Sefer güncelle sonucu:", result);
+            console.log("📡 [UETDS] Trip update result:", result);
         } else {
-            console.log("⚠️ Trip'in UETDS referans numarası yok, seferGuncelle atlanıyor.");
+            console.log("⚠️ Trip has no UETDS ref number, skipping update.");
         }
 
         res.json({
             success: true,
-            message: "Süre ayarlandı ve UETDS güncellendi.",
+            message: "Time adjusted and UETDS updated.",
             newTimes: {
                 hareketTarihi,
                 hareketSaati,
@@ -2275,7 +2251,7 @@ exports.postTripTimeAdjustment = async (req, res, next) => {
         });
     } catch (err) {
         console.error("postTripTimeAdjustment error:", err);
-        res.status(500).json({ message: err.message || "Sefer saati güncellenemedi." });
+        res.status(500).json({ message: err.message || "Trip time could not be updated." });
     }
 };
 
@@ -2339,7 +2315,7 @@ exports.getTripRevenues = async (req, res, next) => {
         res.json({ branches: branchesArr, totals });
     } catch (err) {
         console.error("getTripRevenues error:", err);
-        res.status(500).json({ message: "Hasılat bilgisi alınamadı." });
+        res.status(500).json({ message: "Revenue information could not be retrieved." });
     }
 };
 
@@ -2356,30 +2332,30 @@ exports.postAddCargo = async (req, res, next) => {
         const price = Number(req.body.price);
 
         if (!tripId) {
-            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+            return res.status(400).json({ message: "Trip information missing." });
         }
         if (!fromStopId || !toStopId) {
-            return res.status(400).json({ message: "Durak bilgisi eksik." });
+            return res.status(400).json({ message: "Stop information missing." });
         }
         if (!senderName) {
-            return res.status(400).json({ message: "Gönderen adı gereklidir." });
+            return res.status(400).json({ message: "Sender name is required." });
         }
         if (!senderPhone) {
-            return res.status(400).json({ message: "Gönderen telefon bilgisi gereklidir." });
+            return res.status(400).json({ message: "Sender phone information is required." });
         }
         if (!senderIdentity) {
-            return res.status(400).json({ message: "Gönderen TC bilgisi gereklidir." });
+            return res.status(400).json({ message: "Sender ID info is required." });
         }
         if (!payment || !["cash", "card"].includes(payment)) {
-            return res.status(400).json({ message: "Geçersiz ödeme tipi." });
+            return res.status(400).json({ message: "Invalid payment type." });
         }
         if (!price || Number.isNaN(price) || price <= 0) {
-            return res.status(400).json({ message: "Geçerli bir ücret giriniz." });
+            return res.status(400).json({ message: "Please enter a valid price." });
         }
 
         const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
         const cargo = await req.models.Cargo.create({
@@ -2404,7 +2380,7 @@ exports.postAddCargo = async (req, res, next) => {
             type: "income",
             category: payment === "cash" ? "cash_sale" : "card_sale",
             amount: price,
-            description: `Kargo | ${trip.date} ${trip.time} | ${(fromStop ? fromStop.title : "")} - ${(toStop ? toStop.title : "")}`
+            description: `Cargo | ${trip.date} ${trip.time} | ${(fromStop ? fromStop.title : "")} - ${(toStop ? toStop.title : "")}`
         });
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
@@ -2429,16 +2405,16 @@ exports.postRefundCargo = async (req, res, next) => {
         const cargoId = Number(req.body.cargoId);
 
         if (!cargoId) {
-            return res.status(400).json({ message: "Geçersiz kargo bilgisi." });
+            return res.status(400).json({ message: "Invalid cargo information." });
         }
 
         if (!req.session.firmUser || !req.session.firmUser.id) {
-            return res.status(401).json({ message: "Oturum bilgisi bulunamadı." });
+            return res.status(401).json({ message: "Session information not found." });
         }
 
         const cargo = await req.models.Cargo.findOne({ where: { id: cargoId } });
         if (!cargo) {
-            return res.status(404).json({ message: "Kargo kaydı bulunamadı." });
+            return res.status(404).json({ message: "Cargo record not found." });
         }
 
         const amountNum = Number.parseFloat(cargo.price);
@@ -2477,7 +2453,7 @@ exports.postRefundCargo = async (req, res, next) => {
             }
         }
 
-        const descriptionParts = ["Kargo iade edildi"];
+        const descriptionParts = ["Cargo refunded"];
         if (tripInfo) descriptionParts.push(tripInfo);
         if (routeInfo) descriptionParts.push(routeInfo);
         const description = descriptionParts.join(" | ");
@@ -2505,7 +2481,7 @@ exports.postRefundCargo = async (req, res, next) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Cargo refund error:", err);
-        res.status(500).json({ success: false, message: "Kargo iadesi sırasında bir hata oluştu." });
+        res.status(500).json({ success: false, message: "An error occurred during cargo refund." });
     }
 };
 
@@ -2514,7 +2490,7 @@ exports.getTripCargoList = async (req, res, next) => {
         const tripId = Number(req.query.tripId);
 
         if (!tripId) {
-            return res.status(400).json({ message: "Sefer bilgisi eksik." });
+            return res.status(400).json({ message: "Trip information is missing." });
         }
 
         const cargos = await req.models.Cargo.findAll({ where: { tripId }, order: [["createdAt", "DESC"]], include: [{ model: req.models.Stop, as: "fromStop", attributes: ["id", "title"] }, { model: req.models.Stop, as: "toStop", attributes: ["id", "title"] }, { model: req.models.FirmUser, as: "firmUser", attributes: ["id", "username", "branchId"] }] });
@@ -2553,7 +2529,7 @@ exports.getTripCargoList = async (req, res, next) => {
             if (Number.isNaN(num)) {
                 return amount ? String(amount) : "";
             }
-            return num.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         };
 
         const formatted = cargos.map(cargo => {
@@ -2576,14 +2552,14 @@ exports.getTripCargoList = async (req, res, next) => {
                 toTitle: cargo.toStop?.title || "",
                 price: priceValue,
                 priceFormatted: formatAmount(cargo.price),
-                paymentLabel: cargo.payment === "card" ? "Kart" : "Nakit"
+                paymentLabel: cargo.payment === "card" ? "Card" : "Cash"
             };
         });
 
         res.render("mixins/tripCargoList", { cargos: formatted });
     } catch (err) {
         console.error("getTripCargoList error:", err);
-        res.status(500).json({ message: "Kargo listesi alınamadı." });
+        res.status(500).json({ message: "Could not retrieve cargo list." });
     }
 };
 
@@ -2670,16 +2646,16 @@ exports.getErp = async (req, res, next) => {
 
     const labelFromMap = (value, map) => (map && Object.prototype.hasOwnProperty.call(map, value) ? map[value] : value);
 
-    const genderLabelMap = { m: "Erkek", f: "Kadın" };
+    const genderLabelMap = { m: "Male", f: "Female" };
     const typeLabelMap = {
-        adult: "Yetişkin",
-        child: "Çocuk",
-        student: "Öğrenci",
-        disabled: "Engelli",
-        retired: "Emekli",
+        adult: "Adult",
+        child: "Child",
+        student: "Student",
+        disabled: "Disabled",
+        retired: "Retired",
     };
-    const categoryLabelMap = { normal: "Normal", member: "Abone", guest: "Misafir" };
-    const pointOrPercentLabelMap = { point: "Puan", percent: "İndirim" };
+    const categoryLabelMap = { normal: "Normal", member: "Member", guest: "Guest" };
+    const pointOrPercentLabelMap = { point: "Point", percent: "Discount" };
 
     const customerFieldOptions = {
         gender: getEnumValues("gender").map(value => ({ value, label: labelFromMap(value, genderLabelMap) })),
@@ -2767,7 +2743,7 @@ exports.postErpLogin = async (req, res, next) => {
         req.session.save(() => {
             const url = "/";
 
-            console.log("Giriş yapan kullanıcı:", u.name);
+            console.log("Logged in user:", u.name);
             res.redirect(url);
         });
 
@@ -2793,7 +2769,7 @@ exports.postErpLogout = (req, res, next) => {
     if (!remainingTenants) {
         return req.session.destroy((err) => {
             if (err) {
-                console.error("Oturum kapatma sırasında hata oluştu:", err);
+                console.error("Error during logout:", err);
                 return next(err);
             }
 
@@ -2804,7 +2780,7 @@ exports.postErpLogout = (req, res, next) => {
 
     req.session.save((err) => {
         if (err) {
-            console.error("Oturum kapatma sırasında hata oluştu:", err);
+            console.error("Error during logout:", err);
             return next(err);
         }
 
@@ -2817,14 +2793,13 @@ exports.getPermissions = (req, res) => res.json(req.session.permissions || []);
 exports.getTicketRow = async (req, res, next) => {
     const { isOpen, isTaken, date: tripDate, time: tripTime, tripId, stopId, seatTypes, action } = req.query;
 
-    // Trip için where koşulunu dinamik kur
     const tripWhere = {};
     if (tripDate) tripWhere.date = tripDate;
     if (tripTime) tripWhere.time = tripTime;
     if (tripId) tripWhere.id = tripId;
 
     const trip = await req.models.Trip.findOne({ where: tripWhere });
-    if (!trip) return res.status(404).json({ message: "Sefer bulunamadı" });
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
 
     const [takeOnOptions, takeOffOptions] = await Promise.all([
         req.models.TakeOn ? req.models.TakeOn.findAll({ order: [["title", "ASC"]] }) : [],
@@ -2871,7 +2846,6 @@ exports.getTicketRow = async (req, res, next) => {
         }
     }
 
-    // --- OPEN CASE ---
     if (isOpen) {
         const { fromId, toId, count } = req.query;
         let price = 0;
@@ -2900,7 +2874,6 @@ exports.getTicketRow = async (req, res, next) => {
         });
     }
 
-    // --- TAKEN CASE ---
     if (isTaken) {
         const { seatNumbers } = req.query;
         const ticket = seatNumbers
@@ -2908,7 +2881,7 @@ exports.getTicketRow = async (req, res, next) => {
             : [];
 
         if (!ticket.length) {
-            return res.status(404).json({ message: "Bilet bulunamadı" });
+            return res.status(404).json({ message: "Ticket not found" });
         }
 
         const user = await req.models.FirmUser.findOne({ where: { id: ticket[0].userId } });
@@ -2971,7 +2944,6 @@ exports.getTicketRow = async (req, res, next) => {
         });
     }
 
-    // --- ELSE CASE ---
     const { fromId, toId, seats: seatParam, gender: genderParam } = req.query;
     const seatArray = Array.isArray(seatParam)
         ? seatParam
@@ -2980,7 +2952,7 @@ exports.getTicketRow = async (req, res, next) => {
             : [];
 
     if (!seatArray.length) {
-        return res.status(400).json({ message: "Lütfen en az bir koltuk seçiniz." });
+        return res.status(400).json({ message: "Please select at least one seat." });
     }
 
     const gender = seatArray.map(() => genderParam);
@@ -2999,11 +2971,11 @@ exports.getTicketRow = async (req, res, next) => {
     const toOrder = routeStopOrderMap[String(toId)];
 
     if (!Number.isFinite(fromOrder) || !Number.isFinite(toOrder)) {
-        return res.status(400).json({ message: "Seçilen durak bilgileri seferde bulunamadı." });
+        return res.status(400).json({ message: "Selected stops not found in trip route." });
     }
 
     if (fromOrder >= toOrder) {
-        return res.status(400).json({ message: "Lütfen geçerli bir güzergâh seçiniz." });
+        return res.status(400).json({ message: "Please select a valid route." });
     }
 
     const seatLabelMap = new Map();
@@ -3018,7 +2990,7 @@ exports.getTicketRow = async (req, res, next) => {
     }
 
     if (!seatLabelMap.size) {
-        return res.status(400).json({ message: "Geçerli koltuk seçimi bulunamadı." });
+        return res.status(400).json({ message: "No valid seat selection found." });
     }
 
     const seatNumbers = Array.from(seatLabelMap.keys());
@@ -3069,7 +3041,7 @@ exports.getTicketRow = async (req, res, next) => {
     if (conflictingSeatNumber !== null) {
         const seatLabel = seatLabelMap.get(conflictingSeatNumber) ?? String(conflictingSeatNumber);
         return res.status(409).json({
-            message: `${seatLabel} numaralı koltuk seçtiğiniz güzergâh için uygun değildir.`,
+            message: `Seat number ${seatLabel} is not available for the selected route.`,
         });
     }
 
@@ -3142,7 +3114,7 @@ exports.postTickets = async (req, res, next) => {
 
             if (!normalizedIdNumber) {
                 if (requiresIdentityNumber) {
-                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                    return res.status(400).json({ message: "Please enter an ID number." });
                 }
 
                 ticket.idNumber = null;
@@ -3151,7 +3123,7 @@ exports.postTickets = async (req, res, next) => {
 
             if (seenIdNumbers.has(normalizedIdNumber)) {
                 return res.status(400).json({
-                    message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.`,
+                    message: `You selected multiple tickets for ID number ${normalizedIdNumber}.`,
                 });
             }
 
@@ -3160,19 +3132,18 @@ exports.postTickets = async (req, res, next) => {
             ticket.idNumber = normalizedIdNumber;
         }
 
-        // --- Sefer belirleme ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
         if (tripId) tripWhere.id = tripId;
 
         if (Object.keys(tripWhere).length === 0) {
-            return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
+            return res.status(400).json({ message: "Invalid trip parameters." });
         }
 
         const trip = await req.models.Trip.findOne({ where: tripWhere });
         if (!trip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
         if (normalizedIdNumbers.length) {
@@ -3186,7 +3157,7 @@ exports.postTickets = async (req, res, next) => {
 
             if (existingTicketWithSameId) {
                 return res.status(409).json({
-                    message: `${existingTicketWithSameId.idNumber} TC kimlik numarası için bu seferde zaten bir bilet bulunuyor.`,
+                    message: `A ticket already exists for ID number ${existingTicketWithSameId.idNumber} on this trip.`,
                 });
             }
         }
@@ -3197,7 +3168,7 @@ exports.postTickets = async (req, res, next) => {
             const reservationCheck = await checkReservationLimit(req.models, trip, route, tickets.length);
             if (reservationCheck.exceeded) {
                 return res.status(400).json({
-                    message: `Maksimum rezervasyon limiti (${reservationCheck.limit}) aşılamaz.`,
+                    message: `Maximum reservation limit (${reservationCheck.limit}) cannot be exceeded.`,
                 });
             }
         }
@@ -3209,12 +3180,11 @@ exports.postTickets = async (req, res, next) => {
             const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, seatNumbers);
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
-                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                    message: `Single seat limit (${singleSeatCheck.limit}) exceeded. Please select different seats.`,
                 });
             }
         }
 
-        // --- RouteStops ve Stops ---
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
@@ -3226,11 +3196,9 @@ exports.postTickets = async (req, res, next) => {
             stops = await req.models.Stop.findAll({ where: { id: { [Op.in]: stopIds } } });
         }
 
-        // --- TicketGroup ---
         const group = await req.models.TicketGroup.create({ tripId: trip.id });
         const ticketGroupId = group.id;
 
-        // --- PNR (sadece fromId & toId varsa) ---
         const pnr = fromId && toId ? await generatePNR(req.models, fromId, toId, stops) : null;
 
         const pendingIds = Array.isArray(req.body.pendingIds)
@@ -3241,7 +3209,6 @@ exports.postTickets = async (req, res, next) => {
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
         const isReservationStatus = status === "reservation";
 
-        // --- Tüm biletleri sırayla kaydet ---
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i];
             if (!t) continue;
@@ -3256,7 +3223,7 @@ exports.postTickets = async (req, res, next) => {
             });
 
             const pendingTicketGroupId = pendingTicket?.ticketGroupId;
-            if (pendingTicket) await pendingTicket.destroy().then(() => console.log("pending silindi"));
+            if (pendingTicket) await pendingTicket.destroy().then(() => console.log("pending deleted"));
 
             if (pendingTicketGroupId) {
                 const remainingTicketsInGroup = await req.models.Ticket.count({
@@ -3265,7 +3232,7 @@ exports.postTickets = async (req, res, next) => {
 
                 if (remainingTicketsInGroup === 0) {
                     await req.models.TicketGroup.destroy({ where: { id: pendingTicketGroupId } }).then(() =>
-                        console.log("pending grup silindi")
+                        console.log("pending group deleted")
                     );
                 }
             }
@@ -3298,7 +3265,6 @@ exports.postTickets = async (req, res, next) => {
                 takeOffText: takeOffTitle,
             });
 
-            // --- Müşteri kaydı / puan sistemi ---
             const nameUp = (t.name || "").toLocaleUpperCase("tr-TR");
             const surnameUp = (t.surname || "").toLocaleUpperCase("tr-TR");
 
@@ -3338,7 +3304,6 @@ exports.postTickets = async (req, res, next) => {
                 await existingCustomer.save();
             }
 
-            // --- Transaction / kasa işlemleri ---
             if (ticket.status === "completed" && ticket.payment !== "point") {
                 const fromTitle = stops.find((s) => s.id == ticket.fromRouteStopId)?.title || "";
                 const toTitle = stops.find((s) => s.id == ticket.toRouteStopId)?.title || "";
@@ -3370,29 +3335,24 @@ exports.postTickets = async (req, res, next) => {
                 }
             }
 
-            // --- ✅ UETDS Entegrasyonu (sadece completed biletlerde) ---
             if (status === "completed" && trip.uetdsRefNo) {
                 try {
-                    // 1️⃣ Grup referansını çek
                     const grup = await seferGrupListesi(req, trip);
                     if (!grup) {
-                        console.warn(`⚠️ Trip #${trip.id}: Grup bulunamadı, yolcu gönderilmedi.`);
+                        console.warn(`⚠️ Trip #${trip.id}: Group not found, passenger not sent.`);
                         continue;
                     }
 
-                    // 2️⃣ Yolcuyu ekle
                     const yolcuResult = await yolcuEkle(req, trip, grup.grupId, t);
-                    console.log(`✅ [UETDS] ${t.name} ${t.surname} eklendi:`, yolcuResult?.sonucMesaji);
+                    console.log(`✅ [UETDS] ${t.name} ${t.surname} added:`, yolcuResult?.sonucMesaji);
 
-                    // 2.1️⃣ Yolcu refNo'yu Ticket tablosuna kaydet
                     const yolcuRefNo = yolcuResult?.uetdsYolcuRefNo || yolcuResult?.return?.uetdsYolcuRefNo;
                     if (yolcuRefNo) {
                         ticket.uetdsRefNo = yolcuRefNo;
                         await ticket.save();
-                        console.log(`🎫 [UETDS] YolcuRefNo kaydedildi: ${yolcuRefNo} (Ticket #${ticket.id})`);
+                        console.log(`🎫 [UETDS] PassengerRefNo saved: ${yolcuRefNo} (Ticket #${ticket.id})`);
                     }
 
-                    // 3️⃣ Grup ücretini güncelle
                     const toplamUcret = await req.models.Ticket.sum("price", {
                         where: { tripId: trip.id, status: "completed" },
                     });
@@ -3402,23 +3362,23 @@ exports.postTickets = async (req, res, next) => {
                             grupUcret: toplamUcret,
                         });
                         console.log(
-                            `💰 [UETDS] Grup ücreti güncellendi (${toplamUcret}):`,
+                            `💰 [UETDS] Group price updated (${toplamUcret}):`,
                             guncelleSonuc?.sonucMesaji
                         );
                     }
                 } catch (uetdsErr) {
-                    console.error(`❌ [UETDS] Trip #${trip.id} hata:`, uetdsErr.message);
+                    console.error(`❌ [UETDS] Trip #${trip.id} error:`, uetdsErr.message);
                 }
             }
 
-            console.log(`${t.name} Kaydedildi - ${pnr || "-"}`);
+            console.log(`${t.name} Saved - ${pnr || "-"}`);
             res.locals.newRecordId = ticket.id;
         }
 
-        return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+        return res.status(200).json({ message: "Tickets saved successfully." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        return res.status(500).json({ message: "An error occurred during save." });
     }
 };
 
@@ -3433,7 +3393,6 @@ exports.postCompleteTickets = async (req, res, next) => {
         const tripId = req.body.tripId;
         const status = req.body.status;
 
-        // postTickets ile aynı kimlik kontrolü
         let normalizedIdNumbers = [];
         if (status === "completed") {
             const seenIdNumbers = new Set();
@@ -3441,11 +3400,11 @@ exports.postCompleteTickets = async (req, res, next) => {
                 const normalizedIdNumber = normalizeIdentityNumber(ticket?.idNumber);
 
                 if (!normalizedIdNumber) {
-                    return res.status(400).json({ message: "Lütfen kimlik numarası giriniz." });
+                    return res.status(400).json({ message: "Please enter an ID number." });
                 }
 
                 if (seenIdNumbers.has(normalizedIdNumber)) {
-                    return res.status(400).json({ message: `${normalizedIdNumber} TC kimlik numarası için birden fazla bilet seçtiniz.` });
+                    return res.status(400).json({ message: `You selected multiple tickets for ID number ${normalizedIdNumber}.` });
                 }
 
                 seenIdNumbers.add(normalizedIdNumber);
@@ -3457,22 +3416,20 @@ exports.postCompleteTickets = async (req, res, next) => {
         const pnr = tickets[0]?.pnr;
         const seatNumbers = tickets.map((t) => t.seatNumber);
 
-        // --- Trip.where'i dinamik kur ---
         const tripWhere = {};
         if (tripDate) tripWhere.date = tripDate;
         if (tripTime) tripWhere.time = tripTime;
         if (tripId) tripWhere.id = tripId;
 
         if (Object.keys(tripWhere).length === 0) {
-            return res.status(400).json({ message: "Geçersiz sefer parametreleri." });
+            return res.status(400).json({ message: "Invalid trip parameters." });
         }
 
         const trip = await req.models.Trip.findOne({ where: tripWhere });
         if (!trip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
-        // Durak başlıkları için
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: trip.routeId },
             order: [["order", "ASC"]],
@@ -3504,7 +3461,7 @@ exports.postCompleteTickets = async (req, res, next) => {
 
             if (existingTicketWithSameId) {
                 return res.status(409).json({
-                    message: `${existingTicketWithSameId.idNumber} TC kimlik numarası için bu seferde zaten bir bilet bulunuyor.`,
+                    message: `A ticket already exists for ID number ${existingTicketWithSameId.idNumber} on this trip.`,
                 });
             }
         }
@@ -3531,7 +3488,6 @@ exports.postCompleteTickets = async (req, res, next) => {
             ticket.gender = incomingTicket.gender;
             ticket.nationality = incomingTicket.nationality;
 
-            // 🔧 DÜZELTME: type/category yerine customerType/customerCategory
             ticket.customerType = incomingTicket.type;
             ticket.customerCategory = incomingTicket.category;
 
@@ -3546,7 +3502,6 @@ exports.postCompleteTickets = async (req, res, next) => {
             ticket.takeOnText = takeOnTitle;
             ticket.takeOffText = takeOffTitle;
 
-            // CUSTOMER KONTROLÜ
             const nameUp = (ticket.name || "").toLocaleUpperCase("tr-TR");
             const surnameUp = (ticket.surname || "").toLocaleUpperCase("tr-TR");
 
@@ -3605,10 +3560,10 @@ exports.postCompleteTickets = async (req, res, next) => {
             }
         }
 
-        return res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+        return res.status(200).json({ message: "Tickets saved successfully." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        return res.status(500).json({ message: "An error occurred during save." });
     }
 };
 
@@ -3619,30 +3574,24 @@ exports.postSellOpenTickets = async (req, res, next) => {
         const userId = req.session.firmUser.id;
         const isReservation = status === "reservation";
 
-        // Kısa helper'lar
         const toUpperTR = (val) => (val || "").toLocaleUpperCase("tr-TR");
 
-        // --- Stop verilerini çek ---
         const stops = await req.models.Stop.findAll({
             where: { id: [fromId, toId] }
         });
         const fromStop = stops.find(s => s.id == fromId);
         const toStop = stops.find(s => s.id == toId);
 
-        // --- TicketGroup oluştur ---
         const group = await req.models.TicketGroup.create({ tripId: null });
         const ticketGroupId = group.id;
 
-        // --- PNR oluştur ---
         const pnr = (fromId && toId)
             ? await generatePNR(req.models, fromId, toId, stops)
             : null;
 
-        // --- TakeOn / TakeOff cache ---
         const takeOnCache = await prepareTakeValueCache(req.models.TakeOn);
         const takeOffCache = await prepareTakeValueCache(req.models.TakeOff);
 
-        // --- Müşteri verilerini toplamak için set'ler ---
         const idNumbers = new Set();
         const namePairs = new Set();
 
@@ -3652,7 +3601,6 @@ exports.postSellOpenTickets = async (req, res, next) => {
                 namePairs.add(`${toUpperTR(t.name)}|${toUpperTR(t.surname)}`);
         }
 
-        // --- Mevcut müşterileri sorgula ---
         const existingCustomers = await req.models.Customer.findAll({
             where: {
                 [Op.or]: [
@@ -3669,7 +3617,6 @@ exports.postSellOpenTickets = async (req, res, next) => {
             existingCustomers.map(c => c.idNumber || `${c.name}|${c.surname}`)
         );
 
-        // --- Bilet, işlem ve müşteri kayıtlarını hazırla ---
         const ticketData = [];
         const transactionData = [];
         const newCustomers = [];
@@ -3679,7 +3626,6 @@ exports.postSellOpenTickets = async (req, res, next) => {
             const surnameUp = toUpperTR(t.surname);
             const key = t.idNumber || `${nameUp}|${surnameUp}`;
 
-            // cache içinden hızlı değer al
             const takeOnTitle = takeOnCache[t.takeOn] || t.takeOn || "";
             const takeOffTitle = takeOffCache[t.takeOff] || t.takeOff || "";
 
@@ -3731,31 +3677,26 @@ exports.postSellOpenTickets = async (req, res, next) => {
                             ? "card_sale"
                             : "point_sale",
                 amount: t.price ?? 0,
-                description: `Açık bilet satıldı | ${fromStop?.title || ""} - ${toStop?.title || ""}`
+                description: `Open ticket sold | ${fromStop?.title || ""} - ${toStop?.title || ""}`
             });
         }
 
-        // --- Yeni müşterileri toplu ekle ---
         if (newCustomers.length) {
             await req.models.Customer.bulkCreate(newCustomers, {
                 ignoreDuplicates: true
             });
         }
 
-        // --- Biletleri toplu ekle ---
         const createdTickets = await req.models.Ticket.bulkCreate(ticketData, {
             returning: true
         });
 
-        // --- Transaction kayıtlarını bilet ID’leriyle eşleştir ---
         transactionData.forEach((tr, i) => {
             tr.ticketId = createdTickets[i].id;
         });
 
-        // --- Gelir hareketlerini ekle ---
         await req.models.Transaction.bulkCreate(transactionData);
 
-        // --- Kasa güncelle ---
         const register = await req.models.CashRegister.findOne({
             where: { userId }
         });
@@ -3781,9 +3722,9 @@ exports.postSellOpenTickets = async (req, res, next) => {
         });
 
     } catch (err) {
-        console.error("Kayıt hatası:", err);
+        console.error("Save error:", err);
         res.status(500).json({
-            message: "Kayıt sırasında bir hata oluştu.",
+            message: "An error occurred during save.",
             error: err.message
         });
     }
@@ -3796,21 +3737,21 @@ exports.postEditTicket = async (req, res, next) => {
         const { tripDate, tripTime } = req.body;
 
         if (!tickets.length) {
-            return res.status(400).json({ message: "Hiç bilet bilgisi gönderilmedi." });
+            return res.status(400).json({ message: "No ticket information provided." });
         }
 
         const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } });
         if (!trip) {
-            return res.status(404).json({ message: "Sefer bulunamadı." });
+            return res.status(404).json({ message: "Trip not found." });
         }
 
         const foundTickets = await req.models.Ticket.findAll({
             where: { pnr: tickets[0].pnr, tripId: trip.id },
-            order: [["seatNo", "ASC"]] // sıralamayı garanti altına al
+            order: [["seatNo", "ASC"]]
         });
 
         if (foundTickets.length !== tickets.length) {
-            return res.status(400).json({ message: "Gönderilen bilet bilgisi geçersiz." });
+            return res.status(400).json({ message: "Invalid ticket information provided." });
         }
 
         const normalizePriceValue = (value) => {
@@ -3827,7 +3768,7 @@ exports.postEditTicket = async (req, res, next) => {
             const incomingPrice = normalizePriceValue(incomingTicket.price);
 
             if (existingPrice !== incomingPrice) {
-                return res.status(400).json({ message: "Bilet fiyatı düzenleme sırasında değiştirilemez." });
+                return res.status(400).json({ message: "Ticket price cannot be changed during editing." });
             }
         }
 
@@ -3851,10 +3792,10 @@ exports.postEditTicket = async (req, res, next) => {
             return foundTicket.save();
         }));
 
-        res.status(200).json({ message: "Biletler başarıyla kaydedildi." });
+        res.status(200).json({ message: "Tickets saved successfully." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        res.status(500).json({ message: "An error occurred during save." });
     }
 };
 
@@ -3876,7 +3817,6 @@ exports.getCancelOpenTicket = async (req, res, next) => {
                     return parsed;
                 }
             } catch (error) {
-                // ignore JSON parse errors and fall back to comma separation
             }
 
             return value
@@ -3892,7 +3832,7 @@ exports.getCancelOpenTicket = async (req, res, next) => {
 
     const trip = await req.models.Trip.findOne({ where: { date: tripDate, time: tripTime } });
     if (!trip) {
-        return res.status(404).json({ message: "Sefer bulunamadı." });
+        return res.status(404).json({ message: "Trip not found." });
     }
 
     const ticketWhere = seats.length
@@ -3949,8 +3889,8 @@ exports.getCancelOpenTicket = async (req, res, next) => {
         }
     }
 
-    const dateFormatter = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
-    const timeFormatter = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const dateFormatter = new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "long", year: "numeric" });
+    const timeFormatter = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 
     const tripData = { ...tripPlain };
     let displayDate = baseTripDateTime && !Number.isNaN(baseTripDateTime.getTime()) ? baseTripDateTime : null;
@@ -3986,7 +3926,7 @@ exports.postCancelTicket = async (req, res, next) => {
         const trip = await req.models.Trip.findOne({
             where: { date: tripDate, time: tripTime },
         });
-        if (!trip) return res.status(404).json({ message: "Sefer bulunamadı." });
+        if (!trip) return res.status(404).json({ message: "Trip not found." });
 
         const seats = JSON.parse(req.body.seats || "[]");
         const pnr = req.body.pnr;
@@ -3995,7 +3935,7 @@ exports.postCancelTicket = async (req, res, next) => {
             where: { pnr, seatNo: { [Op.in]: seats }, tripId: trip.id },
         });
         if (!tickets.length) {
-            return res.status(404).json({ message: "Bilet bulunamadı." });
+            return res.status(404).json({ message: "Ticket not found." });
         }
 
         const stopIds = [
@@ -4016,7 +3956,6 @@ exports.postCancelTicket = async (req, res, next) => {
             ticket.status = currentStatus === "reservation" ? "canceled" : "refund";
             await ticket.save();
 
-            // 💸 Ödeme iadesi (refund ise)
             if (ticket.status === "refund" && ticket.payment !== "point") {
                 didAnyRefund = true;
 
@@ -4033,7 +3972,7 @@ exports.postCancelTicket = async (req, res, next) => {
                                 ? "card_refund"
                                 : "point_refund",
                     amount: ticket.price,
-                    description: `Bilet iade edildi | ${fromTitle} - ${toTitle}`,
+                    description: `Ticket refunded | ${fromTitle} - ${toTitle}`,
                     ticketId: ticket.id,
                 });
 
@@ -4050,7 +3989,6 @@ exports.postCancelTicket = async (req, res, next) => {
                 }
             }
 
-            // 💎 Puan iadesi (point ödemesi)
             if (ticket.status === "refund" && ticket.payment === "point") {
                 didAnyRefund = true;
 
@@ -4073,7 +4011,6 @@ exports.postCancelTicket = async (req, res, next) => {
                 }
             }
 
-            // 🚨 UETDS bildirimi sadece REFUND için (ve ref numarası varsa)
             if (
                 ticket.status === "refund" &&
                 trip.uetdsRefNo &&
@@ -4084,47 +4021,43 @@ exports.postCancelTicket = async (req, res, next) => {
                         req,
                         trip,
                         ticket.uetdsRefNo,
-                        "Yolcu iadesi gerçekleştirildi"
+                        "Passenger refund processed"
                     );
                 } catch (e) {
-                    console.error(`❌ [UETDS] Yolcu iptal hatası (Ticket #${ticket.id}):`, e.message);
+                    console.error(`❌ [UETDS] Passenger cancel error (Ticket #${ticket.id}):`, e.message);
                 }
             }
 
             res.locals.newRecordId = ticket.id;
         }
 
-        // 🧮 Grupların ücretini iptal(ler) sonrası TEK SEFERDE güncelle
         if (didAnyRefund && trip.uetdsRefNo) {
             try {
-                // 1) Seferdeki grubu bul
                 const group = await seferGrupListesi(req, trip);
                 if (!group) {
-                    console.warn(`⚠️ Trip #${trip.id}: Grup bulunamadı, ücret güncellenemedi.`);
+                    console.warn(`⚠️ Trip #${trip.id}: Group not found, price could not be updated.`);
                 } else {
-                    // 2) Kalan completed biletlerin toplamını hesapla
                     const toplamUcret = await req.models.Ticket.sum("price", {
                         where: { tripId: trip.id, status: "completed" },
                     });
 
-                    // 3) UETDS'de grup ücretini güncelle
                     const sonuc = await seferGrupGuncelle(req, trip, group.grupId, {
                         grupUcret: toplamUcret || 0,
                     });
                     console.log(
-                        `💰 [UETDS] Grup ücreti güncellendi (${toplamUcret || 0}):`,
+                        `💰 [UETDS] Group price updated (${toplamUcret || 0}):`,
                         sonuc?.sonucMesaji
                     );
                 }
             } catch (e) {
-                console.error(`❌ [UETDS] Grup ücret güncelleme hatası (Trip #${trip.id}):`, e.message);
+                console.error(`❌ [UETDS] Group price update error (Trip #${trip.id}):`, e.message);
             }
         }
 
-        return res.status(200).json({ message: "Biletler başarıyla iptal edildi." });
+        return res.status(200).json({ message: "Tickets successfully canceled." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        return res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        return res.status(500).json({ message: "An error occurred during save." });
     }
 };
 
@@ -4153,16 +4086,16 @@ exports.postDeletePendingTickets = async (req, res, next) => {
         });
 
         if (deleted === 0) {
-            return res.status(404).json({ message: "Silinecek uygun kayıt bulunamadı" });
+            return res.status(404).json({ message: "No eligible records found to delete." });
         }
 
         return res.status(200).json({
-            message: "Bekleyen bilet(ler) başarıyla silindi",
+            message: "Pending ticket(s) successfully deleted.",
             deleted
         });
     } catch (err) {
         console.error("postDeletePendingTickets error:", err);
-        return res.status(500).json({ message: "Sunucu hatası" });
+        return res.status(500).json({ message: "Server error." });
     }
 };
 
@@ -4186,10 +4119,10 @@ exports.postOpenTicket = async (req, res, next) => {
             }
         }
 
-        res.status(200).json({ message: "Biletler başarıyla açığa alındı." });
+        res.status(200).json({ message: "Tickets successfully moved to open status." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        res.status(500).json({ message: "An error occurred during save." });
     }
 }
 
@@ -4240,7 +4173,7 @@ exports.getOpenMoveTicket = async (req, res, next) => {
         const { pnr } = req.query;
 
         if (!pnr) {
-            return res.status(400).json({ message: "PNR bilgisi eksik." });
+            return res.status(400).json({ message: "PNR is missing." });
         }
 
         const tickets = await req.models.Ticket.findAll({
@@ -4249,15 +4182,15 @@ exports.getOpenMoveTicket = async (req, res, next) => {
         });
 
         if (!tickets.length) {
-            return res.status(404).json({ message: "Açık bilet bulunamadı." });
+            return res.status(404).json({ message: "Open ticket not found." });
         }
 
         const context = await buildOpenTicketMoveContext(req.models, tickets);
 
         res.render("mixins/moveTicket", { trip: context.trip, tickets: context.tickets });
     } catch (error) {
-        console.error("Açık bilet sorgusunda hata:", error);
-        res.status(500).json({ message: "Açık bilet bilgileri alınamadı." });
+        console.error("Open ticket query error:", error);
+        res.status(500).json({ message: "Could not retrieve open ticket information." });
     }
 };
 
@@ -4271,18 +4204,18 @@ exports.getAttachOpenTicket = async (req, res, next) => {
                 const ticketIdValues = JSON.parse(rawTicketIds);
                 const parsed = parseTicketIdTokens(ticketIdValues);
                 if (parsed.invalid) {
-                    return res.status(400).json({ message: "Bilet bilgileri geçersiz." });
+                    return res.status(400).json({ message: "Invalid ticket information." });
                 }
                 parsedTicketIds = parsed.ids;
             } catch (err) {
-                return res.status(400).json({ message: "Bilet bilgileri geçersiz." });
+                return res.status(400).json({ message: "Invalid ticket information." });
             }
         }
 
         const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
 
         if (!normalizedPnr && !parsedTicketIds.length) {
-            return res.status(400).json({ message: "Açık bilet bilgileri eksik." });
+            return res.status(400).json({ message: "Open ticket information missing." });
         }
 
         const where = {
@@ -4304,7 +4237,7 @@ exports.getAttachOpenTicket = async (req, res, next) => {
         });
 
         if (!tickets.length) {
-            return res.status(404).json({ message: "Açık bilet bulunamadı." });
+            return res.status(404).json({ message: "Open ticket not found." });
         }
 
         let orderedTickets = tickets;
@@ -4315,7 +4248,7 @@ exports.getAttachOpenTicket = async (req, res, next) => {
                 .filter(Boolean);
 
             if (orderedTickets.length !== parsedTicketIds.length) {
-                return res.status(404).json({ message: "Seçilen açık biletlerden bazıları bulunamadı." });
+                return res.status(404).json({ message: "Some selected open tickets could not be found." });
             }
         }
 
@@ -4323,8 +4256,8 @@ exports.getAttachOpenTicket = async (req, res, next) => {
 
         res.render("mixins/moveTicket", { trip: context.trip, tickets: context.tickets });
     } catch (error) {
-        console.error("Açık bileti bağlama sorgusunda hata:", error);
-        res.status(500).json({ message: "Açık bilet bilgileri alınamadı." });
+        console.error("Attach open ticket query error:", error);
+        res.status(500).json({ message: "Could not retrieve open ticket information." });
     }
 };
 
@@ -4367,8 +4300,8 @@ exports.getRouteStopsListMoving = async (req, res, next) => {
         }
         res.json({ arr: newRouteStopsArray, selected: stopId })
     } catch (err) {
-        console.error("Kayıt hatası:", err);
-        res.status(500).json({ message: "Kayıt sırasında bir hata oluştu." });
+        console.error("Save error:", err);
+        res.status(500).json({ message: "An error occurred during save." });
     }
 }
 
@@ -4387,15 +4320,14 @@ exports.postMoveTickets = async (req, res, next) => {
             rawOldSeats.length !== newSeats.length
         ) {
             return res.status(400).json({
-                message: "Seçilen bilet sayısı ile hedef koltuk sayısı uyumsuz.",
+                message: "Number of selected tickets does not match target seats.",
             });
         }
 
         const newTrip = await req.models.Trip.findOne({ where: { id: newTripId } });
         if (!newTrip)
-            return res.status(404).json({ message: "Hedef sefer bulunamadı." });
+            return res.status(404).json({ message: "Target trip not found." });
 
-        // 🎟 Eski biletleri bul
         const tickets = await req.models.Ticket.findAll({
             where: { pnr, seatNo: { [Op.in]: rawOldSeats } },
         });
@@ -4403,7 +4335,7 @@ exports.postMoveTickets = async (req, res, next) => {
         if (!tickets.length)
             return res
                 .status(404)
-                .json({ message: "Taşınacak biletler bulunamadı." });
+                .json({ message: "Tickets to move not found." });
 
         const route =
             newTrip?.routeId
@@ -4412,7 +4344,6 @@ exports.postMoveTickets = async (req, res, next) => {
 
         const newSeatNumbers = Array.isArray(newSeats) ? newSeats : [];
 
-        // 🔁 Tekli koltuk limiti kontrolü
         if (route) {
             const excludeIds = tickets.map((t) => t.id);
             const singleSeatCheck = await checkSingleSeatLimit(
@@ -4424,31 +4355,27 @@ exports.postMoveTickets = async (req, res, next) => {
             );
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
-                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                    message: `Single seat limit (${singleSeatCheck.limit}) exceeded. Please select different seats.`,
                 });
             }
         }
 
         const oldTripIds = [...new Set(tickets.map((t) => t.tripId))];
 
-        // 🔄 Taşıma işlemleri
         for (let i = 0; i < tickets.length; i++) {
             const t = tickets[i];
 
-            // 🧹 Eski UETDS yolcu kaydını sil
             if (t.uetdsRefNo && t.tripId) {
                 try {
-                    await yolcuIptalUetdsYolcuRefNoIle(req, { uetdsRefNo: t.tripUetdsRefNo }, t.uetdsRefNo, "Bilet taşındı");
-                    console.log(`🧾 [UETDS] Eski yolcu silindi: Ticket #${t.id}`);
+                    await yolcuIptalUetdsYolcuRefNoIle(req, { uetdsRefNo: t.tripUetdsRefNo }, t.uetdsRefNo, "Ticket moved");
+                    console.log(`🧾 [UETDS] Old passenger removed: Ticket #${t.id}`);
                 } catch (e) {
-                    console.error(`❌ [UETDS] Eski yolcu silme hatası (#${t.id}):`, e.message);
+                    console.error(`❌ [UETDS] Old passenger removal error (#${t.id}):`, e.message);
                 }
             }
 
-            // 🧾 UETDS referanslarını sıfırla
             t.uetdsRefNo = null;
 
-            // 🚍 Yeni sefer bilgileri
             t.tripId = newTrip.id;
             t.seatNo = newSeats[i];
             t.fromRouteStopId = fromId;
@@ -4459,27 +4386,23 @@ exports.postMoveTickets = async (req, res, next) => {
 
             await t.save();
 
-            // 👥 Yeni sefer grubunu getir
             const group = await seferGrupListesi(req, newTrip);
 
-            // 👤 Yolcuyu yeniden ekle
             if (newTrip.uetdsRefNo && group) {
                 try {
                     const result = await yolcuEkle(req, newTrip, group.grupId, t);
                     if (result?.uetdsYolcuRefNo) {
                         t.uetdsRefNo = result.uetdsYolcuRefNo;
                         await t.save();
-                        console.log(`✅ [UETDS] Yolcu yeni sefere eklendi: Ticket #${t.id}`);
+                        console.log(`✅ [UETDS] Passenger added to new trip: Ticket #${t.id}`);
                     }
                 } catch (e) {
-                    console.error(`❌ [UETDS] Yeni yolcu ekleme hatası (#${t.id}):`, e.message);
+                    console.error(`❌ [UETDS] New passenger add error (#${t.id}):`, e.message);
                 }
             }
         }
 
-        // 💰 Grup ücretlerini güncelle
         try {
-            // Eski sefer(ler)
             for (const oldTripId of oldTripIds) {
                 const oldTrip = await req.models.Trip.findByPk(oldTripId);
                 if (oldTrip?.uetdsRefNo) {
@@ -4491,12 +4414,11 @@ exports.postMoveTickets = async (req, res, next) => {
                         await seferGrupGuncelle(req, oldTrip, group.grupId, {
                             grupUcret: toplamUcret || 0,
                         });
-                        console.log(`💰 [UETDS] Eski sefer grup ücreti güncellendi (${oldTrip.id})`);
+                        console.log(`💰 [UETDS] Old trip group price updated (${oldTrip.id})`);
                     }
                 }
             }
 
-            // Yeni sefer
             if (newTrip.uetdsRefNo) {
                 const group = await seferGrupListesi(req, newTrip);
                 if (group) {
@@ -4506,18 +4428,18 @@ exports.postMoveTickets = async (req, res, next) => {
                     await seferGrupGuncelle(req, newTrip, group.grupId, {
                         grupUcret: toplamUcret || 0,
                     });
-                    console.log(`💰 [UETDS] Yeni sefer grup ücreti güncellendi (${newTrip.id})`);
+                    console.log(`💰 [UETDS] New trip group price updated (${newTrip.id})`);
                 }
             }
         } catch (e) {
-            console.error("⚠️ [UETDS] Grup ücret güncelleme hatası:", e.message);
+            console.error("⚠️ [UETDS] Group price update error:", e.message);
         }
 
-        res.status(200).json({ message: "Bilet taşıma işlemi başarıyla tamamlandı." });
+        res.status(200).json({ message: "Ticket move operation completed successfully." });
     } catch (err) {
-        console.error("Kayıt hatası:", err);
+        console.error("Save error:", err);
         res.status(500).json({
-            message: "Kayıt sırasında bir hata oluştu.",
+            message: "An error occurred during save.",
             detail: err.message,
         });
     }
@@ -4528,44 +4450,43 @@ exports.postAttachOpenTicket = async (req, res, next) => {
         const { pnr: rawPnr, newSeat: rawNewSeat, tripId, stopId: rawStopId, toId: rawToId } = req.body;
 
         if (!tripId) {
-            return res.status(400).json({ message: "Hedef sefer bilgisi eksik." });
+            return res.status(400).json({ message: "Target trip information missing." });
         }
 
         const normalizedPnr = typeof rawPnr === "string" ? rawPnr.trim() : "";
         if (!normalizedPnr) {
-            return res.status(400).json({ message: "PNR bilgisi eksik veya geçersiz." });
+            return res.status(400).json({ message: "PNR missing or invalid." });
         }
 
-        // Tek koltuk için
         const seatValue = rawNewSeat !== undefined && rawNewSeat !== null ? String(rawNewSeat).trim() : "";
         if (!seatValue) {
-            return res.status(400).json({ message: "Koltuk bilgisi eksik." });
+            return res.status(400).json({ message: "Seat information missing." });
         }
 
         const fromStopId = Number(String(rawStopId || "").trim());
         if (!Number.isFinite(fromStopId)) {
-            return res.status(400).json({ message: "Başlangıç durağı bilgisi geçersiz." });
+            return res.status(400).json({ message: "Invalid departure stop information." });
         }
 
         let toStopId = null;
         if (rawToId) {
             const parsedTo = Number(String(rawToId).trim());
             if (!Number.isFinite(parsedTo)) {
-                return res.status(400).json({ message: "Varış durağı bilgisi geçersiz." });
+                return res.status(400).json({ message: "Invalid arrival stop information." });
             }
             toStopId = parsedTo;
         }
 
         const trip = await req.models.Trip.findOne({ where: { id: tripId } });
         if (!trip) {
-            return res.status(404).json({ message: "Hedef sefer bulunamadı." });
+            return res.status(404).json({ message: "Target trip not found." });
         }
 
         const ticket = await req.models.Ticket.findOne({
             where: { pnr: normalizedPnr, status: "open", tripId: null },
         });
         if (!ticket) {
-            return res.status(404).json({ message: "Bağlanacak açık bilet bulunamadı." });
+            return res.status(404).json({ message: "Open ticket to attach not found." });
         }
 
         const route = trip?.routeId ? await req.models.Route.findByPk(trip.routeId, { raw: true }) : null;
@@ -4573,12 +4494,11 @@ exports.postAttachOpenTicket = async (req, res, next) => {
             const singleSeatCheck = await checkSingleSeatLimit(req.models, trip, route, [seatValue]);
             if (singleSeatCheck.exceeded) {
                 return res.status(400).json({
-                    message: `Tekli koltuk limiti (${singleSeatCheck.limit}) aşıldı. Lütfen farklı koltuk seçin.`,
+                    message: `Single seat limit (${singleSeatCheck.limit}) exceeded. Please select different seats.`,
                 });
             }
         }
 
-        // Sefer saati ayarı
         let effectiveTime = trip.time;
         if (trip.routeId) {
             const routeStops = await req.models.RouteStop.findAll({
@@ -4590,10 +4510,10 @@ exports.postAttachOpenTicket = async (req, res, next) => {
             if (toStopId !== null) {
                 const targetRouteStop = routeStops.find(rs => String(rs.stopId) === String(toStopId));
                 if (!targetRouteStop) {
-                    return res.status(400).json({ message: "Geçerli bir varış durağı seçiniz." });
+                    return res.status(400).json({ message: "Please select a valid arrival stop." });
                 }
                 if (currentRouteStop && targetRouteStop.order <= currentRouteStop.order) {
-                    return res.status(400).json({ message: "Varış durağı başlangıç durağından sonra olmalıdır." });
+                    return res.status(400).json({ message: "Arrival stop must be after departure stop." });
                 }
             }
 
@@ -4608,7 +4528,6 @@ exports.postAttachOpenTicket = async (req, res, next) => {
             }
         }
 
-        // Bileti sefere bağla
         ticket.seatNo = seatValue;
         ticket.tripId = trip.id;
         ticket.fromRouteStopId = fromStopId;
@@ -4619,10 +4538,10 @@ exports.postAttachOpenTicket = async (req, res, next) => {
 
         await ticket.save();
 
-        return res.status(200).json({ message: "Açık bilet başarıyla sefere bağlandı." });
+        return res.status(200).json({ message: "Open ticket successfully attached to trip." });
     } catch (error) {
-        console.error("Açık bileti sefere bağlama hatası:", error);
-        res.status(500).json({ message: "Bilet bağlanırken bir hata oluştu." });
+        console.error("Attach open ticket error:", error);
+        res.status(500).json({ message: "An error occurred while attaching ticket." });
     }
 };
 
@@ -4657,7 +4576,6 @@ exports.getSearchTable = async (req, res, next) => {
 
         let stopIds = new Set();
 
-        // --- Trip’li biletler varsa onların rotalarına göre stopId'leri topla
         if (tripIds.length) {
             const trips = await req.models.Trip.findAll({
                 where: { id: { [Op.in]: tripIds } },
@@ -4677,13 +4595,11 @@ exports.getSearchTable = async (req, res, next) => {
             }
         }
 
-        // --- Trip’i olmayan (açık) biletlerdeki from/to stopId’leri de ekle
         for (const t of tickets) {
             if (t.fromRouteStopId) stopIds.add(t.fromRouteStopId);
             if (t.toRouteStopId) stopIds.add(t.toRouteStopId);
         }
 
-        // --- Stop başlıklarını al
         if (stopIds.size > 0) {
             const stops = await req.models.Stop.findAll({
                 where: { id: { [Op.in]: [...stopIds] } },
@@ -4691,7 +4607,6 @@ exports.getSearchTable = async (req, res, next) => {
             stops.forEach(s => stopMap.set(String(s.id), s.title));
         }
 
-        // --- Ticket’ları zenginleştir
         const newTicketArray = tickets.map((ticket) => {
             const t = ticket.toJSON ? ticket.toJSON() : ticket;
             const fromTitle = stopMap.get(String(t.fromRouteStopId)) || "-";
@@ -4704,18 +4619,18 @@ exports.getSearchTable = async (req, res, next) => {
                 ...t,
                 from: fromTitle,
                 to: toTitle,
-                gender: t.gender === "m" ? "BAY" : "BAYAN",
+                gender: t.gender === "m" ? "MALE" : "FEMALE",
                 rawTripDate: tripDate,
                 rawTripTime: tripTime,
                 date: tripDate
-                    ? new Intl.DateTimeFormat("tr-TR", {
+                    ? new Intl.DateTimeFormat("en-US", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
                     }).format(new Date(tripDate))
                     : "",
                 time: tripTime
-                    ? new Intl.DateTimeFormat("tr-TR", {
+                    ? new Intl.DateTimeFormat("en-US", {
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
@@ -4759,11 +4674,10 @@ exports.getBusPlanPanel = async (req, res, next) => {
 
 exports.postSaveBusPlan = async (req, res, next) => {
     try {
-        console.log("Gelen veri:", req.body);
+        console.log("Incoming data:", req.body);
 
         const data = convertEmptyFieldsToNull(req.body);
 
-        // rowCount ve colCount değerlerini burada destructuring ile alıyoruz
         const {
             id,
             title,
@@ -4790,12 +4704,12 @@ exports.postSaveBusPlan = async (req, res, next) => {
         );
 
         if (created) {
-            return res.json({ message: "Eklendi", busModel });
+            return res.json({ message: "Added", busModel });
         } else {
-            return res.json({ message: "Güncellendi", busModel });
+            return res.json({ message: "Updated", busModel });
         }
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -4804,17 +4718,17 @@ exports.postDeleteBusPlan = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz plan bilgisi" });
+            return res.status(400).json({ message: "Invalid plan information." });
         }
 
         const activePlanCount = await req.models.BusModel.count({ where: { isDeleted: false } });
         if (activePlanCount <= 1) {
-            return res.status(400).json({ message: "Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin." });
+            return res.status(400).json({ message: "You cannot delete the only existing bus plan. Please add a new plan before deleting this one." });
         }
 
         const busModel = await req.models.BusModel.findOne({ where: { id, isDeleted: false } });
         if (!busModel) {
-            return res.status(404).json({ message: "Otobüs planı bulunamadı" });
+            return res.status(404).json({ message: "Bus plan not found." });
         }
 
         const replacementBusModel = await req.models.BusModel.findOne({
@@ -4826,7 +4740,7 @@ exports.postDeleteBusPlan = async (req, res, next) => {
         });
 
         if (!replacementBusModel) {
-            return res.status(400).json({ message: "Bir adet otobüs planınız varken silemezsiniz. Bu planı silmek için yeni otobüs planı ekleyin." });
+            return res.status(400).json({ message: "You cannot delete the only existing bus plan. Please add a new plan before deleting this one." });
         }
 
         await Promise.all([
@@ -4836,7 +4750,7 @@ exports.postDeleteBusPlan = async (req, res, next) => {
 
         await busModel.update({ isDeleted: true });
 
-        res.json({ message: "Silindi", replacementBusModelId: replacementBusModel.id });
+        res.json({ message: "Deleted", replacementBusModelId: replacementBusModel.id });
     } catch (err) {
         console.error("Bus plan delete error:", err);
         res.status(500).json({ message: err.message });
@@ -4865,7 +4779,7 @@ exports.getBusesList = async (req, res, next) => {
 
     const formatTotal = value => {
         const number = Number(value) || 0;
-        return number.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return number.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     for (const bus of buses) {
@@ -4899,7 +4813,7 @@ exports.getPricesList = async (req, res, next) => {
         if (!value) return "";
         const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) return "";
-        return date.toLocaleDateString("tr-TR");
+        return date.toLocaleDateString("en-US");
     };
 
     const formatted = prices.map(p => {
@@ -4928,7 +4842,7 @@ exports.postSavePrices = async (req, res, next) => {
     try {
         const { prices } = req.body;
         if (!Array.isArray(prices)) {
-            return res.status(400).json({ message: "Geçersiz veri" });
+            return res.status(400).json({ message: "Invalid data." });
         }
 
         const toNullIfNotPositive = val => {
@@ -4988,9 +4902,9 @@ exports.postSavePrices = async (req, res, next) => {
             );
         }
 
-        res.json({ message: "Kaydedildi" });
+        res.json({ message: "Saved" });
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 }
@@ -5048,9 +4962,9 @@ exports.postAddPrice = async (req, res, next) => {
             validUntil: validUntil ? `${validUntil}T00:00` : null
         });
 
-        res.json({ message: "Kaydedildi" });
+        res.json({ message: "Saved" });
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 }
@@ -5059,15 +4973,15 @@ exports.postDeletePrice = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz fiyat bilgisi" });
+            return res.status(400).json({ message: "Invalid price information." });
         }
 
         const deleted = await req.models.Price.destroy({ where: { id } });
         if (!deleted) {
-            return res.status(404).json({ message: "Fiyat bulunamadı" });
+            return res.status(404).json({ message: "Price not found." });
         }
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Price delete error:", err);
         res.status(500).json({ message: err.message });
@@ -5085,7 +4999,7 @@ exports.getBus = async (req, res, next) => {
 
 exports.postSaveBus = async (req, res, next) => {
     try {
-        console.log("Gelen veri:", req.body);
+        console.log("Incoming data:", req.body);
 
         const data = convertEmptyFieldsToNull(req.body);
 
@@ -5146,12 +5060,12 @@ exports.postSaveBus = async (req, res, next) => {
         );
 
         if (created) {
-            return res.json({ message: "Eklendi", bus });
+            return res.json({ message: "Added", bus });
         } else {
-            return res.json({ message: "Güncellendi", bus });
+            return res.json({ message: "Updated", bus });
         }
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5160,12 +5074,12 @@ exports.postDeleteBus = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz otobüs bilgisi" });
+            return res.status(400).json({ message: "Invalid bus information." });
         }
 
         const bus = await req.models.Bus.findByPk(id);
         if (!bus || bus.isDeleted) {
-            return res.status(404).json({ message: "Otobüs bulunamadı" });
+            return res.status(404).json({ message: "Bus not found." });
         }
 
         await req.db.transaction(async transaction => {
@@ -5180,7 +5094,7 @@ exports.postDeleteBus = async (req, res, next) => {
             );
         });
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Bus delete error:", err);
         res.status(500).json({ message: err.message });
@@ -5192,7 +5106,7 @@ exports.getBusModelsData = async (req, res, next) => {
         const busModels = await req.models.BusModel.findAll({ where: { isDeleted: false } });
         res.json(busModels);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5214,7 +5128,7 @@ exports.getBusesData = async (req, res, next) => {
 
         res.json(result);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5224,9 +5138,8 @@ exports.postTripBus = async (req, res, next) => {
         const { tripId, busId } = req.body;
 
         const bus = await req.models.Bus.findOne({ where: { id: busId } });
-        if (!bus) return res.status(404).json({ message: "Otobüs bulunamadı." });
+        if (!bus) return res.status(404).json({ message: "Bus not found." });
 
-        // DB güncelle
         await req.models.Trip.update(
             { busId: bus.id, busModelId: bus.busModelId, captainId: bus.captainId },
             { where: { id: tripId } }
@@ -5235,16 +5148,15 @@ exports.postTripBus = async (req, res, next) => {
         const trip = await req.models.Trip.findByPk(tripId);
         const captain = await req.models.Staff.findOne({ where: { id: bus.captainId } });
 
-        // 🔹 UETDS’ye yeni plaka bildir
         if (trip && trip.uetdsRefNo) {
             const result = await seferPlakaDegistir(req, trip.id, bus.licensePlate);
-            console.log("📡 [UETDS] seferPlakaDegistir sonucu:", result);
+            console.log("📡 [UETDS] Plate change result:", result);
         } else {
-            console.log("⚠️ Trip'in UETDS referans numarası yok, seferPlakaDegistir atlandı.");
+            console.log("⚠️ Trip has no UETDS ref number, plate change skipped.");
         }
 
         res.json({
-            message: "Otobüs güncellendi ve UETDS'ye bildirildi.",
+            message: "Bus updated and notified to UETDS.",
             busModelId: bus.busModelId,
             captain,
         });
@@ -5264,9 +5176,9 @@ exports.postTripBusPlan = async (req, res, next) => {
             captainId: null
         }, { where: { id: tripId } });
 
-        res.json({ message: "Güncellendi" });
+        res.json({ message: "Updated" });
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5276,9 +5188,8 @@ exports.postTripStaff = async (req, res, next) => {
         const { tripId, captainId, driver2Id, driver3Id, assistantId, hostessId } = req.body;
 
         const trip = await req.models.Trip.findByPk(tripId, { raw: true });
-        if (!trip) return res.status(404).json({ message: "Sefer bulunamadı." });
+        if (!trip) return res.status(404).json({ message: "Trip not found." });
 
-        // 🔹 Eski personel ID'leri (Trip’teki mevcut personeller)
         const oldIds = [
             trip.captainId,
             trip.driver2Id,
@@ -5289,7 +5200,6 @@ exports.postTripStaff = async (req, res, next) => {
             .filter((id) => id !== null && id !== undefined)
             .map((id) => Number(id));
 
-        // 🔹 Yeni personel ID'leri (body’den gelen veriler)
         const newIds = [
             captainId,
             driver2Id,
@@ -5300,7 +5210,6 @@ exports.postTripStaff = async (req, res, next) => {
             .filter((id) => id !== null && id !== undefined && id !== "")
             .map((id) => Number(id));
 
-        // 🔹 DB'de personel ilişkilerini güncelle
         await req.models.Trip.update(
             {
                 captainId: captainId || null,
@@ -5312,28 +5221,25 @@ exports.postTripStaff = async (req, res, next) => {
             { where: { id: tripId } }
         );
 
-        console.log("🟢 Eski personeller:", oldIds);
-        console.log("🔵 Yeni personeller:", newIds);
+        console.log("🟢 Old staff:", oldIds);
+        console.log("🔵 New staff:", newIds);
 
-        // 🔹 UETDS referansı yoksa direkt çık
         const tripAfter = await req.models.Trip.findByPk(tripId);
         if (!tripAfter || !tripAfter.uetdsRefNo) {
             return res.json({
-                message: "Güncellendi (UETDS referansı yok, SOAP atlanıldı)",
+                message: "Updated (No UETDS reference, SOAP skipped)",
                 diff: { toRemove: [], toAdd: [] },
             });
         }
 
-        // 🔹 Farkları hesapla
         const toRemove = oldIds.filter((id) => !newIds.includes(id));
         const toAdd = newIds.filter((id) => !oldIds.includes(id));
 
-        console.log("🟥 Silinecekler:", toRemove);
-        console.log("🟩 Eklenecekler:", toAdd);
+        console.log("🟥 To remove:", toRemove);
+        console.log("🟩 To add:", toAdd);
 
         const results = { removed: [], added: [] };
 
-        // 🟥 Önce personel iptal işlemleri
         if (toRemove.length) {
             const removedStaff = await req.models.Staff.findAll({
                 where: { id: toRemove },
@@ -5342,7 +5248,7 @@ exports.postTripStaff = async (req, res, next) => {
 
             for (const s of removedStaff) {
                 try {
-                    const r = await personelIptal(req, tripId, s, "Personel kaldırıldı");
+                    const r = await personelIptal(req, tripId, s, "Staff removed");
                     results.removed.push({
                         id: s.id,
                         idNumber: s.idNumber,
@@ -5359,7 +5265,6 @@ exports.postTripStaff = async (req, res, next) => {
             }
         }
 
-        // 🟩 Ardından personel ekleme işlemleri
         if (toAdd.length) {
             const addedStaff = await req.models.Staff.findAll({
                 where: { id: toAdd },
@@ -5384,15 +5289,14 @@ exports.postTripStaff = async (req, res, next) => {
             }
         }
 
-        // 🔚 Sonuç
         return res.json({
-            message: "Personeller güncellendi ve UETDS ile senkronlandı.",
+            message: "Staff updated and synced with UETDS.",
             diff: { toRemove, toAdd },
             results,
         });
     } catch (err) {
         console.error("❌ postTripStaff error:", err);
-        res.status(500).json({ message: err.message || "Personel güncelleme hatası." });
+        res.status(500).json({ message: err.message || "Staff update error." });
     }
 };
 
@@ -5402,36 +5306,35 @@ exports.postTripActive = async (req, res, next) => {
         const active = isActive === true || isActive === "true";
 
         const trip = await req.models.Trip.findByPk(tripId);
-        if (!trip) return res.status(404).json({ message: "Sefer bulunamadı." });
+        if (!trip) return res.status(404).json({ message: "Trip not found." });
 
         await req.models.Trip.update({ isActive: active }, { where: { id: tripId } });
 
-        // 🔹 UETDS tarafında güncelle
         if (trip.uetdsRefNo) {
             if (!active) {
-                const result = await seferIptal(req, trip.id, "Sefer devre dışı bırakıldı (iptal).");
-                console.log("📡 [UETDS] seferIptal sonucu:", result);
+                const result = await seferIptal(req, trip.id, "Trip disabled (canceled).");
+                console.log("📡 [UETDS] Trip cancel result:", result);
             } else {
                 const result = await seferAktif(req, trip.id);
-                console.log("📡 [UETDS] seferAktif sonucu:", result);
+                console.log("📡 [UETDS] Trip activate result:", result);
             }
         } else {
-            console.log("⚠️ Trip'in UETDS referans numarası yok, UETDS güncellemesi atlandı.");
+            console.log("⚠️ Trip has no UETDS ref number, update skipped.");
         }
 
         res.json({
             success: true,
-            message: active ? "Sefer aktif hale getirildi." : "Sefer iptal edildi.",
+            message: active ? "Trip activated." : "Trip canceled.",
         });
     } catch (err) {
         console.error("postTripActive error:", err);
-        res.status(500).json({ message: err.message || "Sefer durumu güncellenemedi." });
+        res.status(500).json({ message: err.message || "Trip status could not be updated." });
     }
 };
 
 exports.getStaffsList = async (req, res, next) => {
     const staff = await req.models.Staff.findAll({ where: { isDeleted: false } });
-    const dutyMap = { driver: 'Şoför', assistant: 'Muavin', hostess: 'Hostes' };
+    const dutyMap = { driver: 'Driver', assistant: 'Assistant', hostess: 'Hostess' };
     staff.forEach(s => { s.dutyStr = dutyMap[s.duty] || s.duty; });
 
     if (req.query.onlyData) {
@@ -5459,12 +5362,12 @@ exports.postSaveStaff = async (req, res, next) => {
         );
 
         if (created) {
-            return res.json({ message: "Eklendi", staff });
+            return res.json({ message: "Added", staff });
         } else {
-            return res.json({ message: "Güncellendi", staff });
+            return res.json({ message: "Updated", staff });
         }
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5473,12 +5376,12 @@ exports.postDeleteStaff = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz personel bilgisi" });
+            return res.status(400).json({ message: "Invalid staff information." });
         }
 
         const staff = await req.models.Staff.findByPk(id);
         if (!staff || staff.isDeleted) {
-            return res.status(404).json({ message: "Personel bulunamadı" });
+            return res.status(404).json({ message: "Staff not found." });
         }
 
         await req.db.transaction(async transaction => {
@@ -5500,7 +5403,7 @@ exports.postDeleteStaff = async (req, res, next) => {
                 await req.models.Trip.update({ hostessId: null }, { where: { hostessId: id }, transaction });
             }
         });
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Staff delete error:", err);
         res.status(500).json({ message: err.message });
@@ -5528,7 +5431,7 @@ exports.getStop = async (req, res, next) => {
     const { id } = req.query;
     const stop = await req.models.Stop.findOne({ where: { id } });
     if (!stop) {
-        return res.status(404).json({ message: "Durak bulunamadı" });
+        return res.status(404).json({ message: "Stop not found." });
     }
 
     res.json(stop);
@@ -5539,7 +5442,7 @@ exports.getStopsData = async (req, res, next) => {
         const stops = await req.models.Stop.findAll({ where: { isDeleted: false } });
         res.json(stops);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5549,7 +5452,7 @@ exports.getPlacesData = async (req, res, next) => {
         const places = await req.commonModels.Place.findAll();
         res.json(places);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5564,7 +5467,7 @@ exports.getUetdsPlacesData = async (req, res, next) => {
         });
         res.json(places);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5603,15 +5506,15 @@ exports.postSaveStop = async (req, res, next) => {
         const stopId = parsePositiveInteger(id);
 
         if (!title) {
-            return res.status(400).json({ message: "Durak adı gereklidir." });
+            return res.status(400).json({ message: "Stop name is required." });
         }
 
         if (!placeIdNumber) {
-            return res.status(400).json({ message: "Lütfen geçerli bir yer seçiniz." });
+            return res.status(400).json({ message: "Please select a valid place." });
         }
 
         if (!provinceCodeNumber || !districtCodeNumber) {
-            return res.status(400).json({ message: "Lütfen geçerli bir UETDS kodu seçiniz." });
+            return res.status(400).json({ message: "Please select a valid UETDS code." });
         }
 
         const uetdsPlace = await req.commonModels.UetdsPlace.findOne({
@@ -5622,7 +5525,7 @@ exports.postSaveStop = async (req, res, next) => {
         });
 
         if (!uetdsPlace) {
-            return res.status(400).json({ message: "Seçilen UETDS kodu bulunamadı." });
+            return res.status(400).json({ message: "Selected UETDS code not found." });
         }
 
         const payload = {
@@ -5639,19 +5542,19 @@ exports.postSaveStop = async (req, res, next) => {
             const existingStop = await req.models.Stop.findByPk(stopId);
 
             if (!existingStop) {
-                return res.status(404).json({ message: "Durak bulunamadı" });
+                return res.status(404).json({ message: "Stop not found." });
             }
 
             await existingStop.update(payload);
 
-            return res.json({ message: "Güncellendi", stop: existingStop });
+            return res.json({ message: "Updated", stop: existingStop });
         }
 
         const newStop = await req.models.Stop.create(payload);
 
-        return res.json({ message: "Eklendi", stop: newStop });
+        return res.json({ message: "Added", stop: newStop });
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5660,14 +5563,14 @@ exports.postDeleteStop = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz durak bilgisi" });
+            return res.status(400).json({ message: "Invalid stop information." });
         }
 
         const sequelize = req.models.Stop.sequelize;
         await sequelize.transaction(async (transaction) => {
             const stop = await req.models.Stop.findByPk(id, { transaction });
             if (!stop) {
-                throw new Error("Durak bulunamadı");
+                throw new Error("Stop not found.");
             }
 
             if (stop.isDeleted) {
@@ -5722,10 +5625,10 @@ exports.postDeleteStop = async (req, res, next) => {
             }
         });
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Stop delete error:", err);
-        if (err.message === "Durak bulunamadı") {
+        if (err.message === "Stop not found.") {
             return res.status(404).json({ message: err.message });
         }
         res.status(500).json({ message: err.message });
@@ -5737,7 +5640,7 @@ exports.getRoutesData = async (req, res, next) => {
         const routes = await req.models.Route.findAll();
         res.json(routes);
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -5811,7 +5714,7 @@ exports.postSaveRoute = async (req, res, next) => {
         });
 
         if (!trimmedRouteCode || !trimmedRouteTitle || !trimmedRouteDescription) {
-            return res.status(400).json({ message: "Hat kodu, hat adı ve açıklaması zorunludur." });
+            return res.status(400).json({ message: "Route code, title, and description are required." });
         }
 
         const {
@@ -5831,12 +5734,12 @@ exports.postSaveRoute = async (req, res, next) => {
             try {
                 parsedRouteStops = JSON.parse(routeStopsSTR);
             } catch (error) {
-                return res.status(400).json({ message: "Durak bilgileri çözümlenemedi." });
+                return res.status(400).json({ message: "Could not parse route stops data." });
             }
         }
 
         if (!Array.isArray(parsedRouteStops) || parsedRouteStops.length === 0) {
-            return res.status(400).json({ message: "Hat için en az bir durak eklemelisiniz." });
+            return res.status(400).json({ message: "You must add at least one stop for the route." });
         }
 
         let sanitizedRouteStops;
@@ -5844,7 +5747,7 @@ exports.postSaveRoute = async (req, res, next) => {
             sanitizedRouteStops = parsedRouteStops.map((rs, index) => {
                 const stopId = Number(rs?.stopId);
                 if (!stopId || Number.isNaN(stopId)) {
-                    throw new Error("Durak bilgisi eksik veya hatalı.");
+                    throw new Error("Stop information missing or invalid.");
                 }
 
                 const rawDuration = typeof rs?.duration === "string" ? rs.duration.trim() : "";
@@ -5857,19 +5760,19 @@ exports.postSaveRoute = async (req, res, next) => {
                 };
             });
         } catch (error) {
-            return res.status(400).json({ message: error.message || "Durak bilgisi eksik veya hatalı." });
+            return res.status(400).json({ message: error.message || "Stop information missing or invalid." });
         }
 
         const firstStopId = sanitizedRouteStops[0]?.stopId;
         const lastStopId = sanitizedRouteStops[sanitizedRouteStops.length - 1]?.stopId;
 
         if (!firstStopId || !lastStopId) {
-            return res.status(400).json({ message: "Durak bilgileri eksik." });
+            return res.status(400).json({ message: "Stop information missing." });
         }
 
         const numericId = id !== undefined && id !== null && id !== "" ? Number(id) : undefined;
         if (numericId !== undefined && Number.isNaN(numericId)) {
-            return res.status(400).json({ message: "Geçersiz hat bilgisi." });
+            return res.status(400).json({ message: "Invalid route ID." });
         }
 
         const transaction = await req.models.Route.sequelize.transaction();
@@ -5904,13 +5807,13 @@ exports.postSaveRoute = async (req, res, next) => {
 
             await transaction.commit();
 
-            return res.json({ message: created ? "Eklendi" : "Güncellendi", route });
+            return res.json({ message: created ? "Added" : "Updated", route });
         } catch (error) {
             await transaction.rollback();
             throw error;
         }
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 }
@@ -5919,18 +5822,18 @@ exports.postDeleteRoute = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz hat bilgisi" });
+            return res.status(400).json({ message: "Invalid route information." });
         }
 
         const route = await req.models.Route.findByPk(id);
         if (!route) {
-            return res.status(404).json({ message: "Hat bulunamadı" });
+            return res.status(404).json({ message: "Route not found." });
         }
 
         await req.models.RouteStop.destroy({ where: { routeId: id } });
         await route.destroy();
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Route delete error:", err);
         res.status(500).json({ message: err.message });
@@ -5949,7 +5852,6 @@ exports.getTripsList = async (req, res, next) => {
             order: [["time", "ASC"]]
         });
 
-        // enrich (avoid undefined if include missing)
         const enriched = trips.map(t => ({
             ...t.get({ plain: true }),
             routeCode: t.route?.routeCode || "",
@@ -5960,7 +5862,7 @@ exports.getTripsList = async (req, res, next) => {
         return res.render("mixins/tripsList", { trips: enriched });
     } catch (err) {
         console.error("getTripsList include error:", err);
-        return res.status(500).json({ message: "Sefer listesi alınırken hata oluştu." });
+        return res.status(500).json({ message: "An error occurred while retrieving the trip list." });
     }
 }
 
@@ -5970,7 +5872,7 @@ exports.postSaveTrip = async (req, res, next) => {
             convertEmptyFieldsToNull(req.body);
 
         const route = await req.models.Route.findOne({ where: { id: routeId } });
-        if (!route) return res.status(404).json({ error: "Hat bulunamadı" });
+        if (!route) return res.status(404).json({ error: "Route not found." });
 
         const routeStops = await req.models.RouteStop.findAll({
             where: { routeId: route.id },
@@ -5992,7 +5894,7 @@ exports.postSaveTrip = async (req, res, next) => {
         const fromStop = stops.find((s) => s.id == route.fromStopId);
         const toStop = stops.find((s) => s.id == route.toStopId);
         if (!fromStop || !toStop)
-            return res.status(400).json({ error: "Yer bilgisi bulunamadı" });
+            return res.status(400).json({ error: "Location information not found." });
 
         let trips = [];
         for (let i = 0; i < diffDays; i++) {
@@ -6011,36 +5913,31 @@ exports.postSaveTrip = async (req, res, next) => {
             });
         }
 
-        // 1️⃣ Kaydet
         const createdTrips = await req.models.Trip.bulkCreate(trips, { returning: true });
 
-        // 2️⃣ Kullanıcıya hızlı yanıt ver
-        res.status(201).json({ message: `${createdTrips.length} sefer eklendi` });
+        res.status(201).json({ message: `${createdTrips.length} trips added.` });
 
-        // 3️⃣ UETDS'ye asenkron bildirim (arka planda)
         for (const trip of createdTrips) {
             try {
-                // 🚍 Sefer oluştur
                 const result = await seferEkle(req, trip.id);
-                console.log(`✅ UETDS bildirimi başarılı → Trip #${trip.id}`);
+                console.log(`✅ UETDS notification successful → Trip #${trip.id}`);
 
-                // 🚀 Grup oluştur (yalnızca log)
                 const fullTrip = await req.models.Trip.findByPk(trip.id, {
                     include: [{ model: req.models.Route, as: "route" }],
                 });
 
                 const groupResult = await seferGrupEkle(req, fullTrip);
                 console.log(
-                    `📦 UETDS grup oluşturuldu (Trip #${trip.id}) → Grup Ref: ${groupResult?.uetdsGrupRefNo || "Belirtilmemiş"}`
+                    `📦 UETDS group created (Trip #${trip.id}) → Group Ref: ${groupResult?.uetdsGrupRefNo || "Not specified"}`
                 );
 
             } catch (err) {
-                console.error(`❌ Trip #${trip.id} UETDS bildirimi hatası:`, err.message);
+                console.error(`❌ Trip #${trip.id} UETDS notification error:`, err.message);
             }
         }
     } catch (err) {
         console.error("postSaveTrip error:", err);
-        res.status(500).json({ error: "Bir hata oluştu", detail: err.message });
+        res.status(500).json({ error: "An error occurred.", detail: err.message });
     }
 };
 
@@ -6141,12 +6038,12 @@ exports.postSaveBranch = async (req, res, next) => {
         );
 
         if (created) {
-            return res.json({ message: "Eklendi", branch });
+            return res.json({ message: "Added", branch });
         } else {
-            return res.json({ message: "Güncellendi", branch });
+            return res.json({ message: "Updated", branch });
         }
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -6155,12 +6052,12 @@ exports.postDeleteBranch = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz şube bilgisi" });
+            return res.status(400).json({ message: "Invalid branch information." });
         }
 
         const branch = await req.models.Branch.findOne({ where: { id, isDeleted: false }, attributes: ["id"] });
         if (!branch) {
-            return res.status(404).json({ message: "Şube bulunamadı" });
+            return res.status(404).json({ message: "Branch not found." });
         }
 
         await req.db.transaction(async transaction => {
@@ -6175,7 +6072,7 @@ exports.postDeleteBranch = async (req, res, next) => {
             );
         });
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("Branch delete error:", err);
         res.status(500).json({ message: err.message });
@@ -6299,12 +6196,12 @@ exports.postUpdateCustomer = async (req, res, next) => {
 
         const customerId = Number(id);
         if (!customerId) {
-            return res.status(400).json({ success: false, message: "Geçersiz müşteri bilgisi" });
+            return res.status(400).json({ success: false, message: "Invalid customer information." });
         }
 
         const customer = await req.models.Customer.findByPk(customerId);
         if (!customer) {
-            return res.status(404).json({ success: false, message: "Müşteri bulunamadı" });
+            return res.status(404).json({ success: false, message: "Customer not found." });
         }
 
         if (idNumber !== undefined) {
@@ -6348,9 +6245,9 @@ exports.postUpdateCustomer = async (req, res, next) => {
 
         if (typeof gender === "string") {
             const loweredGender = gender.trim().toLowerCase();
-            if (["m", "erkek", "male"].includes(loweredGender)) {
+            if (["m", "male"].includes(loweredGender)) {
                 customer.gender = "m";
-            } else if (["f", "k", "kadin", "kadın", "female"].includes(loweredGender)) {
+            } else if (["f", "female"].includes(loweredGender)) {
                 customer.gender = "f";
             }
         }
@@ -6463,7 +6360,7 @@ exports.getMemberTickets = async (req, res, next) => {
                 return "";
             }
             try {
-                return new Intl.NumberFormat("tr-TR", {
+                return new Intl.NumberFormat("en-US", {
                     style: "currency",
                     currency: "TRY",
                     minimumFractionDigits: 2,
@@ -6479,16 +6376,16 @@ exports.getMemberTickets = async (req, res, next) => {
                 return "";
             }
             if (value instanceof Date && !Number.isNaN(value.getTime())) {
-                return value.toLocaleDateString("tr-TR");
+                return value.toLocaleDateString("en-US");
             }
             if (typeof value === "string") {
                 const parsed = new Date(value);
                 if (!Number.isNaN(parsed.getTime())) {
-                    return parsed.toLocaleDateString("tr-TR");
+                    return parsed.toLocaleDateString("en-US");
                 }
                 const parts = value.split("-");
                 if (parts.length === 3) {
-                    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+                    return `${parts[1]}/${parts[2]}/${parts[0]}`;
                 }
             }
             return "";
@@ -6499,7 +6396,7 @@ exports.getMemberTickets = async (req, res, next) => {
                 return "";
             }
             if (value instanceof Date && !Number.isNaN(value.getTime())) {
-                return value.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+                return value.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
             }
             if (typeof value === "string") {
                 const parts = value.split(":");
@@ -6519,7 +6416,7 @@ exports.getMemberTickets = async (req, res, next) => {
             if (Number.isNaN(date.getTime())) {
                 return "";
             }
-            return date.toLocaleString("tr-TR", {
+            return date.toLocaleString("en-US", {
                 day: "2-digit",
                 month: "2-digit",
                 year: "numeric",
@@ -6634,15 +6531,12 @@ exports.postSaveUser = async (req, res, next) => {
         let hashedPassword;
 
         if (password) {
-            // Yeni şifre varsa hashle
             hashedPassword = await bcrypt.hash(password, 12);
         } else if (id) {
-            // Güncelleme ise ve şifre yoksa eski şifreyi al
             const existingUser = await req.models.FirmUser.findByPk(id);
             hashedPassword = existingUser ? existingUser.password : null;
         } else {
-            // Yeni kullanıcı ekleniyor ama şifre yoksa hata döndür
-            return res.status(400).json({ message: "Yeni kullanıcı için şifre zorunlu" });
+            return res.status(400).json({ message: "Password is required for new users." });
         }
 
         const [user, created] = await req.models.FirmUser.upsert(
@@ -6691,17 +6585,17 @@ exports.postSaveUser = async (req, res, next) => {
                 type: "expense",
                 category: "register_reset",
                 amount: 0,
-                description: `Kullanıcı oluşturuldu.`
+                description: `User created.`
             });
         }
 
         res.json({
-            message: created ? "Eklendi" : "Güncellendi",
+            message: created ? "Added" : "Updated",
             user
         });
 
     } catch (err) {
-        console.error("Hata:", err);
+        console.error("Error:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -6710,19 +6604,19 @@ exports.postDeleteUser = async (req, res, next) => {
     try {
         const id = Number(req.body.id);
         if (!id) {
-            return res.status(400).json({ message: "Geçersiz kullanıcı bilgisi" });
+            return res.status(400).json({ message: "Invalid user information." });
         }
 
         const user = await req.models.FirmUser.findByPk(id);
         if (!user) {
-            return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+            return res.status(404).json({ message: "User not found." });
         }
 
         await req.models.FirmUserPermission.destroy({ where: { firmUserId: id } });
         await req.models.CashRegister.destroy({ where: { userId: id } });
         await user.update({ isDeleted: true });
 
-        res.json({ message: "Silindi" });
+        res.json({ message: "Deleted" });
     } catch (err) {
         console.error("User delete error:", err);
         res.status(500).json({ message: err.message });
@@ -6733,9 +6627,8 @@ exports.getTransactions = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.firmUser.id;
         const register = await req.models.CashRegister.findOne({ where: { userId } });
-        if (!register) throw new Error("Kasa kaydı bulunamadı.");
+        if (!register) throw new Error("Register record not found.");
 
-        // Tarihe göre yeni → eski
         const transactions = await req.models.Transaction.findAll({
             where: {
                 userId,
@@ -6748,7 +6641,6 @@ exports.getTransactions = async (req, res, next) => {
             transactions[transactions.length - 1].amount = ""
         }
 
-        // Ticket bilgilerini Promise.all ile ekle
         await Promise.all(transactions.map(async (t) => {
             if (t.ticketId) {
                 const ticket = await req.models.Ticket.findOne({ where: { id: t.ticketId } });
@@ -6762,7 +6654,7 @@ exports.getTransactions = async (req, res, next) => {
         res.render("mixins/transactionsList", { transactions });
     } catch (err) {
         console.error("Get transactions error:", err);
-        res.status(500).send("Bir hata oluştu.");
+        res.status(500).send("An error occurred.");
     }
 };
 
@@ -6790,7 +6682,7 @@ exports.getTransactionData = async (req, res, next) => {
     try {
         const userId = req.query.userId || req.session.firmUser.id;
         const register = await req.models.CashRegister.findOne({ where: { userId } });
-        if (!register) throw new Error("Kasa kaydı bulunamadı.");
+        if (!register) throw new Error("Register record not found.");
 
         const transactions = await req.models.Transaction.findAll({
             where: {
@@ -6810,7 +6702,7 @@ exports.getTransactionData = async (req, res, next) => {
         let otherOut = 0;
 
         for (const t of transactions) {
-            const amount = Number(t.amount) || 0; // her zaman number, hata olursa 0
+            const amount = Number(t.amount) || 0;
             switch (t.category) {
                 case "cash_sale":
                     cashSales += amount;
@@ -6865,9 +6757,9 @@ exports.getTransactionData = async (req, res, next) => {
 exports.getUserRegisterBalance = async (req, res, next) => {
     try {
         const userId = req.query.userId;
-        if (!userId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
+        if (!userId) return res.status(400).json({ message: "User information missing." });
         const register = await req.models.CashRegister.findOne({ where: { userId } });
-        if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
+        if (!register) return res.status(404).json({ message: "Register record not found." });
         const balance = (Number(register.cash_balance) || 0) + (Number(register.card_balance) || 0);
         res.json({ balance });
     } catch (err) {
@@ -6895,7 +6787,7 @@ exports.postAddTransaction = async (req, res, next) => {
 
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
         if (!register) {
-            throw new Error("Kasa kaydı bulunamadı.");
+            throw new Error("Register record not found.");
         }
 
         if (type === "income") {
@@ -6918,25 +6810,25 @@ exports.postAddBusTransaction = async (req, res, next) => {
         const allowedTypes = ["income", "expense"];
 
         if (!req.session?.firmUser?.id) {
-            return res.status(401).json({ message: "Oturum bulunamadı." });
+            return res.status(401).json({ message: "Session not found." });
         }
 
         if (!allowedTypes.includes(transactionType)) {
-            return res.status(400).json({ message: "Geçersiz işlem tipi." });
+            return res.status(400).json({ message: "Invalid transaction type." });
         }
 
         if (!busId) {
-            return res.status(400).json({ message: "Otobüs bilgisi eksik." });
+            return res.status(400).json({ message: "Bus information missing." });
         }
 
         const normalizedAmount = Number(amount);
         if (!amount || isNaN(normalizedAmount) || normalizedAmount <= 0) {
-            return res.status(400).json({ message: "Geçerli bir tutar giriniz." });
+            return res.status(400).json({ message: "Please enter a valid amount." });
         }
 
         const bus = await req.models.Bus.findOne({ where: { id: busId } });
         if (!bus) {
-            return res.status(404).json({ message: "Otobüs bulunamadı." });
+            return res.status(404).json({ message: "Bus not found." });
         }
 
         const record = await req.models.BusTransaction.create({
@@ -6957,7 +6849,7 @@ exports.postAddBusTransaction = async (req, res, next) => {
 exports.postResetRegister = async (req, res, next) => {
     try {
         const register = await req.models.CashRegister.findOne({ where: { userId: req.session.firmUser.id } });
-        if (!register) return res.status(404).json({ message: "Kasa kaydı bulunamadı." });
+        if (!register) return res.status(404).json({ message: "Register record not found." });
 
         const total = Number(register.cash_balance) + Number(register.card_balance);
 
@@ -6966,7 +6858,7 @@ exports.postResetRegister = async (req, res, next) => {
             type: "expense",
             category: "register_reset",
             amount: total,
-            description: "Kasa sıfırlandı. Önceki bakiye: " + total + "₺"
+            description: "Register reset. Previous balance: " + total + "₺"
         });
 
         register.cash_balance = 0;
@@ -6984,7 +6876,7 @@ exports.postResetRegister = async (req, res, next) => {
 exports.postTransferRegister = async (req, res, next) => {
     try {
         const targetUserId = Number(req.body.user);
-        if (!targetUserId) return res.status(400).json({ message: "Kullanıcı bilgisi eksik." });
+        if (!targetUserId) return res.status(400).json({ message: "User information missing." });
 
         const senderId = req.session.firmUser.id;
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [senderId, targetUserId] } } });
@@ -7064,7 +6956,7 @@ exports.getPendingPayments = async (req, res, next) => {
             amount: p.amount,
             userName: users.find(u => u.id == p.receiverId)?.name || "",
             canConfirm: p.initiatorId == req.session.firmUser.id,
-            type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
+            type: p.isWholeTransfer ? "Register Transfer" : "Manual Transaction"
         }));
         res.render("mixins/paymentsList", { payments: result });
     } catch (err) {
@@ -7086,7 +6978,7 @@ exports.getPendingCollections = async (req, res, next) => {
             amount: p.amount,
             userName: users.find(u => u.id == p.payerId)?.name || "",
             canConfirm: p.initiatorId == req.session.firmUser.id,
-            type: p.isWholeTransfer ? "Kasa Devri" : "Manuel İşlem"
+            type: p.isWholeTransfer ? "Register Transfer" : "Manual Transaction"
         }));
         res.render("mixins/paymentsList", { payments: result });
     } catch (err) {
@@ -7101,9 +6993,9 @@ exports.postConfirmPayment = async (req, res, next) => {
         const payment = await req.models.Payment.findOne({ where: { id } });
         const users = await req.models.FirmUser.findAll({ where: { id: { [Op.in]: [payment.payerId, payment.receiverId] } } })
 
-        if (!payment) return res.status(404).json({ message: "Ödeme kaydı bulunamadı." });
-        if (payment.status !== "pending") return res.status(400).json({ message: "Ödeme zaten işlenmiş." });
-        if (payment.initiatorId !== req.session.firmUser.id) return res.status(403).json({ message: "Onay yetkiniz yok." });
+        if (!payment) return res.status(404).json({ message: "Payment record not found." });
+        if (payment.status !== "pending") return res.status(400).json({ message: "Payment already processed." });
+        if (payment.initiatorId !== req.session.firmUser.id) return res.status(403).json({ message: "You are not authorized to confirm." });
 
         if (Number(payment.amount) === 0) {
             payment.status = action == "approve" ? "approved" : "rejected";
@@ -7121,7 +7013,7 @@ exports.postConfirmPayment = async (req, res, next) => {
                 category: "transfer_in",
                 amount: Number(payment.amount),
                 description: payment.isWholeTransfer ?
-                    `${users.find(u => u.id == payment.payerId).name}  isimli kullanıcıdan devralınan kasa.` : `${users.find(u => u.id == payment.payerId).name} isimli kullanıcıdan alınan ödeme.`,
+                    `Register transferred from user ${users.find(u => u.id == payment.payerId).name}.` : `Payment received from user ${users.find(u => u.id == payment.payerId).name}.`,
             })
 
             await req.models.Transaction.create({
@@ -7130,8 +7022,8 @@ exports.postConfirmPayment = async (req, res, next) => {
                 category: "transfer_out",
                 amount: Number(payment.amount),
                 description: payment.isWholeTransfer ?
-                    `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya devredilen kasa. Devir: ${payment.amount}₺` :
-                    `${users.find(u => u.id == payment.receiverId).name} isimli kullanıcıya yapılan ödeme.`
+                    `Register transferred to user ${users.find(u => u.id == payment.receiverId).name}. Transfer: ${payment.amount}₺` :
+                    `Payment made to user ${users.find(u => u.id == payment.receiverId).name}.`
             })
 
             await req.models.CashRegister.findOne({ where: { userId: payment.receiverId } }).then(async cr => {
@@ -7168,7 +7060,7 @@ exports.postSaveAnnouncement = async (req, res, next) => {
             showTicker: showTicker === true || showTicker === 'true',
             showPopup: showPopup === false ? false : true,
         });
-        res.json({ message: "Eklendi", announcement });
+        res.json({ message: "Added", announcement });
     } catch (err) {
         console.error("Save announcement error:", err);
         res.status(500).json({ message: err.message });
@@ -7226,12 +7118,12 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         const targetUserId = userId || req.session.firmUser?.id;
 
         if (!targetUserId) {
-            return res.status(400).json({ message: 'Kullanıcı bilgisi eksik.' });
+            return res.status(400).json({ message: 'User information is missing.' });
         }
 
         const user = await req.models.FirmUser.findOne({ where: { id: targetUserId }, attributes: ['name', 'branchId'], raw: true });
         if (!user) {
-            return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+            return res.status(404).json({ message: 'User not found.' });
         }
 
         const branch = user.branchId
@@ -7276,16 +7168,16 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         const ticketMap = new Map(tickets.map(t => [t.id, t]));
 
         const categoryLabels = {
-            cash_sale: 'Nakit satış',
-            card_sale: 'K.Kartı satış',
-            cash_refund: 'Nakit iade',
-            card_refund: 'K.Kartı iade',
-            payed_to_bus: 'Otobüse ödenen',
-            income: 'Gelir',
-            expense: 'Gider',
-            transfer_in: 'Devir alındı',
-            transfer_out: 'Devir verildi',
-            register_reset: 'Kasa sıfırlama',
+            cash_sale: 'Cash Sale',
+            card_sale: 'Credit Card Sale',
+            cash_refund: 'Cash Refund',
+            card_refund: 'Credit Card Refund',
+            payed_to_bus: 'Paid to Bus',
+            income: 'Income',
+            expense: 'Expense',
+            transfer_in: 'Transfer In',
+            transfer_out: 'Transfer Out',
+            register_reset: 'Register Reset',
         };
 
         const summaryTotals = {
@@ -7307,14 +7199,14 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
             if (!value) return '';
             const date = new Date(value);
             if (Number.isNaN(date.getTime())) return '';
-            return new Intl.DateTimeFormat('tr-TR', {
+            return new Intl.DateTimeFormat('en-US', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                timeZone: 'Europe/Istanbul',
+                timeZone: 'Europe/Istanbul', // Keeping timezone relevant to location context
             }).format(date);
         };
 
@@ -7361,7 +7253,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
 
             const ticket = t.ticketId ? ticketMap.get(t.ticketId) : null;
             const documentParts = [];
-            if (ticket?.seatNo) documentParts.push(`KN: ${ticket.seatNo}`);
+            if (ticket?.seatNo) documentParts.push(`Seat: ${ticket.seatNo}`);
             if (ticket?.pnr) documentParts.push(`PNR: ${ticket.pnr}`);
 
             return {
@@ -7370,12 +7262,12 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
                 description: t.description || '',
                 document: documentParts.join(' '),
                 amount: t.type === 'income' ? formatDailyCurrency(amount) : "-" + formatDailyCurrency(amount),
-                incomeOrExpense: t.type === 'income' ? "Gelir" : 'Gider',
+                incomeOrExpense: t.type === 'income' ? "Income" : 'Expense',
             };
         });
 
-        const totalSales = summaryTotals.cashSalesTotal + summaryTotals.cardSalesTotal + summaryTotals.pointSalesTotal;
-        const totalRefunds = summaryTotals.cashRefundTotal + summaryTotals.cardRefundTotal + summaryTotals.pointRefundTotal;
+        const totalSales = summaryTotals.cashSalesTotal + summaryTotals.cardSalesTotal;
+        const totalRefunds = summaryTotals.cashRefundTotal + summaryTotals.cardRefundTotal;
         const netTransfer = summaryTotals.transferInTotal - summaryTotals.transferOutTotal;
         const netCash = (summaryTotals.cashSalesTotal - summaryTotals.cashRefundTotal)
             + summaryTotals.otherIncomeTotal
@@ -7388,30 +7280,30 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         const netTotal = netCash + netCard;
 
         const summaryItems = [
-            { label: 'Satış Adedi', value: String(summaryTotals.ticketSalesCount) },
-            { label: 'İade Adedi', value: String(summaryTotals.ticketRefundCount) },
-            { label: 'Nakit Satış Tutarı', value: formatDailyCurrency(summaryTotals.cashSalesTotal) },
-            { label: 'Nakit İade Tutarı', value: formatDailyCurrency(summaryTotals.cashRefundTotal) },
-            { label: 'K.K. Satış Tutarı', value: formatDailyCurrency(summaryTotals.cardSalesTotal) },
-            { label: 'K.K. İade Tutarı', value: formatDailyCurrency(summaryTotals.cardRefundTotal) },
-            { label: 'Toplam Satış Tutarı', value: formatDailyCurrency(totalSales) },
-            { label: 'Toplam İade Tutarı', value: formatDailyCurrency(totalRefunds) },
-            { label: 'Diğer Gelirler', value: formatDailyCurrency(summaryTotals.otherIncomeTotal) },
-            { label: 'Diğer Giderler', value: formatDailyCurrency(summaryTotals.otherExpenseTotal) },
-            { label: 'Otobüs Ödemeleri', value: formatDailyCurrency(summaryTotals.payedToBusTotal) },
-            { label: 'Transfer Alınan', value: formatDailyCurrency(summaryTotals.transferInTotal) },
-            { label: 'Transfer Verilen', value: formatDailyCurrency(summaryTotals.transferOutTotal) },
-            { label: 'Kullancılardan Alınan', value: formatDailyCurrency(netTransfer) },
+            { label: 'Total Sales Count', value: String(summaryTotals.ticketSalesCount) },
+            { label: 'Total Refund Count', value: String(summaryTotals.ticketRefundCount) },
+            { label: 'Cash Sales Total', value: formatDailyCurrency(summaryTotals.cashSalesTotal) },
+            { label: 'Cash Refund Total', value: formatDailyCurrency(summaryTotals.cashRefundTotal) },
+            { label: 'Credit Card Sales Total', value: formatDailyCurrency(summaryTotals.cardSalesTotal) },
+            { label: 'Credit Card Refund Total', value: formatDailyCurrency(summaryTotals.cardRefundTotal) },
+            { label: 'Total Sales Amount', value: formatDailyCurrency(totalSales) },
+            { label: 'Total Refund Amount', value: formatDailyCurrency(totalRefunds) },
+            { label: 'Other Income', value: formatDailyCurrency(summaryTotals.otherIncomeTotal) },
+            { label: 'Other Expenses', value: formatDailyCurrency(summaryTotals.otherExpenseTotal) },
+            { label: 'Paid to Bus', value: formatDailyCurrency(summaryTotals.payedToBusTotal) },
+            { label: 'Transfer In', value: formatDailyCurrency(summaryTotals.transferInTotal) },
+            { label: 'Transfer Out', value: formatDailyCurrency(summaryTotals.transferOutTotal) },
+            { label: 'Net Transfer', value: formatDailyCurrency(netTransfer) },
         ];
 
         if (summaryTotals.registerResetTotal) {
-            summaryItems.push({ label: 'Kasa Sıfırlama', value: formatDailyCurrency(summaryTotals.registerResetTotal) });
+            summaryItems.push({ label: 'Register Reset', value: formatDailyCurrency(summaryTotals.registerResetTotal) });
         }
 
         const netSummary = [
-            { label: 'Nakit', value: formatDailyCurrency(netCash) },
-            { label: 'Kredi Kartı', value: formatDailyCurrency(netCard) },
-            { label: 'Toplam', value: formatDailyCurrency(netTotal) },
+            { label: 'Cash', value: formatDailyCurrency(netCash) },
+            { label: 'Credit Card', value: formatDailyCurrency(netCard) },
+            { label: 'Total', value: formatDailyCurrency(netTotal) },
         ];
 
         const formatRange = (date) => formatDateTime(date)?.replace(',', '');
@@ -7429,7 +7321,7 @@ exports.getDailyUserAccountReport = async (req, res, next) => {
         await generateDailyUserAccountReport({ rows, summaryItems, netSummary, query: queryInfo }, res);
     } catch (err) {
         console.error('getDailyUserAccountReport error:', err);
-        res.status(500).json({ message: 'Günlük kullanıcı raporu oluşturulamadı.' });
+        res.status(500).json({ message: 'Daily user account report could not be generated.' });
     }
 };
 
@@ -7456,10 +7348,10 @@ exports.getSalesRefundsReport = async (req, res, next) => {
             type,
             startDate,
             endDate,
-            branch: branchRecord?.title || "Tümü",
-            user: userRecord?.name || "Tümü",
-            from: fromStopRecord?.title || "Tümü",
-            to: toStopRecord?.title || "Tümü",
+            branch: branchRecord?.title || "All",
+            user: userRecord?.name || "All",
+            from: fromStopRecord?.title || "All",
+            to: toStopRecord?.title || "All",
         };
 
         console.log(start)
@@ -7510,13 +7402,13 @@ exports.getSalesRefundsReport = async (req, res, next) => {
                 payment: t.payment,
                 status: t.status,
                 seat: t.seatNo,
-                gender: t.gender === 'f' ? 'K' : 'E',
+                gender: t.gender === 'f' ? 'F' : 'M',
                 pnr: t.pnr,
                 price: t.price
             };
         });
 
-        if ((type || '').toLowerCase() === 'detaylı' || (type || '').toLowerCase() === 'detayli' || (type || '').toLowerCase() === 'detailed') {
+        if ((type || '').toLowerCase() === 'detailed') {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline; filename="sales_refunds_detailed.pdf"');
             await generateSalesRefundReportDetailed(rows, query, res);
@@ -7527,7 +7419,7 @@ exports.getSalesRefundsReport = async (req, res, next) => {
         }
     } catch (err) {
         console.error('getSalesRefundsReport error:', err);
-        res.status(500).json({ message: 'Satışlar ve iadeler raporu oluşturulamadı.' });
+        res.status(500).json({ message: 'Could not generate sales and refunds report.' });
     }
 };
 
@@ -7538,25 +7430,25 @@ exports.getWebTicketsReport = async (req, res, next) => {
         const start = startDate ? new Date(startDate) : new Date('1970-01-01');
         const end = endDate ? new Date(endDate) : new Date();
 
-        let branchTitle = 'Tümü';
+        let branchTitle = 'All';
         if (branchId) {
             const branch = await req.models.Branch.findOne({ where: { id: branchId }, attributes: ['title'], raw: true });
             if (branch?.title) branchTitle = branch.title;
         }
 
-        let userName = 'Tümü';
+        let userName = 'All';
         if (userId) {
             const user = await req.models.FirmUser.findOne({ where: { id: userId }, attributes: ['name'], raw: true });
             if (user?.name) userName = user.name;
         }
 
-        let fromStopTitle = 'Tümü';
+        let fromStopTitle = 'All';
         if (fromStopId) {
             const fromStop = await req.models.Stop.findOne({ where: { id: fromStopId }, attributes: ['title'], raw: true });
             if (fromStop?.title) fromStopTitle = fromStop.title;
         }
 
-        let toStopTitle = 'Tümü';
+        let toStopTitle = 'All';
         if (toStopId) {
             const toStop = await req.models.Stop.findOne({ where: { id: toStopId }, attributes: ['title'], raw: true });
             if (toStop?.title) toStopTitle = toStop.title;
@@ -7572,9 +7464,9 @@ exports.getWebTicketsReport = async (req, res, next) => {
             to: toStopTitle,
         };
         const normalizedGroup = (groupBy || '').toString().toLowerCase();
-        const isStopRequested = normalizedGroup === 'stop' || normalizedGroup === 'durak';
+        const isStopRequested = normalizedGroup === 'stop';
         const effectiveGroup = isStopRequested ? 'stop' : 'bus';
-        queryInfo.group = effectiveGroup === 'stop' ? 'Durak' : 'Otobüs';
+        queryInfo.group = effectiveGroup === 'stop' ? 'Stop' : 'Bus';
 
         const where = {
             status: 'web',
@@ -7597,7 +7489,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
         }
 
         const normalizedType = (type || '').toLowerCase();
-        const isDetailed = normalizedType === 'detailed' || normalizedType === 'detaylı' || normalizedType === 'detayli';
+        const isDetailed = normalizedType === 'detailed';
         const summaryFileName = effectiveGroup === 'stop'
             ? 'web_tickets_by_stop_summary.pdf'
             : 'web_tickets_by_bus_summary.pdf';
@@ -7799,7 +7691,7 @@ exports.getWebTicketsReport = async (req, res, next) => {
         }
     } catch (err) {
         console.error('getWebTicketsReport error:', err);
-        res.status(500).json({ message: 'Web bilet raporu oluşturulamadı.' });
+        res.status(500).json({ message: 'Web ticket report could not be generated.' });
     }
 };
 
@@ -8082,9 +7974,9 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
         };
 
         const paymentLabel = (type, original) => {
-            if (type === "cash") return "Nakit";
-            if (type === "card") return "K.Kartı";
-            if (type === "point") return "Puan";
+            if (type === "cash") return "Cash";
+            if (type === "card") return "Credit Card";
+            if (type === "point") return "Point";
             return original ? original.toString().toUpperCase() : "-";
         };
 
@@ -8102,7 +7994,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             const branchKey = branchIdValue !== null ? toKey(branchIdValue) : `none-${userKey}`;
             const branch = branchIdValue !== null ? branchMap.get(toKey(branchIdValue)) : null;
 
-            const branchTitle = branch?.title || "Belirtilmemiş Şube";
+            const branchTitle = branch?.title || "Unspecified Branch";
             const branchStopId = branch?.stopId ?? null;
 
             const fromStopId = ticket.fromRouteStopId;
@@ -8136,7 +8028,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             if (!branchBucket.users.has(userKey)) {
                 branchBucket.users.set(userKey, {
                     id: user.id,
-                    name: user.name || "Belirtilmemiş Kullanıcı",
+                    name: user.name || "Unspecified User",
                     tickets: [],
                     totals: { count: 0, amount: 0 }
                 });
@@ -8176,7 +8068,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
 
             const ticketRecord = {
                 branch: branchTitle,
-                user: user.name || "Belirtilmemiş Kullanıcı",
+                user: user.name || "Unspecified User",
                 transactionDate: ticket.createdAt ? new Date(ticket.createdAt) : null,
                 tripInfo: {
                     departureStop: fromStopTitle,
@@ -8184,7 +8076,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                     departureTime: departureDate
                 },
                 payment: paymentLabel(paymentType, ticket.payment),
-                gender: ticket.gender === "f" ? "K" : ticket.gender === "m" ? "E" : "",
+                gender: ticket.gender === "f" ? "F" : ticket.gender === "m" ? "M" : "",
                 pnr: ticket.pnr || "-",
                 price: ticketPrice
             };
@@ -8214,7 +8106,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                     tickets: user.tickets,
                     totals: user.totals
                 };
-            }).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"));
+            }).sort((a, b) => a.name.localeCompare(b.name, "en-US"));
 
             return {
                 id: branch.id,
@@ -8222,7 +8114,7 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
                 users: usersArray,
                 totals: branch.totals
             };
-        }).sort((a, b) => a.title.localeCompare(b.title, "tr-TR"));
+        }).sort((a, b) => a.title.localeCompare(b.title, "en-US"));
 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", "inline; filename=\"external_return_tickets.pdf\"");
@@ -8232,15 +8124,15 @@ exports.getExternalReturnTicketsReport = async (req, res, next) => {
             query: {
                 startDate: startDate || "",
                 endDate: endDate || "",
-                branch: branchRecord?.title || "Tümü",
-                user: userRecord?.name || "Tümü"
+                branch: branchRecord?.title || "All",
+                user: userRecord?.name || "All"
             },
             totals,
             branches: preparedBranches
         }, res);
     } catch (err) {
         console.error("getExternalReturnTicketsReport error:", err);
-        res.status(500).json({ message: "Dış bölge bilet raporu oluşturulamadı." });
+        res.status(500).json({ message: "Could not generate external return tickets report." });
     }
 };
 
@@ -8339,9 +8231,9 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
         };
 
         const paymentLabel = type => {
-            if (type === "cash") return "Nakit";
-            if (type === "card") return "K.Kartı";
-            if (type === "point") return "Puan";
+            if (type === "cash") return "Cash";
+            if (type === "card") return "Credit Card";
+            if (type === "point") return "Point";
             return "-";
         };
 
@@ -8388,7 +8280,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
             if (!branchBuckets.has(branchKey)) {
                 branchBuckets.set(branchKey, {
                     id: branch?.id ?? null,
-                    title: branch?.title || "Belirtilmemiş Şube",
+                    title: branch?.title || "Unspecified Branch",
                     users: new Map(),
                     totals: { count: 0, amount: 0, payments: { cash: 0, card: 0, point: 0, other: 0 } }
                 });
@@ -8399,7 +8291,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
             if (!branchBucket.users.has(userKey)) {
                 branchBucket.users.set(userKey, {
                     id: user?.id ?? null,
-                    name: user?.name || "Belirtilmemiş Kullanıcı",
+                    name: user?.name || "Unspecified User",
                     tickets: [],
                     totals: { count: 0, amount: 0, payments: { cash: 0, card: 0, point: 0, other: 0 } }
                 });
@@ -8469,7 +8361,7 @@ exports.getUpcomingTicketsReport = async (req, res, next) => {
         }, res);
     } catch (err) {
         console.error("getUpcomingTicketsReport error:", err);
-        res.status(500).json({ message: "İleri tarihli satışlar raporu oluşturulamadı." });
+        res.status(500).json({ message: "Could not generate upcoming tickets report." });
     }
 };
 
@@ -8484,7 +8376,7 @@ exports.getBusTransactionsReport = async (req, res, next) => {
         const end = parseDateTimeInput(endDate) || now;
 
         if (start > end) {
-            return res.status(400).json({ message: "Başlangıç tarihi bitiş tarihinden büyük olamaz." });
+            return res.status(400).json({ message: "Start date cannot be after end date." });
         }
 
         let busIdNum = null;
@@ -8495,7 +8387,7 @@ exports.getBusTransactionsReport = async (req, res, next) => {
         if (busId) {
             busIdNum = Number(busId);
             if (!Number.isFinite(busIdNum)) {
-                return res.status(400).json({ message: "Geçersiz otobüs bilgisi." });
+                return res.status(400).json({ message: "Invalid bus information." });
             }
             where.busId = busIdNum;
         }
@@ -8524,10 +8416,10 @@ exports.getBusTransactionsReport = async (req, res, next) => {
             })
             : [];
 
-        const busMap = new Map(busRecords.map(b => [Number(b.id), b.licensePlate || `Otobüs #${b.id}`]));
+        const busMap = new Map(busRecords.map(b => [Number(b.id), b.licensePlate || `Bus #${b.id}`]));
         const fallbackBusTitle = id => {
             const numeric = Number(id);
-            return Number.isFinite(numeric) ? `Otobüs #${numeric}` : "Otobüs";
+            return Number.isFinite(numeric) ? `Bus #${numeric}` : "Bus";
         };
 
         const toAmount = value => {
@@ -8604,7 +8496,7 @@ exports.getBusTransactionsReport = async (req, res, next) => {
         const queryInfo = {
             startDate: start,
             endDate: end,
-            bus: Number.isFinite(busIdNum) ? (busMap.get(busIdNum) || fallbackBusTitle(busIdNum)) : "Tümü"
+            bus: Number.isFinite(busIdNum) ? (busMap.get(busIdNum) || fallbackBusTitle(busIdNum)) : "All"
         };
 
         res.setHeader("Content-Type", "application/pdf");
@@ -8618,7 +8510,7 @@ exports.getBusTransactionsReport = async (req, res, next) => {
         }, res);
     } catch (err) {
         console.error("getBusTransactionsReport error:", err);
-        res.status(500).json({ message: "Otobüs gelir gider raporu oluşturulamadı." });
+        res.status(500).json({ message: "Could not generate bus transactions report." });
     }
 };
 
@@ -8648,7 +8540,7 @@ function destroySessionAndRespond(req, res) {
     req.session.destroy(err => {
         if (err) {
             console.error("Session destroy error:", err);
-            res.status(500).json({ message: "Oturum kapatılırken bir hata oluştu." });
+            res.status(500).json({ message: "An error occurred while destroying the session." });
             return;
         }
         res.clearCookie("connect.sid");
@@ -8659,7 +8551,7 @@ function destroySessionAndRespond(req, res) {
 exports.postUpdateProfile = async (req, res, next) => {
     try {
         if (!req.session?.firmUser?.id) {
-            return res.status(401).json({ message: "Oturum bulunamadı." });
+            return res.status(401).json({ message: "Session not found." });
         }
 
         const userId = req.session.firmUser.id;
@@ -8668,11 +8560,11 @@ exports.postUpdateProfile = async (req, res, next) => {
         const rawPhone = typeof req.body.phoneNumber === "string" ? req.body.phoneNumber : "";
 
         if (!name) {
-            return res.status(400).json({ message: "Ad soyad boş bırakılamaz." });
+            return res.status(400).json({ message: "Name cannot be empty." });
         }
 
         if (!username) {
-            return res.status(400).json({ message: "Kullanıcı adı boş bırakılamaz." });
+            return res.status(400).json({ message: "Username cannot be empty." });
         }
 
         const existingUser = await req.models.FirmUser.findOne({
@@ -8683,7 +8575,7 @@ exports.postUpdateProfile = async (req, res, next) => {
         });
 
         if (existingUser) {
-            return res.status(400).json({ message: "Bu kullanıcı adı kullanılmaktadır." });
+            return res.status(400).json({ message: "This username is already taken." });
         }
 
         const digits = rawPhone.replace(/\D/g, "");
@@ -8691,7 +8583,7 @@ exports.postUpdateProfile = async (req, res, next) => {
 
         if (digits) {
             if (digits.length !== 10) {
-                return res.status(400).json({ message: "Telefon numarası 10 haneli olmalıdır." });
+                return res.status(400).json({ message: "Phone number must be 10 digits." });
             }
             formattedPhone = `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
         }
@@ -8699,7 +8591,7 @@ exports.postUpdateProfile = async (req, res, next) => {
         const user = await req.models.FirmUser.findByPk(userId);
 
         if (!user) {
-            return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+            return res.status(404).json({ message: "User not found." });
         }
 
         await user.update({
@@ -8710,50 +8602,50 @@ exports.postUpdateProfile = async (req, res, next) => {
 
         return destroySessionAndRespond(req, res);
     } catch (err) {
-        console.error("Profil güncelleme hatası:", err);
-        res.status(500).json({ message: "Profil güncellenemedi." });
+        console.error("Profile update error:", err);
+        res.status(500).json({ message: "Profile could not be updated." });
     }
 };
 
 exports.postChangePassword = async (req, res, next) => {
     try {
         if (!req.session?.firmUser?.id) {
-            return res.status(401).json({ message: "Oturum bulunamadı." });
+            return res.status(401).json({ message: "Session not found." });
         }
 
         const { currentPassword, newPassword, confirmPassword } = req.body;
 
         if (!currentPassword) {
-            return res.status(400).json({ message: "Eski şifre gereklidir." });
+            return res.status(400).json({ message: "Current password is required." });
         }
 
         if (!newPassword) {
-            return res.status(400).json({ message: "Yeni şifre gereklidir." });
+            return res.status(400).json({ message: "New password is required." });
         }
 
         if (typeof newPassword !== "string" || newPassword.length < 6) {
-            return res.status(400).json({ message: "Yeni şifre en az 6 karakter olmalıdır." });
+            return res.status(400).json({ message: "New password must be at least 6 characters." });
         }
 
         if (newPassword !== confirmPassword) {
-            return res.status(400).json({ message: "Yeni şifreler uyuşmuyor." });
+            return res.status(400).json({ message: "New passwords do not match." });
         }
 
         const user = await req.models.FirmUser.findByPk(req.session.firmUser.id);
 
         if (!user) {
-            return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+            return res.status(404).json({ message: "User not found." });
         }
 
         const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
 
         if (!isCurrentValid) {
-            return res.status(400).json({ message: "Eski şifre hatalı." });
+            return res.status(400).json({ message: "Current password is incorrect." });
         }
 
         const isSamePassword = await bcrypt.compare(newPassword, user.password);
         if (isSamePassword) {
-            return res.status(400).json({ message: "Yeni şifre eski şifre ile aynı olamaz." });
+            return res.status(400).json({ message: "New password cannot be the same as the old password." });
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -8761,7 +8653,7 @@ exports.postChangePassword = async (req, res, next) => {
 
         return destroySessionAndRespond(req, res);
     } catch (err) {
-        console.error("Şifre güncelleme hatası:", err);
-        res.status(500).json({ message: "Şifre güncellenemedi." });
+        console.error("Password update error:", err);
+        res.status(500).json({ message: "Password could not be updated." });
     }
 };

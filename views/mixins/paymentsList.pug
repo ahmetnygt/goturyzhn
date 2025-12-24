@@ -9,7 +9,7 @@ each p in payments
         .col-3
             if p.canConfirm
                 .d-flex.justify-content-center.gap-3
-                    button.btn.btn-sm.btn-outline-primary.payment-button(type="button" data-id=p.id data-action="approve") Kabul
-                    button.btn.btn-sm.btn-outline-danger.payment-button(type="button" data-id=p.id data-action="reject") Red
+                    button.btn.btn-sm.btn-outline-primary.payment-button(type="button" data-id=p.id data-action="approve") Accept
+                    button.btn.btn-sm.btn-outline-danger.payment-button(type="button" data-id=p.id data-action="reject") Reject
             else
-                p.text-center.m-0 Bekliyor...
+                p.text-center.m-0 Pending...

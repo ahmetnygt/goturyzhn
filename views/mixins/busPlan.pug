@@ -1,47 +1,47 @@
 .trip-info-settings
     if !trip.isActive
-        p.inactiveTripText SEFER İPTAL
+        p.inactiveTripText TRIP CANCELED
     if !trip.isAccountCut && trip.isActive
         if permissions.includes('CUT_ACCOUNT')
-            button.btn.btn-primary.btn-sm.account-cut Araç Kaldır
+            button.btn.btn-primary.btn-sm.account-cut Dispatch Vehicle
     else if trip.isActive
         if permissions.includes('REVERT_ACCOUNT_CUT')
-            button.btn.btn-danger.btn-sm.account-cut-undo Hesap Kesildi
+            button.btn.btn-danger.btn-sm.account-cut-undo Account Settled
     .trip-helper-buttons
         .trip-cargo.dropdown
             .trip-cargo-button.dropdown-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false")
                 i.fa-solid.fa-box-open
             ul.dropdown-menu
                 li
-                    a.dropdown-item.trip-cargo-add(href="#") Kargo Ekle
+                    a.dropdown-item.trip-cargo-add(href="#") Add Cargo
                 li
-                    a.dropdown-item.trip-cargo-list(href="#") Kargolar
+                    a.dropdown-item.trip-cargo-list(href="#") Cargo List
         if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
             .trip-incomes
                 | ₺
                 .trip-incomes-popup
                     .input-group
-                        span.input-group-text.col-7 Satış (Drk)
+                        span.input-group-text.col-7 Sales (Station)
                         input.form-control.form-control-sm(type="text" readonly value=incomes.currentSoldCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.currentSoldAmount}₺`)
                     .input-group
-                        span.input-group-text.col-7 Satış (Tüm)
+                        span.input-group-text.col-7 Sales (All)
                         input.form-control.form-control-sm(type="text" readonly value=incomes.totalSoldCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.totalSoldAmount}₺`)
                     .input-group
-                        span.input-group-text.col-7 Rezerve (Drk)
+                        span.input-group-text.col-7 Reserved (Station)
                         input.form-control.form-control-sm(type="text" readonly value=incomes.currentReservedCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.currentReservedAmount}₺`)
                     .input-group
-                        span.input-group-text.col-7 Rezerve (Tüm)
+                        span.input-group-text.col-7 Reserved (All)
                         input.form-control.form-control-sm(type="text" readonly value=incomes.totalReservedCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.totalReservedAmount}₺`)
                     .input-group
-                        span.input-group-text.col-7 Kargo
+                        span.input-group-text.col-7 Cargo
                         input.form-control.form-control-sm(type="text" readonly value=incomes.cargoCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.cargoAmount}₺`)
                     .input-group
-                        span.input-group-text.col-7 Toplam
+                        span.input-group-text.col-7 Total
                         input.form-control.form-control-sm(type="text" readonly value=incomes.grandCount)
                         input.form-control.form-control-sm(type="text" readonly value=`${incomes.grandAmount}₺`)
         .trip-options.dropdown
@@ -49,35 +49,36 @@
                 i.fa-solid.fa-ellipsis-vertical
             ul.dropdown-menu
                 li
-                    a.dropdown-item.trip-option-staff(href="#") Personeller
+                    a.dropdown-item.trip-option-staff(href="#") Staff
                 if trip.isActive
                     if permissions.includes('TRIP_CANCEL')
                         li
-                            a.dropdown-item.trip-option-cancel-trip(href="#") Sefer İptal
+                            a.dropdown-item.trip-option-cancel-trip(href="#") Cancel Trip
                 else
                     if permissions.includes('TRIP_CANCEL')
                         li
-                            a.dropdown-item.trip-option-active-trip(href="#") Sefer Aktive Et
+                            a.dropdown-item.trip-option-active-trip(href="#") Activate Trip
                 if permissions.includes('TRIP_STOP_RESTRICT')
                     li
-                        a.dropdown-item.trip-option-stop-restriction(href="#") Durak Kısıtlama
+                        a.dropdown-item.trip-option-stop-restriction(href="#") Stop Restriction
                 if permissions.includes('TRIP_STOP_RESTRICT') || permissions.includes('TRIP_TIME_ADJUST')
                     li
-                        a.dropdown-item.trip-option-change-time(href="#") Saat Değiştir
+                        a.dropdown-item.trip-option-change-time(href="#") Change Time
                 if permissions.includes('TRIP_FINANCIAL_DETAILS_VIEW')
                     li
-                        a.dropdown-item.trip-option-revenues(href="#") Hasılatlar
+                        a.dropdown-item.trip-option-revenues(href="#") Revenues
         .trip-documents.dropdown
             .trip-documents-button.dropdown-toggle(type="button" data-bs-toggle="dropdown" aria-expanded="false")
                 i.fa-solid.fa-file-lines
             ul.dropdown-menu
                 if trip.isAccountCut
                     li
-                        a.dropdown-item.accountCut(href="#") Hesap Fişi
+                        a.dropdown-item.accountCut(href="#") Account Voucher
                 if trip.isAccountCut || permissions.includes('PRINT_SEAT_PLAN_INVOICE_WITHOUT_CUT')
                     li
-                        a.dropdown-item.trip-seat-plan-report(href="#") Koltuk Planlı Yolcu Listesi
-                a.dropdown-item.uetds-trip-detail-report(href="#") UETDS Sefer Detay Çıktısı
+                        a.dropdown-item.trip-seat-plan-report(href="#") Passenger List (Seat Plan)
+                li
+                    a.dropdown-item.uetds-trip-detail-report(href="#") UETDS Trip Detail Output
     p.text-center.m-0 #{route.routeCode} | #{trip.dateString} - #{trip.timeString}
     p.m-0.text-center
         b
@@ -90,38 +91,28 @@
     .d-flex.justify-content-between.mb-3
         if permissions.includes('TRIP_BUS_ASSIGN')
             select.trip-bus-license-plate.form-select-sm.form-select(data-current-bus-id=trip.busId)
-                option(value="" selected disabled) Plaka seçiniz.
+                option(value="" selected disabled) Select license plate.
         else
             input.trip-bus-license-plate.form-control-sm.form-control(data-current-bus-id=trip.busId type="text" readonly)
         if permissions.includes('TRIP_SEAT_MODEL_CHANGE')
             select.trip-bus-plan.form-select-sm.form-select(data-current-bus-model-id=trip.busModelId)
-                option(value="" selected disabled) Koltuk planı seçiniz.
+                option(value="" selected disabled) Select seat plan.
         else
             input.trip-bus-plan.form-control-sm.form-control(data-current-bus-model-id=trip.busModelId type="text" readonly)
 .seats
     - let seatNumber = 0
     - let seatIndex = 0
-    //- Veritabanından gelen row/col, yoksa varsayılan (eski kayıtlar için) 16x5
     - const rowCount = (busModel.rowCount && busModel.rowCount > 0) ? busModel.rowCount : 16
     - const colCount = (busModel.colCount && busModel.colCount > 0) ? busModel.colCount : 5
 
     - for(let i = 0; i < rowCount; i++)
         .seat-row
             - for(let j = 0; j < colCount; j++){
-                //- Binary string sınırlarını aşmamak için kontrol
                 - if(seatIndex < busModel.planBinary.length) {
-
-                    //- DURUM 0 (Boşluk/Koridor)
                     - if(busModel.planBinary[seatIndex] == '0'){
-                        //- ÖNEMLİ: Artık gereksiz sağ boşlukları backend'e kaydetmediğimiz için, 
-                        //- buradaki her "0" aslında bir koridor veya şoför yanı boşluğudur.
-                        //- Bu yüzden hepsini .seat.hidden (yer kaplayan boşluk) yapıyoruz.
-                        //- Eski .seat.none (display:none) mantığını kaldırıyoruz.
                         .seat.hidden
                             |0
-                    -}
-
-                    //- DURUM 1 (Koltuk)
+                    - }
                     - else {
                         - seatNumber++
                         .seat(class=`${tickets[seatNumber]?tickets[seatNumber].status!=="pending"?tickets[seatNumber].gender:"":""}  ${tickets[seatNumber]?tickets[seatNumber].status:""} seat-${seatNumber} ${tickets[seatNumber]?tickets[seatNumber].stopOrder:""}`

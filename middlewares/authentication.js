@@ -10,7 +10,7 @@ module.exports = (req, res, next) => {
         return next();
     }
     req.session.redirectTo = req.originalUrl;
-    req.session.errorMessage = "Bu sayfayı ziyaret etmek için giriş yapmalısınız.";
+    req.session.errorMessage = "You must log in to access this page.";
     req.session.save(err => {
         if (err) return next(err);
         res.redirect("/login");

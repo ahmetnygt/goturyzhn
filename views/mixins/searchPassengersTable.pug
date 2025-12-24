@@ -2,17 +2,17 @@
 table.table.table-bordered.table-hover.table-sm.m-0.bg-white
     thead
         tr
-            th(scope="col") K.No
-            th(scope="col") Ad Soyad
-            th(scope="col") Cinsiyet
-            th(scope="col") Nereden
-            th(scope="col") Nereye
-            th(scope="col") Tarih
-            th(scope="col") Ücret
-            th(scope="col") Tahsilat
-            th(scope="col") Durum
-            th(scope="col") Telefon
-            th(scope="col") Kimlik
+            th(scope="col") Seat
+            th(scope="col") Full Name
+            th(scope="col") Gender
+            th(scope="col") From
+            th(scope="col") To
+            th(scope="col") Date
+            th(scope="col") Price
+            th(scope="col") Payment
+            th(scope="col") Status
+            th(scope="col") Phone
+            th(scope="col") ID
             th(scope="col") PNR
     tbody
         each t in tickets
@@ -38,21 +38,21 @@ table.table.table-bordered.table-hover.table-sm.m-0.bg-white
                 td #{t.to}
                 td #{t.date} #{t.time}
                 td #{t.price}₺
-                td Nakit
+                td Cash
                 if t.status == "web"
                     td WEB
                 else if t.status == "completed" || t.status == "gotur"
-                    td SATIŞ
+                    td SOLD
                 else if t.status == "reservation"
-                    td REZ
+                    td RES
                 else if t.status == "open"
-                    td AÇIK
+                    td OPEN
                 else if t.status == "pending"
-                    td BEKLEMEDE
+                    td PENDING
                 else if t.status == "canceled"
-                    td İPTAL
+                    td CANCELED
                 else if t.status == "refund"
-                    td İADE
+                    td REFUND
                 else
                     td -
                 td #{t.phoneNumber}

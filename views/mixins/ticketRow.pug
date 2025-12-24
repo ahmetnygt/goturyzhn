@@ -12,7 +12,7 @@
                 value="m"
                 checked=(gender && gender[i] == "m")
             )
-            label.male.gender-input-label(for="male_"+i) ERKEK
+            label.male.gender-input-label(for="male_"+i) MALE
             input.female(
                 id="female_"+i
                 name="gender_"+i
@@ -20,13 +20,13 @@
                 value="f"
                 checked=(gender && gender[i] == "f")
             )
-            label.female.gender-input-label(for="female_"+i) KADIN
+            label.female.gender-input-label(for="female_"+i) FEMALE
 
         .nationality
-            label.form-label Uyruk
+            label.form-label Nationality
             -
                 const fallbackNationalityList = [
-                    { value: "tr", label: "TR - Türkiye", searchText: "TR Türkiye Turkey" },
+                    { value: "tr", label: "TR - Turkiye", searchText: "TR Turkiye Turkey" },
                 ];
                 const nationalityList = Array.isArray(nationalityOptions) && nationalityOptions.length
                     ? nationalityOptions
@@ -44,9 +44,9 @@
                 const canSelectForeignNationality = permissions && permissions.includes('FOREIGN_PASSENGER_TICKET_SALE');
             select.form-select.form-select-sm(
                 data-searchable-select
-                data-search-placeholder="Uyruk ara"
-                data-placeholder="Uyruk seçiniz"
-                data-no-results-text="Sonuç bulunamadı"
+                data-search-placeholder="Search nationality"
+                data-placeholder="Select nationality"
+                data-no-results-text="No results found"
             )
                 each option in nationalityList
                     -
@@ -60,7 +60,7 @@
                     ) #{option.label}
 
         .identity
-            label.form-label Kimlik/Pasaport No
+            label.form-label ID/Passport No
             if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ((ticket && ticket[i] ? ticket[i].status : "") == "completed")
                 input.form-control.form-control-sm(
                     readonly
@@ -74,29 +74,29 @@
                 )
 
         .name
-            label.form-label İsim
+            label.form-label First Name
             input.form-control.form-control-sm(type="text" value=(ticket && ticket[i] ? ticket[i].name : ""))
 
         .surname
-            label.form-label Soyisim
+            label.form-label Last Name
             input.form-control.form-control-sm(type="text" value=(ticket && ticket[i] ? ticket[i].surname : ""))
 
         .type
-            label.form-label Yolcu Türü
+            label.form-label Passenger Type
             select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].customerType : ""))
-                option(value="adult") Yetişkin
-                option(value="child") Çocuk
-                option(value="student") Öğrenci
-                option(value="disabled") Engelli
-                option(value="retired") Emekli
+                option(value="adult") Adult
+                option(value="child") Child
+                option(value="student") Student
+                option(value="disabled") Disabled
+                option(value="retired") Retired
 
         .category
-            label.form-label Kategori
+            label.form-label Category
             select.form-select.form-select-sm(value=(ticket && ticket[i] ? ticket[i].customerCategory : ""))
                 option(value="normal") Normal
                 if ((permissions && permissions.includes('SALE_DISCOUNT_TICKET_OWN_BRANCH') && isOwnBranch) || (permissions && permissions.includes('SALE_DISCOUNT_TICKET_OTHER_BRANCH') && !isOwnBranch))
-                    option(value="member") Abone
-                    option(value="guest") Misafir
+                    option(value="member") Member
+                    option(value="guest") Guest
         -
             const seatPriceData = price ? (Array.isArray(price) ? price[i] : price) : null
             const seatType = (seatTypes && seatTypes[i] == "single") ? "single" : "standard"
@@ -131,7 +131,7 @@
             data-single-prices=JSON.stringify(singleSeatPriceValues)
         )
             label.form-label
-                | Fiyat
+                | Price
                 span.customer-point.ms-1
             .price-input-wrapper
                 input.form-control.form-control-sm(type="number" value=defaultPriceValue readonly=inputIsReadonly ? true : false)
@@ -145,7 +145,7 @@
 .ticket-info
     .up-row
         .phone
-            label.form-label Telefon Numarası
+            label.form-label Phone Number
             if !permissions.includes("UPDATE_SALE_PASSENGER_INFO") && ((ticket && ticket[0] ? ticket[0].status : "") == "completed")
                 input.form-control.form-control-sm(
                     readonly
@@ -162,7 +162,7 @@
 
         if action == "reservation" || action == "edit"
             .reservation-expire
-                label.form-label Rezervasyon Opsiyonu
+                label.form-label Reservation Option
                 if permissions.includes('UPDATE_RESERVATION_OPTION_TIME')
                     if isOwnBranch || (!isOwnBranch && permissions.includes('UPDATE_RESERVATION_OPTION_TIME_OTHER_BRANCH'))
                         .input-group
@@ -204,11 +204,11 @@
                 const takeOnValue = ticket && ticket.length ? (ticket[0].takeOnText || "") : "";
                 const takeOnOptionsArray = Array.isArray(takeOnOptions) ? takeOnOptions : [];
                 const takeOnExists = takeOnOptionsArray.some(option => option && option.title === takeOnValue);
-            label.form-label Biniş Yeri
+            label.form-label Boarding Point
             select.form-select.form-select-sm(
                 data-searchable-select
-                data-search-placeholder="Biniş ara"
-                data-placeholder="Seçiniz"
+                data-search-placeholder="Search boarding point"
+                data-placeholder="Select"
                 data-allow-new
                 value=takeOnValue
             )
@@ -223,11 +223,11 @@
                 const takeOffValue = ticket && ticket.length ? (ticket[0].takeOffText || "") : "";
                 const takeOffOptionsArray = Array.isArray(takeOffOptions) ? takeOffOptions : [];
                 const takeOffExists = takeOffOptionsArray.some(option => option && option.title === takeOffValue);
-            label.form-label İniş Yeri
+            label.form-label Drop-off Point
             select.form-select.form-select-sm(
                 data-searchable-select
-                data-search-placeholder="İniş ara"
-                data-placeholder="Seçiniz"
+                data-search-placeholder="Search drop-off point"
+                data-placeholder="Select"
                 data-allow-new
                 value=takeOffValue
             )
@@ -239,11 +239,11 @@
 
         if action == "sell" || action == "edit" || action == "complete"
             .payment
-                label.form-label Ödeme
+                label.form-label Payment
                 select.form-select.form-select-sm
-                    option(value="cash") Nakit
-                    option(value="card") K. Kartı
-                    option(value="point") Puan
+                    option(value="cash") Cash
+                    option(value="card") Credit Card
+                    option(value="point") Points
 
         if ticket && (action == "edit" || action == "complete")
             .pnr
@@ -255,7 +255,7 @@
                 )
 
         .sum-price
-            label.form-label Toplam Fiyat
+            label.form-label Total Price
             input.form-control.form-control-sm(
                 readonly
                 type="text"
@@ -264,7 +264,7 @@
 
     .row
         .description
-            label.form-label Açıklama
+            label.form-label Description
             input.form-control.form-control-sm(type="text")
 
 input#pendingIds(type="hidden" value=pendingIds)

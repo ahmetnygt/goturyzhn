@@ -1,16 +1,16 @@
 module.exports = async (req, res, next) => {
     try {
-        const ApiKey = req.commonModels.ApiKey; // initGoturModels içinden gelecek
+        const ApiKey = req.commonModels.ApiKey; // Comes from initGoturModels
 
         const apiKey = req.header("X-Api-Key");
         const tenant = req.header("X-Tenant-Key");
 
         if (!apiKey) {
-            return res.status(401).json({ error: "API key eksik." });
+            return res.status(401).json({ error: "API key is missing." });
         }
 
         if (!tenant) {
-            return res.status(401).json({ error: "Tenant header eksik." });
+            return res.status(401).json({ error: "Tenant header is missing." });
         }
 
         const keyRecord = await ApiKey.findOne({
@@ -22,7 +22,7 @@ module.exports = async (req, res, next) => {
         });
 
         if (!keyRecord) {
-            return res.status(403).json({ error: "Geçersiz veya pasif API key." });
+            return res.status(403).json({ error: "Invalid or inactive API key." });
         }
 
         req.apiClient = {
@@ -34,6 +34,6 @@ module.exports = async (req, res, next) => {
         next();
     } catch (err) {
         console.error("API_KEY_AUTH_ERROR:", err);
-        res.status(500).json({ error: "API doğrulama hatası", detail: err.message });
+        res.status(500).json({ error: "API authentication error", detail: err.message });
     }
 };

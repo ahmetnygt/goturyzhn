@@ -12,12 +12,6 @@ const { Op } = require('sequelize');
 const BusAccountCut = require('../../models/busAccountCutModel');
 const Staff = require('../../models/staffModel');
 
-/**
- * Generate an account receipt PDF using supplied data.
- * @param {Object} data - Receipt information
- * @param {string|stream.Writable} output - Output file path or writable stream
- * @returns {Promise<void>} resolves when writing finishes
- */
 function generateAccountReceipt(data, output) {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const stream = typeof output === 'string'
@@ -28,40 +22,37 @@ function generateAccountReceipt(data, output) {
 
   const availableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // --- Türkçe destekli fontlar (yerel dosya) ---
   const regularFontPath = path.join(__dirname, 'fonts', 'DejaVuSans.ttf');
   const boldFontPath = path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf');
   try {
     doc.registerFont('Regular', regularFontPath);
     doc.registerFont('Bold', boldFontPath);
-    doc.font('Regular'); // varsayılan font Türkçe uyumlu
+    doc.font('Regular');
   } catch (e) {
-    console.warn('Font yüklenemedi, varsayılan font kullanılacak:', e.message);
+    console.warn('Font could not be loaded, using default font:', e.message);
   }
 
   const header = data.header || {};
   const summary = data.summary || {};
   const passengers = data.passengers || [];
 
-  // === Header ===
   const pageWidth = doc.page.width;
 
   doc.font('Bold').fontSize(10);
   const dateText = `${header.departure || ''} `;
   const dateWidth = doc.widthOfString(dateText);
   doc.text(dateText, (pageWidth - dateWidth) / 2, 25);
-  // Sefer - tam ortada büyük
+
   doc.font('Bold').fontSize(14);
   const seferText = `${header.route || ''}`;
   const seferWidth = doc.widthOfString(seferText);
   doc.text(seferText, (pageWidth - seferWidth) / 2, 40);
-  // Plaka - altında biraz küçük
+
   doc.font('Bold').fontSize(12);
   const plakaText = `${header.bus || ''} `;
   const plakaWidth = doc.widthOfString(plakaText);
   doc.text(plakaText, (pageWidth - plakaWidth) / 2, 60);
 
-  // Diğer bilgiler (başlık bold, değer normal)
   doc.fontSize(10);
   let y = 100;
   const leftX = 40;
@@ -72,40 +63,32 @@ function generateAccountReceipt(data, output) {
     doc.font('Regular').text(value);
   };
 
-  drawLabelValue('Durak : ', header.stop || '', leftX, y);
-  drawLabelValue('Şoför : ', header.driver || '', rightX, y);
-  y += 15;
-  y += 15;
-
-  // === Summary block ===
-  y = 140;
+  drawLabelValue('Station : ', header.stop || '', leftX, y);
+  drawLabelValue('Driver : ', header.driver || '', rightX, y);
+  y += 30;
 
   const drawSummary = (label, value, x, yy) => {
     doc.font('Bold').text(label, x, yy, { continued: true });
     doc.font('Regular').text(String(value ?? ''));
   };
 
-  drawSummary('Bilet Adedi : ', summary.ticketCount || 0, leftX, y);
-  drawSummary('Kesintiler : ', summary.cut + "₺" || 0, rightX, y);
+  drawSummary('Ticket Count : ', summary.ticketCount || 0, leftX, y);
+  drawSummary('Deductions : ', summary.cut + "₺" || 0, rightX, y);
   y += 15;
-  drawSummary('Toplam Kesilen : ', summary.ticketTotal + "₺" || 0, leftX, y);
-  drawSummary('Çorba : ', summary.tip + "₺" || 0, rightX, y);
+  drawSummary('Total Deducted : ', summary.ticketTotal + "₺" || 0, leftX, y);
+  drawSummary('Tip : ', summary.tip + "₺" || 0, rightX, y);
   y += 15;
-  drawSummary('Kargo Adedi : ', summary.cargoCount || 0, leftX, y);
-  drawSummary('Kargo Tutarı : ', summary.cargoTotal + "₺" || 0, rightX, y);
+  drawSummary('Cargo Count : ', summary.cargoCount || 0, leftX, y);
+  drawSummary('Cargo Amount : ', summary.cargoTotal + "₺" || 0, rightX, y);
   y += 15;
-  drawSummary('Komisyon : ', summary.commission + "₺" || 0, leftX, y);
-  drawSummary('Ödenmesi Gereken : ', summary.needToPay + "₺" || 0, rightX, y);
+  drawSummary('Commission : ', summary.commission + "₺" || 0, leftX, y);
+  drawSummary('Amount Due : ', summary.needToPay + "₺" || 0, rightX, y);
   y += 15;
-  drawSummary('Kalan Tutar : ', summary.afterComission + "₺" || 0, leftX, y);
-  drawSummary('Ödenen : ', summary.payed + "₺" || 0, rightX, y);
+  drawSummary('Remaining Amount : ', summary.afterComission + "₺" || 0, leftX, y);
+  drawSummary('Paid : ', summary.payed + "₺" || 0, rightX, y);
   y += 15;
-  drawSummary('Kalan : ', summary.remaining + "₺" || 0, rightX, y);
-  // drawSummary(' : ', summary.totalPassenger || 0, leftX, y);
-  // y += 15;
-  // drawSummary('Kalan Tutar : ', summary.afterComission || 0, rightX, y);
+  drawSummary('Balance : ', summary.remaining + "₺" || 0, leftX, y);
 
-  // === Passenger list (TABLE with borders) ===
   y += 40;
   const x0 = doc.page.margins.left;
   const W = availableWidth;
@@ -114,12 +97,12 @@ function generateAccountReceipt(data, output) {
   doc.fontSize(9);
 
   const cols = [
-    { key: 'no', label: 'KN', x: x0 + unit * 0, w: unit * 1, align: 'left' },
-    { key: 'name', label: 'Ad Soyad', x: x0 + unit * 1, w: unit * 3, align: 'left' },
-    { key: 'gender', label: 'K/E', x: x0 + unit * 4, w: unit * 1, align: 'center' },
-    { key: 'from', label: 'Nereden', x: x0 + unit * 5, w: unit * 2, align: 'left' },
-    { key: 'to', label: 'Nereye', x: x0 + unit * 7, w: unit * 2, align: 'left' },
-    { key: 'price', label: 'Ücret', x: x0 + unit * 9, w: unit * 1, align: 'right' },
+    { key: 'no', label: 'SN', x: x0 + unit * 0, w: unit * 1, align: 'left' },
+    { key: 'name', label: 'Full Name', x: x0 + unit * 1, w: unit * 3, align: 'left' },
+    { key: 'gender', label: 'F/M', x: x0 + unit * 4, w: unit * 1, align: 'center' },
+    { key: 'from', label: 'From', x: x0 + unit * 5, w: unit * 2, align: 'left' },
+    { key: 'to', label: 'To', x: x0 + unit * 7, w: unit * 2, align: 'left' },
+    { key: 'price', label: 'Price', x: x0 + unit * 9, w: unit * 1, align: 'right' },
   ];
 
   const pad = 4;
@@ -186,17 +169,12 @@ function generateAccountReceipt(data, output) {
 }
 
 function addTime(baseTime, addTime) {
-  // "12:30:00" ve "01:00:00" gibi stringleri alır
   const [h1, m1, s1] = baseTime.split(":").map(Number);
   const [h2, m2, s2] = addTime.split(":").map(Number);
 
-  // toplam saniye
   let totalSeconds = (h1 * 3600 + m1 * 60 + s1) + (h2 * 3600 + m2 * 60 + s2);
-
-  // 24 saati geçerse mod 24 yap
   totalSeconds = totalSeconds % (24 * 3600);
 
-  // geri formatla
   const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
   const mm = String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, "0");
   const ss = String(totalSeconds % 60).padStart(2, "0");
@@ -241,9 +219,7 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
   if (routeStopOrder !== routeStops.length - 1) {
     for (let j = 0; j < routeStops.length; j++) {
       const rs = routeStops[j];
-
       trip.time = addTime(trip.time, rs.duration)
-
       if (rs.order == routeStopOrder)
         break
     }
@@ -264,7 +240,7 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     from: stops.find(s => s.id == t.fromRouteStopId)?.title || '',
     to: stops.find(s => s.id == t.toRouteStopId)?.title || '',
     name: [t.name, t.surname].filter(Boolean).join(' '),
-    gender: t.gender === 'f' ? 'K' : 'E'
+    gender: t.gender === 'f' ? 'F' : 'M'
   }));
 
   const ticketTotal = tickets.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
@@ -293,7 +269,7 @@ async function generateAccountReceiptFromDb(tripId, stopId, output, models = {})
     header: {
       stop: stopTitle,
       route: stopTitle && destinationStopTitle ? `${stopTitle} - ${destinationStopTitle}` : destinationStopTitle,
-      departure: `${new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" }).format(new Date(trip.date))} ${trip.time.split(':').slice(0, 2).join(':')} `,
+      departure: `${new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(new Date(trip.date))} ${trip.time.split(':').slice(0, 2).join(':')} `,
       arrival: destinationStopTitle,
       bus: bus?.licensePlate || '',
       driver: [captain?.name, captain?.surname].filter(Boolean).join(' ')

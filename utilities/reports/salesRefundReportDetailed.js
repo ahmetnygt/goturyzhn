@@ -5,6 +5,7 @@ const path = require('path');
 /**
  * Generate sales & refund report as PDF.
  * @param {Array<Object>} rows - ticket rows to print
+ * @param {Object} query - filter information
  * @param {string|stream.Writable} output - file path or writable stream
  * @returns {Promise<void>} resolves when writing finishes
  */
@@ -20,7 +21,7 @@ function generateSalesRefundReportDetailed(rows, query, output) {
     doc.registerFont('Bold', boldFontPath);
     doc.font('Regular');
   } catch (e) {
-    console.warn('Font yüklenemedi, varsayılan font kullanılacak:', e.message);
+    console.warn('Font could not be loaded, using default font:', e.message);
   }
   const xStart = doc.page.margins.left;
   const fullWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -47,26 +48,14 @@ function generateSalesRefundReportDetailed(rows, query, output) {
     doc.moveDown(0.8);
   };
 
-  // place query information above the title and margins
-  // doc.y = doc.page.margins.top - 25;
-  // drawSummaryRow([
-  //   { label: 'Tarih Aralığı: ', value: `${query.startDate} - ${query.endDate}` },
-  // ]);
-  // drawSummaryRow([
-  //   { label: 'Tip: ', value: query.type == "detailed" ? "Detaylı" : "Özet" },
-  //   { label: 'Şube: ', value: query.branch },
-  //   { label: 'Kullanıcı: ', value: query.user },
-  //   { label: 'Durak: ', value: `${query.from} - ${query.to}` },
-  // ]);
-
-  // reset position for title
+  // Reset position for title
   doc.y = doc.page.margins.top;
   doc.moveDown();
-  const title = 'Satışlar ve İadeler Raporu'.toLocaleUpperCase();
+  const title = 'Sales and Refunds Report'.toUpperCase();
   doc.font('Bold').fontSize(14);
 
   const textWidth = doc.widthOfString(title);
-  const centerX = (doc.page.width - textWidth) / 2; // sayfa ortası
+  const centerX = (doc.page.width - textWidth) / 2;
   doc.text(title, centerX, doc.y);
   doc.moveDown();
 
@@ -111,49 +100,49 @@ function generateSalesRefundReportDetailed(rows, query, output) {
   doc.font('Regular').fontSize(9);
 
   drawSummaryRow([
-    { label: 'Toplam Satış Adedi: ', value: salesCount },
-    { label: 'Toplam İade Adedi: ', value: refundCount },
-    { label: 'Toplam Yolcu Adedi: ', value: salesCount - refundCount },
+    { label: 'Total Sales Count: ', value: salesCount },
+    { label: 'Total Refunds Count: ', value: refundCount },
+    { label: 'Total Passenger Count: ', value: salesCount - refundCount },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Nakit Satış: ', value: fmt(cashSale) + "₺" },
-    { label: 'Toplam Nakit İade: ', value: fmt(cashRefund) + "₺" },
-    { label: 'Toplam Net Nakit: ', value: fmt(cashSale - cashRefund) + "₺" },
+    { label: 'Total Cash Sales: ', value: fmt(cashSale) + "$" },
+    { label: 'Total Cash Refunds: ', value: fmt(cashRefund) + "$" },
+    { label: 'Total Net Cash: ', value: fmt(cashSale - cashRefund) + "$" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam KK Satış: ', value: fmt(cardSale) + "₺" },
-    { label: 'Toplam KK İade: ', value: fmt(cardRefund) + "₺" },
-    { label: 'Toplam Net KK: ', value: fmt(cardSale - cardRefund) + "₺" },
+    { label: 'Total CC Sales: ', value: fmt(cardSale) + "$" },
+    { label: 'Total CC Refunds: ', value: fmt(cardRefund) + "$" },
+    { label: 'Total Net CC: ', value: fmt(cardSale - cardRefund) + "$" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam WEB Satış: ', value: fmt(webSale) + "₺" },
-    { label: 'Toplam WEB İade: ', value: fmt(webRefund) + "₺" },
-    { label: 'Toplam Net WEB: ', value: fmt(webSale - webRefund) + "₺" },
+    { label: 'Total WEB Sales: ', value: fmt(webSale) + "$" },
+    { label: 'Total WEB Refunds: ', value: fmt(webRefund) + "$" },
+    { label: 'Total Net WEB: ', value: fmt(webSale - webRefund) + "$" },
   ]);
   drawSummaryRow([
-    { label: 'Toplam Puanlı Satış: ', value: fmt(pointSale) + "₺" },
-    { label: 'Toplam Puanlı İade: ', value: fmt(pointRefund) + "₺" },
-    { label: 'Toplam Net Puanlı: ', value: fmt(pointSale - pointRefund) + "₺" },
+    { label: 'Total Point Sales: ', value: fmt(pointSale) + "$" },
+    { label: 'Total Point Refunds: ', value: fmt(pointRefund) + "$" },
+    { label: 'Total Net Points: ', value: fmt(pointSale - pointRefund) + "$" },
   ]);
   drawSummaryRow([
-    { label: 'Gidiş Biletler Komisyonu: ', value: fmt(outboundComission) + "₺" },
-    { label: 'Dönüş Biletler Komisyonu: ', value: fmt(returnComission) + "₺" },
-    { label: 'Toplam Net Tutar: ', value: fmt((cashSale - cashRefund) + (cardSale - cardRefund) + (webSale - webRefund) + (pointSale - pointRefund)) + "₺" },
+    { label: 'Outbound Commission: ', value: fmt(outboundComission) + "$" },
+    { label: 'Return Commission: ', value: fmt(returnComission) + "$" },
+    { label: 'Total Net Amount: ', value: fmt((cashSale - cashRefund) + (cardSale - cardRefund) + (webSale - webRefund) + (pointSale - pointRefund)) + "$" },
   ]);
 
   doc.moveDown();
 
   const columns = [
-    { key: 'user', header: 'Kullanıcı', w: 70 },
-    { key: 'time', header: 'Zaman', w: 60 },
-    { key: 'from', header: 'Nereden', w: 60 },
-    { key: 'to', header: 'Nereye', w: 60 },
-    { key: 'payment', header: 'Tahsilat', w: 50 },
-    { key: 'action', header: 'İşlem', w: 45 },
-    { key: 'seat', header: 'Koltuk', w: 40 },
-    { key: 'gender', header: 'C', w: 20 },
+    { key: 'user', header: 'User', w: 70 },
+    { key: 'time', header: 'Time', w: 60 },
+    { key: 'from', header: 'From', w: 60 },
+    { key: 'to', header: 'To', w: 60 },
+    { key: 'payment', header: 'Payment', w: 50 },
+    { key: 'action', header: 'Action', w: 45 },
+    { key: 'seat', header: 'Seat', w: 40 },
+    { key: 'gender', header: 'G', w: 20 },
     { key: 'pnr', header: 'PNR', w: 60 },
-    { key: 'price', header: 'Ücret', w: 40 },
+    { key: 'price', header: 'Fee', w: 40 },
   ];
 
   let y = doc.y;
@@ -183,16 +172,16 @@ function generateSalesRefundReportDetailed(rows, query, output) {
 
     switch (row.status) {
       case "completed":
-        action = "Satış";
+        action = "Sale";
         break;
       case "refund":
-        action = "İade";
+        action = "Refund";
         break;
       case "web":
-        action = "İnt. Satış";
+        action = "Web Sale";
         break;
       case "web_refund":
-        action = "İnt. İade";
+        action = "Web Refund";
         break;
       default:
         break;
@@ -200,15 +189,15 @@ function generateSalesRefundReportDetailed(rows, query, output) {
 
     const rowValues = {
       user: row.user || '',
-      time: new Date(row.time).toLocaleString('tr-TR'),
+      time: new Date(row.time).toLocaleString('en-US'),
       from: row.from || '',
       to: row.to || '',
-      payment: row.payment == "cash" ? "Nakit" : row.payment == "card" ? "K.Kartı" : row.payment == "point" ? "Puan" : row.payment == "web" ? "Web" : "",
+      payment: row.payment == "cash" ? "Cash" : row.payment == "card" ? "Credit Card" : row.payment == "point" ? "Point" : row.payment == "web" ? "Web" : "",
       action: action || '',
       seat: row.seat != null ? String(row.seat) : '',
       gender: row.gender || '',
       pnr: row.pnr || '',
-      price: (row.price != null ? Number(row.price).toFixed(2) + "₺" : ''),
+      price: (row.price != null ? Number(row.price).toFixed(2) + "$" : ''),
     };
 
     if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
@@ -239,8 +228,8 @@ module.exports = generateSalesRefundReportDetailed;
 
 if (require.main === module) {
   const sample = [
-    { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', status: 'completed', seat: 1, gender: 'E', pnr: 'ABC123', price: 100 },
-    { user: 'Ayşe', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', status: 'refund', seat: 2, gender: 'K', pnr: 'XYZ789', price: 120 },
+    { user: 'Ali', time: new Date(), from: 'ANK', to: 'IST', payment: 'cash', status: 'completed', seat: 1, gender: 'M', pnr: 'ABC123', price: 100 },
+    { user: 'Ayse', time: new Date(), from: 'ANK', to: 'BUR', payment: 'card', status: 'refund', seat: 2, gender: 'F', pnr: 'XYZ789', price: 120 },
   ];
   generateSalesRefundReportDetailed(sample, {}, 'sales_refunds.pdf').then(() => console.log('sales_refunds.pdf created'));
 }

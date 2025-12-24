@@ -3,10 +3,10 @@ if tickets.length
         .member-ticket-card
             .member-ticket-header
                 .member-ticket-route
-                    span.member-ticket-route-text #{t.from || 'Belirtilmedi'}
+                    span.member-ticket-route-text #{t.from || 'Not Specified'}
                     span.member-ticket-route-arrow
                         i.fa-solid.fa-angles-right
-                    span.member-ticket-route-text #{t.to || 'Belirtilmedi'}
+                    span.member-ticket-route-text #{t.to || 'Not Specified'}
                 span.member-ticket-pnr PNR: #{t.pnr || '-'}
             .member-ticket-meta
                 if t.tripDateDisplay || t.tripTimeDisplay
@@ -16,20 +16,20 @@ if tickets.length
                 if t.seatNo
                     span.member-ticket-meta-item
                         i.fa-solid.fa-chair
-                        span Koltuk: #{t.seatNo}
+                        span Seat: #{t.seatNo}
                 if t.purchaseDateDisplay
                     span.member-ticket-meta-item
                         i.fa-solid.fa-clock
-                        span Satın Alma: #{t.purchaseDateDisplay}
+                        span Purchase: #{t.purchaseDateDisplay}
             .member-ticket-footer
                 span.member-ticket-price #{t.priceDisplay || '-'}
                 - const hasTripData = Boolean(t.tripId && t.tripDate && t.tripTime)
                 button.member-ticket-go-trip.btn.btn-outline-primary.btn-sm(type="button", data-trip-id=hasTripData ? t.tripId : null, data-trip-date=hasTripData ? t.tripDate : null, data-trip-time=hasTripData ? t.tripTime : null, disabled=hasTripData ? null : true)
                     i.fa-solid.fa-route.me-1
-                    | Sefere Git
+                    | Go to Trip
                 if !hasTripData
-                    span.member-ticket-missing.text-muted Sefer bilgisi bulunamadı
+                    span.member-ticket-missing.text-muted Trip information not found
 else
     .member-ticket-empty.text-center.py-4.text-muted
         i.fa-regular.fa-ticket.me-2
-        | Kayıtlı bilet bulunamadı
+        | No registered tickets found

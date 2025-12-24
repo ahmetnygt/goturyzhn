@@ -9,15 +9,15 @@ const safeNumber = (value) => {
 
 const formatCurrency = (value) => {
   const amount = safeNumber(value);
-  return `${amount.toLocaleString('tr-TR', {
+  return `${amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} TL`;
+  })} $`;
 };
 
 const formatCount = (value) => {
   const num = safeNumber(value);
-  return num.toLocaleString('tr-TR');
+  return num.toLocaleString('en-US');
 };
 
 const normalizeDate = (value) => {
@@ -29,7 +29,7 @@ const normalizeDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
@@ -66,7 +66,7 @@ function generateBusTransactionsReport(data, output) {
     doc.registerFont('Bold', boldFontPath);
     doc.font('Regular');
   } catch (err) {
-    console.warn('Font yüklenemedi, varsayılan font kullanılacak:', err.message);
+    console.warn('Font could not be loaded, using default:', err.message);
   }
 
   const xStart = doc.page.margins.left;
@@ -106,19 +106,19 @@ function generateBusTransactionsReport(data, output) {
 
   const drawGroupTotals = (groupTotals, busTitle) => {
     const items = [
-      { label: 'Plaka', value: busTitle },
-      { label: 'Gelir', value: formatCurrency(groupTotals.income) },
-      { label: 'Gider', value: formatCurrency(groupTotals.expense) },
+      { label: 'Plate', value: busTitle },
+      { label: 'Income', value: formatCurrency(groupTotals.income) },
+      { label: 'Expense', value: formatCurrency(groupTotals.expense) },
       { label: 'Net', value: formatCurrency(groupTotals.net) },
     ];
     drawKeyValueRow(items);
   };
 
   const columns = [
-    { key: 'date', label: 'Tarih', width: 100, align: 'center' },
-    { key: 'description', label: 'Açıklama', width: usableWidth - 220, align: 'center' },
-    { key: 'type', label: 'Tür', width: 60, align: 'center' },
-    { key: 'amount', label: 'Tutar', width: 60, align: 'center' },
+    { key: 'date', label: 'Date', width: 100, align: 'center' },
+    { key: 'description', label: 'Description', width: usableWidth - 220, align: 'center' },
+    { key: 'type', label: 'Type', width: 60, align: 'center' },
+    { key: 'amount', label: 'Amount', width: 60, align: 'center' },
   ];
 
   const formatColumnValue = (row, key) => {
@@ -128,7 +128,7 @@ function generateBusTransactionsReport(data, output) {
       case 'description':
         return row.description || '';
       case 'type':
-        return row.type === 'income' ? 'Gelir' : 'Gider';
+        return row.type === 'income' ? 'Income' : 'Expense';
       case 'amount':
         return formatCurrency(row.amount);
       default:
@@ -165,7 +165,7 @@ function generateBusTransactionsReport(data, output) {
       x += col.width;
     });
     doc.font('Regular');
-    doc.y = headerY + 25; // Alt satıra geç
+    doc.y = headerY + 25;
   };
 
   const drawTableRow = (row) => {
@@ -188,26 +188,26 @@ function generateBusTransactionsReport(data, output) {
     doc.moveDown(0.1);
   };
 
-  const title = 'Otobüs Gelir Gider Raporu'.toLocaleUpperCase('tr-TR');
+  const title = 'Bus Income and Expense Report'.toUpperCase();
   doc.font('Bold').fontSize(14).text(title, xStart, doc.y, { width: usableWidth, align: 'center' });
   doc.moveDown(0.8);
   doc.font('Regular').fontSize(9);
 
   drawKeyValueRow([
-    { label: 'Başlangıç', value: formatDateTime(query.startDate) },
-    { label: 'Bitiş', value: formatDateTime(query.endDate) },
-    { label: 'Plaka', value: query.bus || 'Tümü' },
+    { label: 'Start Date', value: formatDateTime(query.startDate) },
+    { label: 'End Date', value: formatDateTime(query.endDate) },
+    { label: 'Plate', value: query.bus || 'All' },
   ]);
 
   drawKeyValueRow([
-    { label: 'Toplam Gelir', value: formatCurrency(totals.income) },
-    { label: 'Toplam Gider', value: formatCurrency(totals.expense) },
-    { label: 'Net Tutar', value: formatCurrency(totals.net) },
+    { label: 'Total Income', value: formatCurrency(totals.income) },
+    { label: 'Total Expense', value: formatCurrency(totals.expense) },
+    { label: 'Net Amount', value: formatCurrency(totals.net) },
   ]);
 
   if (!groups.length) {
     ensureSpace(40);
-    doc.text('Belirtilen kriterlere uygun kayıt bulunamadı.', xStart, doc.y, {
+    doc.text('No records found matching the specified criteria.', xStart, doc.y, {
       width: usableWidth,
       align: 'center',
     });
@@ -221,7 +221,7 @@ function generateBusTransactionsReport(data, output) {
   doc.moveDown();
 
   groups.forEach((group, index) => {
-    const busTitle = group.busTitle || 'Otobüs';
+    const busTitle = group.busTitle || 'Bus';
     ensureSpace(24);
     doc.font('Bold').fontSize(11).text(busTitle, xStart, doc.y, { width: usableWidth });
     doc.moveDown(0.3);
@@ -231,7 +231,7 @@ function generateBusTransactionsReport(data, output) {
 
     if (!group.rows || !group.rows.length) {
       ensureSpace(20);
-      doc.text('Bu otobüs için kayıt bulunamadı.', xStart, doc.y, {
+      doc.text('No records found for this bus.', xStart, doc.y, {
         width: usableWidth,
         align: 'center',
       });
@@ -249,7 +249,6 @@ function generateBusTransactionsReport(data, output) {
 
     if (index < groups.length - 1) {
       doc.moveDown(0.6);
-      const separatorY = doc.y;
       ensureSpace(10);
       doc.moveDown(0.6);
     }
@@ -264,4 +263,3 @@ function generateBusTransactionsReport(data, output) {
 }
 
 module.exports = generateBusTransactionsReport;
-
